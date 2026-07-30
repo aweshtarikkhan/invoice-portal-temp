@@ -51,6 +51,8 @@ export default function AdminPanelPage() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("Staff");
   const [newUserPermissions, setNewUserPermissions] = useState<string[]>([]);
+  const [fetchedTeamMembers, setFetchedTeamMembers] = useState<any[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   
   const [isCreatingBusiness, setIsCreatingBusiness] = useState(false);
   const addMyOrganization = useAppStore((s) => s.addMyOrganization);
@@ -61,12 +63,24 @@ export default function AdminPanelPage() {
   const isSuper = isSuperAdmin(currentUserEmail);
 
   // Logic for global team members limit across ALL businesses
-  const totalGlobalUsers = myOrganizations.reduce((sum, org) => {
-    return sum + (teamMembers[org.id]?.length || 0);
-  }, 0);
-  
+  const totalGlobalUsers = fetchedTeamMembers.length;
   const currentOrgId = currentOrg?.id || "default";
-  const orgTeamMembers = teamMembers[currentOrgId] || [];
+
+  const loadTeamMembers = async () => {
+    if (currentOrgId === "default") return;
+    setIsLoadingMembers(true);
+    try {
+      const { data, error } = await supabase.rpc("get_org_members_with_status", { target_org_id: currentOrgId });
+      if (data) setFetchedTeamMembers(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsLoadingMembers(false);
+    }
+  };
+
+  useEffect(() => { loadTeamMembers(); }, [currentOrgId]);
+
   const globalLimitReached = totalGlobalUsers >= 5;
 
   const handleAddAdmin = () => {
@@ -90,12 +104,8 @@ export default function AdminPanelPage() {
 
         if (error) throw error;
         
-        // Add to local state for instant UI update
-        addTeamMember(currentOrgId, {
-          email: newUserEmail,
-          role: newUserRole,
-          permissions: newUserPermissions
-        });
+        // Reload team members to reflect the new user
+        loadTeamMembers();
         
         setNewUserEmail("");
         setNewUserRole("Staff");
@@ -277,12 +287,14 @@ export default function AdminPanelPage() {
                 
                 <div className="flex-1">
                   <h3 className="text-white font-medium mb-4">Current Team Members in {currentOrg?.name || "this business"}</h3>
-                  {orgTeamMembers.length === 0 ? (
+                  {isLoadingMembers ? (
+                    <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-slate-500" /></div>
+                  ) : fetchedTeamMembers.length === 0 ? (
                     <p className="text-sm text-slate-500 italic">Koi user add nahi kiya gaya hai.</p>
                   ) : (
                     <div className="space-y-3">
-                      {orgTeamMembers.map((member) => (
-                        <div key={member.email} className="flex flex-col p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 gap-3">
+                      {fetchedTeamMembers.map((member) => (
+                        <div key={member.member_id} className="flex flex-col p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 gap-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
@@ -290,13 +302,18 @@ export default function AdminPanelPage() {
                               </div>
                               <div>
                                 <h4 className="text-sm text-white font-medium leading-none">{member.email}</h4>
-                                <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 mt-1.5 inline-block bg-emerald-400/10 px-2 py-0.5 rounded-full">
-                                  {member.role}
-                                </span>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                                    {member.role}
+                                  </span>
+                                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full `}>
+                                    {member.status}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <button
-                              onClick={() => removeTeamMember(currentOrgId, member.email)}
+                              onClick={async () => { await supabase.from('organization_members').delete().eq('id', member.member_id); loadTeamMembers(); }}
                               className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
                               title="Remove user"
                             >
@@ -553,3 +570,4 @@ export default function AdminPanelPage() {
     </div>
   );
 }
+

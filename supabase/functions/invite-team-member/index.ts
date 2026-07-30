@@ -53,15 +53,26 @@ serve(async (req) => {
       throw new Error('Not authorized to invite to this organization')
     }
 
-    // Check if the user already exists in auth.users
-    // Actually inviteUserByEmail handles both new and existing users
-    const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
+    let invitedUserId = null;
 
-    if (inviteError) {
-      throw inviteError
+    // Check if the user already exists using our custom RPC
+    const { data: existingUserId } = await supabaseAdmin.rpc('get_user_id_by_email', { user_email: email });
+
+    if (existingUserId) {
+      invitedUserId = existingUserId;
+    } else {
+      // User doesn't exist, invite them
+      const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
+
+      if (inviteError) {
+        throw inviteError
+      }
+      invitedUserId = authData.user.id
     }
 
-    const invitedUserId = authData.user.id
+    if (!invitedUserId) {
+      throw new Error('Failed to resolve user ID');
+    }
 
     // Insert into organization_members
     const { error: insertError } = await supabaseAdmin
@@ -74,20 +85,22 @@ serve(async (req) => {
       })
 
     if (insertError) {
-      // If they are already in the org, maybe update their role?
-      if (insertError.code === '23505') { // unique violation
-         await supabaseAdmin
+      // If they are already in the org, just update their role
+      if (insertError.code === '23505') { 
+         const { error: updateError } = await supabaseAdmin
            .from('organization_members')
            .update({ role, permissions: permissions || [] })
            .eq('org_id', org_id)
            .eq('user_id', invitedUserId)
+           
+         if (updateError) throw updateError;
       } else {
          throw insertError
       }
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: 'User invited successfully' }),
+      JSON.stringify({ success: true, message: 'User added successfully' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
 
