@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { fetchGstDetails } from "@/lib/gst-service";
+import { INDIAN_STATES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
 
@@ -156,6 +157,7 @@ export default function ClientsPage() {
     setIsFetchingGst(true);
     try {
       const details = await fetchGstDetails(form.tax_number);
+      const stateName = INDIAN_STATES.find(s => s.code === details.state || s.name === details.state)?.name || details.state || form.billing_address.state;
       setForm(prev => ({
         ...prev,
         display_name: details.legalName || details.tradeName || prev.display_name,
@@ -163,7 +165,8 @@ export default function ClientsPage() {
         billing_address: {
           ...prev.billing_address,
           street: details.address || prev.billing_address.street,
-          state: details.state || prev.billing_address.state,
+          city: details.city || prev.billing_address.city,
+          state: stateName,
           zip: details.pincode || prev.billing_address.zip,
         }
       }));
@@ -437,7 +440,18 @@ export default function ClientsPage() {
               </div>
               <div className="space-y-2">
                 <Label>State</Label>
-                <Input value={form.billing_address.state} onChange={(e) => setForm({ ...form, billing_address: { ...form.billing_address, state: e.target.value } })} />
+                <Select value={form.billing_address.state} onValueChange={(val) => setForm({ ...form, billing_address: { ...form.billing_address, state: val } })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {INDIAN_STATES.map((s) => (
+                      <SelectItem key={s.code} value={s.name}>
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label>ZIP</Label>

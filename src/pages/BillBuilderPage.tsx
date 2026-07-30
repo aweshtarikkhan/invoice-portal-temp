@@ -29,7 +29,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddVendorDialog } from "@/components/shared/AddVendorDialog";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import {
   DndContext,
   closestCenter,
@@ -832,7 +832,7 @@ export default function BillBuilderPage() {
                   </Button>
                 </div>
                 <AddVendorDialog open={addVendorOpen} onOpenChange={setAddVendorOpen} onVendorAdded={(c) => { setVendors(prev => [...prev, c]); setVendorId(c.id); setVendorSearch(c.display_name); }} />
-                <AddItemDialog open={addItemOpen} onOpenChange={setAddItemOpen} taxRates={taxRates} onItemAdded={(item) => { setCatalogItems(prev => [...prev, item]); }} />
+                <ItemFormDialog open={addItemOpen} onOpenChange={setAddItemOpen} taxRates={taxRates} onItemAdded={(item) => { setCatalogItems(prev => [...prev, item]); }} />
                 {vendorId && vendorAgingSummary && vendorAgingSummary.totalDue > 0 && (
                   <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30 p-3 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-400">

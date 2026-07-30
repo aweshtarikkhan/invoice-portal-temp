@@ -8,8 +8,6 @@ import { Pencil, ArrowLeft, PackageCheck, Printer, Download } from "lucide-react
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
-import { CompactBillTemplate } from "@/components/invoice/CompactBillTemplate";
-import { PosBillTemplate } from "@/components/invoice/PosBillTemplate";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 
@@ -52,13 +50,18 @@ export default function PurchaseOrderDetailPage() {
     };
   }, [po]);
 
-  const taxBreakdown = useMemo(() => {
-    if (!po || !org) return [];
+  const isInterstate = useMemo(() => {
+    if (!po || !org) return false;
     const vendor = po.vendors;
     const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number) : null;
     let vendorState = null;
     if (vendor?.gstin) vendorState = stateCodeFromGstin(vendor.gstin);
-    const isInterstate = Boolean(orgState && vendorState && orgState !== vendorState);
+    return Boolean(orgState && vendorState && orgState !== vendorState);
+  }, [po, org]);
+
+  const taxBreakdown = useMemo(() => {
+    if (!po || !org) return [];
+    
     const enhancedLines = (lines || []).map(l => {
       const q = Number(l.quantity) || 0;
       const r = Number(l.rate) || 0;
@@ -67,7 +70,7 @@ export default function PurchaseOrderDetailPage() {
       return { ...l, tax_amount, tax_rate: tr };
     });
     
-    let breakdown = calculateTaxBreakdown(enhancedLines, [], isInterstate);
+    let breakdown = calculateTaxBreakdown(enhancedLines as any, [], isInterstate);
     
     // Fallback for old POs where line.tax_amount wasn't saved properly
     if (breakdown.length === 0 && (po.tax_total > 0 || po.tax_amount > 0)) {
@@ -121,21 +124,11 @@ export default function PurchaseOrderDetailPage() {
       </div>
 
       <div ref={invoiceRef} className="print:m-0 print:shadow-none print:border-none">
-        {mappedPoForTemplate && (
-          org?.template_style === "compact" ? (
-            <div className={getDocumentPreviewClass("compact", org?.template_paper_size)}>
-              <CompactBillTemplate org={org} invoice={mappedPoForTemplate} lines={lines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} />
+          {mappedPoForTemplate && (
+            <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
+              <StyledInvoiceTemplate org={org} invoice={mappedPoForTemplate} lines={lines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
             </div>
-          ) : org?.template_style === "pos" ? (
-            <div className={getDocumentPreviewClass("pos", org?.template_paper_size || "pos80")}>
-              <PosBillTemplate org={org} invoice={mappedPoForTemplate} lines={lines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} />
-            </div>
-          ) : (
-            <div className={getDocumentPreviewClass("modern", org?.template_paper_size)}>
-              <StyledInvoiceTemplate org={org} invoice={mappedPoForTemplate} lines={lines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} />
-            </div>
-          )
-        )}
+          )}
       </div>
 
       {grns.length > 0 && (

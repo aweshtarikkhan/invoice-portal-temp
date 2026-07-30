@@ -12,9 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
-import { CompactBillTemplate } from "@/components/invoice/CompactBillTemplate";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
-import { A6Template } from "@/components/invoice/A6Templates";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 
 const statusVariants: Record<string, "default" | "info" | "success" | "warning" | "danger" | "muted"> = {
@@ -52,8 +50,8 @@ export default function EstimateDetailPage() {
 
   useEffect(() => { fetchData(); }, [id, org?.id]);
 
-  const taxBreakdown = React.useMemo(() => {
-    if (!estimate || !org || !lines.length) return [];
+  const isInterstate = React.useMemo(() => {
+    if (!estimate || !org) return false;
     const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number)
       : (org.address && typeof org.address === 'object' ? (org.address as any).state : null);
     let clientState = null;
@@ -61,9 +59,13 @@ export default function EstimateDetailPage() {
     else if (client?.billing_address && typeof client.billing_address === 'object') {
       clientState = (client.billing_address as any).state;
     }
-    const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
+    return Boolean(orgState && clientState && orgState !== clientState);
+  }, [estimate, org, client]);
+
+  const taxBreakdown = React.useMemo(() => {
+    if (!estimate || !org || !lines.length) return [];
     return calculateTaxBreakdown(lines, taxRates, isInterstate);
-  }, [estimate, lines, org, taxRates, client]);
+  }, [estimate, lines, org, taxRates, isInterstate]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -179,70 +181,11 @@ export default function EstimateDetailPage() {
         </Card>
       </div>
 
-      {org?.template_style === "compact" ? (
-        <div className={getDocumentPreviewClass("compact", org?.template_paper_size)}>
-          <CompactBillTemplate org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} />
-        </div>
-      ) : ["alpha_blue", "monochrome", "amanda_cream", "redblue_modern"].includes(org?.template_style) ? (
+      <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center">
         <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-          <A6Template org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" variant={org.template_style as any} taxBreakdown={taxBreakdown} />
+          <StyledInvoiceTemplate org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
         </div>
-      ) : org?.template_style && org.template_style !== "pos" ? (
-        <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-          <StyledInvoiceTemplate org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} />
-        </div>
-      ) : (
-      <Card className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-        <CardContent className="pt-6">
-          <div className="mb-4 flex justify-end">
-            <span className="text-xs text-muted-foreground">Template: {org?.template_style || "classic"} • {getPaperSizeLabel(org?.template_paper_size)}</span>
-          </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Item</TableHead>
-                <TableHead className="text-center">Qty</TableHead>
-                <TableHead className="text-right">Rate</TableHead>
-                <TableHead className="text-right">Tax</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>
-                    <div className="font-medium">{line.name}</div>
-                    {line.description && <div className="text-xs text-muted-foreground">{line.description}</div>}
-                  </TableCell>
-                  <TableCell className="text-center">{line.quantity}</TableCell>
-                  <TableCell className="text-right">{fmt(Number(line.rate))}</TableCell>
-                  <TableCell className="text-right">{fmt(Number(line.tax_amount))}</TableCell>
-                  <TableCell className="text-right font-medium">{fmt(Number(line.amount))}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <div className="mt-4 border-t pt-4 space-y-2 max-w-xs ml-auto">
-            <div className="flex justify-between text-sm"><span>Subtotal</span><span>{fmt(Number(estimate.subtotal))}</span></div>
-            {Number(estimate.total_discount) > 0 && (
-              <div className="flex justify-between text-sm"><span>Discount</span><span>-{fmt(Number(estimate.total_discount))}</span></div>
-            )}
-            {Number(estimate.total_tax) > 0 && (
-              <div className="flex justify-between text-sm"><span>Tax</span><span>{fmt(Number(estimate.total_tax))}</span></div>
-            )}
-            {Number(estimate.shipping_charge) > 0 && (
-              <div className="flex justify-between text-sm"><span>Shipping</span><span>{fmt(Number(estimate.shipping_charge))}</span></div>
-            )}
-            {Number(estimate.adjustment) !== 0 && (
-              <div className="flex justify-between text-sm"><span>{estimate.adjustment_name || "Adjustment"}</span><span>{fmt(Number(estimate.adjustment))}</span></div>
-            )}
-            <div className="border-t pt-2 flex justify-between font-bold text-lg">
-              <span>Total</span><span>{fmt(Number(estimate.total))}</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-      )}
+      </div>
 
       {estimate.notes && (
         <Card>

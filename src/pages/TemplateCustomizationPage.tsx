@@ -16,14 +16,7 @@ import { Upload, Check, FileText, Palette } from "lucide-react";
 import { PAPER_SIZES } from "@/lib/document-templates";
 
 const TEMPLATE_STYLES = [
-  { id: "classic", name: "Classic", description: "Traditional business layout" },
-  { id: "modern", name: "Modern", description: "Contemporary with accent colors" },
-  { id: "minimal", name: "Minimal", description: "Clean and simple" },
-  { id: "professional", name: "Professional", description: "Corporate-grade" },
-  { id: "asperiores", name: "Asperiores", description: "Bold executive with striking contrasts" },
-  { id: "magnam", name: "Magnam", description: "Elegant with refined spacing" },
-  { id: "quisquam", name: "Quisquam", description: "Compact data-dense layout" },
-  { id: "nobis", name: "Nobis", description: "Creative asymmetric design" },
+  { id: "standard_gst", name: "Standard GST", description: "Indian GST compliant invoice with HSN/SAC, explicit CGST/SGST/IGST breakdown, and E-Way Bill details." },
 ];
 
 const FONTS = [
@@ -41,7 +34,7 @@ export default function TemplateCustomizationPage() {
   const setOrganization = useAppStore((s) => s.setOrganization);
   const { toast } = useToast();
 
-  const [style, setStyle] = useState("classic");
+  const [style, setStyle] = useState("standard_gst");
   const [accentColor, setAccentColor] = useState("#2563eb");
   const [font, setFont] = useState("Inter");
   const [showLogo, setShowLogo] = useState(true);
@@ -51,7 +44,7 @@ export default function TemplateCustomizationPage() {
 
   useEffect(() => {
     if (!org) return;
-    setStyle((org as any).template_style || "classic");
+    setStyle((org as any).template_style || "standard_gst");
     setAccentColor((org as any).template_accent_color || "#2563eb");
     setFont((org as any).template_font || "Inter");
     setShowLogo((org as any).template_show_logo ?? true);

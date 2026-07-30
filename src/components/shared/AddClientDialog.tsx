@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Search } from "lucide-react";
 import { fetchGstDetails } from "@/lib/gst-service";
+import { INDIAN_STATES } from "@/lib/constants";
 
 interface AddClientDialogProps {
   open: boolean;
@@ -59,7 +60,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
       if (!companyName) setCompanyName(details.legalName || details.tradeName || "");
       if (!displayName) setDisplayName(details.tradeName || details.legalName || "");
       setBillingAddress(details.address || "");
-      setBillingState(details.state || "");
+      setBillingState(gstNumber.slice(0, 2));
       setBillingZip(details.pincode || "");
       toast({ title: "GST Details Fetched", description: "Business details auto-filled successfully!" });
     } catch (err: any) {
@@ -162,15 +163,11 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
                   <SelectValue placeholder="Select State" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="27">27 - Maharashtra</SelectItem>
-                  <SelectItem value="07">07 - Delhi</SelectItem>
-                  <SelectItem value="09">09 - Uttar Pradesh</SelectItem>
-                  <SelectItem value="24">24 - Gujarat</SelectItem>
-                  <SelectItem value="29">29 - Karnataka</SelectItem>
-                  <SelectItem value="33">33 - Tamil Nadu</SelectItem>
-                  <SelectItem value="19">19 - West Bengal</SelectItem>
-                  <SelectItem value="08">08 - Rajasthan</SelectItem>
-                  <SelectItem value="00">00 - Other / Unregistered</SelectItem>
+                  {INDIAN_STATES.map((s) => (
+                    <SelectItem key={s.code} value={s.code}>
+                      {s.code} - {s.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

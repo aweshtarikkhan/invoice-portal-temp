@@ -15,10 +15,7 @@ import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { postBillPaymentJournal } from "@/lib/accounting";
-import { CompactBillTemplate } from "@/components/invoice/CompactBillTemplate";
-import { PosBillTemplate } from "@/components/invoice/PosBillTemplate";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
-import { A6Template } from "@/components/invoice/A6Templates";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 export default function BillDetailPage() {
@@ -96,13 +93,16 @@ export default function BillDetailPage() {
     };
   }, [bill, vendor]);
 
-  const taxBreakdown = useMemo(() => {
-    if (!bill || !org || !lines.length) return [];
+  const isInterstate = useMemo(() => {
+    if (!bill || !org) return false;
     const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number) : null;
     let clientState = null;
     if (vendor?.gstin) clientState = stateCodeFromGstin(vendor.gstin);
-    
-    const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
+    return Boolean(orgState && clientState && orgState !== clientState);
+  }, [bill, org, vendor]);
+
+  const taxBreakdown = useMemo(() => {
+    if (!bill || !org || !lines.length) return [];
     
     const enhancedLines = (lines || []).map(l => {
       const q = Number(l.quantity) || 0;
@@ -157,25 +157,11 @@ export default function BillDetailPage() {
       </div>
 
       <div ref={invoiceRef}>
-        {mappedBillForTemplate && (
-          org?.template_style === "compact" ? (
-            <div className={getDocumentPreviewClass("compact", org?.template_paper_size)}>
-              <CompactBillTemplate org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} />
-            </div>
-          ) : org?.template_style === "pos" ? (
-            <div className={getDocumentPreviewClass("pos", org?.template_paper_size || "pos80")}>
-              <PosBillTemplate org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} />
-            </div>
-          ) : ["alpha_blue", "monochrome", "amanda_cream", "redblue_modern"].includes(org?.template_style) ? (
+          {mappedBillForTemplate && (
             <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-              <A6Template org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" variant={org.template_style as any} taxBreakdown={taxBreakdown} />
+              <StyledInvoiceTemplate org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
             </div>
-          ) : (
-            <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-              <StyledInvoiceTemplate org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} />
-            </div>
-          )
-        )}
+          )}
       </div>
 
       {payments.length > 0 && (

@@ -27,10 +27,7 @@ import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/l
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
-import { CompactBillTemplate } from "@/components/invoice/CompactBillTemplate";
-import { PosBillTemplate } from "@/components/invoice/PosBillTemplate";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
-import { A6Template } from "@/components/invoice/A6Templates";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 
 export default function InvoiceDetailPage() {
@@ -83,9 +80,8 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => { fetchInvoice(); }, [id, org?.id]);
 
-  const taxBreakdown = useMemo(() => {
-    if (!invoice || !org || !lines.length) return [];
-    // Use GST number first (2-digit state code), then fallback to address state name
+  const isInterstate = useMemo(() => {
+    if (!invoice || !org) return false;
     const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number)
       : (org.address && typeof org.address === 'object' ? (org.address as any).state : null);
     let clientState = null;
@@ -93,9 +89,13 @@ export default function InvoiceDetailPage() {
     else if (invoice.clients?.billing_address && typeof invoice.clients.billing_address === 'object') {
       clientState = (invoice.clients.billing_address as any).state;
     }
-    const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
+    return Boolean(orgState && clientState && orgState !== clientState);
+  }, [invoice, org]);
+
+  const taxBreakdown = useMemo(() => {
+    if (!invoice || !org || !lines.length) return [];
     return calculateTaxBreakdown(lines, taxRates, isInterstate);
-  }, [invoice, lines, org, taxRates]);
+  }, [invoice, lines, org, taxRates, isInterstate]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -391,23 +391,11 @@ export default function InvoiceDetailPage() {
 
       {/* Invoice Preview */}
       <div ref={invoiceRef}>
-        {org?.template_style === "compact" ? (
-          <div className={getDocumentPreviewClass("compact", org?.template_paper_size)}>
-            <CompactBillTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} />
-          </div>
-        ) : org?.template_style === "pos" ? (
-          <div className={getDocumentPreviewClass("pos", org?.template_paper_size || "pos80")}>
-            <PosBillTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} />
-          </div>
-        ) : ["alpha_blue", "monochrome", "amanda_cream", "redblue_modern"].includes(org?.template_style) ? (
+        <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center">
           <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-            <A6Template org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" variant={org.template_style as any} taxBreakdown={taxBreakdown} />
+            <StyledInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
           </div>
-        ) : (
-          <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-            <StyledInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} />
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Payments */}

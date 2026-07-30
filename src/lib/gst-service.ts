@@ -4,6 +4,7 @@ export interface GstDetails {
   status: string;
   taxpayerType: string;
   address: string;
+  city?: string;
   pincode?: string;
   state?: string;
 }
@@ -20,11 +21,17 @@ export async function fetchGstDetails(gstNumber: string): Promise<GstDetails> {
   }
 
   try {
-    // Call our secure backend instead of RapidAPI directly
-    const response = await fetch(`http://localhost:4000/api/gst/${gstNumber}`);
+    const response = await fetch(`https://gst-insights-api.p.rapidapi.com/getGSTDetailsUsingGST/${gstNumber}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "x-rapidapi-host": "gst-insights-api.p.rapidapi.com",
+        "x-rapidapi-key": "a18ee74f13mshed05735e8b633f7p1a806cjsn2c61aa4d915f"
+      }
+    });
 
     if (!response.ok) {
-      throw new Error("Failed to fetch from backend GST API");
+      throw new Error("Failed to fetch from GST API");
     }
 
     const json = await response.json();
@@ -38,7 +45,7 @@ export async function fetchGstDetails(gstNumber: string): Promise<GstDetails> {
     const addr = info.principalAddress?.address || {};
     
     // Combine address parts safely
-    const addressParts = [addr.buildingName, addr.street, addr.location, addr.district].filter(Boolean);
+    const addressParts = [addr.buildingName, addr.street, addr.location].filter(Boolean);
 
     return {
       legalName: info.legalName || "",
@@ -46,6 +53,7 @@ export async function fetchGstDetails(gstNumber: string): Promise<GstDetails> {
       status: info.status || "",
       taxpayerType: info.taxType || "",
       address: addressParts.join(", "),
+      city: addr.district || addr.location || "",
       pincode: addr.pincode || "",
       state: addr.stateCode || ""
     };
