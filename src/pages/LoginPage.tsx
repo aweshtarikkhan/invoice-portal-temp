@@ -17,12 +17,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [employeeBlocked, setEmployeeBlocked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setEmployeeBlocked(false);
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
@@ -37,11 +39,7 @@ export default function LoginPage() {
 
       if (empRecord) {
         await supabase.auth.signOut();
-        toast({
-          title: "Access Denied",
-          description: "Employee / Staff accounts cannot log into the Main Invoice Admin Portal. Please use the Attendance Portal.",
-          variant: "destructive",
-        });
+        setEmployeeBlocked(true);
         return;
       }
 
@@ -80,6 +78,45 @@ export default function LoginPage() {
     }
     setDemoLoading(false);
   };
+
+  if (employeeBlocked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+        <Card className="w-full max-w-md border-destructive/30 shadow-lg">
+          <CardHeader className="text-center pb-2">
+            <div className="mx-auto w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-2 text-2xl font-bold">
+              🚫
+            </div>
+            <CardTitle className="text-xl text-destructive font-bold">Access Denied</CardTitle>
+            <CardDescription className="text-sm mt-2 text-foreground font-medium">
+              Employee / Staff accounts cannot log into this Portal. Please use the Attendance Portal.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4 text-center">
+            <a
+              href="https://attendance.satahinvoice.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="block w-full"
+            >
+              <Button className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-5">
+                Click here to login
+              </Button>
+            </a>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full text-xs text-muted-foreground mt-2"
+              onClick={() => setEmployeeBlocked(false)}
+            >
+              Back to Sign In
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
