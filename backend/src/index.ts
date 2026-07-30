@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import dotenv from "dotenv";
+import aiImportRoute from "./ai-import";
 
 dotenv.config();
 
@@ -16,6 +17,8 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", message: "Satah Invoices Backend is running" });
 });
 
+app.use("/api/ai-import", aiImportRoute);
+
 app.get("/api/gst/:gstNumber", async (req, res) => {
   const { gstNumber } = req.params;
   try {
@@ -24,7 +27,7 @@ app.get("/api/gst/:gstNumber", async (req, res) => {
       headers: {
         "Content-Type": "application/json",
         "x-rapidapi-host": "gst-insights-api.p.rapidapi.com",
-        "x-rapidapi-key": process.env.RAPID_API_KEY || "a18ee74f13mshed05735e8b633f7p1a806cjsn2c61aa4d915f"
+        "x-rapidapi-key": process.env.RAPID_API_KEY || "fc51287228msha55f054f75ad5b4p140f17jsnfd81e870b87d"
       }
     });
 
