@@ -142,12 +142,33 @@ export function AppLayout() {
         
         setNeedsSetup(false);
       } else {
-        setNeedsSetup(true);
+        await checkEmployeeAndBlock();
       }
     } else {
-      setNeedsSetup(true);
+      await checkEmployeeAndBlock();
     }
     setChecking(false);
+  };
+
+  const checkEmployeeAndBlock = async () => {
+    if (!profile?.id) return;
+    const { data: empRecord } = await (supabase as any)
+      .from("employees")
+      .select("id")
+      .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`)
+      .maybeSingle();
+
+    if (empRecord) {
+      await supabase.auth.signOut();
+      toast({
+        title: "Access Denied",
+        description: "Employee / Staff accounts cannot log into the Main Invoice Admin Portal. Please use the Attendance Portal.",
+        variant: "destructive",
+      });
+      window.location.href = "/login";
+      return;
+    }
+    setNeedsSetup(true);
   };
 
   useEffect(() => {

@@ -28,6 +28,23 @@ export default function LoginPage() {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
+      // Check if user is an employee / staff account
+      const { data: empRecord } = await (supabase as any)
+        .from("employees")
+        .select("id")
+        .or(`auth_user_id.eq.${data.user.id},id.eq.${data.user.id}`)
+        .maybeSingle();
+
+      if (empRecord) {
+        await supabase.auth.signOut();
+        toast({
+          title: "Access Denied",
+          description: "Employee / Staff accounts cannot log into the Main Invoice Admin Portal. Please use the Attendance Portal.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Check if user is a platform admin
       const { data: isAdmin } = await supabase
         .rpc("is_platform_admin", { check_user_id: data.user.id });
