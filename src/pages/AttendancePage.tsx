@@ -74,6 +74,30 @@ export default function AttendancePage() {
   const [holidays, setHolidays] = useState<any[]>([]);
   const [newHoliday, setNewHoliday] = useState({ name: "", date: "", type: "company" });
   const [weeklyOffs, setWeeklyOffs] = useState<number[]>(org?.weekly_offs || [0]);
+  const [dailyDate, setDailyDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const [dailyLogs, setDailyLogs] = useState<Record<string, any>>({});
+  const [loadingDaily, setLoadingDaily] = useState(false);
+
+  const fetchDailyLogs = async (dateStr: string) => {
+    if (!org?.id) return;
+    setLoadingDaily(true);
+    const { data } = await (supabase as any)
+      .from("attendances")
+      .select("*")
+      .eq("org_id", org.id)
+      .eq("date", dateStr);
+
+    const map: Record<string, any> = {};
+    (data || []).forEach((r: any) => { map[r.employee_id] = r; });
+    setDailyLogs(map);
+    setLoadingDaily(false);
+  };
+
+  useEffect(() => {
+    if (org?.id && dailyDate) {
+      fetchDailyLogs(dailyDate);
+    }
+  }, [org?.id, dailyDate]);
 
   useEffect(() => {
     if (org?.weekly_offs) {
@@ -272,6 +296,44 @@ export default function AttendancePage() {
 
   const formatTime = (iso: string) => format(parseISO(iso), "hh:mm a");
 
+  const calculateHours = (inTime: string, outTime: string) => {
+    try {
+      const start = new Date(inTime).getTime();
+      const end = new Date(outTime).getTime();
+      const diffMs = end - start;
+      if (isNaN(diffMs) || diffMs <= 0) return "-";
+      const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hrs}h ${mins}m`;
+    } catch {
+      return "-";
+    }
+  };
+
+  const renderLocation = (loc: any) => {
+    if (!loc) return <span className="text-xs text-muted-foreground">-</span>;
+    const addressText = loc.address || loc.name || (loc.lat && loc.lng ? `${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}` : null);
+    const mapUrl = loc.lat && loc.lng ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : null;
+    
+    return (
+      <div className="flex flex-col text-xs space-y-0.5">
+        <span className="font-medium text-slate-700 max-w-[200px] truncate" title={addressText || "Location Captured"}>
+          {addressText || "GPS Recorded"}
+        </span>
+        {mapUrl && (
+          <a
+            href={mapUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-blue-600 hover:underline inline-flex items-center gap-0.5 font-semibold text-[11px]"
+          >
+            <MapPin className="w-3 h-3 text-blue-500" /> View Map
+          </a>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="p-6 space-y-4">
       {selectedClockInfo && (
@@ -350,8 +412,9 @@ export default function AttendancePage() {
 
       
       <Tabs defaultValue="monthly" className="w-full">
-        <TabsList className="mb-4">
+        <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
+          <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
           <TabsTrigger value="leaves">Leave Requests</TabsTrigger>
           <TabsTrigger value="holidays">Company Holidays</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -465,6 +528,142 @@ export default function AttendancePage() {
           </CardContent>
         </Card>
       )}
+      </TabsContent>
+
+      <TabsContent value="daily" className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 bg-card p-4 rounded-lg border shadow-sm">
+          <div className="flex items-center gap-3">
+            <Clock className="h-5 w-5 text-primary" />
+            <div>
+              <h3 className="text-base font-semibold">Daily Attendance & Location Logs</h3>
+              <p className="text-xs text-muted-foreground">View check-in time, check-out time, working hours and GPS location for all employees for any selected date.</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Select Date:</span>
+            <Input
+              type="date"
+              value={dailyDate}
+              onChange={(e) => setDailyDate(e.target.value)}
+              className="w-44"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card className="p-4 bg-slate-50">
+            <p className="text-xs font-medium text-muted-foreground">Total Staff</p>
+            <p className="text-2xl font-bold text-slate-800">{employees.length}</p>
+          </Card>
+          <Card className="p-4 bg-emerald-50 border-emerald-200">
+            <p className="text-xs font-medium text-emerald-700">Clocked In</p>
+            <p className="text-2xl font-bold text-emerald-800">
+              {employees.filter(e => dailyLogs[e.id]?.clock_in_time).length}
+            </p>
+          </Card>
+          <Card className="p-4 bg-amber-50 border-amber-200">
+            <p className="text-xs font-medium text-amber-700">Clocked Out</p>
+            <p className="text-2xl font-bold text-amber-800">
+              {employees.filter(e => dailyLogs[e.id]?.clock_out_time).length}
+            </p>
+          </Card>
+          <Card className="p-4 bg-rose-50 border-rose-200">
+            <p className="text-xs font-medium text-rose-700">Pending / Not Clocked In</p>
+            <p className="text-2xl font-bold text-rose-800">
+              {employees.filter(e => !dailyLogs[e.id]?.clock_in_time).length}
+            </p>
+          </Card>
+        </div>
+
+        <Card>
+          <CardContent className="p-0 overflow-auto">
+            {loadingDaily ? (
+              <div className="p-8 text-center text-muted-foreground">Loading attendance logs...</div>
+            ) : employees.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">No active employees found.</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50/80">
+                    <TableHead className="font-semibold">Employee</TableHead>
+                    <TableHead className="font-semibold text-center">Status</TableHead>
+                    <TableHead className="font-semibold">Clock In Time</TableHead>
+                    <TableHead className="font-semibold">Clock In Location</TableHead>
+                    <TableHead className="font-semibold">Clock Out Time</TableHead>
+                    <TableHead className="font-semibold">Clock Out Location</TableHead>
+                    <TableHead className="font-semibold text-right">Hours Worked</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {employees.map((emp) => {
+                    const log = dailyLogs[emp.id];
+                    const hasClockIn = !!log?.clock_in_time;
+                    const hasClockOut = !!log?.clock_out_time;
+
+                    return (
+                      <TableRow key={emp.id} className="hover:bg-slate-50/60">
+                        <TableCell>
+                          <div className="font-medium text-sm">{emp.name}</div>
+                          {emp.employee_code && (
+                            <div className="text-xs text-muted-foreground">{emp.employee_code}</div>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          {hasClockIn ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              Present
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border">
+                              Not Clocked In
+                            </span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {hasClockIn ? (
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                              {formatTime(log.clock_in_time)}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {renderLocation(log?.clock_in_location)}
+                        </TableCell>
+
+                        <TableCell>
+                          {hasClockOut ? (
+                            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
+                              <Clock className="w-3.5 h-3.5 text-amber-600" />
+                              {formatTime(log.clock_out_time)}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+
+                        <TableCell>
+                          {renderLocation(log?.clock_out_location)}
+                        </TableCell>
+
+                        <TableCell className="text-right font-medium text-sm">
+                          {hasClockIn && hasClockOut
+                            ? calculateHours(log.clock_in_time, log.clock_out_time)
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="leaves">
