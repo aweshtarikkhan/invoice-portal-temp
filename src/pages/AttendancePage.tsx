@@ -1,21 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
-import { formatCurrency } from "@/lib/currency";
-import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock } from "lucide-react";
-import { NavLink } from "@/components/NavLink";
 
 type Status = "present" | "absent" | "half_day" | "paid_leave" | "holiday";
 
@@ -61,6 +48,8 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [att, setAtt] = useState<Record<string, Status>>({});
   const [rawAtt, setRawAtt] = useState<any[]>([]);
+  const [clockData, setClockData] = useState<Record<string, any>>({});
+  const [selectedClockInfo, setSelectedClockInfo] = useState<any | null>(null);
   const [month, setMonth] = useState(() => format(new Date(), "yyyy-MM"));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -83,19 +72,27 @@ export default function AttendancePage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const [emps, atts, leavesData, hols] = await Promise.all([
+    const [emps, atts, leavesData, hols, clockins] = await Promise.all([
       (supabase as any).from("employees").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
       (supabase as any).from("attendance").select("*").eq("org_id", org.id)
         .gte("attendance_date", format(monthStart, "yyyy-MM-dd"))
         .lte("attendance_date", format(monthEnd, "yyyy-MM-dd")),
       (supabase as any).from("leaves").select("*, employees(name)").eq("org_id", org.id).order('created_at', { ascending: false }),
-      (supabase as any).from("holidays").select("*").eq("org_id", org.id).order("date", { ascending: true })
+      (supabase as any).from("holidays").select("*").eq("org_id", org.id).order("date", { ascending: true }),
+      (supabase as any).from("attendances").select("*").eq("org_id", org.id)
+        .gte("date", format(monthStart, "yyyy-MM-dd"))
+        .lte("date", format(monthEnd, "yyyy-MM-dd")),
     ]);
     if (emps.error) toast({ title: "Failed to load employees", description: emps.error.message, variant: "destructive" });
     setEmployees(emps.data || []);
     const map: Record<string, Status> = {};
     (atts.data || []).forEach((r: any) => { map[`${r.employee_id}|${r.attendance_date}`] = r.status; });
+    
+    const clkMap: Record<string, any> = {};
+    (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
+    
     setAtt(map);
+    setClockData(clkMap);
     setRawAtt(atts.data || []);
     setLeaves(leavesData?.data || []);
     setHolidays(hols?.data || []);
@@ -257,8 +254,62 @@ export default function AttendancePage() {
     }
   };
 
+  const formatTime = (iso: string) => format(parseISO(iso), "hh:mm a");
+
   return (
     <div className="p-6 space-y-4">
+      {selectedClockInfo && (
+        <Dialog open={!!selectedClockInfo} onOpenChange={(o) => !o && setSelectedClockInfo(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Attendance Details</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="flex items-start justify-between border-b pb-3">
+                <div>
+                  <p className="text-sm text-muted-foreground">Date</p>
+                  <p className="font-medium">{format(parseISO(selectedClockInfo.date), "MMMM dd, yyyy")}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium capitalize">{selectedClockInfo.status || 'Present'}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2 p-3 bg-slate-50 rounded border">
+                  <p className="text-sm font-semibold flex items-center gap-1"><Clock className="w-4 h-4 text-green-600"/> Clock In</p>
+                  {selectedClockInfo.clock_in_time ? (
+                    <>
+                      <p className="text-sm">{formatTime(selectedClockInfo.clock_in_time)}</p>
+                      {selectedClockInfo.clock_in_location && (
+                        <a href={`https://maps.google.com/?q=${selectedClockInfo.clock_in_location.lat},${selectedClockInfo.clock_in_location.lng}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 flex items-center hover:underline mt-1">
+                          <MapPin className="w-3 h-3 mr-1" /> View on Map
+                        </a>
+                      )}
+                    </>
+                  ) : <p className="text-xs text-muted-foreground">Not recorded</p>}
+                </div>
+                
+                <div className="space-y-2 p-3 bg-slate-50 rounded border">
+                  <p className="text-sm font-semibold flex items-center gap-1"><Clock className="w-4 h-4 text-orange-600"/> Clock Out</p>
+                  {selectedClockInfo.clock_out_time ? (
+                    <>
+                      <p className="text-sm">{formatTime(selectedClockInfo.clock_out_time)}</p>
+                      {selectedClockInfo.clock_out_location && (
+                        <a href={`https://maps.google.com/?q=${selectedClockInfo.clock_out_location.lat},${selectedClockInfo.clock_out_location.lng}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 flex items-center hover:underline mt-1">
+                          <MapPin className="w-3 h-3 mr-1" /> View on Map
+                        </a>
+                      )}
+                    </>
+                  ) : <p className="text-xs text-muted-foreground">Not recorded</p>}
+                </div>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Attendance</h1>
@@ -322,11 +373,17 @@ export default function AttendancePage() {
                       const orgWeeklyOffs = org?.weekly_offs || [0];
                       const isOff = orgWeeklyOffs.includes(d.getDay());
                       const s = att[`${emp.id}|${ds}`] || (isOff ? "holiday" : "present");
+                      const c = clockData[`${emp.id}|${ds}`];
                       return (
-                        <TableCell key={ds} className="text-center p-1">
+                        <TableCell key={ds} className="text-center p-1 relative group">
                           <button onClick={() => cycle(emp.id, ds)} title={ds}>
                             {statusBadge(s)}
                           </button>
+                          {c && (
+                            <button onClick={() => setSelectedClockInfo(c)} className="absolute top-0 right-0 p-0.5 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow-sm opacity-80 hover:opacity-100" title="View details">
+                              <MapPin className="w-3 h-3" />
+                            </button>
+                          )}
                         </TableCell>
                       );
                     })}
