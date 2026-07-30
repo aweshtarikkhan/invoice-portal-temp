@@ -128,6 +128,21 @@ function FeatureTilesGrid() {
   const navigate = useNavigate();
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const { t } = useLanguage();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled } = useFeatureStore();
+  const { session } = useAuth();
+  const org = useAppStore((s) => s.organization);
+
+  const currentUserEmail = session?.user?.email?.toLowerCase().trim();
+  const isUserAdmin = isAdmin(currentUserEmail);
+  const currentOrgId = org?.id || "default";
+  const currentTeamMember = !isUserAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
+  const userPermissions = currentTeamMember?.permissions || [];
+
+  const isGroupAccessible = (groupKey: string) => {
+    if (isUserAdmin) return true;
+    if (!teamMembers[currentOrgId] || teamMembers[currentOrgId].length === 0) return true;
+    return userPermissions.includes(groupKey);
+  };
 
   const toggleExpand = (key: string) => {
     setExpandedGroup((prev) => (prev === key ? null : key));
@@ -143,7 +158,12 @@ function FeatureTilesGrid() {
 
       {/* Group Heading Tiles */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-        {ALL_FEATURE_GROUPS.map((group, gIdx) => {
+        {ALL_FEATURE_GROUPS.filter(g => 
+          isGroupAccessible(g.key) && (
+            g.key === "system" || 
+            isGroupEnabled(g.key)
+          )
+        ).map((group, gIdx) => {
           const Icon = FEATURE_ICON_MAP[group.icon] || Package;
           const colorIdx = gIdx % TILE_GRADIENTS.length;
           const isExpanded = expandedGroup === group.key;

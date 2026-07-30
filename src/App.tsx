@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, RequireAuth } from "@/lib/auth";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { FeatureGuard } from "@/components/layout/FeatureGuard";
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -13,6 +14,8 @@ const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const ClientsPage = lazy(() => import("./pages/ClientsPage"));
+const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const AttendancePage = lazy(() => import("./pages/AttendancePage"));
 const ClientDetailPage = lazy(() => import("./pages/ClientDetailPage"));
 const ItemsPage = lazy(() => import("./pages/ItemsPage"));
 const InventoryPage = lazy(() => import("./pages/InventoryPage"));
@@ -39,8 +42,6 @@ const CustomerStatementPage = lazy(() => import("./pages/CustomerStatementPage")
 const AgingDetailsPage = lazy(() => import("./pages/AgingDetailsPage"));
 const ProfitLossPage = lazy(() => import("./pages/ProfitLossPage"));
 const RecurringInvoicesPage = lazy(() => import("./pages/RecurringInvoicesPage"));
-const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
-const AttendancePage = lazy(() => import("./pages/AttendancePage"));
 const GstReturnsPage = lazy(() => import("./pages/GstReturnsPage"));
 const DemoAutoLoginPage = lazy(() => import("./pages/DemoAutoLoginPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -51,7 +52,7 @@ const BillDetailPage = lazy(() => import("./pages/BillDetailPage"));
 const ChartOfAccountsPage = lazy(() => import("./pages/ChartOfAccountsPage"));
 const JournalEntriesPage = lazy(() => import("./pages/JournalEntriesPage"));
 const BranchesPage = lazy(() => import("./pages/BranchesPage"));
-const TdsPage = lazy(() => import("./pages/TdsPage"));
+const TdsPage = lazy(() => import("./pages/TdsTcsReportsPage"));
 const AccountingReportsPage = lazy(() => import("./pages/AccountingReportsPage"));
 const PurchaseOrdersPage = lazy(() => import("./pages/PurchaseOrdersPage"));
 const PurchaseOrderBuilderPage = lazy(() => import("./pages/PurchaseOrderBuilderPage"));
@@ -79,7 +80,9 @@ const CampaignDetailPage = lazy(() => import("./pages/CampaignDetailPage"));
 const JourneysPage = lazy(() => import("./pages/JourneysPage"));
 const MessageLogsPage = lazy(() => import("./pages/MessageLogsPage"));
 const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
+const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
 const queryClient = new QueryClient();
 
@@ -111,6 +114,7 @@ const App = () => (
             >
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/clients" element={<ClientsPage />} />
+
               <Route path="/clients/:id" element={<ClientDetailPage />} />
               <Route path="/items" element={<ItemsPage />} />
               <Route path="/inventory" element={<InventoryPage />} />
@@ -134,60 +138,85 @@ const App = () => (
               <Route path="/templates/customize" element={<TemplateCustomizationPage />} />
               <Route path="/audit-logs" element={<AuditLogsPage />} />
               <Route path="/custom-fields" element={<CustomFieldsPage />} />
-              <Route path="/expenses" element={<BusinessExpensesPage />} />
+
               <Route path="/aging-details" element={<AgingDetailsPage />} />
               <Route path="/profit-loss" element={<ProfitLossPage />} />
               <Route path="/gst-returns" element={<GstReturnsPage />} />
               <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
-              <Route path="/employees" element={<EmployeesPage />} />
-              <Route path="/attendance" element={<AttendancePage />} />
+              <Route element={<FeatureGuard featureKey="people" featureName="People & HR" />}>
+                <Route path="/employees" element={<EmployeesPage />} />
+                <Route path="/attendance" element={<AttendancePage />} />
+                <Route path="/shifts" element={<ShiftsPage />} />
+                <Route path="/leaves" element={<LeavesPage />} />
+                <Route path="/employees/:id/documents" element={<EmployeeDocumentsPage />} />
+                <Route path="/employee-documents" element={<EmployeeDocumentsPage />} />
+                <Route path="/payroll" element={<PayrollPage />} />
+                <Route path="/payroll/:id" element={<PayrollRunDetailPage />} />
+              </Route>
               <Route path="/statements" element={<CustomerStatementPage />} />
               <Route path="/statements/:clientId" element={<CustomerStatementPage />} />
-              <Route path="/vendors" element={<VendorsPage />} />
-              <Route path="/bills" element={<BillsPage />} />
-              <Route path="/bills/new" element={<BillBuilderPage />} />
-              <Route path="/bills/:id" element={<BillDetailPage />} />
-              <Route path="/bills/:id/edit" element={<BillBuilderPage />} />
-              <Route path="/accounts" element={<ChartOfAccountsPage />} />
-              <Route path="/journal" element={<JournalEntriesPage />} />
-              <Route path="/branches" element={<BranchesPage />} />
-              <Route path="/tds" element={<TdsPage />} />
-              <Route path="/accounting-reports" element={<AccountingReportsPage />} />
-              <Route path="/accounting-reports" element={<AccountingReportsPage />} />
-              <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
-              <Route path="/purchase-orders/new" element={<PurchaseOrderBuilderPage />} />
-              <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-              <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderBuilderPage />} />
-              <Route path="/grns" element={<GrnsPage />} />
-              <Route path="/grns/new" element={<GrnBuilderPage />} />
-              <Route path="/grns/:id" element={<GrnDetailPage />} />
-              <Route path="/grns/:id/edit" element={<GrnBuilderPage />} />
+              <Route element={<FeatureGuard featureKey="purchases" featureName="Purchases" />}>
+                <Route path="/vendors" element={<VendorsPage />} />
+                <Route path="/bills" element={<BillsPage />} />
+                <Route path="/bills/new" element={<BillBuilderPage />} />
+                <Route path="/bills/:id" element={<BillDetailPage />} />
+                <Route path="/bills/:id/edit" element={<BillBuilderPage />} />
+                <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
+                <Route path="/purchase-orders/new" element={<PurchaseOrderBuilderPage />} />
+                <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+                <Route path="/purchase-orders/:id/edit" element={<PurchaseOrderBuilderPage />} />
+                <Route path="/grns" element={<GrnsPage />} />
+                <Route path="/grns/new" element={<GrnBuilderPage />} />
+                <Route path="/grns/:id" element={<GrnDetailPage />} />
+                <Route path="/grns/:id/edit" element={<GrnBuilderPage />} />
+                <Route path="/expenses" element={<BusinessExpensesPage />} />
+              </Route>
+              <Route element={<FeatureGuard featureKey="accounting" featureName="Accounting" />}>
+                <Route path="/accounts" element={<ChartOfAccountsPage />} />
+                <Route path="/journal" element={<JournalEntriesPage />} />
+                <Route path="/branches" element={<BranchesPage />} />
+                <Route path="/tds" element={<TdsPage />} />
+                <Route path="/accounting-reports" element={<AccountingReportsPage />} />
+                <Route path="/bank-accounts" element={<BankAccountsPage />} />
+                <Route path="/bank-accounts/:id" element={<BankAccountDetailPage />} />
+                <Route path="/cash-flow" element={<CashFlowPage />} />
+              </Route>
+
               <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
               <Route path="/delivery-challans/new" element={<DeliveryChallanBuilderPage />} />
               <Route path="/delivery-challans/:id/edit" element={<DeliveryChallanBuilderPage />} />
               <Route path="/inventory-valuation" element={<InventoryValuationPage />} />
-              <Route path="/bank-accounts" element={<BankAccountsPage />} />
-              <Route path="/bank-accounts/:id" element={<BankAccountDetailPage />} />
-              <Route path="/cash-flow" element={<CashFlowPage />} />
-              <Route path="/shifts" element={<ShiftsPage />} />
-              <Route path="/leaves" element={<LeavesPage />} />
-              <Route path="/employees/:id/documents" element={<EmployeeDocumentsPage />} />
-              <Route path="/employee-documents" element={<EmployeeDocumentsPage />} />
-              <Route path="/payroll" element={<PayrollPage />} />
-              <Route path="/payroll/:id" element={<PayrollRunDetailPage />} />
-              <Route path="/leads" element={<LeadsPage />} />
-              <Route path="/pipeline" element={<PipelinePage />} />
-              <Route path="/activities" element={<ActivitiesPage />} />
-              <Route path="/marketing/templates" element={<MarketingTemplatesPage />} />
-              <Route path="/campaigns" element={<CampaignsPage />} />
-              <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
-              <Route path="/journeys" element={<JourneysPage />} />
-              <Route path="/message-logs" element={<MessageLogsPage />} />
+
+
+              <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
+                <Route path="/leads" element={<LeadsPage />} />
+                <Route path="/pipeline" element={<PipelinePage />} />
+                <Route path="/activities" element={<ActivitiesPage />} />
+              </Route>
+              <Route element={<FeatureGuard featureKey="marketing" featureName="Marketing" />}>
+                <Route path="/marketing/templates" element={<MarketingTemplatesPage />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
+                <Route path="/journeys" element={<JourneysPage />} />
+                <Route path="/message-logs" element={<MessageLogsPage />} />
+              </Route>
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
 
             {/* Public portal */}
             <Route path="/portal/:token" element={<PortalPage />} />
+
+            {/* Platform Admin Route */}
+            <Route
+              path="/platform-admin"
+              element={
+                <RequireAuth>
+                  <PlatformAdminLayout />
+                </RequireAuth>
+              }
+            >
+              <Route index element={<PlatformAdminPage />} />
+            </Route>
 
             {/* Redirects */}
             <Route path="/" element={<LandingPage />} />

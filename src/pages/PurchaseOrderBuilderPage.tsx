@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -44,6 +44,9 @@ export default function PurchaseOrderBuilderPage() {
   const [expectedDate, setExpectedDate] = useState(format(addDays(new Date(), 7), "yyyy-MM-dd"));
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
+  const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
+  const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
+  const [tdsTcsRate, setTdsTcsRate] = useState(0);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const [createItemOpen, setCreateItemOpen] = useState(false);
@@ -92,6 +95,9 @@ export default function PurchaseOrderBuilderPage() {
       setExpectedDate(po.expected_date || "");
       setNotes(po.notes || "");
       setTerms(po.terms || "");
+      setTdsTcsApplicable(!!po.tds_tcs_applicable);
+      setTdsTcsType(po.tds_tcs_type === "tcs" ? "tcs" : "tds");
+      setTdsTcsRate(Number(po.tds_tcs_rate || 0));
     }
     if (pl) setLines(pl.map((l: any) => ({
       id: l.id, item_id: l.item_id || "", description: l.description, hsn: l.hsn || "",
@@ -120,8 +126,19 @@ export default function PurchaseOrderBuilderPage() {
       }
     });
     const totalTax = igst + cgst + sgst;
-    return { sub, cgst, sgst, igst, totalTax, total: sub + totalTax, breakdown };
-  }, [lines, vendorHasGst, isInterstate]);
+    const tdsTcsAmount = tdsTcsApplicable ? (sub * tdsTcsRate) / 100 : 0;
+    
+    let total = sub + totalTax;
+    if (tdsTcsApplicable) {
+      if (tdsTcsType === "tcs") {
+        total += tdsTcsAmount;
+      } else {
+        total -= tdsTcsAmount;
+      }
+    }
+    
+    return { sub, cgst, sgst, igst, totalTax, tdsTcsAmount, total, breakdown };
+  }, [lines, vendorHasGst, isInterstate, tdsTcsApplicable, tdsTcsType, tdsTcsRate]);
 
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find(x => x.id === itemId);
@@ -144,7 +161,10 @@ export default function PurchaseOrderBuilderPage() {
       const payload: any = {
         org_id: org.id, vendor_id: vendorId,
         po_number: poNumber, po_date: poDate, expected_date: expectedDate || null,
-        status: "draft", subtotal: totals.sub, tax_amount: totals.totalTax, total: totals.total,
+        status: "draft", subtotal: totals.sub, tax_amount: totals.totalTax, 
+        tds_tcs_applicable: tdsTcsApplicable, tds_tcs_type: tdsTcsType, 
+        tds_tcs_rate: tdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
+        total: totals.total,
         currency: (org as any)?.currency || "INR", notes: notes || null, terms: terms || null,
       };
       let poId = id;
@@ -397,6 +417,44 @@ export default function PurchaseOrderBuilderPage() {
                   <span>N/A</span>
                 </div>
               )}
+              {/* TDS/TCS Section */}
+              <div className="space-y-2 border-y py-3 my-2">
+                <label className="flex items-center justify-between cursor-pointer">
+                  <span className="text-sm font-medium">TDS / TCS Applicable?</span>
+                  <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
+                </label>
+                {tdsTcsApplicable && (
+                  <div className="flex flex-col gap-2 mt-2 text-sm text-slate-600">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
+                        <span>TDS (-)</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
+                        <span>TCS (+)</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1">
+                        <Input
+                          type="number"
+                          className="h-7 w-16 text-xs text-right"
+                          value={tdsTcsRate}
+                          onChange={(e) => setTdsTcsRate(parseFloat(e.target.value) || 0)}
+                          placeholder="Rate"
+                        />
+                        <span className="text-muted-foreground">%</span>
+                      </div>
+                      {totals.tdsTcsAmount > 0 && (
+                        <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
+                          {tdsTcsType === "tds" ? "-" : "+"}{formatCurrency(totals.tdsTcsAmount, currency)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
               <div className="flex justify-between items-center font-bold text-base border-t border-slate-200 border-dashed pt-3 text-blue-700 mt-2">
                 <div className="flex items-center gap-2"><span>Total</span></div>
                 <span>{formatCurrency(totals.total, currency)}</span>
@@ -453,30 +511,29 @@ export default function PurchaseOrderBuilderPage() {
           </CardContent>
         </Card>
       </div>
-
-      <AddItemDialog
+      <ItemFormDialog
         open={createItemOpen}
         onOpenChange={setCreateItemOpen}
-        taxRates={taxRates}
-        onItemAdded={(item) => {
-          setItems((prev: any[]) => [...prev, item]);
-          if (newItemTargetLine !== null) {
-            const newLines = [...lines];
-            newLines[newItemTargetLine] = {
-              ...newLines[newItemTargetLine],
-              item_id: item.id,
-              description: item.name,
-              hsn: item.hsn_code || "",
-              unit: (item as any).unit || "pcs",
-              rate: String(item.unit_price || 0),
-              tax_rate: item.tax_id ? String(taxRates.find((t: any) => t.id === item.tax_id)?.rate || 0) : "0",
-            };
-            setLines(newLines);
-            setNewItemTargetLine(null);
+        onItemSaved={(item) => {
+          if (item) {
+            setItems((prev: any[]) => [...prev, item]);
+            if (newItemTargetLine !== null) {
+              const newLines = [...lines];
+              newLines[newItemTargetLine] = {
+                ...newLines[newItemTargetLine],
+                item_id: item.id,
+                description: item.name,
+                hsn: item.hsn_code || "",
+                unit: item.unit || "pcs",
+                rate: String(item.unit_price || 0),
+                tax_rate: item.tax_id ? String(taxRates.find((t: any) => t.id === item.tax_id)?.rate || 0) : "0",
+              };
+              setLines(newLines);
+              setNewItemTargetLine(null);
+            }
           }
         }}
       />
-
       {/* Bulk Add Items Dialog */}
       <Dialog open={bulkAddOpen} onOpenChange={setBulkAddOpen}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">

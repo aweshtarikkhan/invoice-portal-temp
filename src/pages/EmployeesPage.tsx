@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, CalendarCheck, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { NavLink } from "@/components/NavLink";
 
@@ -29,6 +29,7 @@ interface Employee {
   monthly_salary: number;
   paid_leaves_per_month: number;
   is_active: boolean;
+  auth_user_id: string | null;
   notes: string | null;
 }
 
@@ -49,6 +50,10 @@ export default function EmployeesPage() {
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(empty);
+  const [portalEmp, setPortalEmp] = useState<any>(null);
+  const [portalEmail, setPortalEmail] = useState("");
+  const [portalPassword, setPortalPassword] = useState("");
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const load = async () => {
     if (!org?.id) return;
@@ -110,6 +115,35 @@ export default function EmployeesPage() {
     setOpen(false); load();
   };
 
+  const grantAccess = async () => {
+    if (!portalEmp || !portalEmail || !portalPassword) return;
+    setPortalLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-employee`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({
+          employee_id: portalEmp.id,
+          email: portalEmail,
+          password: portalPassword
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create portal access");
+      toast({ title: "Success", description: `Portal access granted! Employee can login with email: ${portalEmail} and the password you set.` });
+      setPortalEmp(null);
+      load();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this employee? Their attendance records will also be removed.")) return;
     const { error } = await (supabase as any).from("employees").delete().eq("id", id);
@@ -122,7 +156,7 @@ export default function EmployeesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Employees</h1>
-          <p className="text-sm text-muted-foreground">Manage your staff and their monthly salaries.</p>
+          <p className="text-sm text-muted-foreground">Manage your staff, grant attendance portal access.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" asChild>
@@ -143,15 +177,16 @@ export default function EmployeesPage() {
                 <TableHead>Phone</TableHead>
                 <TableHead className="text-right">Monthly Salary</TableHead>
                 <TableHead className="text-right">Paid Leaves/mo</TableHead>
+                <TableHead>Portal</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-24"></TableHead>
+                <TableHead className="w-36 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
               ) : rows.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No employees yet. Click "New Employee" to add one.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No employees yet. Click "New Employee" to add one.</TableCell></TableRow>
               ) : rows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">{e.name}</TableCell>
@@ -160,6 +195,15 @@ export default function EmployeesPage() {
                   <TableCell>{e.phone || "—"}</TableCell>
                   <TableCell className="text-right">{formatCurrency(e.monthly_salary, (org as any)?.currency || "INR")}</TableCell>
                   <TableCell className="text-right">{e.paid_leaves_per_month}</TableCell>
+                  <TableCell>
+                    {e.auth_user_id ? (
+                      <span className="text-green-600 text-xs font-medium">✓ Active</span>
+                    ) : (
+                      <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => { setPortalEmp(e); setPortalEmail(e.email || ""); setPortalPassword(""); }}>
+                        <KeyRound className="h-3 w-3 mr-1" /> Grant Access
+                      </Button>
+                    )}
+                  </TableCell>
                   <TableCell>{e.is_active ? <span className="text-green-600 text-xs font-medium">Active</span> : <span className="text-muted-foreground text-xs">Inactive</span>}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -177,6 +221,7 @@ export default function EmployeesPage() {
         </CardContent>
       </Card>
 
+      {/* Add/Edit Employee Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editId ? "Edit" : "New"} Employee</DialogTitle></DialogHeader>
@@ -205,6 +250,35 @@ export default function EmployeesPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
             <Button onClick={save}>{editId ? "Save Changes" : "Add Employee"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Grant Portal Access Dialog */}
+      <Dialog open={!!portalEmp} onOpenChange={(v) => { if (!v) setPortalEmp(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Grant Attendance Portal Access</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Create login credentials for <strong>{portalEmp?.name}</strong> to access the Attendance Portal.
+            They can log in immediately with this email & password — no email confirmation needed.
+          </p>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label>Email</Label>
+              <Input type="email" value={portalEmail} onChange={(e) => setPortalEmail(e.target.value)} placeholder="employee@company.com" />
+            </div>
+            <div>
+              <Label>Temporary Password</Label>
+              <Input type="text" value={portalPassword} onChange={(e) => setPortalPassword(e.target.value)} placeholder="Min 6 characters" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPortalEmp(null)}>Cancel</Button>
+            <Button onClick={grantAccess} disabled={portalLoading || !portalEmail || portalPassword.length < 6}>
+              {portalLoading ? "Creating..." : "Grant Access"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

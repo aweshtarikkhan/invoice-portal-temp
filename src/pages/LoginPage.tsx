@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/shared/SEO";
-import { Play } from "lucide-react";
+import { Play, Eye, EyeOff } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
 
@@ -16,18 +16,27 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [demoLoading, setDemoLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      navigate("/dashboard", { replace: true });
+      // Check if user is a platform admin
+      const { data: isAdmin } = await supabase
+        .rpc("is_platform_admin", { check_user_id: data.user.id });
+
+      if (isAdmin === true) {
+        navigate("/platform-admin", { replace: true });
+      } else {
+        navigate("/dashboard", { replace: true });
+      }
     }
   };
 
@@ -76,7 +85,12 @@ export default function LoginPage() {
                 <Label htmlFor="password">Password</Label>
                 <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
               </div>
-              <Input id="password" type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <div className="relative">
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </CardContent>
           <CardFooter className="flex-col gap-3">

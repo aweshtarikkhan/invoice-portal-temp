@@ -13,7 +13,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Save, Trash2, Plus, GripVertical } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
 } from "@dnd-kit/core";
@@ -328,7 +328,7 @@ export default function EstimateBuilderPage() {
                   </Button>
                 </div>
                 <AddClientDialog open={addClientOpen} onOpenChange={setAddClientOpen} onClientAdded={(c) => { setClients(prev => [...prev, c]); setClientId(c.id); }} />
-                <AddItemDialog open={addItemOpen} onOpenChange={setAddItemOpen} taxRates={taxRates} onItemAdded={(item) => { setCatalogItems(prev => [...prev, item]); }} />
+                <ItemFormDialog open={addItemOpen} onOpenChange={setAddItemOpen} onItemSaved={(item) => { if(item) setCatalogItems(prev => [...prev, item]); }} />
               </div>
             </div>
             <div className="space-y-4">

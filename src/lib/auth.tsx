@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
+import { useAppStore } from "@/store/app-store";
 
 interface Profile {
   id: string;
@@ -69,6 +70,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("billflow-app-storage");
+    localStorage.removeItem("team_members");
+    useAppStore.getState().reset();
     setSession(null);
     setProfile(null);
   };

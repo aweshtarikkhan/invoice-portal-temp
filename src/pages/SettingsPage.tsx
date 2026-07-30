@@ -41,6 +41,7 @@ export default function SettingsPage() {
     upi_id: "",
     inventory_enabled: false, low_stock_threshold: 5,
     multi_warehouse_enabled: false,
+    sub_unit_enabled: false,
   });
   const [isFetchingGst, setIsFetchingGst] = useState(false);
 
@@ -64,6 +65,7 @@ export default function SettingsPage() {
       inventory_enabled: (org as any).inventory_enabled || false,
       low_stock_threshold: Number((org as any).low_stock_threshold ?? 5),
       multi_warehouse_enabled: (org as any).multi_warehouse_enabled || false,
+      sub_unit_enabled: (org as any).sub_unit_enabled || false,
     });
     fetchTaxRates();
   }, [org]);
@@ -368,6 +370,13 @@ export default function SettingsPage() {
                       <p className="text-xs text-muted-foreground">Track stock across multiple locations. When off, a single shared stock pool is used (recommended for most users).</p>
                     </div>
                     <Switch checked={orgForm.multi_warehouse_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, multi_warehouse_enabled: v })} />
+                  </div>
+                  <div className="flex items-center justify-between border-t pt-4">
+                    <div>
+                      <Label>Enable Sub Units (e.g. 1 Box = 10 Packs)</Label>
+                      <p className="text-xs text-muted-foreground">Allows selling products in smaller sub-units.</p>
+                    </div>
+                    <Switch checked={orgForm.sub_unit_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, sub_unit_enabled: v })} />
                   </div>
                 </CardContent>
               </Card>

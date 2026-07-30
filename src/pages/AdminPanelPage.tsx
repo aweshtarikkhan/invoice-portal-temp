@@ -37,6 +37,7 @@ export default function AdminPanelPage() {
     teamMembers,
     addTeamMember,
     removeTeamMember,
+    platformFeatures,
   } = useFeatureStore();
 
   const [newAdminEmail, setNewAdminEmail] = useState("");
@@ -51,7 +52,6 @@ export default function AdminPanelPage() {
   const currentOrg = useAppStore((s) => s.organization);
 
   const currentUserEmail = session?.user?.email;
-  const hasAccess = isAdmin(currentUserEmail);
   const isSuper = isSuperAdmin(currentUserEmail);
 
   // Logic for global team members limit across ALL businesses
@@ -130,39 +130,12 @@ export default function AdminPanelPage() {
     }
   };
 
-  // Access Denied screen
-  if (!hasAccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 p-4">
-        <Card className="w-full max-w-md bg-slate-900/80 backdrop-blur-xl border-slate-700/50 shadow-2xl">
-          <CardHeader className="text-center space-y-4 pb-4">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/25">
-              <Shield className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-bold text-white">Access Denied</CardTitle>
-              <CardDescription className="text-slate-400 mt-2">
-                Aapke paas admin rights nahi hain. Agar aapko access chahiye to apne administrator se contact karein.
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <Button
-              onClick={() => navigate("/dashboard")}
-              className="w-full h-12 text-base font-semibold bg-slate-800 hover:bg-slate-700 text-white transition-all duration-300"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Dashboard pe wapas jayein
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Access Denied screen removed so all users can access the Business Admin Panel
 
   // Admin panel
-  const totalAdminFeatures = ADMIN_FEATURE_GROUPS.length;
-  const enabledCount = ADMIN_FEATURE_GROUPS.filter((g) =>
+  const availableAdminFeatures = ADMIN_FEATURE_GROUPS.filter((g) => platformFeatures.includes(g.key));
+  const totalAdminFeatures = availableAdminFeatures.length;
+  const enabledCount = availableAdminFeatures.filter((g) =>
     enabledGroups.includes(g.key)
   ).length;
 
@@ -471,7 +444,7 @@ export default function AdminPanelPage() {
             <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Features</p>
               <p className="text-3xl font-bold text-blue-400 mt-1">
-                {DEFAULT_FEATURE_GROUPS.reduce((a, g) => a + g.items.length, 0) + ADMIN_FEATURE_GROUPS.filter((g) => enabledGroups.includes(g.key)).reduce((a, g) => a + g.items.length, 0)}
+                {DEFAULT_FEATURE_GROUPS.reduce((a, g) => a + g.items.length, 0) + availableAdminFeatures.filter((g) => enabledGroups.includes(g.key)).reduce((a, g) => a + g.items.length, 0)}
               </p>
               <p className="text-xs text-slate-500 mt-1">User ko visible features</p>
             </div>
@@ -484,7 +457,7 @@ export default function AdminPanelPage() {
               Admin Controlled Features — Toggle ON/OFF
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
-              {ADMIN_FEATURE_GROUPS.map((group) => {
+              {availableAdminFeatures.map((group) => {
                 const isEnabled = enabledGroups.includes(group.key);
                 const Icon = ICON_MAP[group.icon] || Package;
                 return (

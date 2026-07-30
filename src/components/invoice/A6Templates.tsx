@@ -156,7 +156,14 @@ export function A6Template({ org, invoice, lines, fmt, type = "invoice", variant
               <tr key={l.id} className="border-b border-black/30">
                 <td className="px-1 py-1 border-r border-black/30">{l.name}</td>
                 <td className="px-1 py-1 text-right border-r border-black/30">{Number(l.rate).toFixed(2)}</td>
-                <td className="px-1 py-1 text-right border-r border-black/30">{l.quantity}</td>
+                <td className="px-1 py-1 text-right border-r border-black/30">
+                  {l.quantity}
+                  {org?.sub_unit_enabled && (l as any).sub_unit && (
+                    <div className="text-[8px] opacity-75">
+                      = {Number(l.quantity) * Number((l as any).sub_unit_conversion_rate || 1)} {(l as any).sub_unit}
+                    </div>
+                  )}
+                </td>
                 <td className="px-1 py-1 text-right">{fmt(Number(l.amount))}</td>
               </tr>
             ))}
@@ -174,7 +181,10 @@ export function A6Template({ org, invoice, lines, fmt, type = "invoice", variant
             ) : Number(invoice.total_tax) > 0 ? (
               <div className="flex justify-between"><span>Tax</span><span>{fmt(Number(invoice.total_tax))}</span></div>
             ) : null}
-            {Number(invoice.shipping_charge) > 0 && <div className="flex justify-between"><span>Shipping</span><span>{fmt(Number(invoice.shipping_charge))}</span></div>}
+            {Number(invoice.shipping_charge) > 0 && <div className="flex justify-between border-b pb-1"><span>Shipping</span><span>{fmt(Number(invoice.shipping_charge))}</span></div>}
+            {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
+              <div className="flex justify-between border-b pb-1"><span>{invoice.tds_tcs_type?.toUpperCase() || 'TDS'} ({invoice.tds_tcs_rate || 0}%)</span><span>{invoice.tds_tcs_type === 'tds' ? '-' : '+'}{fmt(Number(invoice.tds_tcs_amount))}</span></div>
+            )}
             <div className="flex justify-between border-t-2 border-black pt-1 font-bold"><span>Total Due</span><span>{fmt(balanceDue)}</span></div>
           </div>
         </div>

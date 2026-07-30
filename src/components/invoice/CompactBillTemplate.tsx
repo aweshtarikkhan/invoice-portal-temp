@@ -99,6 +99,11 @@ export function CompactBillTemplate({ org, invoice, lines, fmt, type = "invoice"
                 {line.unit && (
                   <span className="block text-muted-foreground text-xs">{line.unit}</span>
                 )}
+                {org?.sub_unit_enabled && (line as any).sub_unit && (
+                  <span className="block text-muted-foreground/60 text-[10px] mt-1">
+                    = {Number(line.quantity) * Number((line as any).sub_unit_conversion_rate || 1)} {(line as any).sub_unit}
+                  </span>
+                )}
               </td>
               <td className="text-right py-2 align-top">{Number(line.rate).toFixed(2)}</td>
               <td className="text-right py-2 align-top font-medium">{Number(line.amount).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
@@ -138,6 +143,12 @@ export function CompactBillTemplate({ org, invoice, lines, fmt, type = "invoice"
           <div className="flex justify-between">
             <span className="text-primary font-semibold">{invoice.adjustment_name || "Rounding"}</span>
             <span>{Number(invoice.adjustment).toFixed(2)}</span>
+          </div>
+        )}
+        {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
+          <div className="flex justify-between">
+            <span className="text-primary font-semibold">{invoice.tds_tcs_type?.toUpperCase() || 'TDS'} ({invoice.tds_tcs_rate || 0}%)</span>
+            <span>{invoice.tds_tcs_type === 'tds' ? '-' : '+'}{fmt(Number(invoice.tds_tcs_amount))}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-foreground/30 pt-2 font-bold text-base">

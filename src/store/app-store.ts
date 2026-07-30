@@ -34,6 +34,7 @@ interface Organization {
   upi_id: string | null;
   inventory_enabled: boolean;
   low_stock_threshold: number;
+  weekly_offs: number[];
 }
 
 interface BasicOrgInfo {
@@ -49,6 +50,9 @@ interface AppState {
   // Multi-business support
   myOrganizations: BasicOrgInfo[];
   addMyOrganization: (org: BasicOrgInfo) => void;
+  reset: () => void;
+  currentUserId: string | null;
+  setCurrentUserId: (id: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -71,10 +75,24 @@ export const useAppStore = create<AppState>()(
           set({ myOrganizations: [...current, org] });
         }
       },
+      reset: () => {
+        set({ organization: null, myOrganizations: [] });
+      },
+      currentUserId: null,
+      setCurrentUserId: (id) => {
+        const current = get().currentUserId;
+        if (current !== id) {
+          // Forcefully clear organizations when user changes or on first load after fix
+          set({ currentUserId: id, myOrganizations: [] });
+        }
+      },
     }),
     {
       name: "billflow-app-storage",
-      partialize: (state) => ({ myOrganizations: state.myOrganizations }), // Only persist myOrganizations
+      partialize: (state) => ({ 
+        myOrganizations: state.myOrganizations,
+        currentUserId: state.currentUserId
+      }),
     }
   )
 );

@@ -22,7 +22,7 @@ import { logStockMovements } from "@/lib/stock";
 import { useAuth } from "@/lib/auth";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -423,11 +423,15 @@ export default function InventoryPage() {
         </DialogContent>
       </Dialog>
 
-      <AddItemDialog
+      <ItemFormDialog
         open={addOpen}
         onOpenChange={setAddOpen}
-        onItemAdded={() => fetchItems()}
-        defaultType="product"
+        onItemSaved={(item) => {
+          if (item) {
+            setItems((prev: any[]) => [...prev, item]);
+            fetchData();
+          }
+        }}
       />
 
       <Dialog open={aiOpen} onOpenChange={setAiOpen}>

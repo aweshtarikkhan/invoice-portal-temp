@@ -23,8 +23,11 @@ export interface TeamMember {
   permissions: string[]; // Keys of FeatureGroups they can access
 }
 
-// Default features (always visible) - Invoice & Inventory related
-export const DEFAULT_FEATURE_GROUPS: FeatureGroup[] = [
+// Default features (now empty as all modules are toggleable)
+export const DEFAULT_FEATURE_GROUPS: FeatureGroup[] = [];
+
+// Admin-controlled feature groups
+export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   {
     key: "sales",
     label: "Sales",
@@ -50,10 +53,6 @@ export const DEFAULT_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "inventory", title: "Inventory", description: "Stock management", icon: "Boxes", url: "/inventory" },
     ],
   },
-];
-
-// Admin-controlled feature groups
-export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   {
     key: "purchases",
     label: "Purchases",
@@ -181,19 +180,14 @@ interface FeatureState {
   teamMembers: Record<string, TeamMember[]>; // org_id -> TeamMember array
   addTeamMember: (orgId: string, member: TeamMember) => void;
   removeTeamMember: (orgId: string, email: string) => void;
+  
+  // Platform-level features (enforced by the super admin)
+  platformFeatures: string[];
+  setPlatformFeatures: (features: string[]) => void;
+  
+  // Initialize features from backend
+  setFeatures: (features: string[]) => void;
 }
-
-const loadEnabledGroups = (): string[] => {
-  try {
-    const stored = localStorage.getItem(FEATURES_STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch {}
-  // Default to all admin feature groups enabled for new setups
-  return ADMIN_FEATURE_GROUPS.map(g => g.key);
-};
 
 const loadAdminEmails = (): string[] => {
   try {
@@ -218,10 +212,28 @@ const loadTeamMembers = (): Record<string, TeamMember[]> => {
   return {};
 };
 
+const loadEnabledGroups = (): string[] => {
+  try {
+    const stored = localStorage.getItem(FEATURES_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return ADMIN_FEATURE_GROUPS.map(g => g.key);
+};
+
 export const useFeatureStore = create<FeatureState>((set, get) => ({
-  enabledGroups: loadEnabledGroups(),
+  enabledGroups: loadEnabledGroups(), // Default until fetched or from storage
+  platformFeatures: ADMIN_FEATURE_GROUPS.map(g => g.key), // Default to all until fetched
   adminEmails: loadAdminEmails(),
   teamMembers: loadTeamMembers(),
+
+  setPlatformFeatures: (features: string[]) => {
+    set({ platformFeatures: features });
+  },
+
+  setFeatures: (features: string[]) => {
+    localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(features));
+    set({ enabledGroups: features });
+  },
 
   toggleGroup: (groupKey: string) => {
     const current = get().enabledGroups;
@@ -249,7 +261,9 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
   },
 
   isGroupEnabled: (groupKey: string) => {
-    return get().enabledGroups.includes(groupKey);
+    const state = get();
+    // It must be enabled locally AND allowed by the platform
+    return state.enabledGroups.includes(groupKey) && state.platformFeatures.includes(groupKey);
   },
 
   // Admin management

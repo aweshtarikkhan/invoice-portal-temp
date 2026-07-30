@@ -29,7 +29,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import {
   DndContext,
   closestCenter,
@@ -62,6 +62,8 @@ interface LineItem {
   tax_amount: number;
   amount: number;
   hsn_code: string;
+  sub_unit?: string;
+  sub_unit_conversion_rate?: number;
 }
 
 const UNITS = COMMON_UNITS;
@@ -81,6 +83,8 @@ function createEmptyLine(): LineItem {
     tax_amount: 0,
     amount: 0,
     hsn_code: "",
+    sub_unit: "",
+    sub_unit_conversion_rate: 1,
   };
 }
 
@@ -93,6 +97,7 @@ function SortableLineItem({
   onRemove,
   onAddItem,
   currency,
+  org,
 }: {
   line: LineItem;
   index: number;
@@ -102,6 +107,7 @@ function SortableLineItem({
   onRemove: (index: number) => void;
   onAddItem: () => void;
   currency: string;
+  org: any;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: line.id });
   const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
@@ -119,6 +125,8 @@ function SortableLineItem({
     onChange(index, "unit", item.unit || "pcs");
     onChange(index, "hsn_code", item.hsn_code || "");
     onChange(index, "tax_id", item.tax_id || null);
+    onChange(index, "sub_unit", item.sub_unit || "");
+    onChange(index, "sub_unit_conversion_rate", item.sub_unit_conversion_rate || 1);
     setItemDropdownOpen(false);
   };
 
@@ -192,7 +200,14 @@ function SortableLineItem({
         <div className="col-span-2">
           <Input type="number" className="h-8 text-xs text-center" value={line.quantity} onChange={(e) => onChange(index, "quantity", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
           {line.item_id ? (
-            line.unit && <span className="text-[10px] text-muted-foreground text-center block mt-0.5">{line.unit}</span>
+            <div className="flex flex-col items-center mt-0.5">
+              {line.unit && <span className="text-[10px] text-muted-foreground">{line.unit}</span>}
+              {org?.sub_unit_enabled && line.sub_unit && (
+                <span className="text-[10px] text-muted-foreground/60">
+                  = {(line.quantity * (line.sub_unit_conversion_rate || 1)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} {line.sub_unit}
+                </span>
+              )}
+            </div>
           ) : (
             <Input
               className="h-5 text-[10px] text-muted-foreground text-center border-0 border-b border-dashed bg-transparent px-1 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 mt-0.5"
@@ -262,6 +277,9 @@ export default function InvoiceBuilderPage() {
   const [terms, setTerms] = useState("");
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
+  const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
+  const [tdsTcsRate, setTdsTcsRate] = useState(0);
   const [shippingCharge, setShippingCharge] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [adjustment, setAdjustment] = useState(0);
@@ -353,6 +371,9 @@ export default function InvoiceBuilderPage() {
       setExpenses(Number((inv as any).expenses || 0));
       setAdjustment(Number(inv.adjustment));
       setAdjustmentName(inv.adjustment_name || "Adjustment");
+      setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
+      setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
+      setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
       setDeductStock(!!(inv as any).deduct_stock);
       setPrevDeductStock(!!(inv as any).deduct_stock);
       setAmountPaid(Number(inv.amount_paid || 0));
@@ -391,6 +412,8 @@ export default function InvoiceBuilderPage() {
           tax_amount: Number(l.tax_amount),
           amount: Number(l.amount),
           hsn_code: (l as any).hsn_code || "",
+          sub_unit: (l as any).sub_unit || "",
+          sub_unit_conversion_rate: Number((l as any).sub_unit_conversion_rate) || 1,
         })));
       }
     };
@@ -535,7 +558,17 @@ export default function InvoiceBuilderPage() {
 
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
-  const total = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+  const tdsTcsAmount = tdsTcsApplicable ? (subtotal * tdsTcsRate) / 100 : 0;
+  
+  // Calculate total: subtotal + tax + shipping + adjustment - expenses +/- tds/tcs
+  let total = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+  if (tdsTcsApplicable) {
+    if (tdsTcsType === "tcs") {
+      total += tdsTcsAmount;
+    } else {
+      total -= tdsTcsAmount;
+    }
+  }
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -602,6 +635,10 @@ export default function InvoiceBuilderPage() {
       subtotal,
       total_tax: totalTax,
       total_discount: totalDiscount,
+      tds_tcs_applicable: tdsTcsApplicable,
+      tds_tcs_type: tdsTcsType,
+      tds_tcs_rate: tdsTcsRate,
+      tds_tcs_amount: tdsTcsAmount,
       total,
       balance_due: total - amountPaid,
       status: (total - amountPaid) <= 0 && amountPaid > 0 ? "paid" : (amountPaid > 0 ? "partial" : status),
@@ -651,6 +688,8 @@ export default function InvoiceBuilderPage() {
           amount: l.amount,
           sort_order: i,
           hsn_code: l.hsn_code?.trim() || null,
+          sub_unit: l.sub_unit,
+          sub_unit_conversion_rate: l.sub_unit_conversion_rate
         }));
 
       const { error: lineError } = await supabase.from("invoice_lines").insert(linePayloads);
@@ -855,7 +894,7 @@ export default function InvoiceBuilderPage() {
                   </Button>
                 </div>
                 <AddClientDialog open={addClientOpen} onOpenChange={setAddClientOpen} onClientAdded={(c) => { setClients(prev => [...prev, c]); setClientId(c.id); setClientSearch(c.display_name); }} />
-                <AddItemDialog open={addItemOpen} onOpenChange={setAddItemOpen} taxRates={taxRates} onItemAdded={(item) => { setCatalogItems(prev => [...prev, item]); }} />
+                <ItemFormDialog open={addItemOpen} onOpenChange={setAddItemOpen} onItemSaved={(item) => { if(item) setCatalogItems(prev => [...prev, item]); }} />
                 {clientId && clientAgingSummary && clientAgingSummary.totalDue > 0 && (
                   <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/30 p-3 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-semibold text-orange-700 dark:text-orange-400">
@@ -982,6 +1021,7 @@ export default function InvoiceBuilderPage() {
                   onRemove={removeLine}
                   onAddItem={() => setAddItemOpen(true)}
                   currency={org?.currency_code || "INR"}
+                  org={org}
                 />
               ))}
             </SortableContext>
@@ -998,6 +1038,19 @@ export default function InvoiceBuilderPage() {
               <div className="col-span-3 text-right text-xs">0.00</div>
             </div>
           </div>
+          {/* Live Calculation Totals Row */}
+          {lines.length > 0 && (
+            <div className="flex items-center gap-1 py-3 border-b border-t mt-[-1px] bg-slate-50/50 text-slate-700 font-medium">
+              <div className="w-4 shrink-0" /> {/* Spacer for grip handle */}
+              <div className="grid flex-1 grid-cols-12 gap-2 items-center px-1">
+                <div className="col-span-4 text-xs font-semibold uppercase tracking-wider text-right pr-2">Total</div>
+                <div className="col-span-2 text-center text-sm font-semibold">{calculatedLines.reduce((s, l) => s + l.quantity, 0).toFixed(2)}</div>
+                <div className="col-span-2 text-right text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + (l.amount - l.tax_amount), 0), org?.currency_code || "INR")}</div>
+                <div className="col-span-2 text-left pl-2 text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + l.tax_amount, 0), org?.currency_code || "INR")}</div>
+                <div className="col-span-2 text-right text-sm font-bold">{formatCurrency(calculatedLines.reduce((s, l) => s + l.amount, 0), org?.currency_code || "INR")}</div>
+              </div>
+            </div>
+          )}
           <Button variant="ghost" size="sm" onClick={addLine} className="mt-2">
             <Plus className="mr-1 h-4 w-4" /> Add Line
           </Button>
@@ -1211,6 +1264,42 @@ export default function InvoiceBuilderPage() {
                   <span>+{fmt(tb.amount)}</span>
                 </div>
               ))}
+            </div>
+            {/* TDS/TCS Section */}
+            <div className="space-y-2 border-y py-3 my-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm font-medium">TDS / TCS Applicable?</span>
+                <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
+              </label>
+              {tdsTcsApplicable && (
+                <div className="flex items-center justify-between text-sm gap-2 mt-2">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
+                      <span>TDS (-)</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
+                      <span>TCS (+)</span>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      className="h-7 w-16 text-xs text-right"
+                      value={tdsTcsRate}
+                      onChange={(e) => setTdsTcsRate(parseFloat(e.target.value) || 0)}
+                      placeholder="Rate"
+                    />
+                    <span className="text-muted-foreground">%</span>
+                    {tdsTcsAmount > 0 && (
+                      <span className={tdsTcsType === "tds" ? "text-destructive" : "text-green-600"}>
+                        {tdsTcsType === "tds" ? "-" : "+"}{fmt(tdsTcsAmount)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
               <span className="text-muted-foreground">Shipping</span>

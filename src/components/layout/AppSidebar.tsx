@@ -86,7 +86,7 @@ const accountingItems = [
   { title: "Bank & Cash", url: "/bank-accounts", icon: Landmark, addUrl: null },
   { title: "Cash Flow", url: "/cash-flow", icon: PieChart, addUrl: null },
   { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
-  { title: "TDS", url: "/tds", icon: Percent, addUrl: null },
+  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
   { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
 ];
 
@@ -150,7 +150,7 @@ export function AppSidebar() {
   const org = useAppStore((s) => s.organization);
   const myOrganizations = useAppStore((s) => s.myOrganizations);
   const inventoryEnabled = (org as any)?.inventory_enabled;
-  const { enabledGroups, isAdmin, teamMembers } = useFeatureStore();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
@@ -181,11 +181,11 @@ export function AppSidebar() {
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems },
     { key: "catalog", label: "Catalog", items: catalogVisible },
-  ].filter(g => isGroupAccessible(g.key));
+  ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key));
 
   // Admin controlled groups - mapped from the feature store
   const featureGroups = ADMIN_FEATURE_GROUPS
-    .filter((g) => isGroupAccessible(g.key)) // Must be accessible by this user
+    .filter((g) => g.key !== "sales" && g.key !== "catalog" && isGroupEnabled(g.key) && isGroupAccessible(g.key)) // Must be enabled for org AND accessible by user
     .map((g) => {
       let icon = ShoppingCart;
       if (g.icon === "Landmark") icon = Landmark;
@@ -295,16 +295,14 @@ export function AppSidebar() {
                     </button>
                   ))}
                 </div>
-                {isAdmin(session?.user?.email) && (
-                  <div className="p-1 border-t border-border bg-muted/20">
-                    <button
-                      onClick={() => navigate("/admin")}
-                      className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-2"
-                    >
-                      <Plus className="h-3.5 w-3.5" /> Add New Business
-                    </button>
-                  </div>
-                )}
+                <div className="p-1 border-t border-border bg-muted/20">
+                  <button
+                    onClick={() => navigate("/admin")}
+                    className="w-full text-left px-3 py-2 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Add New Business
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -423,21 +421,19 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* Admin Panel link - only visible to admins */}
-              {isAdmin(session?.user?.email) && (
-                <SidebarMenuItem className="mt-2">
-                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                    <NavLink
-                      to="/admin"
-                      className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
-                      activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
-                    >
-                      <Shield className="h-5 w-5" />
-                      {!collapsed && <span className="ml-2 text-sm">{t("Admin Panel")}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              )}
+              {/* Admin Panel link - visible to all users to create/manage business */}
+              <SidebarMenuItem className="mt-2">
+                <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                  <NavLink
+                    to="/admin"
+                    className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
+                    activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
+                  >
+                    <Shield className="h-5 w-5" />
+                    {!collapsed && <span className="ml-2 text-sm">{t("Business Settings")}</span>}
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

@@ -62,6 +62,8 @@ interface LineItem {
   tax_amount: number;
   amount: number;
   hsn_code: string;
+  sub_unit?: string;
+  sub_unit_conversion_rate?: number;
 }
 
 const UNITS = COMMON_UNITS;
@@ -119,6 +121,8 @@ function SortableLineItem({
     onChange(index, "unit", item.unit || "pcs");
     onChange(index, "hsn_code", item.hsn_code || "");
     onChange(index, "tax_id", item.tax_id || null);
+    onChange(index, "sub_unit", item.sub_unit || "");
+    onChange(index, "sub_unit_conversion_rate", item.sub_unit_conversion_rate || 1);
     setItemDropdownOpen(false);
   };
 
@@ -192,7 +196,14 @@ function SortableLineItem({
         <div className="col-span-2">
           <Input type="number" className="h-8 text-xs text-center" value={line.quantity} onChange={(e) => onChange(index, "quantity", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
           {line.item_id ? (
-            line.unit && <span className="text-[10px] text-muted-foreground text-center block mt-0.5">{line.unit}</span>
+            <div className="flex flex-col items-center mt-0.5">
+              {line.unit && <span className="text-[10px] text-muted-foreground">{line.unit}</span>}
+              {org?.sub_unit_enabled && line.sub_unit && (
+                <span className="text-[10px] text-muted-foreground/60">
+                  = {(line.quantity * (line.sub_unit_conversion_rate || 1)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} {line.sub_unit}
+                </span>
+              )}
+            </div>
           ) : (
             <Input
               className="h-5 text-[10px] text-muted-foreground text-center border-0 border-b border-dashed bg-transparent px-1 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 mt-0.5"
@@ -393,6 +404,8 @@ export default function BillBuilderPage() {
           tax_amount: Number(l.tax_amount),
           amount: Number(l.amount),
           hsn_code: (l as any).hsn_code || "",
+          sub_unit: (l as any).sub_unit || "",
+          sub_unit_conversion_rate: Number((l as any).sub_unit_conversion_rate) || 1,
         })));
       }
     };
@@ -956,6 +969,7 @@ export default function BillBuilderPage() {
                   onRemove={removeLine}
                   onAddItem={() => setAddItemOpen(true)}
                   currency={org?.currency_code || "INR"}
+                  org={org}
                 />
               ))}
             </SortableContext>

@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Save, Send } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
-import { AddItemDialog } from "@/components/shared/AddItemDialog";
+import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { logStockMovements } from "@/lib/stock";
 import { useAuth } from "@/lib/auth";
 
@@ -276,7 +276,7 @@ export default function CreditNoteBuilderPage() {
                 </Button>
               </div>
               <AddClientDialog open={addClientOpen} onOpenChange={setAddClientOpen} onClientAdded={(c) => { setClients(prev => [...prev, c]); setClientId(c.id); }} />
-              <AddItemDialog open={addItemOpen} onOpenChange={setAddItemOpen} taxRates={taxRates} onItemAdded={(item) => { setItems(prev => [...prev, item]); }} />
+              <ItemFormDialog open={addItemOpen} onOpenChange={setAddItemOpen} onItemSaved={(item) => { if(item) setItems(prev => [...prev, item]); }} />
             </div>
             <div className="space-y-2">
               <Label>Against Invoice (optional)</Label>

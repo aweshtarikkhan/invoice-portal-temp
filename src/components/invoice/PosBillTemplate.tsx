@@ -96,6 +96,11 @@ export function PosBillTemplate({ org, invoice, lines, fmt, type = "invoice", ta
             <div style={{ flex: 1, color: "#555", fontSize: 10 }}>
               {line.unit ? line.unit : ""}
               {line.description ? ` — ${line.description}` : ""}
+              {org?.sub_unit_enabled && (line as any).sub_unit && (
+                <div style={{ fontSize: 9 }}>
+                  = {Number(line.quantity) * Number((line as any).sub_unit_conversion_rate || 1)} {(line as any).sub_unit}
+                </div>
+              )}
             </div>
             <div style={{ width: 30, textAlign: "right" }}>{line.quantity}</div>
             <div style={{ width: 50, textAlign: "right" }}>{Number(line.rate).toFixed(2)}</div>
@@ -126,6 +131,12 @@ export function PosBillTemplate({ org, invoice, lines, fmt, type = "invoice", ta
         )}
         {Number(invoice.adjustment) !== 0 && (
           <Row label={invoice.adjustment_name || "Round Off"} value={Number(invoice.adjustment).toFixed(2)} />
+        )}
+        {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
+          <Row 
+            label={`${invoice.tds_tcs_type?.toUpperCase() || 'TDS'} (${invoice.tds_tcs_rate || 0}%)`} 
+            value={`${invoice.tds_tcs_type === 'tds' ? '-' : '+'}${money(Number(invoice.tds_tcs_amount))}`} 
+          />
         )}
       </div>
 

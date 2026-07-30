@@ -222,6 +222,11 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
               <td style={{ padding: "8px 10px", textAlign: "center", verticalAlign: "top" }}>
                 {line.quantity}
                 {line.unit && <div style={{ fontSize: 10, opacity: 0.7 }}>{line.unit}</div>}
+                {org?.sub_unit_enabled && (line as any).sub_unit && (
+                  <div style={{ fontSize: 9, opacity: 0.6, marginTop: 2 }}>
+                    = {Number(line.quantity) * Number((line as any).sub_unit_conversion_rate || 1)} {(line as any).sub_unit}
+                  </div>
+                )}
               </td>
               <td style={{ padding: "8px 10px", textAlign: "right", verticalAlign: "top" }}>
                 {Number(line.rate).toFixed(2)}
@@ -253,6 +258,12 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
           )}
           {Number(invoice.adjustment) !== 0 && (
             <Row label={invoice.adjustment_name || "Adjustment"} value={Number(invoice.adjustment).toFixed(2)} />
+          )}
+          {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
+            <Row 
+              label={`${invoice.tds_tcs_type?.toUpperCase() || 'TDS'} (${invoice.tds_tcs_rate || 0}%)`} 
+              value={`${invoice.tds_tcs_type === 'tds' ? '-' : '+'}${fmt(Number(invoice.tds_tcs_amount))}`} 
+            />
           )}
           <div
             style={{
