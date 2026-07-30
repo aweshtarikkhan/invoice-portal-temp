@@ -149,6 +149,7 @@ export function AppSidebar() {
   const { signOut, profile, session } = useAuth();
   const org = useAppStore((s) => s.organization);
   const myOrganizations = useAppStore((s) => s.myOrganizations);
+  const userRole = useAppStore((s) => s.userRole);
   const inventoryEnabled = (org as any)?.inventory_enabled;
   const { enabledGroups, isAdmin, teamMembers, isGroupEnabled } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -421,19 +422,21 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* Admin Panel link - visible to all users to create/manage business */}
-              <SidebarMenuItem className="mt-2">
-                <SidebarMenuButton asChild isActive={isActive("/admin")}>
-                  <NavLink
-                    to="/admin"
-                    className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
-                    activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
-                  >
-                    <Shield className="h-5 w-5" />
-                    {!collapsed && <span className="ml-2 text-sm">{t("Business Settings")}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {/* Admin Panel link - hidden from staff */}
+              {userRole !== 'staff' && (
+                <SidebarMenuItem className="mt-2">
+                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                    <NavLink
+                      to="/admin"
+                      className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
+                      activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
+                    >
+                      <Shield className="h-5 w-5" />
+                      {!collapsed && <span className="ml-2 text-sm">{t("Business Settings")}</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

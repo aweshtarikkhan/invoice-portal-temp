@@ -53,6 +53,8 @@ interface AppState {
   reset: () => void;
   currentUserId: string | null;
   setCurrentUserId: (id: string | null) => void;
+  userRole: string | null;
+  setUserRole: (role: string | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -76,7 +78,7 @@ export const useAppStore = create<AppState>()(
         }
       },
       reset: () => {
-        set({ organization: null, myOrganizations: [] });
+        set({ organization: null, myOrganizations: [], userRole: null });
       },
       currentUserId: null,
       setCurrentUserId: (id) => {
@@ -86,6 +88,8 @@ export const useAppStore = create<AppState>()(
           set({ currentUserId: id, myOrganizations: [] });
         }
       },
+      userRole: null,
+      setUserRole: (role) => set({ userRole: role }),
     }),
     {
       name: "billflow-app-storage",

@@ -84,6 +84,7 @@ export function AppLayout() {
   const { profile } = useAuth();
   const setOrganization = useAppStore((s) => s.setOrganization);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
+  const setUserRole = useAppStore((s) => s.setUserRole);
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -117,6 +118,13 @@ export function AppLayout() {
         
       if (data) {
         setOrganization(data as any);
+        
+        // Fetch user's role for this organization
+        const { data: roleData, error: roleError } = await supabase.rpc("get_current_org_role");
+        if (roleData) {
+          setUserRole(roleData as string);
+        }
+        
         
         // Fetch subscription features separately using an RPC to bypass the RLS infinite recursion bug
         try {

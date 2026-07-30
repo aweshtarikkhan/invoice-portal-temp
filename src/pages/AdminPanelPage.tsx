@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import {
@@ -25,6 +25,12 @@ const ICON_MAP: Record<string, any> = {
 
 export default function AdminPanelPage() {
   const navigate = useNavigate();
+  const userRole = useAppStore((s) => s.userRole);
+
+  if (userRole === "staff") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   const { session } = useAuth();
   const {
     isAdmin,
@@ -70,16 +76,34 @@ export default function AdminPanelPage() {
     }
   };
 
-  const handleAddTeamMember = () => {
+  const handleAddTeamMember = async () => {
     if (newUserEmail && newUserEmail.includes("@") && !globalLimitReached && currentOrgId) {
-      addTeamMember(currentOrgId, {
-        email: newUserEmail,
-        role: newUserRole,
-        permissions: newUserPermissions
-      });
-      setNewUserEmail("");
-      setNewUserRole("Staff");
-      setNewUserPermissions([]);
+      try {
+        const { data, error } = await supabase.functions.invoke("invite-team-member", {
+          body: {
+            email: newUserEmail,
+            role: newUserRole.toLowerCase(),
+            org_id: currentOrgId,
+            permissions: newUserPermissions
+          }
+        });
+
+        if (error) throw error;
+        
+        // Add to local state for instant UI update
+        addTeamMember(currentOrgId, {
+          email: newUserEmail,
+          role: newUserRole,
+          permissions: newUserPermissions
+        });
+        
+        setNewUserEmail("");
+        setNewUserRole("Staff");
+        setNewUserPermissions([]);
+      } catch (err: any) {
+        console.error("Failed to invite team member:", err.message);
+        alert("Failed to invite user: " + err.message);
+      }
     }
   };
 
