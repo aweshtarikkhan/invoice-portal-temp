@@ -1244,7 +1244,7 @@ export default function BillBuilderPage() {
                     </label>
                     <label className="flex items-center gap-1 cursor-pointer">
                       <input type="radio" name="tdsTcsTypeBill" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
-                      <span>TCS (+)</span>
+                      <span>TCS</span>
                     </label>
                   </div>
                   <div className="flex items-center gap-1">
@@ -1253,13 +1253,13 @@ export default function BillBuilderPage() {
                       min={0}
                       className="h-7 w-16 text-xs text-right"
                       value={tdsTcsRate}
-                      onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                      onChange={(e) => setTdsTcsRate(Math.abs(Number(e.target.value)))}
                       placeholder="Rate"
                     />
                     <span className="text-muted-foreground">%</span>
                     {tdsTcsAmount > 0 && (
                       <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
-                        {tdsTcsType === "tds" ? "-" : "+"}{fmt(tdsTcsAmount)}
+                        {tdsTcsType === "tds" ? "-" : ""}{fmt(tdsTcsAmount)}
                       </span>
                     )}
                   </div>
