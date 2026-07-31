@@ -278,6 +278,9 @@ export default function BillBuilderPage() {
   const [expenses, setExpenses] = useState(0);
   const [adjustment, setAdjustment] = useState(0);
   const [adjustmentName, setAdjustmentName] = useState("Adjustment");
+  const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
+  const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
+  const [tdsTcsRate, setTdsTcsRate] = useState(0);
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
   const [deductStock, setDeductStock] = useState(false);
   const [prevDeductStock, setPrevDeductStock] = useState(false);
@@ -366,6 +369,9 @@ export default function BillBuilderPage() {
       setExpenses(Number((inv as any).expenses || 0));
       setAdjustment(Number(inv.adjustment));
       setAdjustmentName(inv.adjustment_name || "Adjustment");
+      setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
+      setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
+      setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
       setDeductStock(!!(inv as any).deduct_stock);
       setPrevDeductStock(!!(inv as any).deduct_stock);
       setAmountPaid(Number(inv.amount_paid || 0));
@@ -552,7 +558,26 @@ export default function BillBuilderPage() {
 
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
-  const total = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+
+  // Gross total before TDS/TCS
+  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+
+  // TDS is calculated BEFORE GST on Subtotal (taxable value) and DEDUCTED (-)
+  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + adjustment) and ADDED (+)
+  const tdsTcsAmount = tdsTcsApplicable
+    ? tdsTcsType === "tds"
+      ? (subtotal * Math.max(0, tdsTcsRate)) / 100
+      : (baseTotalBeforeTdsTcs * Math.max(0, tdsTcsRate)) / 100
+    : 0;
+  
+  let total = baseTotalBeforeTdsTcs;
+  if (tdsTcsApplicable) {
+    if (tdsTcsType === "tds") {
+      total -= tdsTcsAmount;
+    } else {
+      total += tdsTcsAmount;
+    }
+  }
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -609,6 +634,10 @@ export default function BillBuilderPage() {
         balance_due: total - amountPaid,
         amount_paid: amountPaid,
         status: (total - amountPaid) <= 0 && amountPaid > 0 ? "paid" : (amountPaid > 0 ? "partial" : status),
+        tds_tcs_applicable: tdsTcsApplicable,
+        tds_tcs_type: tdsTcsType,
+        tds_tcs_rate: tdsTcsRate,
+        tds_tcs_amount: tdsTcsAmount,
         notes,
         terms,
       };
@@ -1199,6 +1228,43 @@ export default function BillBuilderPage() {
                   <span>+{fmt(tb.amount)}</span>
                 </div>
               ))}
+            </div>
+            {/* TDS/TCS Section */}
+            <div className="space-y-2 border-y py-3 my-2">
+              <label className="flex items-center justify-between cursor-pointer">
+                <span className="text-sm font-medium">TDS / TCS Applicable?</span>
+                <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
+              </label>
+              {tdsTcsApplicable && (
+                <div className="flex items-center justify-between text-sm gap-2 mt-2">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="tdsTcsTypeBill" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
+                      <span>TDS (-)</span>
+                    </label>
+                    <label className="flex items-center gap-1 cursor-pointer">
+                      <input type="radio" name="tdsTcsTypeBill" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
+                      <span>TCS (+)</span>
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-7 w-16 text-xs text-right"
+                      value={tdsTcsRate}
+                      onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Rate"
+                    />
+                    <span className="text-muted-foreground">%</span>
+                    {tdsTcsAmount > 0 && (
+                      <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
+                        {tdsTcsType === "tds" ? "-" : "+"}{fmt(tdsTcsAmount)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
               <span className="text-muted-foreground">Shipping</span>

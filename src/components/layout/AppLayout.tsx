@@ -104,36 +104,78 @@ export function AppLayout() {
       return;
     }
 
+    // Query all organizations the user is a member of
+    const { data: memberOrgs } = await supabase
+      .from("organization_members")
+      .select("org_id, role, permissions, organizations(id, name, logo_url)")
+      .eq("user_id", profile.user_id);
+
+    if (memberOrgs && memberOrgs.length > 0) {
+      const orgList = memberOrgs
+        .filter((m) => m.organizations)
+        .map((m) => ({ id: (m.organizations as any).id, name: (m.organizations as any).name }));
+      
+      useAppStore.setState({ myOrganizations: orgList });
+
+      let activeOrgId = profile.org_id;
+      const isValidMemberOrg = activeOrgId && memberOrgs.some((m) => m.org_id === activeOrgId);
+
+      if (!isValidMemberOrg) {
+        activeOrgId = memberOrgs[0].org_id;
+        await supabase
+          .from("profiles")
+          .update({ org_id: activeOrgId })
+          .eq("id", profile.id);
+      }
+
+      const { data: activeOrg, error: orgErr } = await supabase
+        .from("organizations")
+        .select("*")
+        .eq("id", activeOrgId)
+        .maybeSingle();
+
+      if (activeOrg) {
+        setOrganization(activeOrg as any);
+        const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
+        setUserRole(activeMember?.role || "staff");
+
+        try {
+          const { data: subData } = await supabase.rpc("get_my_org_subscription", {
+            p_org_id: activeOrgId
+          });
+          if (subData && Array.isArray(subData.enabled_features)) {
+            useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+          }
+        } catch (err) {
+          console.error("Failed to load subscription features via RPC:", err);
+        }
+
+        setNeedsSetup(false);
+        setChecking(false);
+        return;
+      }
+    }
+
     if (profile.org_id) {
-      // Fetch org data WITHOUT the subscription join first (more reliable)
-      const { data, error } = await supabase
+      // Fallback: Fetch org data directly by profile.org_id if organization_members was empty
+      const { data } = await supabase
         .from("organizations")
         .select("*")
         .eq("id", profile.org_id)
         .maybeSingle();
         
-      if (error) {
-        console.error("Error fetching org:", error);
-      }
-        
       if (data) {
         setOrganization(data as any);
-        
-        // Fetch user's role for this organization
-        const { data: roleData, error: roleError } = await supabase.rpc("get_current_org_role");
+        const { data: roleData } = await supabase.rpc("get_current_org_role");
         if (roleData) {
           setUserRole(roleData as string);
         }
         
-        
-        // Fetch subscription features separately using an RPC to bypass the RLS infinite recursion bug
         try {
           const { data: subData } = await supabase.rpc("get_my_org_subscription", {
             p_org_id: profile.org_id
           });
-          
           if (subData && Array.isArray(subData.enabled_features)) {
-            // Platform Admin controls the subscription (backend).
             useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
           }
         } catch (err) {
@@ -169,6 +211,10 @@ export function AppLayout() {
   };
 
   useEffect(() => {
+    if (window.location.hash.includes("type=invite") || window.location.hash.includes("type=recovery")) {
+      navigate("/reset-password" + window.location.hash, { replace: true });
+      return;
+    }
     loadOrg();
   }, [profile?.org_id]);
 

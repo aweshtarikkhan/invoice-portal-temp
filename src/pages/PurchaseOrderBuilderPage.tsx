@@ -126,14 +126,22 @@ export default function PurchaseOrderBuilderPage() {
       }
     });
     const totalTax = igst + cgst + sgst;
-    const tdsTcsAmount = tdsTcsApplicable ? (sub * tdsTcsRate) / 100 : 0;
+    const baseTotal = sub + totalTax;
+
+    // TDS is calculated BEFORE GST on Subtotal (sub) and DEDUCTED (-)
+    // TCS is calculated AFTER GST on Total Value (sub + totalTax) and ADDED (+)
+    const tdsTcsAmount = tdsTcsApplicable
+      ? tdsTcsType === "tds"
+        ? (sub * Math.max(0, tdsTcsRate)) / 100
+        : (baseTotal * Math.max(0, tdsTcsRate)) / 100
+      : 0;
     
-    let total = sub + totalTax;
+    let total = baseTotal;
     if (tdsTcsApplicable) {
-      if (tdsTcsType === "tcs") {
-        total += tdsTcsAmount;
-      } else {
+      if (tdsTcsType === "tds") {
         total -= tdsTcsAmount;
+      } else {
+        total += tdsTcsAmount;
       }
     }
     
@@ -439,9 +447,10 @@ export default function PurchaseOrderBuilderPage() {
                       <div className="flex items-center gap-1">
                         <Input
                           type="number"
+                          min={0}
                           className="h-7 w-16 text-xs text-right"
                           value={tdsTcsRate}
-                          onChange={(e) => setTdsTcsRate(parseFloat(e.target.value) || 0)}
+                          onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
                           placeholder="Rate"
                         />
                         <span className="text-muted-foreground">%</span>

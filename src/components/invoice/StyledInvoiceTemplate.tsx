@@ -1,4 +1,5 @@
 import { QRCodeSVG } from "qrcode.react";
+import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";
 
 interface StyledInvoiceTemplateProps {
   org: any;
@@ -18,6 +19,20 @@ const getTitleText = (type: string) => {
 };
 
 export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate }: StyledInvoiceTemplateProps) {
+  if (org?.template_style === "corporate_blue") {
+    return (
+      <CorporateBlueInvoiceTemplate
+        org={org}
+        invoice={invoice}
+        lines={lines}
+        fmt={fmt}
+        type={type}
+        taxBreakdown={taxBreakdown}
+        isInterstate={isInterstate}
+      />
+    );
+  }
+
   const accent = (org?.template_accent_color as string) || "#2563eb";
   const font = (org?.template_font as string) || "Inter, system-ui, sans-serif";
   const showLogo = org?.template_show_logo !== false;

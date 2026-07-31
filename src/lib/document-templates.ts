@@ -7,6 +7,14 @@ export const DOCUMENT_TEMPLATES = [
     features: ["Company logo", "CGST/SGST columns", "E-Way Bill support", "TDS/TCS support"],
     recommendedPaperSize: "a4",
   },
+  {
+    id: "corporate_blue",
+    name: "Corporate Blue GST",
+    description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code.",
+    preview: "bg-blue-50 border-blue-200",
+    features: ["Corporate Blue header", "Detailed GST breakdown", "Amount in words", "Bank details & QR", "Custom Tax Summary"],
+    recommendedPaperSize: "a4",
+  },
 ] as const;
 
 export const PAPER_SIZES = [

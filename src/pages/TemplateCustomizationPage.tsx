@@ -17,6 +17,7 @@ import { PAPER_SIZES } from "@/lib/document-templates";
 
 const TEMPLATE_STYLES = [
   { id: "standard_gst", name: "Standard GST", description: "Indian GST compliant invoice with HSN/SAC, explicit CGST/SGST/IGST breakdown, and E-Way Bill details." },
+  { id: "corporate_blue", name: "Corporate Blue GST", description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code." },
 ];
 
 const FONTS = [

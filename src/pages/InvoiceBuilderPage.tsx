@@ -558,15 +558,24 @@ export default function InvoiceBuilderPage() {
 
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
-  const tdsTcsAmount = tdsTcsApplicable ? (subtotal * tdsTcsRate) / 100 : 0;
+
+  // Gross total before TDS/TCS
+  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+
+  // TDS is calculated BEFORE GST on Subtotal (taxable value) and DEDUCTED (-)
+  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + adjustment) and ADDED (+)
+  const tdsTcsAmount = tdsTcsApplicable
+    ? tdsTcsType === "tds"
+      ? (subtotal * Math.max(0, tdsTcsRate)) / 100
+      : (baseTotalBeforeTdsTcs * Math.max(0, tdsTcsRate)) / 100
+    : 0;
   
-  // Calculate total: subtotal + tax + shipping + adjustment - expenses +/- tds/tcs
-  let total = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+  let total = baseTotalBeforeTdsTcs;
   if (tdsTcsApplicable) {
-    if (tdsTcsType === "tcs") {
-      total += tdsTcsAmount;
-    } else {
+    if (tdsTcsType === "tds") {
       total -= tdsTcsAmount;
+    } else {
+      total += tdsTcsAmount;
     }
   }
 
@@ -1286,14 +1295,15 @@ export default function InvoiceBuilderPage() {
                   <div className="flex items-center gap-1">
                     <Input
                       type="number"
+                      min={0}
                       className="h-7 w-16 text-xs text-right"
                       value={tdsTcsRate}
-                      onChange={(e) => setTdsTcsRate(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
                       placeholder="Rate"
                     />
                     <span className="text-muted-foreground">%</span>
                     {tdsTcsAmount > 0 && (
-                      <span className={tdsTcsType === "tds" ? "text-destructive" : "text-green-600"}>
+                      <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
                         {tdsTcsType === "tds" ? "-" : "+"}{fmt(tdsTcsAmount)}
                       </span>
                     )}

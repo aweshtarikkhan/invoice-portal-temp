@@ -156,7 +156,7 @@ export default function InvoiceTemplatePage() {
                 {/* Header */}
                 <div
                   className={`flex justify-between items-start ${
-                    tpl.id === "modern" ? "bg-blue-600 text-white -mx-3 -mt-3 px-3 py-2" :
+                    tpl.id === "corporate_blue" || tpl.id === "modern" ? "bg-blue-600 text-white -mx-3 -mt-3 px-3 py-2" :
                     tpl.id === "professional" ? "border-b-2 border-slate-700 pb-1" :
                     tpl.id === "minimal" ? "" :
                     "border-b border-slate-300 pb-1"

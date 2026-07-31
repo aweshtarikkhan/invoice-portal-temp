@@ -61,8 +61,14 @@ serve(async (req) => {
     if (existingUserId) {
       invitedUserId = existingUserId;
     } else {
-      // User doesn't exist, invite them
-      const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email)
+      // User doesn't exist, invite them with redirect to reset-password for password creation
+      const rawOrigin = req.headers.get('origin') || req.headers.get('referer') || '';
+      const cleanOrigin = rawOrigin ? rawOrigin.split('#')[0].replace(/\/$/, '') : '';
+      const redirectTo = cleanOrigin ? `${cleanOrigin}/reset-password` : undefined;
+
+      const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
+        redirectTo: redirectTo
+      })
 
       if (inviteError) {
         throw inviteError
@@ -97,6 +103,29 @@ serve(async (req) => {
       } else {
          throw insertError
       }
+    }
+
+    // Ensure user profile has org_id set
+    const { data: existingProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('id, org_id')
+      .eq('user_id', invitedUserId)
+      .maybeSingle();
+
+    if (existingProfile) {
+      if (!existingProfile.org_id) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ org_id: org_id })
+          .eq('user_id', invitedUserId);
+      }
+    } else {
+      await supabaseAdmin
+        .from('profiles')
+        .insert({
+          user_id: invitedUserId,
+          org_id: org_id
+        });
     }
 
     return new Response(
