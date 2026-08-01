@@ -12,6 +12,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
@@ -54,21 +55,26 @@ export default function EmployeesPage() {
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
+  const [shifts, setShifts] = useState<any[]>([]);
+  const [selectedShiftId, setSelectedShiftId] = useState<string>("none");
 
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("employees").select("*").eq("org_id", org.id).order("created_at", { ascending: false });
-    if (error) toast({ title: "Failed to load", description: error.message, variant: "destructive" });
-    else setRows(data || []);
+    const [empsRes, shiftsRes] = await Promise.all([
+      (supabase as any).from("employees").select("*").eq("org_id", org.id).order("created_at", { ascending: false }),
+      (supabase as any).from("shifts").select("*").eq("org_id", org.id).order("created_at"),
+    ]);
+    if (empsRes.error) toast({ title: "Failed to load", description: empsRes.error.message, variant: "destructive" });
+    else setRows(empsRes.data || []);
+    setShifts(shiftsRes.data || []);
     setLoading(false);
   };
 
   useEffect(() => { load(); }, [org?.id]);
 
-  const openNew = () => { setEditId(null); setForm(empty); setOpen(true); };
-  const openEdit = (e: any) => {
+  const openNew = () => { setEditId(null); setForm(empty); setSelectedShiftId("none"); setOpen(true); };
+  const openEdit = async (e: any) => {
     setEditId(e.id);
     setForm({
       name: e.name, employee_code: e.employee_code || "", designation: e.designation || "",
@@ -79,6 +85,13 @@ export default function EmployeesPage() {
       basic_percent: String(e.basic_percent ?? 50), hra_percent: String(e.hra_percent ?? 20),
       pf_applicable: !!e.pf_applicable, esic_applicable: !!e.esic_applicable,
     });
+    // Fetch current shift assignment for this employee
+    const { data: assignData } = await (supabase as any)
+      .from("employee_shifts")
+      .select("shift_id")
+      .eq("employee_id", e.id)
+      .single();
+    setSelectedShiftId(assignData?.shift_id || "none");
     setOpen(true);
   };
 
@@ -108,9 +121,24 @@ export default function EmployeesPage() {
     };
     const q = editId
       ? (supabase as any).from("employees").update(payload).eq("id", editId)
-      : (supabase as any).from("employees").insert(payload);
-    const { error } = await q;
+      : (supabase as any).from("employees").insert(payload).select().single();
+    const { data: savedEmp, error } = await q;
     if (error) { toast({ title: "Save failed", description: error.message, variant: "destructive" }); return; }
+
+    // Handle shift assignment
+    const empId = editId || savedEmp?.id;
+    if (empId) {
+      if (selectedShiftId && selectedShiftId !== "none") {
+        await (supabase as any).from("employee_shifts").upsert(
+          { org_id: org.id, employee_id: empId, shift_id: selectedShiftId, effective_from: new Date().toISOString().split("T")[0] },
+          { onConflict: "employee_id" }
+        );
+      } else {
+        // Remove shift if "No shift" selected
+        await (supabase as any).from("employee_shifts").delete().eq("employee_id", empId);
+      }
+    }
+
     toast({ title: editId ? "Employee updated" : "Employee added" });
     setOpen(false); load();
   };
@@ -246,6 +274,33 @@ export default function EmployeesPage() {
             <div className="flex items-center gap-2 mt-6"><Switch checked={form.esic_applicable} onCheckedChange={(v) => setForm({ ...form, esic_applicable: v })} /><Label>ESIC Applicable (0.75% if gross ≤ ₹21k)</Label></div>
             <div className="flex items-center gap-2 mt-6"><Switch checked={form.is_active} onCheckedChange={(v) => setForm({ ...form, is_active: v })} /><Label>Active</Label></div>
             <div className="col-span-2"><Label>Notes</Label><Input value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+
+            {/* Shift Assignment */}
+            <div className="col-span-2 mt-2 pt-2 border-t">
+              <div className="text-sm font-medium text-muted-foreground mb-2">Shift Assignment</div>
+              {shifts.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No shifts defined yet. <NavLink to="/shifts" className="text-primary underline">Create a shift first.</NavLink></p>
+              ) : (
+                <div>
+                  <Label>Assign Shift</Label>
+                  <Select value={selectedShiftId} onValueChange={setSelectedShiftId}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select a shift..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">— No shift assigned —</SelectItem>
+                      {shifts.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.name} &nbsp;·&nbsp; {s.start_time?.slice(0,5)} – {s.end_time?.slice(0,5)}
+                          {s.grace_minutes ? ` · Grace ${s.grace_minutes}m` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">This determines Late / Half Day / Absent rules for attendance.</p>
+                </div>
+              )}
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
