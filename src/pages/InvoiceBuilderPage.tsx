@@ -18,8 +18,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
 import {
@@ -285,9 +284,19 @@ export default function InvoiceBuilderPage() {
   const [adjustment, setAdjustment] = useState(0);
   const [adjustmentName, setAdjustmentName] = useState("Adjustment");
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
-  const [deductStock, setDeductStock] = useState(false);
-  const [prevDeductStock, setPrevDeductStock] = useState(false);
+  const [deductStock, setDeductStock] = useState(true);
+  const [prevDeductStock, setPrevDeductStock] = useState(true);
   const [amountPaid, setAmountPaid] = useState(0);
+
+  // Bank details per organization
+  const [includeBankDetails, setIncludeBankDetails] = useState(false);
+  const [bankName, setBankName] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankIfsc, setBankIfsc] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
+  const [bankUpiId, setBankUpiId] = useState("");
+
   // Phase 5 — opt-in compliance
   const [generateIrn, setGenerateIrn] = useState(false);
   const [irn, setIrn] = useState("");
@@ -324,7 +333,11 @@ export default function InvoiceBuilderPage() {
 
       // Auto-generate invoice number from fresh DB value
       if (!id) {
-        const { data: freshOrg } = await supabase.from("organizations").select("invoice_next_number, invoice_prefix, payment_terms, default_notes, default_terms").eq("id", org.id).single();
+        const { data: freshOrg } = await supabase
+          .from("organizations")
+          .select("invoice_next_number, invoice_prefix, payment_terms, default_notes, default_terms, bank_name, bank_account_name, bank_account_number, bank_ifsc, bank_branch, bank_details_enabled, upi_id, name")
+          .eq("id", org.id)
+          .single();
         const prefix = freshOrg?.invoice_prefix || org.invoice_prefix || "INV";
         const num = freshOrg?.invoice_next_number || org.invoice_next_number || 1;
         const year = new Date().getFullYear();
@@ -332,6 +345,30 @@ export default function InvoiceBuilderPage() {
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");
         setTerms(freshOrg?.default_terms || org.default_terms || "");
+
+        if (freshOrg) {
+          if (freshOrg.bank_name || freshOrg.bank_account_number || freshOrg.bank_ifsc) {
+            setIncludeBankDetails(freshOrg.bank_details_enabled !== false);
+            setBankName(freshOrg.bank_name || "");
+            setBankAccountName(freshOrg.bank_account_name || freshOrg.name || org.name || "");
+            setBankAccountNumber(freshOrg.bank_account_number || "");
+            setBankIfsc(freshOrg.bank_ifsc || "");
+            setBankBranch(freshOrg.bank_branch || "");
+            setBankUpiId(freshOrg.upi_id || org.upi_id || "");
+          } else {
+            const { data: bAccs } = await supabase.from("bank_accounts").select("*").eq("org_id", org.id).eq("is_active", true).limit(1);
+            if (bAccs && bAccs.length > 0) {
+              const acc = bAccs[0];
+              setIncludeBankDetails(true);
+              setBankName(acc.bank_name || "");
+              setBankAccountName(acc.name || freshOrg.name || org.name || "");
+              setBankAccountNumber(acc.account_number || "");
+              setBankIfsc(acc.ifsc || "");
+              setBankBranch("");
+              setBankUpiId(acc.upi_id || freshOrg.upi_id || org.upi_id || "");
+            }
+          }
+        }
       }
     };
     fetchData();
@@ -373,10 +410,30 @@ export default function InvoiceBuilderPage() {
       setAdjustmentName(inv.adjustment_name || "Adjustment");
       setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
       setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
-      setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
-      setDeductStock(!!(inv as any).deduct_stock);
-      setPrevDeductStock(!!(inv as any).deduct_stock);
+      setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
+      setPrevDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
       setAmountPaid(Number(inv.amount_paid || 0));
+
+      if (inv.bank_details && typeof inv.bank_details === "object") {
+        setIncludeBankDetails(!!inv.bank_details.enabled);
+        setBankName(inv.bank_details.bank_name || "");
+        setBankAccountName(inv.bank_details.bank_account_name || "");
+        setBankAccountNumber(inv.bank_details.bank_account_number || "");
+        setBankIfsc(inv.bank_details.bank_ifsc || "");
+        setBankBranch(inv.bank_details.bank_branch || "");
+        setBankUpiId(inv.bank_details.bank_upi_id || "");
+      } else if (org) {
+        if ((org as any).bank_name || (org as any).bank_account_number) {
+          setIncludeBankDetails((org as any).bank_details_enabled !== false);
+          setBankName((org as any).bank_name || "");
+          setBankAccountName((org as any).bank_account_name || org.name || "");
+          setBankAccountNumber((org as any).bank_account_number || "");
+          setBankIfsc((org as any).bank_ifsc || "");
+          setBankBranch((org as any).bank_branch || "");
+          setBankUpiId(org.upi_id || "");
+        }
+      }
+
       // Phase 5 compliance load
       const _irn = (inv as any).irn || "";
       const _eway = (inv as any).eway_bill_no || "";
@@ -619,6 +676,16 @@ export default function InvoiceBuilderPage() {
 
     setSaving(true);
 
+    const bankDetailsPayload = includeBankDetails && (bankName.trim() || bankAccountNumber.trim() || bankIfsc.trim()) ? {
+      enabled: true,
+      bank_name: bankName.trim(),
+      bank_account_name: bankAccountName.trim(),
+      bank_account_number: bankAccountNumber.trim(),
+      bank_ifsc: bankIfsc.trim(),
+      bank_branch: bankBranch.trim(),
+      bank_upi_id: bankUpiId.trim(),
+    } : { enabled: false };
+
     const invoicePayload = {
       org_id: org!.id,
       client_id: clientId,
@@ -633,6 +700,7 @@ export default function InvoiceBuilderPage() {
       adjustment,
       adjustment_name: adjustmentName,
       deduct_stock: deductStock,
+      bank_details: bankDetailsPayload,
       irn: generateIrn && irn.trim() ? irn.trim() : null,
       ack_no: generateIrn && ackNo.trim() ? ackNo.trim() : null,
       ack_date: generateIrn && ackDate ? ackDate : null,
@@ -763,6 +831,19 @@ export default function InvoiceBuilderPage() {
         const { data: cInvoices } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId);
         const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
         await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
+      }
+
+      // Persist bank details per organization so next invoices have it pre-filled
+      if (includeBankDetails && (bankName.trim() || bankAccountNumber.trim() || bankIfsc.trim())) {
+        await supabase.from("organizations").update({
+          bank_name: bankName.trim() || null,
+          bank_account_name: bankAccountName.trim() || null,
+          bank_account_number: bankAccountNumber.trim() || null,
+          bank_ifsc: bankIfsc.trim() || null,
+          bank_branch: bankBranch.trim() || null,
+          bank_details_enabled: true,
+          ...(bankUpiId.trim() ? { upi_id: bankUpiId.trim() } : {}),
+        }).eq("id", org!.id);
       }
 
       toast({ title: status === "sent" ? "Invoice sent!" : "Invoice saved!" });
@@ -1156,6 +1237,83 @@ export default function InvoiceBuilderPage() {
             <Label>Terms & Conditions</Label>
             <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Payment terms, late fees..." />
           </div>
+
+          {/* Bank Account Details */}
+          <div className="space-y-3 rounded-md border p-3.5 bg-card/60">
+            <label className="flex items-center justify-between cursor-pointer select-none">
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Bank Account Details</span>
+              </div>
+              <Checkbox
+                checked={includeBankDetails}
+                onCheckedChange={(v) => setIncludeBankDetails(!!v)}
+              />
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Display bank transfer &amp; payment instructions on this invoice. Saved automatically for this organization.
+            </p>
+
+            {includeBankDetails && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                <div className="space-y-1">
+                  <Label className="text-xs">Bank Name</Label>
+                  <Input
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="e.g. HDFC Bank, SBI, ICICI"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Account Holder Name</Label>
+                  <Input
+                    value={bankAccountName}
+                    onChange={(e) => setBankAccountName(e.target.value)}
+                    placeholder="e.g. Company / Business Name"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Account Number</Label>
+                  <Input
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    placeholder="e.g. 50200012345678"
+                    className="h-8 text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">IFSC Code</Label>
+                  <Input
+                    value={bankIfsc}
+                    onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
+                    placeholder="e.g. HDFC0001234"
+                    className="h-8 text-xs font-mono uppercase"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Branch Name</Label>
+                  <Input
+                    value={bankBranch}
+                    onChange={(e) => setBankBranch(e.target.value)}
+                    placeholder="e.g. Connaught Place, New Delhi"
+                    className="h-8 text-xs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">UPI ID (Optional)</Label>
+                  <Input
+                    value={bankUpiId}
+                    onChange={(e) => setBankUpiId(e.target.value)}
+                    placeholder="e.g. company@okhdfcbank"
+                    className="h-8 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
             <Checkbox
               checked={deductStock}
@@ -1353,6 +1511,71 @@ export default function InvoiceBuilderPage() {
         </Card>
       </div>
 
+      {/* Fixed Bottom Action Bar */}
+      <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 border-t px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_16px_rgba(0,0,0,0.4)]">
+        <div className="flex items-center gap-6">
+          <div className="flex items-baseline gap-2">
+            <span className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Total Amount:</span>
+            <span className="text-xl font-extrabold text-foreground">{fmt(total)}</span>
+          </div>
+          <div className="hidden sm:flex items-center gap-3 text-xs text-muted-foreground border-l pl-4 border-border">
+            <span className="font-medium">{lines.filter(l => l.name.trim() || l.rate > 0).length} Line Item(s)</span>
+            <span className="text-muted-foreground/40">•</span>
+            <label className="flex items-center gap-2 cursor-pointer font-medium hover:text-foreground select-none">
+              <Checkbox
+                checked={deductStock}
+                onCheckedChange={(v) => setDeductStock(!!v)}
+                className="h-4 w-4"
+              />
+              <span>Deduct from Inventory</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => navigate("/invoices")}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
+            <Save className="mr-1.5 h-4 w-4" /> Save as Draft
+          </Button>
+          <div className="flex">
+            <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
+              <Eye className="mr-1.5 h-4 w-4" /> Save and Send
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2.5 shadow-sm" disabled={saving}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
+                  <Printer className="mr-2 h-4 w-4" /> Save and Print
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  await handleSave("sent");
+                  if (id) {
+                    const { data: existing } = await supabase.from("portal_tokens").select("token").eq("entity_type", "invoice").eq("entity_id", id).maybeSingle();
+                    let token = existing?.token;
+                    if (!token) {
+                      const { data } = await supabase.from("portal_tokens").insert({ org_id: org!.id, entity_type: "invoice", entity_id: id }).select("token").single();
+                      token = data?.token;
+                    }
+                    if (token) {
+                      await navigator.clipboard.writeText(`${window.location.origin}/portal/${token}`);
+                      toast({ title: "Invoice saved & portal link copied!" });
+                    }
+                  }
+                }}>
+                  <Share2 className="mr-2 h-4 w-4" /> Save and Share
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSave("draft")}>
+                  <Clock className="mr-2 h-4 w-4" /> Save and Send Later
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
 
     </div>
   );

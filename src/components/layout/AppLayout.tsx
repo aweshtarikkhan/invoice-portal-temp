@@ -13,8 +13,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Home } from "lucide-react";
+import { LogOut, Home, Settings, User, HelpCircle, Building2 } from "lucide-react";
 
 function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { profile, signOut } = useAuth();
@@ -81,7 +89,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
 }
 
 export function AppLayout() {
-  const { profile } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const setOrganization = useAppStore((s) => s.setOrganization);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const setUserRole = useAppStore((s) => s.setUserRole);
@@ -105,10 +113,12 @@ export function AppLayout() {
     }
 
     // Query all organizations the user is a member of
-    const { data: memberOrgs } = await supabase
+    const { data: memberOrgs, error: memberErr } = await supabase
       .from("organization_members")
       .select("org_id, role, permissions, organizations(id, name, logo_url)")
       .eq("user_id", profile.user_id);
+
+    console.log("[loadOrg] memberOrgs:", memberOrgs, "error:", memberErr);
 
     if (memberOrgs && memberOrgs.length > 0) {
       const orgList = memberOrgs
@@ -134,6 +144,8 @@ export function AppLayout() {
         .eq("id", activeOrgId)
         .maybeSingle();
 
+      console.log("[loadOrg] activeOrg:", activeOrg, "error:", orgErr);
+
       if (activeOrg) {
         setOrganization(activeOrg as any);
         const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
@@ -158,11 +170,13 @@ export function AppLayout() {
 
     if (profile.org_id) {
       // Fallback: Fetch org data directly by profile.org_id if organization_members was empty
-      const { data } = await supabase
+      const { data, error: directOrgErr } = await supabase
         .from("organizations")
         .select("*")
         .eq("id", profile.org_id)
         .maybeSingle();
+
+      console.log("[loadOrg] fallback org:", data, "error:", directOrgErr);
         
       if (data) {
         setOrganization(data as any);
@@ -184,9 +198,13 @@ export function AppLayout() {
         
         setNeedsSetup(false);
       } else {
-        await checkEmployeeAndBlock();
+        // User has org_id on profile but org fetch failed (RLS issue or deleted org)
+        // They are still an org user — show setup, NEVER block as employee
+        console.warn("[loadOrg] org_id set but org not found, showing setup");
+        setNeedsSetup(true);
       }
     } else {
+      // No org_id at all — could be a pure employee or brand new user
       await checkEmployeeAndBlock();
     }
     setChecking(false);
@@ -196,10 +214,32 @@ export function AppLayout() {
 
   const checkEmployeeAndBlock = async () => {
     if (!profile?.id) return;
+
+    // If user has an org_id on their profile, they are an org admin/owner
+    // — never block them, even if they're also in the employees table.
+    if (profile.org_id) {
+      setNeedsSetup(true);
+      return;
+    }
+
+    // Check if user is in organization_members (e.g. org created but profile.org_id wasn't set)
+    const { data: memberCheck } = await supabase
+      .from("organization_members")
+      .select("id")
+      .eq("user_id", profile.user_id)
+      .limit(1);
+
+    if (memberCheck && memberCheck.length > 0) {
+      setNeedsSetup(true);
+      return;
+    }
+
+    // Only block pure employee accounts (no org membership at all)
+    // Use profile.user_id (auth.uid) to match employees.auth_user_id
     const { data: empRecord } = await (supabase as any)
       .from("employees")
       .select("id")
-      .or(`auth_user_id.eq.${profile.id},id.eq.${profile.id}`)
+      .eq("auth_user_id", profile.user_id)
       .maybeSingle();
 
     if (empRecord) {
@@ -272,12 +312,54 @@ export function AppLayout() {
               <CommandPalette />
               <LanguageSwitcher />
               <ThemeToggle />
-              <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 pr-2 rounded-full transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
-                <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-sm font-semibold text-blue-600 dark:text-blue-400">
-                  {profile?.first_name?.[0] || "D"}
-                </div>
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="m6 9 6 6 6-6"/></svg>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 pr-2 rounded-full transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+                    <div className="h-9 w-9 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-sm font-semibold text-blue-600 dark:text-blue-400">
+                      {profile?.first_name?.[0] || "D"}
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><path d="m6 9 6 6 6-6"/></svg>
+                  </div>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-semibold leading-none">
+                        {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "User"}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email || ""}
+                      </p>
+                      {org && (
+                        <p className="text-xs leading-none text-muted-foreground flex items-center gap-1 pt-1">
+                          <Building2 className="h-3 w-3" />
+                          {org.name}
+                        </p>
+                      )}
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/settings?tab=profile")} className="cursor-pointer">
+                    <User className="mr-2 h-4 w-4" />
+                    My Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      await signOut();
+                      navigate("/login", { replace: true });
+                    }}
+                    className="cursor-pointer text-rose-600 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
           <main className="flex-1 overflow-auto">

@@ -85,9 +85,9 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         fontFamily: font,
         fontSize: 12,
         lineHeight: 1.5,
-        padding: "20px 40px",
+        padding: "20px 32px",
         color: "#000",
-        minHeight: "297mm",
+        boxSizing: "border-box",
       }}
     >
       {/* Header */}
@@ -237,18 +237,45 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         
         {/* Left Side: Notes & Bank Details & QR */}
         <div style={{ flex: 1 }}>
-          {invoice.notes && (
+          {invoice.notes && invoice.notes.trim() && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: accent, marginBottom: 4 }}>Notes</div>
-              <div style={{ fontSize: 11, whiteSpace: "pre-wrap", color: "#3f3f46" }}>{invoice.notes}</div>
+              <div style={{ fontSize: 11, whiteSpace: "pre-wrap", color: "#3f3f46" }}>{invoice.notes.trim()}</div>
             </div>
           )}
-          {invoice.terms && (
+          {(invoice.terms_conditions || invoice.terms || invoice.default_terms || org?.default_terms) && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: accent, marginBottom: 4 }}>Terms &amp; Conditions</div>
-              <div style={{ fontSize: 11, whiteSpace: "pre-wrap", color: "#3f3f46" }}>{invoice.terms}</div>
+              <div style={{ fontSize: 11, whiteSpace: "pre-wrap", color: "#3f3f46" }}>
+                {(invoice.terms_conditions || invoice.terms || invoice.default_terms || org?.default_terms).trim()}
+              </div>
             </div>
           )}
+
+          {(() => {
+            const invoiceBank = invoice?.bank_details;
+            const isBankDisabled = invoiceBank && invoiceBank.enabled === false;
+            const bankAccName = invoiceBank?.bank_account_name || (!isBankDisabled ? (org?.bank_account_name || org?.name) : null);
+            const bankName = invoiceBank?.bank_name || (!isBankDisabled ? org?.bank_name : null);
+            const bankAccNum = invoiceBank?.bank_account_number || (!isBankDisabled ? org?.bank_account_number : null);
+            const bankIfsc = invoiceBank?.bank_ifsc || (!isBankDisabled ? org?.bank_ifsc : null);
+            const bankBranch = invoiceBank?.bank_branch || (!isBankDisabled ? org?.bank_branch : null);
+            const hasBankDetails = !isBankDisabled && Boolean(bankName || bankAccNum || bankIfsc);
+
+            if (!hasBankDetails) return null;
+            return (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: accent, marginBottom: 4 }}>Bank Details</div>
+                <div style={{ fontSize: 11, color: "#3f3f46", display: "flex", flexDirection: "column", gap: 2 }}>
+                  {bankAccName && <div>Account Name: <span style={{ fontWeight: 600 }}>{bankAccName}</span></div>}
+                  {bankName && <div>Bank Name: <span style={{ fontWeight: 600 }}>{bankName}</span></div>}
+                  {bankAccNum && <div>Account No: <span style={{ fontWeight: 600, fontFamily: "monospace" }}>{bankAccNum}</span></div>}
+                  {bankIfsc && <div>IFSC Code: <span style={{ fontWeight: 600, fontFamily: "monospace" }}>{bankIfsc}</span></div>}
+                  {bankBranch && <div>Branch: <span style={{ fontWeight: 600 }}>{bankBranch}</span></div>}
+                </div>
+              </div>
+            );
+          })()}
           
           {org?.qr_code_enabled && (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: 12, border: "1px dashed #d4d4d8", borderRadius: 6 }}>

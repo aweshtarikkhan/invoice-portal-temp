@@ -115,9 +115,8 @@ export function CorporateBlueInvoiceTemplate({
         fontFamily: "'Inter', sans-serif, system-ui",
         fontSize: 12,
         lineHeight: 1.4,
-        padding: "24px 32px",
+        padding: "20px 28px",
         color: "#0f172a",
-        minHeight: "297mm",
         boxSizing: "border-box",
       }}
     >
@@ -297,19 +296,16 @@ export function CorporateBlueInvoiceTemplate({
       <div style={{ display: "flex", gap: 32, marginBottom: 24, alignItems: "flex-start" }}>
         {/* Left Side: Notes */}
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: darkNavy, marginBottom: 4, textDecoration: "underline" }}>Notes:</div>
-          <div style={{ fontSize: 11, color: "#334155", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
-            {invoice.notes ? (
-              invoice.notes
-            ) : (
-              <>
-                1. Please make the payment within the due date.<br />
-                2. Interest @ 18% p.a. will be charged on overdue invoices.
-              </>
-            )}
-          </div>
+          {invoice.notes && invoice.notes.trim() ? (
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: darkNavy, marginBottom: 4, textDecoration: "underline" }}>Notes:</div>
+              <div style={{ fontSize: 11, color: "#334155", whiteSpace: "pre-wrap", lineHeight: 1.5 }}>
+                {invoice.notes.trim()}
+              </div>
+            </div>
+          ) : null}
           
-          <div style={{ textAlign: "center", marginTop: 36, color: primaryBlue, fontFamily: "serif", fontStyle: "italic", fontSize: 13, fontWeight: 600 }}>
+          <div style={{ textAlign: "left", marginTop: invoice.notes ? 20 : 12, color: primaryBlue, fontFamily: "serif", fontStyle: "italic", fontSize: 12, fontWeight: 600 }}>
             —— Thank you for your business! ——
           </div>
         </div>
@@ -370,7 +366,7 @@ export function CorporateBlueInvoiceTemplate({
           {/* TCS / TDS */}
           {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
             <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
-              <span style={{ color: "#475569" }}>{invoice.tds_tcs_type?.toUpperCase() || "TDS"} @ {invoice.tds_tcs_rate || 0}% (Optional)</span>
+              <span style={{ color: "#475569" }}>{invoice.tds_tcs_type?.toUpperCase() || "TDS"} @ {invoice.tds_tcs_rate || 0}%</span>
               <span style={{ fontWeight: 700 }}>: {invoice.tds_tcs_type === "tds" ? "-" : "+"} ₹ {Number(invoice.tds_tcs_amount).toFixed(2)}</span>
             </div>
           )}
@@ -389,96 +385,118 @@ export function CorporateBlueInvoiceTemplate({
       </div>
 
       {/* 5. Footer Grid: Bank Details, Terms, QR & Signature */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.2fr 0.8fr 1fr", gap: 16, paddingTop: 14, borderTop: "1.5px solid #cbd5e1", fontSize: 11 }}>
-        {/* Bank Details */}
-        <div>
-          <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-            <CreditCard style={{ width: 14, height: 14, color: primaryBlue }} />
-            <span>BANK DETAILS</span>
-          </div>
-          <div style={{ fontSize: 10, color: "#334155", display: "flex", flexDirection: "column", gap: 2 }}>
-            <div>Account Name : <span style={{ fontWeight: 600 }}>{org?.bank_account_name || org?.name || "Company Name"}</span></div>
-            <div>Bank Name : <span style={{ fontWeight: 600 }}>{org?.bank_name || "HDFC Bank"}</span></div>
-            <div>Account No. : <span style={{ fontWeight: 600 }}>{org?.bank_account_number || "50200012345678"}</span></div>
-            <div>IFSC Code : <span style={{ fontWeight: 600 }}>{org?.bank_ifsc || "HDFC0001234"}</span></div>
-            <div>Branch : <span style={{ fontWeight: 600 }}>{org?.bank_branch || "City Center Branch"}</span></div>
-          </div>
-        </div>
+      {(() => {
+        const invoiceBank = invoice?.bank_details;
+        const isBankDisabled = invoiceBank && invoiceBank.enabled === false;
+        const bankAccName = invoiceBank?.bank_account_name || (!isBankDisabled ? (org?.bank_account_name || org?.name) : null);
+        const bankName = invoiceBank?.bank_name || (!isBankDisabled ? org?.bank_name : null);
+        const bankAccNum = invoiceBank?.bank_account_number || (!isBankDisabled ? org?.bank_account_number : null);
+        const bankIfsc = invoiceBank?.bank_ifsc || (!isBankDisabled ? org?.bank_ifsc : null);
+        const bankBranch = invoiceBank?.bank_branch || (!isBankDisabled ? org?.bank_branch : null);
+        const hasBankDetails = !isBankDisabled && Boolean(bankName || bankAccNum || bankIfsc);
 
-        {/* Terms & Conditions */}
-        <div>
-          <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
-            <ShieldCheck style={{ width: 14, height: 14, color: primaryBlue }} />
-            <span>TERMS &amp; CONDITIONS</span>
-          </div>
-          <div style={{ fontSize: 10, color: "#334155", lineHeight: 1.4 }}>
-            {invoice.terms ? (
-              <div style={{ whiteSpace: "pre-wrap" }}>{invoice.terms}</div>
-            ) : (
-              <>
-                1. Goods once sold will not be taken back.<br />
-                2. Warranty is applicable as per manufacturer policy only.<br />
-                3. Subject to jurisdiction only.
-              </>
-            )}
-            <div style={{ textAlign: "center", marginTop: 8, fontStyle: "italic", color: primaryBlue, fontWeight: 600 }}>
-              —— Thank You! ——
-            </div>
-          </div>
-        </div>
+        const termsContent = (invoice?.terms_conditions || invoice?.terms || invoice?.default_terms || org?.default_terms)?.trim();
+        const upiId = invoiceBank?.bank_upi_id || org?.upi_id;
+        const showQr = Boolean(upiId || org?.qr_code_enabled);
 
-        {/* Scan to Pay */}
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
-            <QrCode style={{ width: 14, height: 14, color: primaryBlue }} />
-            <span>SCAN TO PAY</span>
-          </div>
-          <div style={{ display: "inline-block", background: "#ffffff", padding: 4, border: "1px solid #e2e8f0", borderRadius: 4 }}>
-            <QRCodeSVG
-              value={
-                org?.upi_id
-                  ? `upi://pay?pa=${org.upi_id}&pn=${encodeURIComponent(org.name || "")}&am=${grandTotal.toFixed(2)}&cu=INR`
-                  : `https://billflow.pro/portal`
-              }
-              size={64}
-              level="M"
-            />
-          </div>
-        </div>
-
-        {/* Authorized Signature */}
-        <div style={{ textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <div style={{ fontWeight: 800, color: darkNavy }}>AUTHORIZED SIGNATURE</div>
-          <div style={{ margin: "12px 0 4px" }}>
-            {org?.signature_url ? (
-              <img src={org.signature_url} alt="Signature" style={{ maxHeight: 36, margin: "0 auto" }} />
-            ) : (
-              <div style={{ fontFamily: "serif", fontStyle: "italic", fontSize: 18, color: primaryBlue, opacity: 0.8 }}>
-                Sanya
+        return (
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 20, paddingTop: 14, borderTop: "1.5px solid #cbd5e1", fontSize: 11 }}>
+            {/* Bank Details */}
+            {hasBankDetails && (
+              <div style={{ flex: "1 1 200px", minWidth: 180 }}>
+                <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                  <CreditCard style={{ width: 14, height: 14, color: primaryBlue }} />
+                  <span>BANK DETAILS</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#334155", display: "flex", flexDirection: "column", gap: 2 }}>
+                  {bankAccName && <div>Account Name : <span style={{ fontWeight: 600 }}>{bankAccName}</span></div>}
+                  {bankName && <div>Bank Name : <span style={{ fontWeight: 600 }}>{bankName}</span></div>}
+                  {bankAccNum && <div>Account No. : <span style={{ fontWeight: 600, fontFamily: "monospace" }}>{bankAccNum}</span></div>}
+                  {bankIfsc && <div>IFSC Code : <span style={{ fontWeight: 600, fontFamily: "monospace" }}>{bankIfsc}</span></div>}
+                  {bankBranch && <div>Branch : <span style={{ fontWeight: 600 }}>{bankBranch}</span></div>}
+                </div>
               </div>
             )}
+
+            {/* Terms & Conditions */}
+            {termsContent && (
+              <div style={{ flex: "1 1 200px", minWidth: 180 }}>
+                <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
+                  <ShieldCheck style={{ width: 14, height: 14, color: primaryBlue }} />
+                  <span>TERMS &amp; CONDITIONS</span>
+                </div>
+                <div style={{ fontSize: 10, color: "#334155", lineHeight: 1.4 }}>
+                  <div style={{ whiteSpace: "pre-wrap" }}>{termsContent}</div>
+                  <div style={{ textAlign: "center", marginTop: 8, fontStyle: "italic", color: primaryBlue, fontWeight: 600 }}>
+                    —— Thank You! ——
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Scan to Pay */}
+            {showQr && (
+              <div style={{ textAlign: "center", flex: "0 0 110px" }}>
+                <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
+                  <QrCode style={{ width: 14, height: 14, color: primaryBlue }} />
+                  <span>SCAN TO PAY</span>
+                </div>
+                <div style={{ display: "inline-block", background: "#ffffff", padding: 4, border: "1px solid #e2e8f0", borderRadius: 4 }}>
+                  <QRCodeSVG
+                    value={
+                      upiId
+                        ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(org?.name || "")}&am=${grandTotal.toFixed(2)}&cu=INR`
+                        : (invoice?.id ? `${window.location.origin}/portal/invoice/${invoice.id}` : `${window.location.origin}/portal`)
+                    }
+                    size={64}
+                    level="M"
+                  />
+                </div>
+                {upiId && <div style={{ fontSize: 9, color: "#64748b", marginTop: 3 }}>UPI: {upiId}</div>}
+              </div>
+            )}
+
+            {/* Authorized Signature */}
+            <div style={{ textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "space-between", flex: "0 0 160px", marginLeft: "auto" }}>
+              <div style={{ fontWeight: 800, color: darkNavy }}>AUTHORIZED SIGNATURE</div>
+              <div style={{ margin: "8px 0 4px", minHeight: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                {org?.signature_url ? (
+                  <img src={org.signature_url} alt="Signature" style={{ maxHeight: 36, maxWidth: 140, margin: "0 auto" }} />
+                ) : (
+                  <div style={{ height: 28 }} />
+                )}
+              </div>
+              <div style={{ borderTop: "1px solid #cbd5e1", paddingTop: 3, fontSize: 10, color: "#64748b" }}>
+                For, {org?.name || "Company Name"}
+              </div>
+            </div>
           </div>
-          <div style={{ borderTop: "1px solid #cbd5e1", paddingTop: 3, fontSize: 10, color: "#64748b" }}>
-            For, {org?.name || "Company Name"}
-          </div>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* 6. Bottom Banner */}
-      <div style={{ background: primaryBlue, color: "#ffffff", borderRadius: "0 0 4px 4px", marginTop: 14, padding: "6px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, fontWeight: 600 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Mail style={{ width: 12, height: 12 }} />
-          <span>{org?.email || "info@companyname.com"}</span>
+      {(org?.email || org?.website || org?.phone) && (
+        <div style={{ background: primaryBlue, color: "#ffffff", borderRadius: "0 0 4px 4px", marginTop: 14, padding: "6px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, fontWeight: 600 }}>
+          {org?.email ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Mail style={{ width: 12, height: 12 }} />
+              <span>{org.email}</span>
+            </div>
+          ) : <div />}
+          {org?.website && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Globe style={{ width: 12, height: 12 }} />
+              <span>{org.website}</span>
+            </div>
+          )}
+          {org?.phone && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <Phone style={{ width: 12, height: 12 }} />
+              <span>{org.phone}</span>
+            </div>
+          )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Globe style={{ width: 12, height: 12 }} />
-          <span>{org?.website || "www.companyname.com"}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-          <Phone style={{ width: 12, height: 12 }} />
-          <span>{org?.phone || "+91 98765 43210"}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

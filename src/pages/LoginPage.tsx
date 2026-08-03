@@ -30,17 +30,37 @@ export default function LoginPage() {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      // Check if user is an employee / staff account
-      const { data: empRecord } = await (supabase as any)
-        .from("employees")
+      // Check if user is an organization member (admin/owner) first
+      const { data: memberCheck } = await supabase
+        .from("organization_members")
         .select("id")
-        .or(`auth_user_id.eq.${data.user.id},id.eq.${data.user.id}`)
+        .eq("user_id", data.user.id)
+        .limit(1);
+
+      const isOrgMember = memberCheck && memberCheck.length > 0;
+
+      // Also check if user has org_id on profile
+      const { data: profileCheck } = await supabase
+        .from("profiles")
+        .select("org_id")
+        .eq("user_id", data.user.id)
         .maybeSingle();
 
-      if (empRecord) {
-        await supabase.auth.signOut();
-        setEmployeeBlocked(true);
-        return;
+      const hasOrgId = profileCheck?.org_id;
+
+      // Only block if user is a pure employee (not an org member/owner)
+      if (!isOrgMember && !hasOrgId) {
+        const { data: empRecord } = await (supabase as any)
+          .from("employees")
+          .select("id")
+          .eq("auth_user_id", data.user.id)
+          .maybeSingle();
+
+        if (empRecord) {
+          await supabase.auth.signOut();
+          setEmployeeBlocked(true);
+          return;
+        }
       }
 
       // Check if user is a platform admin

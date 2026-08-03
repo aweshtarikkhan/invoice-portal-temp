@@ -216,61 +216,61 @@ export default function InvoiceDetailPage() {
       a4: [210, 297], letter: [215.9, 279.4], legal: [215.9, 355.6], a5: [148, 210], a6: [105, 148], pos80: [80, 297],
     };
     const paperKey = org?.template_paper_size || "a4";
-    const [pW, pHFixed] = paperSizes[paperKey] || paperSizes.a4;
-    const MARGIN = paperKey === "pos80" ? 2 : 8; // mm
-    const contentWidth = pW - MARGIN * 2;
+    const [pW, pH] = paperSizes[paperKey] || paperSizes.a4;
 
-    // Capture the actual styled template wrapper (.invoice-printable) so the
-    // template's borders, header background, and full layout are preserved.
+    // Target width in standard pixels at 96 DPI (210mm = 794px for A4)
+    const targetPxWidth = Math.round(pW * 3.779528);
+
     const target = (invoiceRef.current.querySelector(".invoice-printable") as HTMLElement) || invoiceRef.current;
     const canvas = await html2canvas(target, {
       scale: 2,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
-      windowWidth: target.scrollWidth,
+      windowWidth: targetPxWidth,
+      onclone: (clonedDoc) => {
+        const el = (clonedDoc.querySelector(".invoice-printable") as HTMLElement) || (clonedDoc.body.firstElementChild as HTMLElement);
+        if (el) {
+          el.style.width = `${targetPxWidth}px`;
+          el.style.maxWidth = `${targetPxWidth}px`;
+          el.style.minWidth = `${targetPxWidth}px`;
+          el.style.boxShadow = "none";
+          el.style.border = "none";
+          el.style.borderRadius = "0";
+          el.style.margin = "0";
+        }
+      },
     });
 
     const imgData = canvas.toDataURL("image/png");
-    const imgWmm = contentWidth;
+    const imgWmm = pW;
     const imgHmm = (canvas.height * imgWmm) / canvas.width;
 
     if (paperKey === "pos80") {
-      // POS receipt: single continuous page sized to content height
-      const pageH = imgHmm + MARGIN * 2;
+      const pageH = imgHmm + 4;
       const pdf = new jsPDF("p", "mm", [pW, pageH]);
-      pdf.addImage(imgData, "PNG", MARGIN, MARGIN, imgWmm, imgHmm);
+      pdf.addImage(imgData, "PNG", 0, 2, pW, imgHmm);
       pdf.save(`${invoice?.invoice_number || "invoice"}.pdf`);
       return;
     }
 
-    const pH = pHFixed;
-    const contentHeight = pH - MARGIN * 2;
     const pdf = new jsPDF("p", "mm", [pW, pH]);
 
-    if (imgHmm <= contentHeight) {
-      pdf.addImage(imgData, "PNG", MARGIN, MARGIN, imgWmm, imgHmm);
+    // If total invoice content fits on one page (with 3mm tolerance):
+    if (imgHmm <= pH + 3) {
+      pdf.addImage(imgData, "PNG", 0, 0, pW, Math.min(imgHmm, pH));
     } else {
-      // Slice the canvas into page-sized chunks
-      const pxPerMM = canvas.height / imgHmm;
-      const sliceHeightPx = contentHeight * pxPerMM;
-      let renderedPx = 0;
-      let pageIdx = 0;
-      while (renderedPx < canvas.height) {
-        const remainingPx = canvas.height - renderedPx;
-        const thisSlicePx = Math.min(sliceHeightPx, remainingPx);
-        const slice = document.createElement("canvas");
-        slice.width = canvas.width;
-        slice.height = thisSlicePx;
-        const ctx = slice.getContext("2d")!;
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, slice.width, slice.height);
-        ctx.drawImage(canvas, 0, -renderedPx);
-        const sliceMM = thisSlicePx / pxPerMM;
-        if (pageIdx > 0) pdf.addPage([pW, pH]);
-        pdf.addImage(slice.toDataURL("image/png"), "PNG", MARGIN, MARGIN, imgWmm, sliceMM);
-        renderedPx += thisSlicePx;
-        pageIdx += 1;
+      // Clean multi-page handling
+      let heightLeft = imgHmm;
+      let position = 0;
+      pdf.addImage(imgData, "PNG", 0, position, pW, imgHmm);
+      heightLeft -= pH;
+
+      while (heightLeft > 0) {
+        position -= pH;
+        pdf.addPage([pW, pH]);
+        pdf.addImage(imgData, "PNG", 0, position, pW, imgHmm);
+        heightLeft -= pH;
       }
     }
 

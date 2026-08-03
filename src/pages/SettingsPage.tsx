@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { CURRENCIES } from "@/lib/currency";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -20,7 +22,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -28,7 +30,16 @@ import { fetchGstDetails } from "@/lib/gst-service";
 export default function SettingsPage() {
   const org = useAppStore((s) => s.organization);
   const setOrganization = useAppStore((s) => s.setOrganization);
+  const { profile, user } = useAuth();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get("tab") || "organization";
+
+  // Profile form
+  const [profileForm, setProfileForm] = useState({
+    first_name: "", last_name: "", phone: "",
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
 
   // Org form
   const [orgForm, setOrgForm] = useState({
@@ -51,6 +62,16 @@ export default function SettingsPage() {
   const [taxForm, setTaxForm] = useState({ name: "", rate: 0, is_default: false });
 
   useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        first_name: profile.first_name || "",
+        last_name: profile.last_name || "",
+        phone: (profile as any).phone || user?.phone || (user?.user_metadata as any)?.phone || "",
+      });
+    }
+  }, [profile, user]);
+
+  useEffect(() => {
     if (!org) return;
     setOrgForm({
       name: org.name || "", email: org.email || "", phone: org.phone || "",
@@ -69,6 +90,22 @@ export default function SettingsPage() {
     });
     fetchTaxRates();
   }, [org]);
+
+  const saveProfile = async () => {
+    if (!profile?.id) return;
+    setProfileSaving(true);
+    const { error } = await supabase.from("profiles").update({
+      first_name: profileForm.first_name.trim(),
+      last_name: profileForm.last_name.trim(),
+      phone: profileForm.phone.trim() || null,
+    }).eq("id", profile.id);
+    setProfileSaving(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Profile updated successfully!" });
+    }
+  };
 
   const fetchTaxRates = async () => {
     if (!org?.id) return;
@@ -143,12 +180,85 @@ export default function SettingsPage() {
       <SEO title="Settings" description="Configure organization details, currency, tax rates, branding and document preferences." path="/settings" />
       <PageHeader title="Settings" description="Manage your organization and preferences" />
 
-      <Tabs defaultValue="organization">
+      <Tabs defaultValue={defaultTab}>
         <TabsList>
+          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
         </TabsList>
+
+        {/* ── PROFILE TAB ── */}
+        <TabsContent value="profile" className="space-y-6 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" /> Account Information</CardTitle>
+              <CardDescription>Details from your signup. Email cannot be changed here.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border">
+                <div className="h-14 w-14 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xl font-bold text-blue-600 dark:text-blue-400 shrink-0">
+                  {profileForm.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-base truncate">
+                    {[profileForm.first_name, profileForm.last_name].filter(Boolean).join(" ") || "—"}
+                  </p>
+                  <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
+                    <Mail className="h-3.5 w-3.5 shrink-0" /> {user?.email || "—"}
+                  </p>
+                  {org && (
+                    <p className="text-sm text-muted-foreground truncate flex items-center gap-1 mt-0.5">
+                      <Building2 className="h-3.5 w-3.5 shrink-0" /> {org.name}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input value={profileForm.first_name} onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input value={profileForm.last_name} onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })} />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Registered Email</Label>
+                <Input value={user?.email || ""} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed" />
+                <p className="text-xs text-muted-foreground">Email is linked to your login and cannot be changed from here.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Mobile / Phone Number</Label>
+                <Input
+                  value={profileForm.phone}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  placeholder="+91 98765 43210"
+                />
+                <p className="text-xs text-muted-foreground">Your contact number for billing and communications.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Current Organization</Label>
+                <Input value={org?.name || "—"} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed" />
+                <p className="text-xs text-muted-foreground">To change organization details or address, use the Organization tab above.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>User Role</Label>
+                <Input value={useAppStore.getState().userRole || "—"} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed capitalize" />
+              </div>
+
+              <Button onClick={saveProfile} disabled={profileSaving}>
+                {profileSaving ? "Saving..." : "Save Profile"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="organization" className="space-y-6 mt-4">
           <Card>
