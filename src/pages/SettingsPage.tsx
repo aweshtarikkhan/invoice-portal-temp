@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { CURRENCIES } from "@/lib/currency";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -22,18 +22,22 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
+import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
+import { INDIAN_GST_SLABS } from "@/lib/constants";
 
 export default function SettingsPage() {
   const org = useAppStore((s) => s.organization);
   const setOrganization = useAppStore((s) => s.setOrganization);
   const { profile, user } = useAuth();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "organization";
+  const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
@@ -176,7 +180,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl">
       <SEO title="Settings" description="Configure organization details, currency, tax rates, branding and document preferences." path="/settings" />
       <PageHeader title="Settings" description="Manage your organization and preferences" />
 
@@ -481,6 +485,40 @@ export default function SettingsPage() {
                     </div>
                     <Switch checked={orgForm.multi_warehouse_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, multi_warehouse_enabled: v })} />
                   </div>
+
+                  {orgForm.multi_warehouse_enabled && (
+                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                          <Warehouse className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">Warehouses & Storage Locations</div>
+                          <div className="text-xs text-muted-foreground">Configure godowns, fulfillment centers, and default dispatch locations.</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs flex-1 sm:flex-initial"
+                          onClick={() => setAddWarehouseOpen(true)}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Add Warehouse
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 gap-1.5 text-xs flex-1 sm:flex-initial"
+                          onClick={() => navigate("/warehouses")}
+                        >
+                          Manage Warehouses <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between border-t pt-4">
                     <div>
                       <Label>Enable Sub Units (e.g. 1 Box = 10 Packs)</Label>
@@ -527,17 +565,53 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="taxes" className="space-y-6 mt-4">
+          <Card className="border-indigo-100 bg-indigo-50/40">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base text-indigo-950">Official GST Slabs</CardTitle>
+              <CardDescription className="text-xs text-indigo-700">
+                Standard GST tax slabs configured across your catalog, items, and billing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+                {INDIAN_GST_SLABS.map((slab) => (
+                  <div key={slab.id} className="p-3 bg-white rounded-lg border border-indigo-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <span className="inline-block px-2 py-0.5 text-xs font-bold bg-indigo-100 text-indigo-800 rounded mb-1.5">
+                        {slab.rate}%
+                      </span>
+                      <div className="font-semibold text-xs text-slate-800 line-clamp-1">{slab.name.split(" - ")[1] || slab.name}</div>
+                    </div>
+                    <div className="text-[11px] text-slate-500 mt-2">
+                      {slab.rate === 0 && "Exempted goods & services"}
+                      {slab.rate === 3 && "Gold, silver & precious metals"}
+                      {slab.rate === 5 && "Essential goods & food items"}
+                      {slab.rate === 18 && "Standard goods & services"}
+                      {slab.rate === 40 && "Luxury & sin goods"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-base">Tax Rates</CardTitle>
-              <Button size="sm" onClick={() => setTaxDialogOpen(true)}>
+              <div>
+                <CardTitle className="text-base">Custom / Saved Tax Rates</CardTitle>
+                <CardDescription className="text-xs">Database tax rate entries synced with your invoices</CardDescription>
+              </div>
+              <Button size="sm" onClick={() => {
+                setTaxForm({ name: "", rate: 18, is_default: false });
+                setTaxDialogOpen(true);
+              }}>
                 <Plus className="mr-1 h-4 w-4" /> Add Tax Rate
               </Button>
             </CardHeader>
             <CardContent className="p-0">
               {taxRates.length === 0 ? (
                 <div className="p-8 text-center text-sm text-muted-foreground">
-                  No tax rates configured. Add one to use in invoices.
+                  No custom tax rates saved. Standard 5 GST slabs are automatically active.
                 </div>
               ) : (
                 <Table>
@@ -546,7 +620,7 @@ export default function SettingsPage() {
                       <TableHead>Name</TableHead>
                       <TableHead>Rate</TableHead>
                       <TableHead>Default</TableHead>
-                      <TableHead></TableHead>
+                      <TableHead className="w-16"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -573,8 +647,24 @@ export default function SettingsPage() {
               <DialogHeader><DialogTitle>Add Tax Rate</DialogTitle></DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
+                  <Label>Preset Slab</Label>
+                  <Select onValueChange={(val) => {
+                    const slab = INDIAN_GST_SLABS.find(s => s.id === val);
+                    if (slab) {
+                      setTaxForm(prev => ({ ...prev, name: slab.name, rate: slab.rate }));
+                    }
+                  }}>
+                    <SelectTrigger><SelectValue placeholder="Pick a standard GST slab" /></SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_GST_SLABS.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label>Name</Label>
-                  <Input value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} placeholder="e.g. GST, VAT" />
+                  <Input value={taxForm.name} onChange={(e) => setTaxForm({ ...taxForm, name: e.target.value })} placeholder="e.g. GST 18%" />
                 </div>
                 <div className="space-y-2">
                   <Label>Rate (%)</Label>
@@ -593,6 +683,14 @@ export default function SettingsPage() {
           </Dialog>
         </TabsContent>
       </Tabs>
+
+      <AddWarehouseDialog
+        open={addWarehouseOpen}
+        onOpenChange={setAddWarehouseOpen}
+        onWarehouseAdded={() => {
+          toast({ title: "Warehouse added successfully" });
+        }}
+      />
     </div>
   );
 }

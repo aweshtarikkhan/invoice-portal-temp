@@ -151,6 +151,12 @@ export function AppLayout() {
         const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
         setUserRole(activeMember?.role || "staff");
 
+        if ((activeOrg as any).enabled_features && Array.isArray((activeOrg as any).enabled_features)) {
+          useFeatureStore.getState().setOrgFeatures(activeOrgId, (activeOrg as any).enabled_features);
+        } else {
+          useFeatureStore.getState().initOrgFeatures(activeOrgId);
+        }
+
         try {
           const { data: subData } = await supabase.rpc("get_my_org_subscription", {
             p_org_id: activeOrgId
@@ -183,6 +189,12 @@ export function AppLayout() {
         const { data: roleData } = await supabase.rpc("get_current_org_role");
         if (roleData) {
           setUserRole(roleData as string);
+        }
+
+        if ((data as any).enabled_features && Array.isArray((data as any).enabled_features)) {
+          useFeatureStore.getState().setOrgFeatures(profile.org_id, (data as any).enabled_features);
+        } else {
+          useFeatureStore.getState().initOrgFeatures(profile.org_id);
         }
         
         try {
@@ -362,7 +374,7 @@ export function AppLayout() {
               </DropdownMenu>
             </div>
           </header>
-          <main className="flex-1 overflow-auto">
+          <main className="flex-1 overflow-auto px-6 py-6">
             <Outlet />
           </main>
         </div>

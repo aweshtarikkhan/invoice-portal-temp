@@ -1,14 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Plus, Eye, Trash2, Edit, MessageSquare, Search, Truck, CheckCircle2, Clock, FileText, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { DeliveryChallanModal } from "@/components/delivery-challan/DeliveryChallanModal";
 
 export default function DeliveryChallansPage() {
   const org = useAppStore((s) => s.organization);
@@ -16,65 +19,347 @@ export default function DeliveryChallansPage() {
   const { toast } = useToast();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Preview Modal state
+  const [selectedChallan, setSelectedChallan] = useState<any | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from("delivery_challans")
-      .select("*, clients(name), invoices(invoice_number)")
+      .select("*, clients(*), warehouses(*), delivery_challan_lines(*)")
       .eq("org_id", org.id)
       .order("challan_date", { ascending: false });
-    setRows(data || []);
+
+    if (error) {
+      toast({ title: "Failed to load challans", description: error.message, variant: "destructive" });
+    } else {
+      setRows(data || []);
+    }
     setLoading(false);
   };
-  useEffect(() => { load(); }, [org?.id]);
 
-  const remove = async (id: string) => {
-    if (!confirm("Delete this challan?")) return;
+  useEffect(() => {
+    load();
+  }, [org?.id]);
+
+  const remove = async (id: string, challanNum: string) => {
+    if (!confirm(`Are you sure you want to delete challan ${challanNum}?`)) return;
     await (supabase as any).from("delivery_challan_lines").delete().eq("dc_id", id);
     const { error } = await (supabase as any).from("delivery_challans").delete().eq("id", id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else load();
+    else {
+      toast({ title: "Challan deleted successfully" });
+      load();
+    }
+  };
+
+  const openPreview = (challan: any) => {
+    setSelectedChallan(challan);
+    setModalOpen(true);
+  };
+
+  // Direct WhatsApp from list
+  const handleQuickWhatsApp = (challan: any) => {
+    const rawPhone = challan.driver_phone || challan.clients?.phone || "";
+    const cleanPhone = rawPhone.replace(/\D/g, "");
+
+    if (!cleanPhone) {
+      openPreview(challan);
+      return;
+    }
+
+    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
+    const itemsText = (challan.delivery_challan_lines || [])
+      .map((l: any, i: number) => `${i + 1}. *${l.description}* - Qty: ${l.quantity} ${l.unit || "units"}`)
+      .join("\n");
+
+    const totalQty = (challan.delivery_challan_lines || []).reduce((s: number, l: any) => s + (Number(l.quantity) || 0), 0);
+
+    const msg = `🚚 *DELIVERY CHALLAN DISPATCH*
+━━━━━━━━━━━━━━━━━━━━
+📄 *Challan No:* ${challan.challan_number}
+📅 *Date:* ${format(new Date(challan.challan_date), "dd MMM yyyy")}
+🏢 *From:* ${org?.name || "Sender"}
+📍 *To:* ${challan.clients?.display_name || "Consignee"} (${challan.destination || "Destination"})
+🚛 *Vehicle No:* ${challan.vehicle_number || "N/A"}
+👤 *Transporter:* ${challan.transporter || "Direct Delivery"}
+${challan.eway_bill_number ? `📋 *E-Way Bill:* ${challan.eway_bill_number}\n` : ""}
+📦 *Items Loaded:*
+${itemsText || "Goods as per challan"}
+*Total Items:* ${totalQty}
+
+⚠️ *Driver Instruction:* Please ensure count matches on delivery & collect receiver stamp/signature.
+━━━━━━━━━━━━━━━━━━━━`;
+
+    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(url, "_blank");
+    toast({ title: "Opening WhatsApp with trip details" });
+  };
+
+  const filteredRows = useMemo(() => {
+    return rows.filter((r) => {
+      const matchStatus = statusFilter === "all" || r.status === statusFilter;
+      const q = search.toLowerCase();
+      const matchQuery =
+        !q ||
+        r.challan_number?.toLowerCase().includes(q) ||
+        r.clients?.display_name?.toLowerCase().includes(q) ||
+        r.vehicle_number?.toLowerCase().includes(q) ||
+        r.transporter?.toLowerCase().includes(q) ||
+        r.driver_name?.toLowerCase().includes(q) ||
+        r.driver_phone?.includes(q) ||
+        r.eway_bill_number?.toLowerCase().includes(q);
+
+      return matchStatus && matchQuery;
+    });
+  }, [rows, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    return {
+      total: rows.length,
+      dispatched: rows.filter((r) => r.status === "dispatched").length,
+      delivered: rows.filter((r) => r.status === "delivered").length,
+      draft: rows.filter((r) => r.status === "draft").length,
+    };
+  }, [rows]);
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "dispatched":
+        return <Badge className="bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-200">Dispatched</Badge>;
+      case "delivered":
+        return <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-200">Delivered</Badge>;
+      case "cancelled":
+        return <Badge variant="destructive">Cancelled</Badge>;
+      default:
+        return <Badge variant="secondary">Draft</Badge>;
+    }
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Delivery Challans</h1>
-        <Button onClick={() => navigate("/delivery-challans/new")}><Plus className="h-4 w-4 mr-1" /> New Challan</Button>
+    <div className="space-y-5 max-w-7xl mx-auto pb-10">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Delivery Challans</h1>
+          <p className="text-xs text-muted-foreground">
+            Official GST Rule 55 goods transportation challans & driver trip sheets
+          </p>
+        </div>
+        <Button onClick={() => navigate("/delivery-challans/new")} className="gap-1.5 shadow-sm">
+          <Plus className="h-4 w-4" /> New Delivery Challan
+        </Button>
       </div>
-      <Card>
-        <CardHeader><CardTitle className="text-base">All Challans</CardTitle></CardHeader>
-        <CardContent>
-          {loading ? <div className="text-center py-8 text-muted-foreground">Loading…</div> : (
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Challan #</TableHead><TableHead>Client</TableHead>
-                <TableHead>Date</TableHead><TableHead>Vehicle</TableHead>
-                <TableHead>E-way Bill</TableHead><TableHead>Status</TableHead><TableHead></TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {rows.map(r => (
-                  <TableRow key={r.id} className="cursor-pointer" onClick={() => navigate(`/delivery-challans/${r.id}/edit`)}>
-                    <TableCell className="font-medium">{r.challan_number}</TableCell>
-                    <TableCell>{r.clients?.name || "—"}</TableCell>
-                    <TableCell>{format(new Date(r.challan_date), "dd MMM yyyy")}</TableCell>
-                    <TableCell>{r.vehicle_number || "—"}</TableCell>
-                    <TableCell>{r.eway_bill_number || "—"}</TableCell>
-                    <TableCell><Badge>{r.status}</Badge></TableCell>
-                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button size="icon" variant="ghost" onClick={() => navigate(`/delivery-challans/${r.id}/edit`)}><Eye className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </TableCell>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="p-3.5 border-border/70 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">Total Challans</div>
+            <div className="text-xl font-bold">{stats.total}</div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <FileText className="h-4 w-4" />
+          </div>
+        </Card>
+        <Card className="p-3.5 border-border/70 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">In Transit / Dispatched</div>
+            <div className="text-xl font-bold text-blue-600">{stats.dispatched}</div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-blue-500/10 text-blue-600 flex items-center justify-center">
+            <Truck className="h-4 w-4" />
+          </div>
+        </Card>
+        <Card className="p-3.5 border-border/70 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">Delivered</div>
+            <div className="text-xl font-bold text-emerald-600">{stats.delivered}</div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
+            <CheckCircle2 className="h-4 w-4" />
+          </div>
+        </Card>
+        <Card className="p-3.5 border-border/70 flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-medium text-muted-foreground uppercase">Drafts</div>
+            <div className="text-xl font-bold text-slate-500">{stats.draft}</div>
+          </div>
+          <div className="h-8 w-8 rounded-lg bg-slate-500/10 text-slate-500 flex items-center justify-center">
+            <Clock className="h-4 w-4" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Filter Bar */}
+      <Card className="border-border/70">
+        <CardHeader className="p-4 pb-3">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="relative w-full sm:w-80">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search Challan #, Client, Vehicle, Driver..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-8 text-xs h-9"
+              />
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-36 text-xs h-9">
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="dispatched">Dispatched</SelectItem>
+                  <SelectItem value="delivered">Delivered</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">Loading challans…</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/40 text-xs">
+                    <TableHead className="w-32">Challan #</TableHead>
+                    <TableHead>Consignee / Client</TableHead>
+                    <TableHead className="w-28">Date</TableHead>
+                    <TableHead className="w-32">Vehicle #</TableHead>
+                    <TableHead className="w-36">Driver</TableHead>
+                    <TableHead className="w-28">Status</TableHead>
+                    <TableHead className="text-right w-44">Actions</TableHead>
                   </TableRow>
-                ))}
-                {!rows.length && <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No challans yet</TableCell></TableRow>}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredRows.map((r) => (
+                    <TableRow
+                      key={r.id}
+                      className="cursor-pointer hover:bg-muted/30 text-xs"
+                      onClick={() => openPreview(r)}
+                    >
+                      <TableCell className="font-bold font-mono text-primary">
+                        {r.challan_number}
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{r.clients?.display_name || "—"}</div>
+                        {r.destination && (
+                          <div className="text-[11px] text-muted-foreground">{r.destination}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {r.challan_date ? format(new Date(r.challan_date), "dd MMM yyyy") : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono font-semibold">{r.vehicle_number || "—"}</span>
+                      </TableCell>
+                      <TableCell>
+                        <div className="font-medium">{r.driver_name || "—"}</div>
+                        {r.driver_phone && (
+                          <div className="text-[10px] text-muted-foreground font-mono">{r.driver_phone}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(r.status)}</TableCell>
+                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                            title="WhatsApp Driver"
+                            onClick={() => handleQuickWhatsApp(r)}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Preview & 1-Page PDF"
+                            onClick={() => openPreview(r)}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8"
+                            title="Edit Challan"
+                            onClick={() => navigate(`/delivery-challans/${r.id}/edit`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            title="Delete"
+                            onClick={() => remove(r.id, r.challan_number)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {!filteredRows.length && (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-12 text-muted-foreground text-sm">
+                        No delivery challans found matching your criteria.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Official 1-Page Delivery Challan Modal */}
+      {selectedChallan && (
+        <DeliveryChallanModal
+          open={modalOpen}
+          onOpenChange={setModalOpen}
+          challan={{
+            challan_number: selectedChallan.challan_number,
+            challan_date: selectedChallan.challan_date,
+            status: selectedChallan.status,
+            vehicle_number: selectedChallan.vehicle_number,
+            transporter: selectedChallan.transporter,
+            driver_name: selectedChallan.driver_name,
+            driver_phone: selectedChallan.driver_phone,
+            eway_bill_number: selectedChallan.eway_bill_number,
+            destination: selectedChallan.destination,
+            notes: selectedChallan.notes,
+          }}
+          lines={(selectedChallan.delivery_challan_lines || []).map((l: any) => ({
+            description: l.description,
+            quantity: l.quantity,
+            unit: l.unit,
+            batch_no: l.batch_no,
+            serial_no: l.serial_no,
+          }))}
+          org={org}
+          client={selectedChallan.clients}
+          warehouse={selectedChallan.warehouses}
+          onEdit={() => {
+            navigate(`/delivery-challans/${selectedChallan.id}/edit`);
+          }}
+        />
+      )}
     </div>
   );
 }

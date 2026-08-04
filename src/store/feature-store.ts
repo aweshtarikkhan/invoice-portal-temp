@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { supabase } from "@/integrations/supabase/client";
 
 // All feature groups with their items
 export interface FeatureItem {
@@ -51,6 +52,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     items: [
       { key: "items", title: "Items", description: "Products & services catalog", icon: "Package", url: "/items" },
       { key: "inventory", title: "Inventory", description: "Stock management", icon: "Boxes", url: "/inventory" },
+      { key: "warehouses", title: "Warehouses", description: "Multi-warehouse locations", icon: "Warehouse", url: "/warehouses" },
     ],
   },
   {
@@ -77,6 +79,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "bank-accounts", title: "Bank & Cash", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
       { key: "cash-flow", title: "Cash Flow", description: "Cash flow analysis", icon: "PieChart", url: "/cash-flow" },
       { key: "branches", title: "Branches", description: "Multi-branch management", icon: "Building2", url: "/branches" },
+      { key: "warehouses", title: "Warehouses", description: "Warehouse locations", icon: "Warehouse", url: "/warehouses" },
       { key: "tds", title: "TDS", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
       { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
     ],
@@ -155,20 +158,32 @@ export const ALL_FEATURE_GROUPS: FeatureGroup[] = [
 ];
 
 const FEATURES_STORAGE_KEY = "billflow-enabled-features";
+const ORG_FEATURES_STORAGE_KEY = "billflow-org-features";
 const ADMINS_STORAGE_KEY = "billflow-admin-users";
 const TEAM_MEMBERS_STORAGE_KEY = "billflow-team-members";
 
-// Default admin email
+// Default super admin email
 const DEFAULT_SUPER_ADMIN_EMAIL = "awesh.etpl@gmail.com";
 
 interface FeatureState {
+  currentOrgId: string | null;
   enabledGroups: string[];
+  orgFeatures: Record<string, string[]>;
   adminEmails: string[];
-  // Actions
-  toggleGroup: (groupKey: string) => void;
-  enableGroup: (groupKey: string) => void;
-  disableGroup: (groupKey: string) => void;
+  
+  // Org features actions
+  setOrgFeatures: (orgId: string, features: string[]) => void;
+  initOrgFeatures: (orgId: string) => void;
+  toggleGroup: (groupKey: string, orgId?: string) => Promise<void>;
+  enableGroup: (groupKey: string, orgId?: string) => Promise<void>;
+  disableGroup: (groupKey: string, orgId?: string) => Promise<void>;
   isGroupEnabled: (groupKey: string) => boolean;
+
+  // Platform features & general
+  platformFeatures: string[];
+  setPlatformFeatures: (features: string[]) => void;
+  setFeatures: (features: string[]) => void;
+
   // Admin management
   isSuperAdmin: (email: string | null | undefined) => boolean;
   isAdmin: (email: string | null | undefined) => boolean;
@@ -180,13 +195,6 @@ interface FeatureState {
   teamMembers: Record<string, TeamMember[]>; // org_id -> TeamMember array
   addTeamMember: (orgId: string, member: TeamMember) => void;
   removeTeamMember: (orgId: string, email: string) => void;
-  
-  // Platform-level features (enforced by the super admin)
-  platformFeatures: string[];
-  setPlatformFeatures: (features: string[]) => void;
-  
-  // Initialize features from backend
-  setFeatures: (features: string[]) => void;
 }
 
 const loadAdminEmails = (): string[] => {
@@ -194,7 +202,6 @@ const loadAdminEmails = (): string[] => {
     const stored = localStorage.getItem(ADMINS_STORAGE_KEY);
     if (stored) {
       const emails: string[] = JSON.parse(stored);
-      // Ensure default admin is always included
       if (!emails.includes(DEFAULT_SUPER_ADMIN_EMAIL)) {
         emails.push(DEFAULT_SUPER_ADMIN_EMAIL);
       }
@@ -212,6 +219,14 @@ const loadTeamMembers = (): Record<string, TeamMember[]> => {
   return {};
 };
 
+const loadOrgFeatures = (): Record<string, string[]> => {
+  try {
+    const stored = localStorage.getItem(ORG_FEATURES_STORAGE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch {}
+  return {};
+};
+
 const loadEnabledGroups = (): string[] => {
   try {
     const stored = localStorage.getItem(FEATURES_STORAGE_KEY);
@@ -221,62 +236,129 @@ const loadEnabledGroups = (): string[] => {
 };
 
 export const useFeatureStore = create<FeatureState>((set, get) => ({
-  enabledGroups: loadEnabledGroups(), // Default until fetched or from storage
-  platformFeatures: ADMIN_FEATURE_GROUPS.map(g => g.key), // Default to all until fetched
+  currentOrgId: null,
+  enabledGroups: loadEnabledGroups(),
+  orgFeatures: loadOrgFeatures(),
+  platformFeatures: ADMIN_FEATURE_GROUPS.map(g => g.key),
   adminEmails: loadAdminEmails(),
   teamMembers: loadTeamMembers(),
+
+  setOrgFeatures: (orgId: string, features: string[]) => {
+    const newOrgFeatures = { ...get().orgFeatures, [orgId]: features };
+    try {
+      localStorage.setItem(ORG_FEATURES_STORAGE_KEY, JSON.stringify(newOrgFeatures));
+      localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(features));
+    } catch {}
+    set({
+      currentOrgId: orgId,
+      orgFeatures: newOrgFeatures,
+      enabledGroups: features,
+    });
+  },
+
+  initOrgFeatures: (orgId: string) => {
+    const existing = get().orgFeatures[orgId];
+    const features = existing || ADMIN_FEATURE_GROUPS.map(g => g.key);
+    get().setOrgFeatures(orgId, features);
+  },
 
   setPlatformFeatures: (features: string[]) => {
     set({ platformFeatures: features });
   },
 
   setFeatures: (features: string[]) => {
-    localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(features));
+    try {
+      localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(features));
+    } catch {}
     set({ enabledGroups: features });
   },
 
-  toggleGroup: (groupKey: string) => {
-    const current = get().enabledGroups;
-    const updated = current.includes(groupKey)
-      ? current.filter((k) => k !== groupKey)
-      : [...current, groupKey];
-    localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(updated));
-    set({ enabledGroups: updated });
-  },
+  toggleGroup: async (groupKey: string, orgId?: string) => {
+    const targetOrgId = orgId || get().currentOrgId || "default";
+    const currentList = get().orgFeatures[targetOrgId] || get().enabledGroups || ADMIN_FEATURE_GROUPS.map(g => g.key);
+    const updated = currentList.includes(groupKey)
+      ? currentList.filter((k) => k !== groupKey)
+      : [...currentList, groupKey];
 
-  enableGroup: (groupKey: string) => {
-    const current = get().enabledGroups;
-    if (!current.includes(groupKey)) {
-      const updated = [...current, groupKey];
+    const newOrgFeatures = { ...get().orgFeatures, [targetOrgId]: updated };
+    try {
+      localStorage.setItem(ORG_FEATURES_STORAGE_KEY, JSON.stringify(newOrgFeatures));
       localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(updated));
-      set({ enabledGroups: updated });
+    } catch {}
+
+    set({
+      orgFeatures: newOrgFeatures,
+      enabledGroups: updated,
+    });
+
+    // Sync to Supabase organizations table for this specific business
+    if (targetOrgId && targetOrgId !== "default") {
+      try {
+        await supabase
+          .from("organizations")
+          .update({ enabled_features: updated as any })
+          .eq("id", targetOrgId);
+      } catch (err) {
+        console.error("Failed to update organization enabled_features in Supabase:", err);
+      }
     }
   },
 
-  disableGroup: (groupKey: string) => {
-    const current = get().enabledGroups;
-    const updated = current.filter((k) => k !== groupKey);
-    localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(updated));
-    set({ enabledGroups: updated });
+  enableGroup: async (groupKey: string, orgId?: string) => {
+    const targetOrgId = orgId || get().currentOrgId || "default";
+    const currentList = get().orgFeatures[targetOrgId] || get().enabledGroups || ADMIN_FEATURE_GROUPS.map(g => g.key);
+    if (!currentList.includes(groupKey)) {
+      const updated = [...currentList, groupKey];
+      const newOrgFeatures = { ...get().orgFeatures, [targetOrgId]: updated };
+      try {
+        localStorage.setItem(ORG_FEATURES_STORAGE_KEY, JSON.stringify(newOrgFeatures));
+        localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
+      set({ orgFeatures: newOrgFeatures, enabledGroups: updated });
+
+      if (targetOrgId && targetOrgId !== "default") {
+        try {
+          await supabase.from("organizations").update({ enabled_features: updated as any }).eq("id", targetOrgId);
+        } catch {}
+      }
+    }
+  },
+
+  disableGroup: async (groupKey: string, orgId?: string) => {
+    const targetOrgId = orgId || get().currentOrgId || "default";
+    const currentList = get().orgFeatures[targetOrgId] || get().enabledGroups || ADMIN_FEATURE_GROUPS.map(g => g.key);
+    const updated = currentList.filter((k) => k !== groupKey);
+    const newOrgFeatures = { ...get().orgFeatures, [targetOrgId]: updated };
+    try {
+      localStorage.setItem(ORG_FEATURES_STORAGE_KEY, JSON.stringify(newOrgFeatures));
+      localStorage.setItem(FEATURES_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
+    set({ orgFeatures: newOrgFeatures, enabledGroups: updated });
+
+    if (targetOrgId && targetOrgId !== "default") {
+      try {
+        await supabase.from("organizations").update({ enabled_features: updated as any }).eq("id", targetOrgId);
+      } catch {}
+    }
   },
 
   isGroupEnabled: (groupKey: string) => {
     const state = get();
-    // It must be enabled locally AND allowed by the platform
+    // It must be enabled for this business AND allowed by the platform
     return state.enabledGroups.includes(groupKey) && state.platformFeatures.includes(groupKey);
   },
 
   // Admin management
   isSuperAdmin: (email: string | null | undefined) => {
     if (!email) return false;
-    return email.toLowerCase() === DEFAULT_SUPER_ADMIN_EMAIL;
+    return email.toLowerCase().trim() === DEFAULT_SUPER_ADMIN_EMAIL;
   },
 
   isAdmin: (email: string | null | undefined) => {
     if (!email) return false;
     const isSuper = get().isSuperAdmin(email);
     if (isSuper) return true;
-    return get().adminEmails.includes(email.toLowerCase());
+    return get().adminEmails.includes(email.toLowerCase().trim());
   },
 
   addAdmin: (email: string) => {
@@ -284,18 +366,21 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
     const normalized = email.toLowerCase().trim();
     if (!current.includes(normalized)) {
       const updated = [...current, normalized];
-      localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(updated));
+      try {
+        localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(updated));
+      } catch {}
       set({ adminEmails: updated });
     }
   },
 
   removeAdmin: (email: string) => {
     const normalized = email.toLowerCase().trim();
-    // Can't remove the default admin
     if (normalized === DEFAULT_SUPER_ADMIN_EMAIL) return;
     const current = get().adminEmails;
     const updated = current.filter((e) => e !== normalized);
-    localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(ADMINS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
     set({ adminEmails: updated });
   },
 
@@ -309,12 +394,13 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
     const orgMembers = current[orgId] || [];
     const normalizedEmail = member.email.toLowerCase().trim();
     
-    // Check if already exists in this org
     if (orgMembers.some(m => m.email === normalizedEmail)) return;
     
     const newMember = { ...member, email: normalizedEmail };
     const updated = { ...current, [orgId]: [...orgMembers, newMember] };
-    localStorage.setItem(TEAM_MEMBERS_STORAGE_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(TEAM_MEMBERS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
     set({ teamMembers: updated });
   },
   
@@ -328,7 +414,9 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
       [orgId]: orgMembers.filter(e => e.email !== normalized) 
     };
     
-    localStorage.setItem(TEAM_MEMBERS_STORAGE_KEY, JSON.stringify(updated));
+    try {
+      localStorage.setItem(TEAM_MEMBERS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {}
     set({ teamMembers: updated });
   },
 }));

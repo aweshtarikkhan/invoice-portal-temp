@@ -17,7 +17,7 @@ export default function MessageLogsPage() {
   }, [org?.id]);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Message Logs</h1>
         <p className="text-sm text-muted-foreground">All outbound WhatsApp, SMS and Email messages.</p>

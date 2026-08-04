@@ -147,7 +147,7 @@ export default function EstimatesPage() {
   const handleConvert = (id: string) => navigate(`/estimates/${id}/convert`);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageActionBar title="Estimates">
         <Button variant="outline" size="sm" onClick={() => {
           downloadCSV(estimates.map(e => ({

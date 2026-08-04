@@ -179,7 +179,7 @@ export default function CustomerStatementPage() {
   const printCSS = getPrintPageCSS(org?.template_paper_size);
 
   return (
-    <div className="p-6 space-y-5 max-w-6xl mx-auto">
+    <div className="space-y-5 max-w-6xl mx-auto">
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       {/* Header */}

@@ -17,6 +17,9 @@ const routes = [
   { label: "New Invoice", path: "/invoices/new", group: "Actions" },
   { label: "Clients", path: "/clients", group: "Pages" },
   { label: "Items", path: "/items", group: "Pages" },
+  { label: "Inventory", path: "/inventory", group: "Pages" },
+  { label: "Warehouses", path: "/warehouses", group: "Pages" },
+  { label: "New Warehouse", path: "/warehouses?add=1", group: "Actions" },
   { label: "Payments", path: "/payments", group: "Pages" },
   { label: "Settings", path: "/settings", group: "Pages" },
 ];

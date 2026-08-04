@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { logStockMovements } from "@/lib/stock";
+import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 
 interface Line {
   item_id: string;
@@ -24,8 +25,9 @@ interface Line {
   batch_no: string;
   serial_no: string;
   expiry_date: string;
+  expiry_warning?: string;
 }
-const emptyLine = (): Line => ({ item_id: "", po_line_id: null, description: "", quantity: "0", unit_cost: "0", batch_no: "", serial_no: "", expiry_date: "" });
+const emptyLine = (): Line => ({ item_id: "", po_line_id: null, description: "", quantity: 1, unit_cost: "", batch_no: "", serial_no: "", expiry_date: "" });
 
 export default function GrnBuilderPage() {
   const org = useAppStore((s) => s.organization);
@@ -43,6 +45,7 @@ export default function GrnBuilderPage() {
   const [poId, setPoId] = useState<string>("");
   const [vendorId, setVendorId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
+  const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
   const [branchId, setBranchId] = useState("");
   const [grnNumber, setGrnNumber] = useState("");
   const [grnDate, setGrnDate] = useState(format(new Date(), "yyyy-MM-dd"));
@@ -126,7 +129,22 @@ export default function GrnBuilderPage() {
     const it = items.find(x => x.id === itemId);
     const x = [...lines];
     x[idx].item_id = itemId;
-    if (it) { x[idx].description = it.name; x[idx].unit_cost = String(it.purchase_price || 0); }
+    if (it) { let extraDesc = "";
+      if (it.custom_field_values && it.custom_field_values.length > 0) {
+        extraDesc = it.custom_field_values
+          .filter((cf: any) => cf.value)
+          .map((cf: any) => `${cf.custom_field_definitions?.field_name}: ${cf.value}`)
+          .join("\n");
+      }
+      x[idx].description = it.name + (extraDesc ? `\n${extraDesc}` : "");       let __rate = Number(it.purchase_price) || 0;
+      const __priceType = it.purchase_price_type || "without_tax";
+      if (__priceType === "with_tax" && it.tax_id) {
+        const __tax = taxRates.find((t: any) => t.id === it.tax_id);
+        if (__tax && Number(__tax.rate) > 0) {
+          __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
+        }
+      }
+      x[idx].unit_cost = String(__rate); }
     setLines(x);
   };
 
@@ -234,10 +252,22 @@ export default function GrnBuilderPage() {
           </div>
           <div>
             <Label>Warehouse</Label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger><SelectValue placeholder="Warehouse" /></SelectTrigger>
-              <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
-            </Select>
+            <div className="flex gap-2">
+              <Select value={warehouseId} onValueChange={setWarehouseId}>
+                <SelectTrigger><SelectValue placeholder="Warehouse" /></SelectTrigger>
+                <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setAddWarehouseOpen(true)}
+                title="Add new warehouse"
+                className="shrink-0"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <div>
             <Label>Branch</Label>
@@ -278,8 +308,8 @@ export default function GrnBuilderPage() {
                       </Select>
                     </TableCell>
                     <TableCell><Input value={l.description} onChange={e => { const x = [...lines]; x[i].description = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Input type="number" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Input type="number" value={l.unit_cost} onChange={e => { const x = [...lines]; x[i].unit_cost = e.target.value; setLines(x); }} /></TableCell>
+                    <TableCell><Input type="number" placeholder="1" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} /></TableCell>
+                    <TableCell><Input type="number" placeholder="1" value={l.unit_cost} onChange={e => { const x = [...lines]; x[i].unit_cost = e.target.value; setLines(x); }} /></TableCell>
                     <TableCell><Input value={l.batch_no} onChange={e => { const x = [...lines]; x[i].batch_no = e.target.value; setLines(x); }} disabled={!it?.track_batches} placeholder={it?.track_batches ? "" : "—"} /></TableCell>
                     <TableCell><Input value={l.serial_no} onChange={e => { const x = [...lines]; x[i].serial_no = e.target.value; setLines(x); }} disabled={!it?.track_serials} placeholder={it?.track_serials ? "" : "—"} /></TableCell>
                     <TableCell><Input type="date" value={l.expiry_date} onChange={e => { const x = [...lines]; x[i].expiry_date = e.target.value; setLines(x); }} /></TableCell>
@@ -294,6 +324,15 @@ export default function GrnBuilderPage() {
       </Card>
 
       <Card><CardContent className="pt-5"><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} /></CardContent></Card>
+
+      <AddWarehouseDialog
+        open={addWarehouseOpen}
+        onOpenChange={setAddWarehouseOpen}
+        onWarehouseAdded={(w) => {
+          setWarehouses(prev => [...prev, w]);
+          setWarehouseId(w.id);
+        }}
+      />
     </div>
   );
 }

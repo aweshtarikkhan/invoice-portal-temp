@@ -285,7 +285,7 @@ export default function GstReturnsPage() {
   );
 
   return (
-    <div className="p-6 space-y-8 max-w-[1400px] mx-auto bg-slate-50/50 min-h-screen">
+    <div className="space-y-8 max-w-[1400px] mx-auto bg-slate-50/50 min-h-screen">
       <SEO title="GST Returns" description="Generate GSTR-1 JSON, GSTR-3B summary, HSN-wise summary and Tally CSV export from your invoices." path="/gst-returns" />
       
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">

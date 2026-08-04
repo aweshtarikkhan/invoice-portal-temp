@@ -62,6 +62,7 @@ const GrnBuilderPage = lazy(() => import("./pages/GrnBuilderPage"));
 const GrnDetailPage = lazy(() => import("./pages/GrnDetailPage"));
 const DeliveryChallansPage = lazy(() => import("./pages/DeliveryChallansPage"));
 const DeliveryChallanBuilderPage = lazy(() => import("./pages/DeliveryChallanBuilderPage"));
+const WarehousesPage = lazy(() => import("./pages/WarehousesPage"));
 const InventoryValuationPage = lazy(() => import("./pages/InventoryValuationPage"));
 const BankAccountsPage = lazy(() => import("./pages/BankAccountsPage"));
 const BankAccountDetailPage = lazy(() => import("./pages/BankAccountDetailPage"));
@@ -185,6 +186,7 @@ const App = () => (
               <Route path="/delivery-challans" element={<DeliveryChallansPage />} />
               <Route path="/delivery-challans/new" element={<DeliveryChallanBuilderPage />} />
               <Route path="/delivery-challans/:id/edit" element={<DeliveryChallanBuilderPage />} />
+              <Route path="/warehouses" element={<WarehousesPage />} />
               <Route path="/inventory-valuation" element={<InventoryValuationPage />} />
 
 

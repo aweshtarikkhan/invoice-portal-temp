@@ -41,10 +41,10 @@ export default function ActivitiesPage() {
     if (!org?.id) return;
     setLoading(true);
     const [{ data: act }, { data: ld }, { data: op }, { data: cl }] = await Promise.all([
-      (supabase as any).from("activities").select("*, leads(name), opportunities(title), clients(name)").eq("org_id", org.id).order("due_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
+      (supabase as any).from("activities").select("*, leads(name), opportunities(title), clients(display_name)").eq("org_id", org.id).order("due_at", { ascending: false, nullsFirst: false }).order("created_at", { ascending: false }),
       (supabase as any).from("leads").select("id,name").eq("org_id", org.id).order("name"),
       (supabase as any).from("opportunities").select("id,title").eq("org_id", org.id).order("title"),
-      (supabase as any).from("clients").select("id,name").eq("org_id", org.id).order("name"),
+      supabase.from("clients").select("id, display_name").eq("org_id", org.id).eq("status", "active").order("display_name"),
     ]);
     setRows(act || []); setLeads(ld || []); setOpps(op || []); setClients(cl || []);
     setLoading(false);
@@ -86,7 +86,7 @@ export default function ActivitiesPage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Activities</h1>
@@ -122,7 +122,7 @@ export default function ActivitiesPage() {
                     <TableCell className="text-sm">
                       {r.leads?.name && <div>Lead: {r.leads.name}</div>}
                       {r.opportunities?.title && <div>Opp: {r.opportunities.title}</div>}
-                      {r.clients?.name && <div>Client: {r.clients.name}</div>}
+                      {r.clients?.display_name && <div>Client: {r.clients.display_name}</div>}
                       {!r.leads && !r.opportunities && !r.clients && <span className="text-muted-foreground">—</span>}
                     </TableCell>
                     <TableCell className="text-sm">{r.due_at ? format(parseISO(r.due_at), "dd MMM yyyy, HH:mm") : "—"}</TableCell>
@@ -170,7 +170,7 @@ export default function ActivitiesPage() {
               <Label>Linked Client</Label>
               <Select value={form.client_id || "none"} onValueChange={(v) => setForm({ ...form, client_id: v === "none" ? "" : v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="none">—</SelectItem>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+                <SelectContent><SelectItem value="none">—</SelectItem>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} /></div>

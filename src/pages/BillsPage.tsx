@@ -60,7 +60,7 @@ export default function BillsPage() {
   const totalDue = bills.reduce((s, b) => s + (Number(b.balance_due) || 0), 0);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Bills (Accounts Payable)</h1>
         <div className="flex gap-2">

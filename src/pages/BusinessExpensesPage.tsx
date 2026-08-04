@@ -187,7 +187,7 @@ export default function BusinessExpensesPage() {
   const fmt = (n: number) => formatCurrency(n, currency);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageActionBar title="Business Expenses">
         <Select value={period} onValueChange={setPeriod}>
           <SelectTrigger className="w-[150px] h-9"><SelectValue /></SelectTrigger>

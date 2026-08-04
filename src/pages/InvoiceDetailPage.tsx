@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle } from "lucide-react";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2 } from "lucide-react";
 import { getOrCreatePortalToken, portalUrl, openWhatsappShare, buildInvoiceWhatsappMessage } from "@/lib/share";
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
 import { QRCodeSVG } from "qrcode.react";
@@ -284,7 +284,7 @@ export default function InvoiceDetailPage() {
   const printCSS = getPrintPageCSS(org?.template_paper_size);
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Inject print styles for correct paper size */}
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
@@ -314,6 +314,15 @@ export default function InvoiceDetailPage() {
         {invoice.status !== "void" && invoice.status !== "paid" && (
           <Button size="sm" onClick={() => setPaymentDialogOpen(true)}>
             <CreditCard className="mr-1 h-4 w-4" /> Record Payment
+          </Button>
+        )}
+        {invoice.status !== "void" && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/credit-notes/new?invoice_id=${invoice.id}&client_id=${invoice.client_id}`)}
+          >
+            <FileMinus2 className="mr-1 h-4 w-4" /> Credit Note
           </Button>
         )}
         <Button variant="outline" size="sm" onClick={async () => {

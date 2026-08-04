@@ -93,7 +93,7 @@ export default function CustomFieldsPage() {
   const filteredFields = fields.filter((f) => f.entity_type === activeTab);
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl">
       <PageHeader title="Custom Fields" description="Define custom fields for your documents and entities">
         <Button onClick={() => setDialogOpen(true)}>
           <Plus className="mr-1 h-4 w-4" /> Add Field

@@ -27,8 +27,9 @@ interface Line {
   rate: string;
   tax_rate: string;
   unit: string;
+  expiry_warning?: string;
 }
-const emptyLine = (): Line => ({ item_id: "", description: "", hsn: "", quantity: "1", rate: "0", tax_rate: "0", unit: "" });
+const emptyLine = (): Line => ({ item_id: "", description: "", hsn: "", quantity: 1, rate: "", tax_rate: "", unit: "" });
 
 export default function PurchaseOrderBuilderPage() {
   const org = useAppStore((s) => s.organization);
@@ -153,10 +154,25 @@ export default function PurchaseOrderBuilderPage() {
     const x = [...lines];
     x[idx].item_id = itemId;
     if (it) {
-      x[idx].description = it.name;
+      let extraDesc = "";
+      if (it.custom_field_values && it.custom_field_values.length > 0) {
+        extraDesc = it.custom_field_values
+          .filter((cf: any) => cf.value)
+          .map((cf: any) => `${cf.custom_field_definitions?.field_name}: ${cf.value}`)
+          .join("\n");
+      }
+      x[idx].description = it.name + (extraDesc ? `\n${extraDesc}` : "");
       x[idx].hsn = it.hsn_code || "";
       x[idx].unit = it.unit || "";
-      x[idx].rate = String(it.unit_price || 0);
+            let __rate = Number(it.unit_price) || 0;
+      const __priceType = it.purchase_price_type || "without_tax";
+      if (__priceType === "with_tax" && it.tax_id) {
+        const __tax = taxRates.find((t: any) => t.id === it.tax_id);
+        if (__tax && Number(__tax.rate) > 0) {
+          __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
+        }
+      }
+      x[idx].rate = String(__rate);
       x[idx].tax_rate = it.tax_id ? String(taxRates.find((t: any) => t.id === it.tax_id)?.rate || 0) : "0";
     }
     setLines(x);
@@ -354,7 +370,7 @@ export default function PurchaseOrderBuilderPage() {
                     <TableCell><Input value={l.hsn} onChange={e => { const x = [...lines]; x[i].hsn = e.target.value; setLines(x); }} /></TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1.5">
-                        <Input type="number" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} />
+                        <Input type="number" placeholder="1" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} />
                         <Select value={l.unit} onValueChange={v => { const x = [...lines]; x[i].unit = v; setLines(x); }}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Unit" /></SelectTrigger>
                           <SelectContent>
@@ -365,7 +381,7 @@ export default function PurchaseOrderBuilderPage() {
                         </Select>
                       </div>
                     </TableCell>
-                    <TableCell><Input type="number" value={l.rate} onChange={e => { const x = [...lines]; x[i].rate = e.target.value; setLines(x); }} /></TableCell>
+                    <TableCell><Input type="number" placeholder="1" value={l.rate} onChange={e => { const x = [...lines]; x[i].rate = e.target.value; setLines(x); }} /></TableCell>
                     <TableCell>
                       <Input
                         type="number"
@@ -593,7 +609,7 @@ export default function PurchaseOrderBuilderPage() {
                 const toAdd = Array.from(bulkSelected).map(id => items.find(i => i.id === id)).filter(Boolean);
                 const newLines = toAdd.map(it => ({
                   item_id: it.id, description: it.name, hsn: it.hsn || "",
-                  quantity: "1", unit: it.unit || "", rate: String(it.unit_price || 0), tax_rate: String(it.tax_rate || 0)
+                  quantity: 1, unit: it.unit || "", rate: String(it.unit_price || 0), tax_rate: String(it.tax_rate || 0)
                 }));
                 setLines(lines.length === 1 && !lines[0].item_id && !lines[0].description ? newLines : [...lines, ...newLines]);
                 setBulkAddOpen(false);

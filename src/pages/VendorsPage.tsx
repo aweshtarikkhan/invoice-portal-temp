@@ -111,7 +111,7 @@ export default function VendorsPage() {
   );
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Vendors</h1>
         <div className="flex gap-2">

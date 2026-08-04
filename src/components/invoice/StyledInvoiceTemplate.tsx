@@ -213,10 +213,29 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
                 </td>
                 <td style={{ ...tdStyle, textAlign: "left", fontSize: 11 }}>{line.hsn_code || "-"}</td>
                 <td style={{ ...tdStyle }}>
-                  {line.quantity}
-                  {line.unit && <span style={{ fontSize: 10, color: "#71717a", marginLeft: 2 }}>{line.unit}</span>}
+                  <div style={{ fontWeight: 600 }}>
+                    {line.quantity}
+                    {line.unit && <span style={{ fontSize: 10, color: "#71717a", marginLeft: 2 }}>{line.unit}</span>}
+                  </div>
+                  {invoice?.show_sub_units !== false && line.sub_unit && line.sub_unit_conversion_rate && Number(line.sub_unit_conversion_rate) > 1 && line.unit?.toLowerCase() !== line.sub_unit?.toLowerCase() && (
+                    <div style={{ fontSize: 9, color: "#71717a", marginTop: 2 }}>
+                      (= {(Number(line.quantity) * Number(line.sub_unit_conversion_rate)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} {line.sub_unit})
+                    </div>
+                  )}
                 </td>
-                <td style={{ ...tdStyle }}>{Number(line.rate).toFixed(2)}</td>
+                <td style={{ ...tdStyle }}>
+                  <div style={{ fontWeight: 600 }}>{Number(line.rate).toFixed(2)}</div>
+                  {Number(line.discount) > 0 && (
+                    <div style={{ fontSize: 9, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
+                      {line.discount}% disc.
+                    </div>
+                  )}
+                  {line.sub_unit && Number(line.sub_unit_conversion_rate) > 1 && line.unit?.toLowerCase() !== line.sub_unit?.toLowerCase() && (
+                    <div style={{ fontSize: 9, color: "#71717a", marginTop: 2 }}>
+                      1 {line.unit} = {line.sub_unit_conversion_rate} {line.sub_unit}
+                    </div>
+                  )}
+                </td>
                 {!isInterstate ? (
                   <>
                     <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax)}</td>

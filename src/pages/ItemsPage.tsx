@@ -25,9 +25,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Package, Search, Upload, Download, Trash2, FileText, Tag, Users, Database, ArrowRight, X, Settings, Info, Ruler } from "lucide-react";
+import { Plus, Package, Search, Upload, Download, Trash2, FileText, Tag, Users, Database, ArrowRight, X, Settings, Info, Ruler, Warehouse, ArrowDown, ArrowUp, ArrowUpDown, CalendarClock } from "lucide-react";
+import { format } from "date-fns";
 import { downloadCSV } from "@/lib/export-csv";
 import { Badge } from "@/components/ui/badge";
+import { CatalogNav } from "@/components/shared/CatalogNav";
+import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 
 
 
@@ -48,6 +51,9 @@ export default function ItemsPage() {
   const [taxRates, setTaxRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [sortField, setSortField] = useState<string>("name");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [customFieldDefs, setCustomFieldDefs] = useState<any[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [importOpen, setImportOpen] = useState(false);
@@ -57,6 +63,8 @@ export default function ItemsPage() {
   const { toast } = useToast();
 
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
+  const multiWarehouseEnabled = (org as any)?.multi_warehouse_enabled;
 
 
   const fetchItems = async () => {
@@ -74,6 +82,14 @@ export default function ItemsPage() {
       .eq("org_id", org.id);
     setTaxRates(taxes || []);
 
+    const { data: cfs } = await supabase
+      .from("custom_field_definitions")
+      .select("*")
+      .eq("org_id", org.id)
+      .eq("entity_type", "item")
+      .order("sort_order");
+    setCustomFieldDefs(cfs || []);
+
     setLoading(false);
   };
 
@@ -88,9 +104,31 @@ export default function ItemsPage() {
     return Array.from(cats).sort();
   }, [items]);
 
+  const dynamicImportFields = useMemo(() => {
+    const baseFields = [...itemImportFields];
+    customFieldDefs.forEach(cf => {
+      baseFields.push({ key: `cf_${cf.id}`, label: cf.field_name });
+    });
+    return baseFields;
+  }, [customFieldDefs]);
+
   const openCreate = () => { 
     resetForm(); 
     setDialogOpen(true); 
+  };
+
+  const handleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    if (sortField !== field) return <ArrowUpDown className="ml-1 inline h-3.5 w-3.5 text-muted-foreground/40" />;
+    return sortDirection === "asc" ? <ArrowUp className="ml-1 inline h-3.5 w-3.5" /> : <ArrowDown className="ml-1 inline h-3.5 w-3.5" />;
   };
 
   const openEdit = async (item: any) => {
@@ -134,11 +172,41 @@ export default function ItemsPage() {
     fetchItems();
   };
 
-  const filtered = items.filter((i) => {
-    const matchSearch = [i.name, i.sku, i.description].filter(Boolean).some((f) => f.toLowerCase().includes(search.toLowerCase()));
-    const matchCategory = categoryFilter === "all" || (i.category || "") === categoryFilter;
-    return matchSearch && matchCategory;
-  });
+  const filtered = useMemo(() => {
+    let result = items.filter((i) => {
+      const matchSearch = [i.name, i.sku, i.description].filter(Boolean).some((f) => f.toLowerCase().includes(search.toLowerCase()));
+      const matchCategory = categoryFilter === "all" || (i.category || "") === categoryFilter;
+      return matchSearch && matchCategory;
+    });
+
+    result.sort((a, b) => {
+      let valA: any = a[sortField];
+      let valB: any = b[sortField];
+
+      if (sortField === "price") {
+        valA = Number(a.unit_price) * (1 - (Number(a.discount) || 0) / 100);
+        valB = Number(b.unit_price) * (1 - (Number(b.discount) || 0) / 100);
+      } else if (sortField === "stock") {
+        valA = Number(a.stock_quantity) || 0;
+        valB = Number(b.stock_quantity) || 0;
+      } else if (sortField === "tax") {
+        valA = a.tax_rates?.rate || 0;
+        valB = b.tax_rates?.rate || 0;
+      } else if (sortField === "expiry_date") {
+        valA = a.has_expiry && a.expiry_date ? new Date(a.expiry_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+        valB = b.has_expiry && b.expiry_date ? new Date(b.expiry_date).getTime() : (sortDirection === 'asc' ? Infinity : -Infinity);
+      } else if (typeof valA === "string") {
+        valA = valA.toLowerCase();
+        valB = (valB || "").toLowerCase();
+      }
+
+      if (valA < valB) return sortDirection === "asc" ? -1 : 1;
+      if (valA > valB) return sortDirection === "asc" ? 1 : -1;
+      return 0;
+    });
+
+    return result;
+  }, [items, search, categoryFilter, sortField, sortDirection]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -156,14 +224,29 @@ export default function ItemsPage() {
   };
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Items</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Products and services catalog</p>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight">Items</h1>
+            <CatalogNav active="items" />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">Products and services catalog</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {multiWarehouseEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 rounded-lg px-3.5"
+              onClick={() => setAddWarehouseOpen(true)}
+              title="Add Warehouse"
+            >
+              <Warehouse className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              + Warehouse
+            </Button>
+          )}
           {selected.size > 0 && (
             <Button variant="destructive" size="sm" className="h-10 rounded-lg" onClick={() => setDeleteOpen(true)}>
               <Trash2 className="mr-1.5 h-4 w-4" /> Delete ({selected.size})
@@ -229,14 +312,13 @@ export default function ItemsPage() {
                       onCheckedChange={toggleAll}
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>SKU</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("name")}>Name <SortIcon field="name" /></TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Category</TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("expiry_date")}>Expiry Date <SortIcon field="expiry_date" /></TableHead>
                   <TableHead>Unit</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Stock</TableHead>
-                  <TableHead>Tax</TableHead>
+                  <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort("price")}>Rate <SortIcon field="price" /></TableHead>
+                  <TableHead className="text-right cursor-pointer select-none" onClick={() => handleSort("stock")}>Stock <SortIcon field="stock" /></TableHead>
+                  <TableHead className="cursor-pointer select-none" onClick={() => handleSort("tax")}>Tax <SortIcon field="tax" /></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -249,13 +331,39 @@ export default function ItemsPage() {
                       />
                     </TableCell>
                     <TableCell className="font-medium">{item.name}</TableCell>
-                    <TableCell>{item.sku || "—"}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{item.type}</Badge>
                     </TableCell>
-                    <TableCell>{item.category ? <Badge variant="outline">{item.category}</Badge> : "—"}</TableCell>
+                    <TableCell>
+                      {item.has_expiry ? (
+                        <div className="flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                          <CalendarClock className="h-3.5 w-3.5 text-amber-500" />
+                          {item.expiry_date ? format(new Date(item.expiry_date), "MMM d, yyyy") : "Not Set"}
+                        </div>
+                      ) : (
+                        <span className="text-slate-400 text-xs">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>{item.unit || "—"}</TableCell>
-                    <TableCell className="text-right">{fmt(Number(item.unit_price))}</TableCell>
+                    <TableCell className="text-right">
+                      {Number(item.discount) > 0 ? (
+                        <div className="flex flex-col items-end">
+                          <span className="font-semibold text-emerald-700">
+                            {fmt(Number(item.unit_price) * (1 - Number(item.discount) / 100))}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[11px] text-slate-400 line-through">
+                              {fmt(Number(item.unit_price))}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-600">
+                              ({item.discount}% off)
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="font-medium text-slate-900">{fmt(Number(item.unit_price))}</span>
+                      )}
+                    </TableCell>
                     <TableCell className={`text-right ${org?.inventory_enabled && item.type === "product" && Number(item.stock_quantity) <= Number(org?.low_stock_threshold ?? 5) ? "text-destructive font-medium" : ""}`}>
                       {org?.inventory_enabled && item.type === "product" ? Number(item.stock_quantity) : "—"}
                     </TableCell>
@@ -296,7 +404,7 @@ export default function ItemsPage() {
       <ImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
-        fields={itemImportFields}
+        fields={dynamicImportFields}
         entityName="Items"
         onImport={async (rows) => {
           let success = 0, errors = 0;
@@ -304,7 +412,7 @@ export default function ItemsPage() {
             const matchedTax = row.tax_name ? taxRates.find((t: any) => t.name.toLowerCase() === row.tax_name.toLowerCase()) : null;
             const price = parsePrice(row.unit_price);
             const type = normalizeType(row.type);
-            const { error } = await supabase.from("items").insert({
+            const { error, data: insertedItem } = await supabase.from("items").insert({
               org_id: org!.id,
               name: row.name || "Unnamed",
               description: row.description || null,
@@ -314,11 +422,32 @@ export default function ItemsPage() {
               unit: row.unit || null,
               tax_id: matchedTax?.id || null,
               is_active: row.is_active === "false" ? false : true,
-            });
-            if (error) errors++; else success++;
+            }).select().single();
+            if (error) {
+              errors++;
+            } else {
+              success++;
+              const cfEntries = customFieldDefs
+                .map(cf => {
+                  const val = row[`cf_${cf.id}`];
+                  return val ? { entity_id: insertedItem.id, field_id: cf.id, field_value: String(val) } : null;
+                })
+                .filter(Boolean);
+              if (cfEntries.length > 0) {
+                await supabase.from("custom_field_values").insert(cfEntries);
+              }
+            }
           }
           fetchItems();
           return { success, errors };
+        }}
+      />
+
+      <AddWarehouseDialog
+        open={addWarehouseOpen}
+        onOpenChange={setAddWarehouseOpen}
+        onWarehouseAdded={() => {
+          toast({ title: "Warehouse added successfully" });
         }}
       />
     </div>

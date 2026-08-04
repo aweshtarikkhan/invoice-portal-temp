@@ -982,7 +982,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-6 space-y-6" ref={dashboardRef}>
+    <div className="space-y-6" ref={dashboardRef}>
       <SEO
         title="Dashboard"
         description="Manage invoices, estimates, clients, payments and inventory in one place. Track receivables, profit & loss, and grow your business with Satah Invoices."

@@ -126,7 +126,7 @@ export default function ReportsPage() {
   if (loading) return <div className="p-6">Loading reports...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <SEO title="Reports" description="Financial insights and analytics: receivables aging, sales by client, tax summary and more." path="/reports" />
       <PageHeader title="Reports" description="Financial insights and analytics for your business" />
 

@@ -97,7 +97,7 @@ export default function TemplateCustomizationPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl">
       <PageHeader title="Template Customization" description="Customize the look of your invoices, estimates, and credit notes">
         <Button onClick={handleSave}>Save Changes</Button>
       </PageHeader>

@@ -17,12 +17,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon } from "lucide-react";
+import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon, Warehouse } from "lucide-react";
 import { logStockMovements } from "@/lib/stock";
 import { useAuth } from "@/lib/auth";
 import { Switch } from "@/components/ui/switch";
 import { useNavigate } from "react-router-dom";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
+import { CatalogNav } from "@/components/shared/CatalogNav";
+import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -47,7 +49,9 @@ export default function InventoryPage() {
   const [historyTarget, setHistoryTarget] = useState<any>(null);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
   const { user } = useAuth();
+  const multiWarehouseEnabled = (org as any)?.multi_warehouse_enabled;
 
   const threshold = Number((org as any)?.low_stock_threshold ?? 5);
 
@@ -208,7 +212,7 @@ export default function InventoryPage() {
 
   if (!inventoryEnabled) {
     return (
-      <div className="p-6 space-y-5">
+      <div className="space-y-5">
         <SEO title="Inventory" description="Track stock levels across any unit (kg, ltr, pcs, box) with low-stock alerts and movement history." path="/inventory" />
         <PageHeader title="Inventory" description="Stock tracking is currently disabled" />
         <Card className="rounded-2xl border-border/60">
@@ -239,23 +243,43 @@ export default function InventoryPage() {
   ];
 
   return (
-    <div className="p-6 space-y-5">
+    <div className="space-y-5">
       <SEO title="Inventory" description="Track products and services with stock levels, low-stock alerts, and AI-powered restock guidance." path="/inventory" />
-      <PageHeader title="Inventory" description="Products auto-deduct from stock when invoices are sent">
-        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5">
-          <Label htmlFor="inv-toggle" className="text-xs font-medium cursor-pointer">Tracking</Label>
-          <Switch id="inv-toggle" checked={true} onCheckedChange={(v) => toggleInventory(v)} />
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Inventory</h1>
+            <CatalogNav active="inventory" />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">Products auto-deduct from stock when invoices are sent</p>
         </div>
-        <Button variant="outline" size="sm" onClick={getAiAdvice}>
-          <Sparkles className="mr-1.5 h-4 w-4" /> AI Advice
-        </Button>
-        <Button variant="outline" size="sm" onClick={seedDemoData} disabled={seedingDemo}>
-          <Database className="mr-1.5 h-4 w-4" /> {seedingDemo ? "Loading..." : "Load Demo Data"}
-        </Button>
-        <Button size="sm" onClick={() => setAddOpen(true)}>
-          <PackagePlus className="mr-1.5 h-4 w-4" /> Add Product
-        </Button>
-      </PageHeader>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5">
+            <Label htmlFor="inv-toggle" className="text-xs font-medium cursor-pointer">Tracking</Label>
+            <Switch id="inv-toggle" checked={true} onCheckedChange={(v) => toggleInventory(v)} />
+          </div>
+          {multiWarehouseEnabled && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setAddWarehouseOpen(true)}
+              title="Add Warehouse"
+            >
+              <Warehouse className="mr-1.5 h-4 w-4 text-muted-foreground" />
+              + Warehouse
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={getAiAdvice}>
+            <Sparkles className="mr-1.5 h-4 w-4" /> AI Advice
+          </Button>
+          <Button variant="outline" size="sm" onClick={seedDemoData} disabled={seedingDemo}>
+            <Database className="mr-1.5 h-4 w-4" /> {seedingDemo ? "Loading..." : "Load Demo Data"}
+          </Button>
+          <Button size="sm" onClick={() => setAddOpen(true)}>
+            <PackagePlus className="mr-1.5 h-4 w-4" /> Add Product
+          </Button>
+        </div>
+      </div>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -510,6 +534,14 @@ export default function InventoryPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddWarehouseDialog
+        open={addWarehouseOpen}
+        onOpenChange={setAddWarehouseOpen}
+        onWarehouseAdded={() => {
+          toast({ title: "Warehouse added successfully" });
+        }}
+      />
     </div>
   );
 }

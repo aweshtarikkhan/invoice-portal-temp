@@ -204,6 +204,7 @@ export default function AttendancePage() {
     const orgWeeklyOffs = (org as any)?.weekly_offs || [0];
     const holsList: any[] = holsRes?.data || [];
     const newAutoKeys = new Set<string>();
+    const todayStr = format(new Date(), "yyyy-MM-dd");
 
     empList.forEach((emp) => {
       eachDayOfInterval({ start: monthStart, end: monthEnd }).forEach((d) => {
@@ -215,13 +216,19 @@ export default function AttendancePage() {
         const isHoliday = holsList.some((h: any) => h.date === ds);
         if (isOff || isHoliday) { map[key] = "holiday"; return; }
 
+        const approvedLeaveType = alvMap[key];
+        if (approvedLeaveType) { map[key] = "paid_leave"; return; }
+
         const clk = clkMap[key];
         if (clk?.clock_in_time) {
           const shift = shiftMap[emp.id];
           map[key] = computeShiftStatus(clk.clock_in_time, shift);
           newAutoKeys.add(key);
+        } else if (ds <= todayStr) {
+          // Employee has not marked attendance for past or today -> auto mark absent
+          map[key] = "absent";
+          newAutoKeys.add(key);
         }
-        // else → stays undefined (shown as —)
       });
     });
 
@@ -477,7 +484,8 @@ export default function AttendancePage() {
     const d = parseISO(dateStr);
     const orgWeeklyOffs = org?.weekly_offs || [0];
     const isOff = orgWeeklyOffs.includes(d.getDay());
-    const current = att[`${empId}|${dateStr}`] || (isOff ? "holiday" : "present");
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    const current = att[`${empId}|${dateStr}`] || (isOff ? "holiday" : (dateStr <= todayStr ? "absent" : "present"));
     const idx = STATUS_OPTIONS.findIndex((s) => s.value === current);
     const next = STATUS_OPTIONS[(idx + 1) % STATUS_OPTIONS.length].value;
     setCell(empId, dateStr, next);
@@ -558,11 +566,13 @@ export default function AttendancePage() {
   // Summaries
   const summaries = useMemo(() => {
     const orgWeeklyOffs = org?.weekly_offs || [0];
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     return employees.map((emp) => {
       let p = 0, a = 0, h = 0, pl = 0, ho = 0;
       days.forEach((d) => {
+        const ds = format(d, "yyyy-MM-dd");
         const isOff = orgWeeklyOffs.includes(d.getDay());
-        const s = att[`${emp.id}|${format(d, "yyyy-MM-dd")}`] || (isOff ? "holiday" : "present");
+        const s = att[`${emp.id}|${ds}`] || (isOff ? "holiday" : (ds <= todayStr ? "absent" : undefined));
         if (s === "present") p++;
         else if (s === "absent") a++;
         else if (s === "half_day") h++;
@@ -715,7 +725,7 @@ export default function AttendancePage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       {selectedClockInfo && (
         <Dialog open={!!selectedClockInfo} onOpenChange={(o) => !o && setSelectedClockInfo(null)}>
           <DialogContent>
@@ -845,7 +855,9 @@ export default function AttendancePage() {
                       const recordedStatus = att[`${emp.id}|${ds}`];
                       const c = clockData[`${emp.id}|${ds}`];
 
-                      // Determine display status — NEVER default blank days to present
+                      const todayStr = format(new Date(), "yyyy-MM-dd");
+
+                      // Determine display status — unrecorded days on or before today automatically show as Absent
                       let displayStatus: Status | "approved_leave" | null = null;
                       if (recordedStatus) {
                         displayStatus = recordedStatus as Status;
@@ -853,8 +865,9 @@ export default function AttendancePage() {
                         displayStatus = "holiday";
                       } else if (approvedLeaveType) {
                         displayStatus = "approved_leave" as any;
+                      } else if (ds <= todayStr) {
+                        displayStatus = "absent";
                       }
-                      // else: no status → show blank
 
                       const isAL = displayStatus === "approved_leave";
                       return (

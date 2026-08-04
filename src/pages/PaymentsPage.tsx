@@ -247,7 +247,7 @@ export default function PaymentsPage() {
   };
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       {/* Top Bar */}
       <PageActionBar title="Payments Received">
         {selected.size > 0 && (

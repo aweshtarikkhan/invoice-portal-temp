@@ -127,7 +127,7 @@ export default function InventoryValuationPage() {
   const totalStock = weightedAvg.reduce((s, r) => s + r.qty, 0);
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <SEO title="Inventory Valuation" description="View stock valuation reports using Weighted Average and FIFO methods." path="/inventory-valuation" />
       <PageHeader
         title="Inventory Valuation"

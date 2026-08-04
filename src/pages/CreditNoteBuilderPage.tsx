@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Save, Send } from "lucide-react";
+import { Plus, Trash2, Save, Send, Info } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
@@ -27,25 +28,30 @@ interface LineItem {
   item_id: string | null;
   name: string;
   description: string;
-  quantity: number;
-  rate: number;
-  discount: number;
+  quantity: any;
+  rate: any;
+  discount: any;
   discount_type: "percentage" | "fixed";
   tax_id: string | null;
   tax_amount: number;
   amount: number;
+  expiry_warning?: string;
 }
 
 function createEmptyLine(): LineItem {
   return {
     id: crypto.randomUUID(), item_id: null, name: "", description: "",
-    quantity: 1, rate: 0, discount: 0, discount_type: "percentage",
+    quantity: 1, rate: "", discount: "", discount_type: "percentage",
     tax_id: null, tax_amount: 0, amount: 0,
   };
 }
 
 export default function CreditNoteBuilderPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryInvoiceId = searchParams.get("invoice_id");
+  const queryClientId = searchParams.get("client_id");
+
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { user } = useAuth();
@@ -69,6 +75,58 @@ export default function CreditNoteBuilderPage() {
   const [restockInventory, setRestockInventory] = useState(false);
   const [prevRestock, setPrevRestock] = useState(false);
 
+  const calculateLine = useCallback((line: LineItem, currentTaxRates = taxRates): LineItem => {
+    let lineTotal = (line.quantity || 0) * (line.rate || 0);
+    if (line.discount > 0) {
+      lineTotal -= line.discount_type === "percentage" ? lineTotal * (line.discount / 100) : line.discount;
+    }
+    let taxAmt = 0;
+    if (line.tax_id) {
+      const slab = INDIAN_GST_SLABS.find((s) => s.id === line.tax_id);
+      const tax = (currentTaxRates.length ? currentTaxRates : taxRates).find((t) => t.id === line.tax_id);
+      const rate = slab ? slab.rate : (tax ? Number(tax.rate) : 0);
+      taxAmt = lineTotal * (rate / 100);
+    }
+    return { ...line, tax_amount: taxAmt, amount: lineTotal + taxAmt };
+  }, [taxRates]);
+
+  const loadInvoiceLines = async (targetInvoiceId: string, currentTaxRates = taxRates) => {
+    if (!targetInvoiceId) return;
+    const { data: invLines, error } = await supabase
+      .from("invoice_lines")
+      .select("*")
+      .eq("invoice_id", targetInvoiceId)
+      .order("sort_order");
+
+    if (error) {
+      console.error("Error loading invoice lines:", error);
+      return;
+    }
+
+    if (invLines && invLines.length > 0) {
+      const mappedLines: LineItem[] = invLines.map((l: any) =>
+        calculateLine({
+          id: crypto.randomUUID(),
+          item_id: l.item_id || null,
+          name: l.name || "",
+          description: l.description || "",
+          quantity: Number(l.quantity) || 1,
+          rate: Number(l.rate) || 0,
+          discount: Number(l.discount) || 0,
+          discount_type: l.discount_type || "percentage",
+          tax_id: l.tax_id || null,
+          tax_amount: Number(l.tax_amount) || 0,
+          amount: Number(l.amount) || 0,
+        }, currentTaxRates)
+      );
+      setLines(mappedLines);
+      toast({
+        title: "Invoice items loaded",
+        description: `Loaded ${mappedLines.length} item(s) from invoice. You can remove items not being returned or adjust quantities.`,
+      });
+    }
+  };
+
   useEffect(() => {
     if (!org?.id) return;
     const load = async () => {
@@ -76,7 +134,7 @@ export default function CreditNoteBuilderPage() {
         supabase.from("clients").select("id, display_name").eq("org_id", org.id).eq("status", "active"),
         supabase.from("items").select("*").eq("org_id", org.id).eq("is_active", true),
         supabase.from("tax_rates").select("*").eq("org_id", org.id),
-        supabase.from("invoices").select("id, invoice_number, client_id").eq("org_id", org.id),
+        supabase.from("invoices").select("id, invoice_number, client_id, status").eq("org_id", org.id).neq("status", "void").order("created_at", { ascending: false }),
       ]);
       setClients(c.data || []);
       setItems(i.data || []);
@@ -89,6 +147,19 @@ export default function CreditNoteBuilderPage() {
         setCreditNoteNumber(`${prefix}-${new Date().getFullYear()}-${String(num).padStart(4, "0")}`);
         setNotes(org.default_notes || "");
         setTerms(org.default_terms || "");
+
+        if (queryClientId) {
+          setClientId(queryClientId);
+        }
+
+        if (queryInvoiceId) {
+          setInvoiceId(queryInvoiceId);
+          const foundInv = inv.data?.find((x) => x.id === queryInvoiceId);
+          if (foundInv?.client_id) {
+            setClientId(foundInv.client_id);
+          }
+          await loadInvoiceLines(queryInvoiceId, t.data || []);
+        }
       }
     };
     load();
@@ -121,28 +192,23 @@ export default function CreditNoteBuilderPage() {
     loadCN();
   }, [id, isEdit]);
 
-  const calculateLine = useCallback((line: LineItem): LineItem => {
-    let lineTotal = line.quantity * line.rate;
-    if (line.discount > 0) {
-      lineTotal -= line.discount_type === "percentage" ? lineTotal * (line.discount / 100) : line.discount;
-    }
-    let taxAmt = 0;
-    if (line.tax_id) {
-      const tax = taxRates.find((t) => t.id === line.tax_id);
-      if (tax) taxAmt = lineTotal * (Number(tax.rate) / 100);
-    }
-    return { ...line, tax_amount: taxAmt, amount: lineTotal + taxAmt };
-  }, [taxRates]);
-
   const handleLineChange = (index: number, field: string, value: any) => {
     setLines((prev) => {
       const updated = [...prev];
       if (field === "item_id" && value) {
         const item = items.find((i) => i.id === value);
         if (item) {
+          let __rate = Number(item.unit_price) || 0;
+          const __priceType = item.sales_price_type || "without_tax";
+          if (__priceType === "with_tax" && item.tax_id) {
+            const __tax = taxRates.find((t: any) => t.id === item.tax_id);
+            if (__tax && Number(__tax.rate) > 0) {
+              __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
+            }
+          }
           updated[index] = calculateLine({
             ...updated[index], item_id: value, name: item.name,
-            description: item.description || "", rate: Number(item.unit_price),
+            description: item.description || "", rate: __rate,
             tax_id: item.tax_id,
           });
           return updated;
@@ -153,12 +219,35 @@ export default function CreditNoteBuilderPage() {
     });
   };
 
-  const subtotal = lines.reduce((s, l) => s + l.quantity * l.rate, 0);
+  const handleClientChange = (newClientId: string) => {
+    setClientId(newClientId);
+    if (invoiceId) {
+      const inv = invoices.find((i) => i.id === invoiceId);
+      if (inv && inv.client_id !== newClientId) {
+        setInvoiceId("");
+      }
+    }
+  };
+
+  const handleInvoiceChange = async (selectedId: string) => {
+    const invId = selectedId === "none" ? "" : selectedId;
+    setInvoiceId(invId);
+    if (!invId) return;
+
+    const targetInv = invoices.find((i) => i.id === invId);
+    if (targetInv?.client_id && targetInv.client_id !== clientId) {
+      setClientId(targetInv.client_id);
+    }
+
+    await loadInvoiceLines(invId);
+  };
+
+  const subtotal = lines.reduce((s, l) => s + (l.quantity || 0) * (l.rate || 0), 0);
   const totalDiscount = lines.reduce((s, l) => {
-    const lt = l.quantity * l.rate;
-    return s + (l.discount_type === "percentage" ? lt * (l.discount / 100) : l.discount);
+    const lt = (l.quantity || 0) * (l.rate || 0);
+    return s + (l.discount_type === "percentage" ? lt * ((l.discount || 0) / 100) : (l.discount || 0));
   }, 0);
-  const totalTax = lines.reduce((s, l) => s + l.tax_amount, 0);
+  const totalTax = lines.reduce((s, l) => s + (l.tax_amount || 0), 0);
   const total = subtotal - totalDiscount + totalTax;
 
   const fmt = (n: number) =>
@@ -251,9 +340,10 @@ export default function CreditNoteBuilderPage() {
   };
 
   const filteredInvoices = clientId ? invoices.filter((inv) => inv.client_id === clientId) : invoices;
+  const selectedInvoice = invoices.find((inv) => inv.id === invoiceId);
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl">
       <PageHeader title={isEdit ? "Edit Credit Note" : "New Credit Note"}>
         <Button variant="outline" onClick={() => handleSave("draft")}><Save className="mr-1 h-4 w-4" /> Save Draft</Button>
         <Button onClick={() => handleSave("sent")}><Send className="mr-1 h-4 w-4" /> Save & Send</Button>
@@ -265,7 +355,7 @@ export default function CreditNoteBuilderPage() {
             <div className="space-y-2">
               <Label>Client *</Label>
               <div className="flex gap-2">
-                <Select value={clientId} onValueChange={setClientId}>
+                <Select value={clientId} onValueChange={handleClientChange}>
                   <SelectTrigger className="flex-1"><SelectValue placeholder="Select client" /></SelectTrigger>
                   <SelectContent>
                     {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>)}
@@ -280,10 +370,10 @@ export default function CreditNoteBuilderPage() {
             </div>
             <div className="space-y-2">
               <Label>Against Invoice (optional)</Label>
-              <Select value={invoiceId} onValueChange={setInvoiceId}>
+              <Select value={invoiceId || "none"} onValueChange={handleInvoiceChange}>
                 <SelectTrigger><SelectValue placeholder="Select invoice" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   {filteredInvoices.map((inv) => <SelectItem key={inv.id} value={inv.id}>{inv.invoice_number}</SelectItem>)}
                 </SelectContent>
               </Select>
@@ -304,7 +394,16 @@ export default function CreditNoteBuilderPage() {
 
       {/* Line Items */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="pt-6 space-y-3">
+          {selectedInvoice && (
+            <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-50 text-blue-800 dark:bg-blue-950/50 dark:text-blue-200 text-xs border border-blue-200 dark:border-blue-800">
+              <Info className="h-4 w-4 shrink-0" />
+              <span>
+                Line items auto-populated from <strong>{selectedInvoice.invoice_number}</strong>. Remove items that are not being returned or adjust the returned quantity.
+              </span>
+            </div>
+          )}
+
           <Table>
             <TableHeader>
               <TableRow>
@@ -322,7 +421,7 @@ export default function CreditNoteBuilderPage() {
                 <TableRow key={line.id}>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Select value={line.item_id || ""} onValueChange={(v) => handleLineChange(idx, "item_id", v)}>
+                      <Select value={line.item_id || undefined} onValueChange={(v) => handleLineChange(idx, "item_id", v)}>
                         <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Select item" /></SelectTrigger>
                         <SelectContent>
                           {items.map((item) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
@@ -335,21 +434,59 @@ export default function CreditNoteBuilderPage() {
                     <Input className="mt-1 h-8 text-xs" value={line.name} onChange={(e) => handleLineChange(idx, "name", e.target.value)} placeholder="Item name" />
                   </TableCell>
                   <TableCell><Input className="h-8 text-xs" value={line.description} onChange={(e) => handleLineChange(idx, "description", e.target.value)} /></TableCell>
-                  <TableCell><Input className="h-8 text-xs" type="number" value={line.quantity} onChange={(e) => handleLineChange(idx, "quantity", parseFloat(e.target.value) || 0)} /></TableCell>
-                  <TableCell><Input className="h-8 text-xs" type="number" value={line.rate} onChange={(e) => handleLineChange(idx, "rate", parseFloat(e.target.value) || 0)} /></TableCell>
+                  <TableCell><Input className="h-8 text-xs" type="number" min="0" step="any" value={line.quantity} onChange={(e) => handleLineChange(idx, "quantity", parseFloat(e.target.value) || 0)} /></TableCell>
+                  <TableCell><Input className="h-8 text-xs" type="number" min="0" step="any" value={line.rate} onChange={(e) => handleLineChange(idx, "rate", parseFloat(e.target.value) || 0)} /></TableCell>
                   <TableCell>
-                    <Select value={line.tax_id || ""} onValueChange={(v) => handleLineChange(idx, "tax_id", v || null)}>
+                    <Select 
+                      value={
+                        line.tax_id 
+                          ? (INDIAN_GST_SLABS.find(s => s.id === line.tax_id)?.id || 
+                             INDIAN_GST_SLABS.find(s => {
+                               const t = taxRates.find((tr: any) => tr.id === line.tax_id);
+                               return t && Number(t.rate) === s.rate;
+                             })?.id || line.tax_id)
+                          : "exempt"
+                      } 
+                      onValueChange={(v) => {
+                        if (v === "exempt") {
+                          handleLineChange(idx, "tax_id", null);
+                          return;
+                        }
+                        const slab = INDIAN_GST_SLABS.find(s => s.id === v);
+                        if (slab) {
+                          const matched = taxRates.find((t: any) => Number(t.rate) === slab.rate);
+                          handleLineChange(idx, "tax_id", matched ? matched.id : slab.id);
+                        } else {
+                          handleLineChange(idx, "tax_id", v);
+                        }
+                      }}
+                    >
                       <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="No tax" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No tax</SelectItem>
-                        {taxRates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name} ({t.rate}%)</SelectItem>)}
+                        {INDIAN_GST_SLABS.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.rate}% ({s.name.split(" - ")[1] || s.name})
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">{fmt(line.amount - (line.tax_amount || 0))}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setLines((p) => p.filter((_, i) => i !== idx))} disabled={lines.length <= 1}>
-                      <Trash2 className="h-3 w-3 text-destructive" />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => {
+                        if (lines.length <= 1) {
+                          setLines([createEmptyLine()]);
+                        } else {
+                          setLines((p) => p.filter((_, i) => i !== idx));
+                        }
+                      }}
+                      title="Remove item"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -386,3 +523,4 @@ export default function CreditNoteBuilderPage() {
     </div>
   );
 }
+

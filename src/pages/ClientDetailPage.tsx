@@ -115,7 +115,7 @@ export default function ClientDetailPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader title={client.display_name} description={client.company_name || client.email || ""}>
         <Button variant="outline" size="sm" onClick={() => navigate("/clients")}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Back

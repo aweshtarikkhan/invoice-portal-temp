@@ -89,7 +89,7 @@ export default function ProfitLossPage() {
   if (loading) return <div className="p-6">Loading P&L report...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <SEO title="Profit & Loss" description="View monthly income vs expense breakdown with GST summary and net margin trends." path="/profit-loss" />
       <PageHeader title="Profit & Loss" description="Income vs expenses breakdown">
         <Button variant="outline" size="sm" onClick={() => downloadCSV(monthlyData, "profit-loss-report")}>

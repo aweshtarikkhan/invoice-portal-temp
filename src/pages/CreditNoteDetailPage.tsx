@@ -71,7 +71,7 @@ export default function CreditNoteDetailPage() {
   const printCSS = getPrintPageCSS(org?.template_paper_size);
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <PageHeader title={`Credit Note ${cn.credit_note_number}`}>

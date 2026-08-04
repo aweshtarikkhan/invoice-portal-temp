@@ -115,7 +115,7 @@ export default function EstimateDetailPage() {
   const printCSS = getPrintPageCSS(org?.template_paper_size);
 
   return (
-    <div className="p-6 space-y-6 max-w-4xl mx-auto">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <div className="flex items-center justify-between">

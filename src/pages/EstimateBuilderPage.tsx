@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,19 +28,20 @@ interface LineItem {
   item_id: string | null;
   name: string;
   description: string;
-  quantity: number;
-  rate: number;
-  discount: number;
+  quantity: any;
+  rate: any;
+  discount: any;
   discount_type: "percentage" | "fixed";
   tax_id: string | null;
   tax_amount: number;
   amount: number;
+  expiry_warning?: string;
 }
 
 function createEmptyLine(): LineItem {
   return {
     id: crypto.randomUUID(), item_id: null, name: "", description: "",
-    quantity: 1, rate: 0, discount: 0, discount_type: "percentage",
+    quantity: 1, rate: "", discount: "", discount_type: "percentage",
     tax_id: null, tax_amount: 0, amount: 0,
   };
 }
@@ -49,14 +51,38 @@ function SortableLine({ line, index, taxRates, items, onChange, onRemove, onAddI
   const style = { transform: CSS.Transform.toString(transform), transition };
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
-  const handleItemSelect = (itemId: string) => {
+  const handleItemSelect = async (itemId: string) => {
     if (itemId === "none") { onChange(index, "item_id", null); return; }
     const item = items.find((i: any) => i.id === itemId);
     if (item) {
       onChange(index, "item_id", item.id);
       onChange(index, "name", item.name);
-      onChange(index, "description", item.description || "");
-      onChange(index, "rate", Number(item.unit_price));
+      let extraDesc = "";
+    const { data: cfs } = await supabase
+      .from("custom_field_values")
+      .select("value, custom_field_definitions(field_name)")
+      .eq("entity_id", item.id);
+      
+    if (cfs && cfs.length > 0) {
+      extraDesc = cfs
+        .filter((cf: any) => cf.value)
+        .map((cf: any) => `${(cf.custom_field_definitions as any)?.field_name}: ${cf.value}`)
+        .join("\n");
+    }
+    onChange(index, "description", item.description ? (extraDesc ? `${item.description}\n${extraDesc}` : item.description) : extraDesc);
+          let __rate = Number(item.unit_price) || 0;
+    const __priceType = window.location.pathname.includes("bill") || window.location.pathname.includes("purchase") || window.location.pathname.includes("grn") ? (item.purchase_price_type || "without_tax") : (item.sales_price_type || "without_tax");
+    if (__priceType === "with_tax" && item.tax_id) {
+      const __tax = taxRates.find((t: any) => t.id === item.tax_id);
+      if (__tax && Number(__tax.rate) > 0) {
+        __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
+      }
+    }
+    onChange(index, "rate", __rate);
+      onChange(index, "discount", Number(item.discount) || 0);
+      onChange(index, "discount_type", "percentage");
+      onChange(index, "unit", item.unit || "pcs");
+      if (item.hsn_code) onChange(index, "hsn_code", item.hsn_code);
       if (item.tax_id) onChange(index, "tax_id", item.tax_id);
     }
   };
@@ -73,7 +99,11 @@ function SortableLine({ line, index, taxRates, items, onChange, onRemove, onAddI
               <SelectTrigger className="h-9 text-xs flex-1"><SelectValue placeholder="Select item..." /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Custom item</SelectItem>
-                {items.map((item: any) => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}
+                {items.map((item: any) => (
+                  <SelectItem key={item.id} value={item.id}>
+                    {item.name} {Number(item.discount) > 0 ? `(₹${(Number(item.unit_price) * (1 - Number(item.discount)/100)).toFixed(2)} - ${item.discount}% off)` : `(₹${item.unit_price})`}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
             <button type="button" onClick={onAddItem} className="h-9 w-9 flex items-center justify-center rounded-md border border-input bg-background text-muted-foreground hover:text-foreground hover:bg-accent shrink-0" title="Add New Item">
@@ -88,21 +118,47 @@ function SortableLine({ line, index, taxRates, items, onChange, onRemove, onAddI
             onChange={(e) => onChange(index, "description", e.target.value)} />
         </div>
         <div className="col-span-1">
-          <Input type="number" className="h-9 text-xs text-center" value={line.quantity}
-            onChange={(e) => onChange(index, "quantity", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
+          <Input placeholder="1" type="number" className="h-9 text-xs text-center" onFocus={(e) => e.target.select()} onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} value={line.quantity}
+            onChange={(e) => onChange(index, "quantity", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           <span className="text-[10px] text-muted-foreground">Qty</span>
         </div>
         <div className="col-span-2">
-          <Input type="number" className="h-9 text-xs" value={line.rate}
-            onChange={(e) => onChange(index, "rate", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
+          <Input placeholder="0" type="number" className="h-9 text-xs" value={line.rate}
+            onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           <span className="text-[10px] text-muted-foreground">Rate</span>
         </div>
         <div className="col-span-1">
-          <Select value={line.tax_id || "none"} onValueChange={(v) => onChange(index, "tax_id", v === "none" ? null : v)}>
+          <Select 
+            value={
+              line.tax_id 
+                ? (INDIAN_GST_SLABS.find(s => s.id === line.tax_id)?.id || 
+                   INDIAN_GST_SLABS.find(s => {
+                     const t = taxRates.find((tr: any) => tr.id === line.tax_id);
+                     return t && Number(t.rate) === s.rate;
+                   })?.id || line.tax_id)
+                : "exempt"
+            } 
+            onValueChange={(v) => {
+              if (v === "exempt") {
+                onChange(index, "tax_id", null);
+                return;
+              }
+              const slab = INDIAN_GST_SLABS.find(s => s.id === v);
+              if (slab) {
+                const matched = taxRates.find((t: any) => Number(t.rate) === slab.rate);
+                onChange(index, "tax_id", matched ? matched.id : slab.id);
+              } else {
+                onChange(index, "tax_id", v);
+              }
+            }}
+          >
             <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Tax" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No tax</SelectItem>
-              {taxRates.map((t: any) => <SelectItem key={t.id} value={t.id}>{t.rate}%</SelectItem>)}
+              {INDIAN_GST_SLABS.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.rate}% ({s.name.split(" - ")[1] || s.name})
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <span className="text-[10px] text-muted-foreground">Tax</span>
@@ -214,8 +270,10 @@ export default function EstimateBuilderPage() {
     const sub = line.quantity * line.rate;
     const disc = line.discount_type === "percentage" ? sub * (line.discount / 100) : line.discount;
     const after = sub - disc;
+    const slab = INDIAN_GST_SLABS.find((s) => s.id === line.tax_id);
     const tr = taxRates.find((t) => t.id === line.tax_id);
-    const tax = tr ? after * (Number(tr.rate) / 100) : 0;
+    const rate = slab ? slab.rate : (tr ? Number(tr.rate) : 0);
+    const tax = after * (rate / 100);
     return { ...line, tax_amount: tax, amount: after };
   }, [taxRates]);
 
@@ -297,7 +355,7 @@ export default function EstimateBuilderPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{id ? "Edit Estimate" : "New Estimate"}</h1>
         <div className="flex gap-2">

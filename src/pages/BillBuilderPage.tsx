@@ -7,10 +7,10 @@ import { logAudit } from "@/lib/audit";
 import { logStockMovements, detectNegativeStock } from "@/lib/stock";
 import { CustomFieldsForm, saveCustomFieldValues } from "@/components/shared/CustomFieldsForm";
 import { CURRENCIES, formatCurrency } from "@/lib/currency";
+import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
 import { stateCodeFromGstin } from "@/lib/gst";
-import { COMMON_UNITS, INDIAN_STATES } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,9 +54,9 @@ interface LineItem {
   name: string;
   description: string;
   unit: string;
-  quantity: number;
-  rate: number;
-  discount: number;
+  quantity: any;
+  rate: any;
+  discount: any;
   discount_type: "percentage" | "fixed";
   tax_id: string | null;
   tax_amount: number;
@@ -64,6 +64,9 @@ interface LineItem {
   hsn_code: string;
   sub_unit?: string;
   sub_unit_conversion_rate?: number;
+  primary_unit?: string;
+  base_unit_price?: number;
+  expiry_warning?: string;
 }
 
 const UNITS = COMMON_UNITS;
@@ -76,13 +79,17 @@ function createEmptyLine(): LineItem {
     description: "",
     unit: "pcs",
     quantity: 1,
-    rate: 0,
-    discount: 0,
+    rate: "",
+    discount: "",
     discount_type: "percentage",
     tax_id: null,
     tax_amount: 0,
     amount: 0,
     hsn_code: "",
+    sub_unit: "",
+    sub_unit_conversion_rate: 1,
+    primary_unit: "pcs",
+    base_unit_price: 0,
   };
 }
 
@@ -113,16 +120,55 @@ function SortableLineItem({
     transition,
   };
 
-  const handleItemSelect = (item: any) => {
+  const handleItemSelect = async (item: any) => {
     onChange(index, "item_id", item.id);
     onChange(index, "name", item.name);
-    onChange(index, "description", item.description || "");
-    onChange(index, "rate", Number(item.unit_price));
+    if (item.has_expiry && item.expiry_date) {
+      const exp = new Date(item.expiry_date);
+      const now = new Date();
+      const days = (exp.getTime() - now.getTime()) / (1000 * 3600 * 24);
+      const { format } = await import("date-fns");
+      if (days < 0) {
+        onChange(index, "expiry_warning", `Expired on ${format(exp, 'MMM d, yyyy')}`);
+      } else if (days < 30) {
+        onChange(index, "expiry_warning", `Expiring on ${format(exp, 'MMM d, yyyy')}`);
+      } else {
+        onChange(index, "expiry_warning", "");
+      }
+    } else {
+      onChange(index, "expiry_warning", "");
+    }
+    let extraDesc = "";
+    const { data: cfs } = await supabase
+      .from("custom_field_values")
+      .select("value, custom_field_definitions(field_name)")
+      .eq("entity_id", item.id);
+      
+    if (cfs && cfs.length > 0) {
+      extraDesc = cfs
+        .filter((cf: any) => cf.value)
+        .map((cf: any) => `${(cf.custom_field_definitions as any)?.field_name}: ${cf.value}`)
+        .join("\n");
+    }
+    onChange(index, "description", item.description ? (extraDesc ? `${item.description}\n${extraDesc}` : item.description) : extraDesc);
+        let __rate = Number(item.unit_price) || 0;
+    const __priceType = window.location.pathname.includes("bill") || window.location.pathname.includes("purchase") || window.location.pathname.includes("grn") ? (item.purchase_price_type || "without_tax") : (item.sales_price_type || "without_tax");
+    if (__priceType === "with_tax" && item.tax_id) {
+      const __tax = taxRates.find((t: any) => t.id === item.tax_id);
+      if (__tax && Number(__tax.rate) > 0) {
+        __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
+      }
+    }
+    onChange(index, "rate", __rate);
+    onChange(index, "discount", Number(item.discount) || 0);
+    onChange(index, "discount_type", "percentage");
     onChange(index, "unit", item.unit || "pcs");
+    onChange(index, "primary_unit", item.unit || "pcs");
+    onChange(index, "base_unit_price", Number(item.unit_price) || 0);
     onChange(index, "hsn_code", item.hsn_code || "");
     onChange(index, "tax_id", item.tax_id || null);
     onChange(index, "sub_unit", item.sub_unit || "");
-    onChange(index, "sub_unit_conversion_rate", item.sub_unit_conversion_rate || 1);
+    onChange(index, "sub_unit_conversion_rate", Number(item.sub_unit_conversion_rate) || 1);
     setItemDropdownOpen(false);
   };
 
@@ -133,6 +179,9 @@ function SortableLineItem({
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
+
+  const hasSubUnit = Boolean(line.sub_unit && line.sub_unit_conversion_rate && line.sub_unit_conversion_rate > 1);
+  const isSellingInSubUnit = hasSubUnit && line.unit?.toLowerCase() === line.sub_unit?.toLowerCase();
 
   return (
     <div ref={setNodeRef} style={style} className="flex items-start gap-1 py-3 border-b last:border-0">
@@ -173,8 +222,30 @@ function SortableLineItem({
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => handleItemSelect(item)}
                     >
-                      <span className="font-medium">{item.name}</span>
-                      <span className="text-muted-foreground">{new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(item.unit_price)}</span>
+                      <div>
+                        <div className="font-medium">{item.name}</div>
+                        {item.description && (
+                          <div className="text-[10px] text-muted-foreground truncate max-w-[200px]">{item.description}</div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        {Number(item.discount) > 0 ? (
+                          <div className="flex flex-col items-end">
+                            <span className="font-semibold text-emerald-700">
+                              {fmt(Number(item.unit_price) * (1 - Number(item.discount) / 100))}
+                            </span>
+                            <div className="flex items-center gap-1 text-[10px]">
+                              <span className="line-through text-muted-foreground">{fmt(Number(item.unit_price))}</span>
+                              <span className="text-emerald-600 font-bold">({item.discount}% off)</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="font-medium text-foreground">{fmt(Number(item.unit_price))}</span>
+                        )}
+                        {item.sub_unit && item.sub_unit_conversion_rate > 1 && (
+                          <div className="text-[9px] text-muted-foreground">1 {item.unit || 'Box'} = {item.sub_unit_conversion_rate} {item.sub_unit}</div>
+                        )}
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -191,22 +262,58 @@ function SortableLineItem({
             onChange={(e) => onChange(index, "description", e.target.value)}
             rows={2}
           />
+          {line.expiry_warning && <div className="text-[10px] text-red-500 font-medium mt-1">{line.expiry_warning}</div>}
         </div>
         {/* Quantity */}
-        <div className="col-span-2">
-          <Input type="number" className="h-8 text-xs text-center" value={line.quantity} onChange={(e) => onChange(index, "quantity", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
+        <div className="col-span-2 space-y-1">
+          <Input placeholder="1" type="number" className="h-8 text-xs text-center font-medium" onFocus={(e) => e.target.select()} onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} value={line.quantity} onChange={(e) => onChange(index, "quantity", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           {line.item_id ? (
-            <div className="flex flex-col items-center mt-0.5">
-              {line.unit && <span className="text-[10px] text-muted-foreground">{line.unit}</span>}
-              {org?.sub_unit_enabled && line.sub_unit && (
-                <span className="text-[10px] text-muted-foreground/60">
-                  = {(line.quantity * (line.sub_unit_conversion_rate || 1)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} {line.sub_unit}
-                </span>
+            <div className="flex flex-col items-center">
+              {hasSubUnit ? (
+                <div className="w-full flex flex-col items-center gap-0.5">
+                  <div className="flex items-center justify-center gap-1 bg-muted/60 rounded px-1 py-0.5 w-full">
+                    <span className="text-[10px] font-bold text-foreground uppercase">{line.unit}</span>
+                    <button
+                      type="button"
+                      title="Switch unit"
+                      onClick={() => {
+                        if (isSellingInSubUnit) {
+                          // Switch to Primary Unit (e.g. BOX)
+                          const targetUnit = line.primary_unit || "box";
+                          const targetRate = line.base_unit_price || Number((line.rate * (line.sub_unit_conversion_rate || 1)).toFixed(2));
+                          onChange(index, "unit", targetUnit);
+                          onChange(index, "rate", targetRate);
+                        } else {
+                          // Switch to Sub-Unit (e.g. PCS)
+                          const targetUnit = line.sub_unit;
+                          const base = line.base_unit_price || line.rate;
+                          const targetRate = Number((base / (line.sub_unit_conversion_rate || 1)).toFixed(2));
+                          onChange(index, "unit", targetUnit);
+                          onChange(index, "rate", targetRate);
+                        }
+                      }}
+                      className="text-[9px] text-blue-600 hover:text-blue-800 underline font-medium"
+                    >
+                      {isSellingInSubUnit ? `Switch to ${line.primary_unit?.toUpperCase() || 'BOX'}` : `Buy in ${line.sub_unit?.toUpperCase()}`}
+                    </button>
+                  </div>
+                  {!isSellingInSubUnit ? (
+                    <span className="text-[9px] text-muted-foreground text-center">
+                      = {(line.quantity * (line.sub_unit_conversion_rate || 1)).toLocaleString("en-IN", { maximumFractionDigits: 2 })} {line.sub_unit}
+                    </span>
+                  ) : (
+                    <span className="text-[9px] text-blue-600/80 text-center">
+                      (1 {line.primary_unit || 'box'} = {line.sub_unit_conversion_rate} {line.sub_unit})
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <span className="text-[10px] text-muted-foreground uppercase font-medium mt-0.5">{line.unit || "pcs"}</span>
               )}
             </div>
           ) : (
             <Input
-              className="h-5 text-[10px] text-muted-foreground text-center border-0 border-b border-dashed bg-transparent px-1 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 mt-0.5"
+              className="h-5 text-[10px] text-muted-foreground text-center border-0 border-b border-dashed bg-transparent px-1 py-0 focus-visible:ring-0 focus-visible:ring-offset-0 mt-0.5 uppercase"
               placeholder="unit"
               value={line.unit === "pcs" && !line.name ? "" : line.unit}
               onChange={(e) => onChange(index, "unit", e.target.value)}
@@ -215,23 +322,43 @@ function SortableLineItem({
         </div>
         {/* Rate */}
         <div className="col-span-2">
-          <Input type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", parseFloat(e.target.value) || 0)} min={0} step="0.01" />
+          <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
         </div>
         {/* Tax */}
         <div className="col-span-2">
-          <Select value={line.tax_id || "none"} onValueChange={(val) => onChange(index, "tax_id", val === "none" ? null : val)}>
+          <Select 
+            value={
+              line.tax_id 
+                ? (INDIAN_GST_SLABS.find(s => s.id === line.tax_id)?.id || 
+                   INDIAN_GST_SLABS.find(s => {
+                     const t = taxRates.find((tr: any) => tr.id === line.tax_id);
+                     return t && Number(t.rate) === s.rate;
+                   })?.id || line.tax_id)
+                : "exempt"
+            } 
+            onValueChange={(val) => {
+              if (val === "exempt") {
+                onChange(index, "tax_id", null);
+                return;
+              }
+              const slab = INDIAN_GST_SLABS.find(s => s.id === val);
+              if (slab) {
+                const matched = taxRates.find((t: any) => Number(t.rate) === slab.rate);
+                onChange(index, "tax_id", matched ? matched.id : slab.id);
+              } else {
+                onChange(index, "tax_id", val);
+              }
+            }}
+          >
             <SelectTrigger className="h-8 text-[11px] px-2 bg-transparent border-dashed">
               <SelectValue placeholder="Tax" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="none">No Tax</SelectItem>
-              {taxRates
-              .filter((t) => !t.name.toUpperCase().includes("CGST") && !t.name.toUpperCase().includes("SGST"))
-              .map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name.replace(/IGST/i, "GST")} ({t.rate}%)
-              </SelectItem>
-            ))}
+              {INDIAN_GST_SLABS.map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -471,16 +598,15 @@ export default function BillBuilderPage() {
     const afterDiscount = Math.max(0, lineSubtotal - itemDiscount - globalDiscountAllocated);
     
     let tax_amount = 0;
-      let tax_rate = 0;
-      if (line.tax_id) {
-        const tax = taxRates.find((t: any) => t.id === line.tax_id);
-        if (tax) {
-          tax_rate = Number(tax.rate);
-          tax_amount = afterDiscount * (tax_rate / 100);
-        }
-      }
-      
-      return { ...line, tax_amount, tax_rate, amount: afterDiscount + tax_amount };
+    let tax_rate = 0;
+    if (line.tax_id) {
+      const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
+      const taxRateObj = taxRates.find((t: any) => t.id === line.tax_id);
+      tax_rate = slab ? slab.rate : (taxRateObj ? Number(taxRateObj.rate) : 0);
+      tax_amount = afterDiscount * (tax_rate / 100);
+    }
+    
+    return { ...line, tax_amount, tax_rate, amount: afterDiscount + tax_amount };
   }, [taxRates]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
@@ -524,12 +650,12 @@ export default function BillBuilderPage() {
   const isInterstate = Boolean(orgState && vendorState && orgState !== vendorState);
 
   // Totals
-  const rawSubtotal = lines.reduce((s, l) => s + (l.quantity * l.rate), 0);
+  const rawSubtotal = lines.reduce((s, l) => s + ((Number(l.quantity) || 0) * (Number(l.rate) || 0)), 0);
   const totalDiscount = discountType === "percentage" ? rawSubtotal * (discount / 100) : discount;
   
   // Calculate item-wise totals
   const calculatedLines = lines.map(line => calculateLine(line, totalDiscount, rawSubtotal));
-  const subtotal = calculatedLines.reduce((s, l) => s + (l.quantity * l.rate), 0);
+  const subtotal = calculatedLines.reduce((s, l) => s + ((Number(l.quantity) || 0) * (Number(l.rate) || 0)), 0);
   const discountedSubtotal = calculatedLines.reduce((s, l) => s + (l.amount - l.tax_amount), 0);
   
   // Aggregate Taxes
@@ -777,7 +903,7 @@ export default function BillBuilderPage() {
   }, [id, vendorId, lines]);
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="space-y-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{id ? "Edit Bill" : "New Bill"}</h1>
         <div className="flex gap-2">
@@ -1075,7 +1201,14 @@ export default function BillBuilderPage() {
                     let line = createEmptyLine();
                     line.item_id = item.id;
                     line.name = item.name;
-                    line.description = item.description || "";
+                    let extraDesc = "";
+                    if (item.custom_field_values && item.custom_field_values.length > 0) {
+                      extraDesc = item.custom_field_values
+                        .filter((cf: any) => cf.value)
+                        .map((cf: any) => `${cf.custom_field_definitions?.field_name}: ${cf.value}`)
+                        .join("\n");
+                    }
+                    line.description = item.description ? (extraDesc ? `${item.description}\n${extraDesc}` : item.description) : extraDesc;
                     line.rate = Number(item.unit_price);
                     line.unit = item.unit || "pcs";
                     line.quantity = 1;

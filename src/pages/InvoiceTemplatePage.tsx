@@ -82,7 +82,7 @@ export default function InvoiceTemplatePage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <SEO title="Invoice Templates" description="Choose and customize invoice templates that match your brand identity." path="/templates" />
       <PageHeader
         title="Invoice Templates"

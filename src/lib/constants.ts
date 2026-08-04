@@ -45,3 +45,19 @@ export const COMMON_UNITS = [
   "box", "hrs", "days", "months", "pair", "set", "sqft", "sqm", "ton", "qtl", 
   "dozen", "bundle", "roll", "bag", "carton", "pack", "can", "drum", "tube", "oth"
 ].sort();
+
+export interface GstSlab {
+  id: string;
+  name: string;
+  rate: number;
+  description: string;
+}
+
+export const INDIAN_GST_SLABS: GstSlab[] = [
+  { id: 'exempt', name: '0% - Exempted', rate: 0, description: 'Exempted' },
+  { id: 'gst3', name: '3% - Gold & Silver', rate: 3, description: 'Gold & Silver' },
+  { id: 'gst5', name: '5% - Essentials', rate: 5, description: 'Essentials' },
+  { id: 'gst18', name: '18% - Standard Rate', rate: 18, description: 'Standard Rate' },
+  { id: 'gst40', name: '40% - Luxury and Sin Goods', rate: 40, description: 'Luxury and Sin Goods' },
+];
+

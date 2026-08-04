@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -19,7 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
-import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus } from "lucide-react";
+import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus, Sparkles } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 
 const PAYMENT_MODES = [
@@ -44,20 +44,40 @@ interface OutstandingInvoice {
   payment: number;
 }
 
+function allocateAmountAcrossInvoices(
+  invList: OutstandingInvoice[],
+  totalAmount: number
+): OutstandingInvoice[] {
+  let remaining = Math.max(0, totalAmount);
+  return invList.map((inv) => {
+    if (!inv.selected) {
+      return { ...inv, payment: 0 };
+    }
+    const pay = Math.min(remaining, inv.balance_due);
+    remaining = Math.max(0, remaining - pay);
+    return { ...inv, payment: Math.round(pay * 100) / 100 };
+  });
+}
+
 export default function RecordPaymentPage() {
   const org = useAppStore((s) => s.organization);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const queryClientId = searchParams.get("client_id");
+  const queryInvoiceId = searchParams.get("invoice_id");
+  const queryAmount = searchParams.get("amount");
+
   const { toast } = useToast();
   const { user } = useAuth();
 
   const [clients, setClients] = useState<any[]>([]);
-  const [clientId, setClientId] = useState("");
+  const [clientId, setClientId] = useState(queryClientId || "");
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split("T")[0]);
   const [paymentMode, setPaymentMode] = useState("bank_transfer");
   const [referenceNumber, setReferenceNumber] = useState("");
   const [notes, setNotes] = useState("");
-  const [amountReceived, setAmountReceived] = useState("");
+  const [amountReceived, setAmountReceived] = useState(queryAmount || "");
   const [invoices, setInvoices] = useState<OutstandingInvoice[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -70,6 +90,9 @@ export default function RecordPaymentPage() {
     if (!org?.id) return;
     supabase.from("clients").select("id, display_name").eq("org_id", org.id).eq("status", "active").order("display_name").then(({ data }) => {
       setClients(data || []);
+      if (!clientId && queryClientId) {
+        setClientId(queryClientId);
+      }
     });
   }, [org?.id]);
 
@@ -85,39 +108,36 @@ export default function RecordPaymentPage() {
       .in("status", ["sent", "viewed", "partial", "overdue"])
       .order("due_date", { ascending: true })
       .then(({ data }) => {
-          setInvoices(
-            (data || []).map((inv) => ({
-              ...inv,
-              total: Number(inv.total),
-              balance_due: Number(inv.balance_due),
-              selected: false,
-              payment: 0,
-            }))
-          );
-          setLoadingInvoices(false);
+        const rawList = data || [];
+        const initialInvoices: OutstandingInvoice[] = rawList.map((inv) => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          issue_date: inv.issue_date,
+          due_date: inv.due_date,
+          total: Number(inv.total),
+          balance_due: Number(inv.balance_due),
+          status: inv.status,
+          selected: queryInvoiceId ? inv.id === queryInvoiceId : true,
+          payment: 0,
+        }));
 
-          // Auto-suggest: if there's a payment amount, auto-select best matching invoice
-          const amt = parseFloat(amountReceived) || 0;
-          if (amt > 0 && data && data.length > 0) {
-            const exactMatch = data.find(i => Math.abs(Number(i.balance_due) - amt) < 0.01);
-            if (exactMatch) {
-              setInvoices(prev => prev.map(inv => 
-                inv.id === exactMatch.id 
-                  ? { ...inv, selected: true, payment: amt }
-                  : inv
-              ));
-            }
+        const amt = parseFloat(amountReceived) || 0;
+        if (amt > 0) {
+          setInvoices(allocateAmountAcrossInvoices(initialInvoices, amt));
+        } else if (queryInvoiceId) {
+          const target = initialInvoices.find((i) => i.id === queryInvoiceId);
+          if (target) {
+            setAmountReceived(String(target.balance_due));
+            setInvoices(allocateAmountAcrossInvoices(initialInvoices, target.balance_due));
+          } else {
+            setInvoices(initialInvoices);
           }
+        } else {
+          setInvoices(initialInvoices);
+        }
+        setLoadingInvoices(false);
       });
-  }, [clientId]);
-
-  // Auto-generate payment number
-  const paymentNumber = useMemo(() => {
-    if (!org) return "";
-    const prefix = org.payment_prefix || "PAY";
-    // Will be set on save to get latest number
-    return `${prefix}-XXXX`;
-  }, [org]);
+  }, [clientId, queryInvoiceId]);
 
   const totalOutstanding = invoices.reduce((s, i) => s + i.balance_due, 0);
   const totalApplied = invoices.reduce((s, i) => s + (i.selected ? i.payment : 0), 0);
@@ -128,27 +148,13 @@ export default function RecordPaymentPage() {
   const handleAmountChange = (value: string) => {
     setAmountReceived(value);
     const amt = parseFloat(value) || 0;
-    
-    // Auto-match: find exact match first
-    const exactMatch = invoices.find(i => Math.abs(i.balance_due - amt) < 0.01);
-    if (exactMatch && !invoices.some(i => i.selected)) {
-      setInvoices(prev => prev.map(inv => 
-        inv.id === exactMatch.id 
-          ? { ...inv, selected: true, payment: amt }
-          : { ...inv, selected: false, payment: 0 }
-      ));
-      return;
-    }
 
-    let remaining = amt;
-    setInvoices((prev) =>
-      prev.map((inv) => {
-        if (!inv.selected) return { ...inv, payment: 0 };
-        const pay = Math.min(remaining, inv.balance_due);
-        remaining -= pay;
-        return { ...inv, payment: pay };
-      })
-    );
+    setInvoices((prev) => {
+      // If no invoices are selected, select all first
+      const hasSelected = prev.some((i) => i.selected);
+      const base = hasSelected ? prev : prev.map((i) => ({ ...i, selected: true }));
+      return allocateAmountAcrossInvoices(base, amt);
+    });
   };
 
   const handleSelectInvoice = (id: string, checked: boolean) => {
@@ -156,34 +162,40 @@ export default function RecordPaymentPage() {
       const updated = prev.map((inv) =>
         inv.id === id ? { ...inv, selected: checked } : inv
       );
-      // Redistribute amount
-      let remaining = parseFloat(amountReceived) || 0;
-      return updated.map((inv) => {
-        if (!inv.selected) return { ...inv, payment: 0 };
-        const pay = Math.min(remaining, inv.balance_due);
-        remaining -= pay;
-        return { ...inv, payment: pay };
-      });
+      const amt = parseFloat(amountReceived) || 0;
+      return allocateAmountAcrossInvoices(updated, amt);
     });
   };
 
   const handleSelectAll = (checked: boolean) => {
     setInvoices((prev) => {
       const updated = prev.map((inv) => ({ ...inv, selected: checked }));
-      let remaining = parseFloat(amountReceived) || 0;
-      return updated.map((inv) => {
-        if (!inv.selected) return { ...inv, payment: 0 };
-        const pay = Math.min(remaining, inv.balance_due);
-        remaining -= pay;
-        return { ...inv, payment: pay };
-      });
+      const amt = parseFloat(amountReceived) || 0;
+      return allocateAmountAcrossInvoices(updated, amt);
     });
   };
 
   const handlePaymentEdit = (id: string, value: number) => {
+    setInvoices((prev) => {
+      const updated = prev.map((inv) => {
+        if (inv.id === id) {
+          const clamped = Math.max(0, Math.min(value, inv.balance_due));
+          return { ...inv, payment: clamped, selected: clamped > 0 };
+        }
+        return inv;
+      });
+      const newTotal = updated.reduce((s, i) => s + (i.selected ? i.payment : 0), 0);
+      setAmountReceived(newTotal > 0 ? String(newTotal) : "");
+      return updated;
+    });
+  };
+
+  const handleFillTotal = () => {
+    setAmountReceived(String(totalOutstanding));
     setInvoices((prev) =>
-      prev.map((inv) =>
-        inv.id === id ? { ...inv, payment: Math.min(value, inv.balance_due), selected: value > 0 } : inv
+      allocateAmountAcrossInvoices(
+        prev.map((i) => ({ ...i, selected: true })),
+        totalOutstanding
       )
     );
   };
@@ -202,68 +214,116 @@ export default function RecordPaymentPage() {
 
     setSaving(true);
 
-    // Get next payment number
-    const nextNum = (org as any).invoice_next_number || 1;
-    // Use a dedicated counter — we'll read current payment count
-    const { count } = await supabase.from("payments").select("id", { count: "exact", head: true }).eq("org_id", org.id);
-    const payNum = `${org.payment_prefix || "PAY"}-${String((count || 0) + 1).padStart(4, "0")}`;
+    try {
+      // Find the highest existing payment number to avoid unique constraint collisions
+      const prefix = org.payment_prefix || "PAY";
+      const { data: latestPayments } = await supabase
+        .from("payments")
+        .select("payment_number")
+        .eq("org_id", org.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
 
-    // Insert payments for each selected invoice
-    let hasError = false;
-    for (const inv of selectedInvoices) {
-      const { error } = await supabase.from("payments").insert({
-        org_id: org.id,
-        client_id: clientId,
-        invoice_id: inv.id,
-        payment_number: payNum,
-        amount: inv.payment,
-        payment_date: paymentDate,
-        payment_mode: paymentMode,
-        reference_number: referenceNumber || null,
-        notes: notes || null,
-        currency_code: org.currency_code,
+      let maxSeq = 0;
+      const regex = new RegExp(`^${prefix}-(\\d+)`, "i");
+      for (const p of latestPayments || []) {
+        const match = p.payment_number?.match(regex);
+        if (match) {
+          const n = parseInt(match[1], 10);
+          if (!isNaN(n) && n > maxSeq) maxSeq = n;
+        }
+      }
+      if (maxSeq === 0) {
+        const { count } = await supabase
+          .from("payments")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org.id);
+        maxSeq = count || 0;
+      }
+
+      // Insert payments for each selected invoice with unique sequential payment numbers
+      let hasError = false;
+      const errorMessages: string[] = [];
+      const recordedPaymentNumbers: string[] = [];
+
+      for (let i = 0; i < selectedInvoices.length; i++) {
+        const inv = selectedInvoices[i];
+        const nextSeq = maxSeq + 1 + i;
+        const currentPayNum = `${prefix}-${String(nextSeq).padStart(4, "0")}`;
+        recordedPaymentNumbers.push(currentPayNum);
+
+        const { error } = await supabase.from("payments").insert({
+          org_id: org.id,
+          client_id: clientId,
+          invoice_id: inv.id,
+          payment_number: currentPayNum,
+          amount: inv.payment,
+          payment_date: paymentDate,
+          payment_mode: paymentMode,
+          reference_number: referenceNumber || null,
+          notes: notes || null,
+          currency_code: org.currency_code,
+        });
+
+        if (error) {
+          console.error(`Error recording payment for ${inv.invoice_number}:`, error);
+          errorMessages.push(`${inv.invoice_number}: ${error.message}`);
+          hasError = true;
+          continue;
+        }
+
+        // Update invoice balance
+        const newBalance = Math.max(0, Number(inv.balance_due) - Number(inv.payment));
+        const newPaid = Number(inv.total) - newBalance;
+        const newStatus = newBalance <= 0.001 ? "paid" : "partial";
+        await supabase.from("invoices").update({
+          balance_due: newBalance,
+          amount_paid: newPaid,
+          status: newStatus,
+          ...(newBalance <= 0.001 ? { paid_at: new Date().toISOString() } : {}),
+        }).eq("id", inv.id);
+
+        await logAudit({
+          orgId: org.id,
+          userId: user?.id || "",
+          action: "payment_received",
+          entityType: "payment",
+          entityId: inv.id,
+          description: `Payment ${currentPayNum} of ${fmt(inv.payment)} received for ${inv.invoice_number}`,
+        });
+      }
+
+      // Sync client opening_balance
+      const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId).neq("status", "void");
+      const totalDue = (cInvs || []).reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
+      await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
+
+      setSaving(false);
+      if (hasError) {
+        toast({
+          title: "Partial error",
+          description: errorMessages.join(", ") || "Some payments could not be recorded.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Payment recorded successfully!",
+          description: `Recorded ${fmt(totalApplied)} against ${selectedInvoices.length} invoice(s).`,
+        });
+        navigate("/payments");
+      }
+    } catch (err: any) {
+      setSaving(false);
+      toast({
+        title: "Error saving payment",
+        description: err?.message || "An unexpected error occurred",
+        variant: "destructive",
       });
-      if (error) { hasError = true; continue; }
-
-      // Update invoice balance
-      const newBalance = inv.balance_due - inv.payment;
-      const newPaid = inv.total - newBalance;
-      const newStatus = newBalance <= 0 ? "paid" : "partial";
-      await supabase.from("invoices").update({
-        balance_due: newBalance,
-        amount_paid: newPaid,
-        status: newStatus,
-        ...(newBalance <= 0 ? { paid_at: new Date().toISOString() } : {}),
-      }).eq("id", inv.id);
-
-      await logAudit({
-        orgId: org.id,
-        userId: user?.id || "",
-        action: "payment_received",
-        entityType: "payment",
-        entityId: inv.id,
-        description: `Payment of ${fmt(inv.payment)} received for ${inv.invoice_number}`,
-      });
-    }
-
-    // Sync client opening_balance
-    const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId).neq("status", "void");
-    const totalDue = (cInvs || []).reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
-    await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
-
-    setSaving(false);
-    if (hasError) {
-      toast({ title: "Partial error", description: "Some payments could not be recorded.", variant: "destructive" });
-    } else {
-      toast({ title: "Payment recorded!", description: `${payNum} — ${fmt(amountNum)} received.` });
-      navigate("/payments");
     }
   };
 
-  const selectedClient = clients.find((c) => c.id === clientId);
-
   return (
-    <div className="p-6 space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl">
       <PageHeader title="Record Payment Received" description="Record a payment from a client against outstanding invoices">
         <Button variant="outline" size="sm" onClick={() => navigate("/payments")}>
           <ArrowLeft className="mr-1 h-4 w-4" /> Back
@@ -296,7 +356,20 @@ export default function RecordPaymentPage() {
             <AddClientDialog open={addClientOpen} onOpenChange={setAddClientOpen} onClientAdded={(c) => { setClients(prev => [...prev, c]); setClientId(c.id); }} />
           </div>
           <div className="space-y-2">
-            <Label>Amount Received *</Label>
+            <div className="flex items-center justify-between">
+              <Label>Amount Received *</Label>
+              {totalOutstanding > 0 && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 text-xs text-primary hover:text-primary px-1.5"
+                  onClick={handleFillTotal}
+                >
+                  <Sparkles className="h-3 w-3 mr-1" /> Pay Full ({fmt(totalOutstanding)})
+                </Button>
+              )}
+            </div>
             <div className="relative">
               <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -327,7 +400,7 @@ export default function RecordPaymentPage() {
           </div>
           <div className="space-y-2">
             <Label>Reference #</Label>
-            <Input placeholder="e.g. Transaction ID" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} />
+            <Input placeholder="e.g. Transaction ID / UTR" value={referenceNumber} onChange={(e) => setReferenceNumber(e.target.value)} />
           </div>
           <div className="space-y-2 sm:col-span-2">
             <Label>Notes</Label>
@@ -343,9 +416,11 @@ export default function RecordPaymentPage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-base">Outstanding Invoices</CardTitle>
               {invoices.length > 0 && (
-                <span className="text-sm text-muted-foreground">
-                  Total Outstanding: <span className="font-semibold text-foreground">{fmt(totalOutstanding)}</span>
-                </span>
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-muted-foreground">
+                    Total Outstanding: <span className="font-semibold text-foreground">{fmt(totalOutstanding)}</span>
+                  </span>
+                </div>
               )}
             </div>
           </CardHeader>
@@ -354,7 +429,7 @@ export default function RecordPaymentPage() {
               <div className="p-8 text-center text-muted-foreground">Loading invoices...</div>
             ) : invoices.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2">
-                <CheckCircle2 className="h-8 w-8 text-success" />
+                <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                 <p>No outstanding invoices for this client.</p>
               </div>
             ) : (
@@ -437,12 +512,13 @@ export default function RecordPaymentPage() {
         </Card>
       )}
 
-      {/* Simple save for no invoices */}
+      {/* Simple cancel for no invoices */}
       {clientId && invoices.length === 0 && !loadingInvoices && (
         <div className="flex justify-end">
-          <Button onClick={() => navigate("/payments")} variant="outline">Cancel</Button>
+          <Button onClick={() => navigate("/payments")} variant="outline">Back to Payments</Button>
         </div>
       )}
     </div>
   );
 }
+

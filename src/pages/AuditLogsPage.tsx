@@ -60,7 +60,7 @@ export default function AuditLogsPage() {
   if (loading) return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader title="Audit Logs" description="Track all changes across your organization" />
 
       <div className="flex gap-3">

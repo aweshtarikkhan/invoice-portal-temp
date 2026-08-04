@@ -120,7 +120,7 @@ export default function RecurringInvoicesPage() {
   const freqLabel: Record<string, string> = { weekly: "Weekly", monthly: "Monthly", quarterly: "Quarterly", yearly: "Yearly" };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <SEO title="Recurring Invoices" description="Automate billing with scheduled recurring invoices for subscriptions and retainers." path="/recurring-invoices" />
       <PageHeader title="Recurring Invoices" description="Automate invoice generation on a schedule">
         <Button onClick={() => { resetForm(); setDialogOpen(true); }} size="sm">

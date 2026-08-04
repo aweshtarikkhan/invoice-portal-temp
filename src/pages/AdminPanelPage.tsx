@@ -396,9 +396,7 @@ export default function AdminPanelPage() {
           </Card>
         </section>
 
-        {/* --- SUPER ADMIN ONLY SECTIONS --- */}
-        {isSuper && (
-          <>
+
         {/* Admin Management Section */}
         <section>
           <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
@@ -466,8 +464,6 @@ export default function AdminPanelPage() {
           </Card>
         </section>
 
-
-
         {/* Feature Management Section */}
         <section>
           {/* Stats bar */}
@@ -480,7 +476,7 @@ export default function AdminPanelPage() {
             <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Enabled Modules</p>
               <p className="text-3xl font-bold text-indigo-400 mt-1">{enabledCount} <span className="text-lg text-slate-500">/ {totalAdminFeatures}</span></p>
-              <p className="text-xs text-slate-500 mt-1">Admin controlled feature groups</p>
+              <p className="text-xs text-slate-500 mt-1">Modules enabled for {currentOrg?.name || "this business"}</p>
             </div>
             <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
               <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Features</p>
@@ -493,10 +489,12 @@ export default function AdminPanelPage() {
 
           {/* Admin-controlled features */}
           <div>
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Shield className="h-4 w-4 text-indigo-400" />
-              Admin Controlled Features — Toggle ON/OFF
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                <Shield className="h-4 w-4 text-indigo-400" />
+                Admin Controlled Features — Toggle ON/OFF ({currentOrg?.name || "Current Business"})
+              </h2>
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               {availableAdminFeatures.map((group) => {
                 const isEnabled = enabledGroups.includes(group.key);
@@ -534,7 +532,7 @@ export default function AdminPanelPage() {
                           </h3>
                           <Switch
                             checked={isEnabled}
-                            onCheckedChange={() => toggleGroup(group.key)}
+                            onCheckedChange={() => toggleGroup(group.key, currentOrgId)}
                             className="data-[state=checked]:bg-indigo-600"
                           />
                         </div>
@@ -564,10 +562,7 @@ export default function AdminPanelPage() {
             </div>
           </div>
         </section>
-          </>
-        )}
       </div>
     </div>
   );
 }
-

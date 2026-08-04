@@ -123,7 +123,7 @@ export default function PipelinePage() {
   }, [opps]);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Sales Pipeline</h1>
@@ -135,33 +135,33 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Open Opportunities</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{grandTotals.count}</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Pipeline Value</CardTitle></CardHeader><CardContent className="text-2xl font-semibold">{formatCurrency(grandTotals.total, currency)}</CardContent></Card>
-        <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Weighted Forecast</CardTitle></CardHeader><CardContent className="text-2xl font-semibold text-primary">{formatCurrency(grandTotals.weighted, currency)}</CardContent></Card>
-      </div>
-
-      {loading ? <div className="p-8 text-center text-muted-foreground">Loading…</div> : (
-        <div className="overflow-x-auto pb-2">
-          <div className="flex gap-3 min-w-max">
-            {stages.map((s) => {
-              const t = stageTotals(s.id);
+      {loading ? (
+        <div className="p-12 text-center text-muted-foreground">Loading pipeline…</div>
+      ) : (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {stages.map((stg) => {
+              const list = oppsByStage[stg.id] || [];
+              const stageSum = list.reduce((s, o) => s + Number(o.amount || 0), 0);
               return (
                 <div
-                  key={s.id}
-                  className="w-72 shrink-0 rounded-lg bg-muted/30 border"
-                  onDragOver={(e) => { e.preventDefault(); }}
-                  onDrop={(e) => { e.preventDefault(); if (draggingId) { moveTo(draggingId, s.id); setDraggingId(null); } }}
+                  key={stg.id}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => onDropOnStage(stg.id)}
+                  className="w-72 bg-muted/40 rounded-lg p-3 flex flex-col max-h-[calc(100vh-220px)]"
                 >
-                  <div className="p-3 border-b flex items-center justify-between" style={{ borderTopColor: s.color || undefined, borderTopWidth: 3 }}>
-                    <div>
-                      <div className="font-semibold text-sm">{s.name}</div>
-                      <div className="text-xs text-muted-foreground">{t.count} · {formatCurrency(t.total, currency)}</div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stg.color || "#94a3b8" }} />
+                      <span className="font-medium text-sm">{stg.name}</span>
+                      <Badge variant="secondary" className="text-xs">{list.length}</Badge>
                     </div>
-                    <Button size="icon" variant="ghost" onClick={() => openNew(s.id)}><Plus className="h-4 w-4" /></Button>
+                    <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openNew(stg.id)}><Plus className="h-3.5 w-3.5" /></Button>
                   </div>
-                  <div className="p-2 space-y-2 min-h-[120px]">
-                    {(oppsByStage[s.id] || []).map((o) => (
+                  <div className="text-xs text-muted-foreground mb-3">{formatCurrency(stageSum, currency)}</div>
+
+                  <div className="space-y-2 overflow-y-auto flex-1 pr-1">
+                    {list.map((o) => (
                       <div
                         key={o.id}
                         draggable
@@ -174,17 +174,13 @@ export default function PipelinePage() {
                           <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">{o.title}</div>
-                            <div className="text-xs text-muted-foreground truncate">{o.clients?.name || "—"}</div>
+                            <div className="text-xs text-muted-foreground truncate">{o.clients?.display_name || "—"}</div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm font-semibold">{formatCurrency(Number(o.amount || 0), currency)}</span>
                               <Badge variant="outline" className="text-[10px]">{o.probability || 0}%</Badge>
                             </div>
-                            {o.expected_close_date && <div className="text-[10px] text-muted-foreground mt-1">Close: {format(parseISO(o.expected_close_date), "dd MMM")}</div>}
                           </div>
-                          <div className="flex flex-col">
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => openEdit(o)}><Pencil className="h-3 w-3" /></Button>
-                            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => remove(o.id)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
+                          <Button size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground hover:text-destructive" onClick={() => remove(o.id)}><Trash2 className="h-3 w-3" /></Button>
                         </div>
                       </div>
                     ))}
@@ -214,7 +210,7 @@ export default function PipelinePage() {
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">—</SelectItem>
-                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

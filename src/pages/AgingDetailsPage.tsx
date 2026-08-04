@@ -238,7 +238,7 @@ export default function AgingDetailsPage() {
   if (loading) return <div className="p-6">Loading aging details...</div>;
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
           <ArrowLeft className="h-5 w-5" />

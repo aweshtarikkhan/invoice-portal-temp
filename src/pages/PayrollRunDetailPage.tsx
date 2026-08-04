@@ -179,7 +179,7 @@ export default function PayrollRunDetailPage() {
   const totals = slips.reduce((a, s) => ({ gross: a.gross + Number(s.gross_salary), ded: a.ded + Number(s.pf_employee) + Number(s.esic_employee) + Number(s.tds) + Number(s.other_deductions), net: a.net + Number(s.net_pay) }), { gross: 0, ded: 0, net: 0 });
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="icon" onClick={() => navigate("/payroll")}><ArrowLeft className="h-4 w-4" /></Button>

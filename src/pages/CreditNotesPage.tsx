@@ -106,7 +106,7 @@ export default function CreditNotesPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageActionBar title="Credit Notes">
         <Button variant="outline" size="sm" onClick={() => {
           downloadCSV(creditNotes.map(c => ({
