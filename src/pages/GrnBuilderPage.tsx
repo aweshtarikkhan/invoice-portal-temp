@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -75,8 +76,7 @@ export default function GrnBuilderPage() {
       if (def) setBranchId(def.id);
       if (!id) {
         const prefix = o.data?.grn_prefix || "GRN-";
-        const next = o.data?.grn_next_number || 1;
-        setGrnNumber(`${prefix}${String(next).padStart(4, "0")}`);
+        setGrnNumber(formatSequenceNumber(prefix, next, "GRN"));
         if (poFromQuery) await loadFromPo(poFromQuery);
       } else {
         loadGrn();

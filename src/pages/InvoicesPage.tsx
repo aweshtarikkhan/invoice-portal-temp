@@ -22,7 +22,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle, MoreHorizontal, Copy } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { differenceInDays, parseISO, isToday, isBefore, addDays } from "date-fns";
 import { format } from "date-fns";
@@ -347,6 +348,7 @@ export default function InvoicesPage() {
                   <TableHead onClick={() => toggleSort("due_date")} className="text-xs uppercase font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground">Due Date<SortArrow k="due_date" /></TableHead>
                   <TableHead onClick={() => toggleSort("total")} className="text-xs uppercase font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground text-right">Amount<SortArrow k="total" /></TableHead>
                   <TableHead onClick={() => toggleSort("balance_due")} className="text-xs uppercase font-semibold text-muted-foreground cursor-pointer select-none hover:text-foreground text-right">Balance Due<SortArrow k="balance_due" /></TableHead>
+                  <TableHead className="w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -361,6 +363,20 @@ export default function InvoicesPage() {
                     <TableCell className="text-muted-foreground text-sm">{inv.due_date ? format(parseISO(inv.due_date), "dd/MM/yyyy") : "-"}</TableCell>
                     <TableCell className="text-right font-medium text-sm">{fmt(Number(inv.total))}</TableCell>
                     <TableCell className="text-right font-medium text-sm">{fmt(Number(inv.balance_due))}</TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/invoices/new?duplicate=${inv.id}`); }}>
+                            <Copy className="mr-2 h-4 w-4" /> Duplicate
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

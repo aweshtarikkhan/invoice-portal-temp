@@ -11,14 +11,16 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
-import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock, MessageSquare, UserCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock, MessageSquare, UserCircle2, Calculator, Edit3, Sparkles, HardHat } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
+import { SalariesTab } from "@/components/payroll/SalariesTab";
 
 type Status = "present" | "late" | "absent" | "half_day" | "paid_leave" | "holiday";
 
@@ -71,12 +73,21 @@ export default function AttendancePage() {
   const [saving, setSaving] = useState(false);
   const [posting, setPosting] = useState(false);
   const [leaves, setLeaves] = useState<any[]>([]);
+  const [regularizations, setRegularizations] = useState<any[]>([]);
   const [holidays, setHolidays] = useState<any[]>([]);
   const [newHoliday, setNewHoliday] = useState({ name: "", date: "", type: "company" });
   const [weeklyOffs, setWeeklyOffs] = useState<number[]>(org?.weekly_offs || [0]);
+  const [dailyWagesEnabled, setDailyWagesEnabled] = useState<boolean>(!!(org as any)?.daily_wages_enabled);
   const [dailyDate, setDailyDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [dailyLogs, setDailyLogs] = useState<Record<string, any>>({});
   const [loadingDaily, setLoadingDaily] = useState(false);
+
+  // Manual Punch Dialog for HR (wagers or any staff)
+  const [manualPunchEmp, setManualPunchEmp] = useState<any | null>(null);
+  const [manualPunchIn, setManualPunchIn] = useState("09:00");
+  const [manualPunchOut, setManualPunchOut] = useState("18:00");
+  const [savingManualPunch, setSavingManualPunch] = useState(false);
+
   // approved leaves per employee per date: empId|date -> leaveType
   const [approvedLeaveMap, setApprovedLeaveMap] = useState<Record<string, string>>({});
   // employee shifts: empId -> shift
@@ -123,30 +134,38 @@ export default function AttendancePage() {
   }, [org?.id, dailyDate]);
 
   useEffect(() => {
-    if (org?.weekly_offs) {
-      setWeeklyOffs(org.weekly_offs);
+    if (org) {
+      if (org.weekly_offs) setWeeklyOffs(org.weekly_offs);
+      setDailyWagesEnabled(!!(org as any).daily_wages_enabled);
     }
-  }, [org?.weekly_offs]);
+  }, [org]);
 
   const monthStart = useMemo(() => startOfMonth(parseISO(month + "-01")), [month]);
   const monthEnd = useMemo(() => endOfMonth(monthStart), [monthStart]);
   const days = useMemo(() => eachDayOfInterval({ start: monthStart, end: monthEnd }), [monthStart, monthEnd]);
 
   // Helper: compute attendance status from clock-in time + shift rules
-  const computeShiftStatus = (clockInTime: string, shift: any): Status => {
+  const computeShiftStatus = (clockInTime: string, shift: any, defaultShift?: any): Status => {
     if (!clockInTime) return "absent";
     const d = new Date(clockInTime);
     const clockInMins = d.getHours() * 60 + d.getMinutes();
-    if (!shift) return "present"; // no shift assigned → just mark present
+    
+    // Effective shift: employee shift -> org default shift -> office default
+    const effectiveShift = shift || defaultShift || {
+      start_time: "09:00",
+      grace_minutes: 15,
+      late_end: "10:30",
+      half_day_end: "14:00"
+    };
 
     const toMins = (t: string) => {
       if (!t) return 0;
       const [h, m] = t.slice(0, 5).split(":").map(Number);
       return h * 60 + m;
     };
-    const graceEnd = toMins(shift.start_time) + (shift.grace_minutes ?? 15);
-    const lateEnd  = toMins(shift.late_end  || "10:30");
-    const halfEnd  = toMins(shift.half_day_end || "14:00");
+    const graceEnd = toMins(effectiveShift.start_time || "09:00") + (effectiveShift.grace_minutes ?? 15);
+    const lateEnd  = toMins(effectiveShift.late_end  || "10:30");
+    const halfEnd  = toMins(effectiveShift.half_day_end || "14:00");
 
     if (clockInMins <= graceEnd) return "present";
     if (clockInMins <= lateEnd)  return "late";
@@ -157,7 +176,7 @@ export default function AttendancePage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const [emps, atts, leavesData, holsRes, clockins, empShiftsRes] = await Promise.all([
+    const [emps, atts, leavesData, holsRes, clockins, empShiftsRes, regRes, allShiftsRes] = await Promise.all([
       (supabase as any).from("employees").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
       (supabase as any).from("attendance").select("*").eq("org_id", org.id)
         .gte("attendance_date", format(monthStart, "yyyy-MM-dd"))
@@ -168,11 +187,17 @@ export default function AttendancePage() {
         .gte("date", format(monthStart, "yyyy-MM-dd"))
         .lte("date", format(monthEnd, "yyyy-MM-dd")),
       (supabase as any).from("employee_shifts").select("*, shifts(*)").eq("org_id", org.id),
+      (supabase as any).from("attendance_regularizations").select("*, employees(name, designation, auth_user_id)").eq("org_id", org.id).order('created_at', { ascending: false }),
+      (supabase as any).from("shifts").select("*").eq("org_id", org.id).order("is_default", { ascending: false }),
     ]);
     if (emps.error) toast({ title: "Failed to load employees", description: emps.error.message, variant: "destructive" });
 
     const empList: any[] = emps.data || [];
     setEmployees(empList);
+    setRegularizations(regRes?.data || []);
+
+    const orgShiftsList = allShiftsRes?.data || [];
+    const orgDefaultShift = orgShiftsList.find((s: any) => s.is_default) || orgShiftsList[0] || null;
 
     // HR manually set records
     const map: Record<string, Status> = {};
@@ -221,8 +246,8 @@ export default function AttendancePage() {
 
         const clk = clkMap[key];
         if (clk?.clock_in_time) {
-          const shift = shiftMap[emp.id];
-          map[key] = computeShiftStatus(clk.clock_in_time, shift);
+          const shift = shiftMap[emp.id] || orgDefaultShift;
+          map[key] = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
           newAutoKeys.add(key);
         } else if (ds <= todayStr) {
           // Employee has not marked attendance for past or today -> auto mark absent
@@ -642,6 +667,59 @@ export default function AttendancePage() {
     }
   };
 
+  const updateRegularizationStatus = async (reg: any, newStatus: 'approved' | 'rejected') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await (supabase as any)
+        .from("attendance_regularizations")
+        .update({ status: newStatus, approved_by: user?.id || null })
+        .eq("id", reg.id);
+
+      if (error) throw error;
+
+      if (newStatus === 'approved') {
+        // Upsert attendances table (daily clock records)
+        await (supabase as any).from("attendances").upsert({
+          org_id: org.id,
+          employee_id: reg.employee_id,
+          date: reg.date,
+          clock_in_time: reg.requested_clock_in,
+          clock_out_time: reg.requested_clock_out,
+          status: 'present'
+        }, { onConflict: 'employee_id,date' });
+
+        // Upsert attendance table (HR monthly calendar record)
+        await (supabase as any).from("attendance").upsert({
+          org_id: org.id,
+          employee_id: reg.employee_id,
+          attendance_date: reg.date,
+          status: 'present'
+        }, { onConflict: 'employee_id,attendance_date' });
+      }
+
+      // Send notification to employee
+      if (reg.employees?.auth_user_id) {
+        try {
+          await (supabase as any).from("notifications").insert({
+            org_id: org.id,
+            user_id: reg.employees.auth_user_id,
+            title: `Regularization ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+            message: `Your attendance regularization request for ${reg.date} has been ${newStatus}.`,
+            type: newStatus === 'approved' ? 'regularization_approved' : 'regularization_rejected'
+          });
+        } catch {}
+      }
+
+      toast({ 
+        title: `Regularization ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`, 
+        description: `Attendance for ${reg.employees?.name || 'employee'} on ${reg.date} has been updated.` 
+      });
+      load();
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
   const addHoliday = async (h: { name: string; date: string; type: string }) => {
     if (!org?.id) return;
     if (!h.name || !h.date) {
@@ -673,14 +751,59 @@ export default function AttendancePage() {
     }
   };
 
-  const saveWeeklyOffs = async () => {
+  const saveSettings = async () => {
     if (!org?.id) return;
-    const { error } = await (supabase as any).from("organizations").update({ weekly_offs: weeklyOffs }).eq("id", org.id);
+    const { error } = await (supabase as any).from("organizations").update({
+      weekly_offs: weeklyOffs,
+      daily_wages_enabled: dailyWagesEnabled,
+    }).eq("id", org.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Settings Saved", description: "Weekly off days updated successfully." });
-      setOrganization({ ...org, weekly_offs: weeklyOffs } as any);
+      toast({ title: "Settings Saved", description: "Attendance & Wages settings updated successfully." });
+      setOrganization({ ...org, weekly_offs: weeklyOffs, daily_wages_enabled: dailyWagesEnabled } as any);
+    }
+  };
+
+  const handleSaveManualPunch = async () => {
+    if (!org?.id || !manualPunchEmp || !dailyDate) return;
+    // Prevent saving attendance for future dates
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    if (dailyDate > todayStr) {
+      toast({ title: "Future date not allowed", description: "Attendance can only be recorded for today or past dates.", variant: "destructive" });
+      return;
+    }
+    setSavingManualPunch(true);
+    try {
+      const clockInIso = manualPunchIn ? `${dailyDate}T${manualPunchIn}:00` : null;
+      const clockOutIso = manualPunchOut ? `${dailyDate}T${manualPunchOut}:00` : null;
+
+      const existing = dailyLogs[manualPunchEmp.id];
+      if (existing?.id) {
+        const { error } = await (supabase as any).from("attendances").update({
+          clock_in_time: clockInIso,
+          clock_out_time: clockOutIso,
+          status: "present",
+        }).eq("id", existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await (supabase as any).from("attendances").insert({
+          org_id: org.id,
+          employee_id: manualPunchEmp.id,
+          date: dailyDate,
+          clock_in_time: clockInIso,
+          clock_out_time: clockOutIso,
+          status: "present",
+        });
+        if (error) throw error;
+      }
+      toast({ title: "Punch Recorded", description: `Saved check-in / check-out time for ${manualPunchEmp.name}` });
+      setManualPunchEmp(null);
+      fetchDailyLogs(dailyDate);
+    } catch (err: any) {
+      toast({ title: "Failed to record punch", description: err.message, variant: "destructive" });
+    } finally {
+      setSavingManualPunch(false);
     }
   };
 
@@ -778,6 +901,85 @@ export default function AttendancePage() {
         </Dialog>
       )}
 
+      {/* Manual Punch In / Out Time Setting Dialog */}
+      {manualPunchEmp && (
+        <Dialog open={!!manualPunchEmp} onOpenChange={(o) => !o && setManualPunchEmp(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />
+                Set Daily Clock In & Out Time
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div className="bg-slate-50 p-3 rounded-lg border">
+                <p className="text-sm font-semibold text-slate-800">{manualPunchEmp.name}</p>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                  <span>Date: <strong className="text-slate-700">{format(parseISO(dailyDate), "dd MMM yyyy")}</strong></span>
+                  {(manualPunchEmp as any).wage_type === "daily" && (
+                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-[10px]">Daily Wager (₹{(manualPunchEmp as any).daily_rate || (manualPunchEmp as any).monthly_salary}/day)</Badge>
+                  )}
+                  {(manualPunchEmp as any).wage_type === "hourly" && (
+                    <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-300 text-[10px]">Hourly Wager (₹{(manualPunchEmp as any).hourly_rate}/hr)</Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">Clock In Time</Label>
+                  <Input
+                    type="time"
+                    value={manualPunchIn}
+                    onChange={(e) => setManualPunchIn(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-slate-700">Clock Out Time</Label>
+                  <Input
+                    type="time"
+                    value={manualPunchOut}
+                    onChange={(e) => setManualPunchOut(e.target.value)}
+                    className="font-mono text-sm"
+                  />
+                </div>
+              </div>
+
+              {manualPunchIn && manualPunchOut && (
+                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 flex items-center justify-between">
+                  <span>Computed Working Hours:</span>
+                  <span className="font-bold font-mono text-sm">
+                    {(() => {
+                      try {
+                        const [inH, inM] = manualPunchIn.split(":").map(Number);
+                        const [outH, outM] = manualPunchOut.split(":").map(Number);
+                        const diffMins = (outH * 60 + outM) - (inH * 60 + inM);
+                        if (diffMins > 0) {
+                          const h = Math.floor(diffMins / 60);
+                          const m = diffMins % 60;
+                          return `${h}h ${m}m (${(diffMins / 60).toFixed(2)} hrs)`;
+                        }
+                        return "Invalid time range";
+                      } catch {
+                        return "-";
+                      }
+                    })()}
+                  </span>
+                </div>
+              )}
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setManualPunchEmp(null)}>Cancel</Button>
+              <Button onClick={handleSaveManualPunch} disabled={savingManualPunch}>
+                <Save className="w-4 h-4 mr-1.5" />
+                {savingManualPunch ? "Saving..." : "Save Punch"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Attendance</h1>
@@ -806,6 +1008,18 @@ export default function AttendancePage() {
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
           <TabsTrigger value="leaves">Leave Requests</TabsTrigger>
+          <TabsTrigger value="regularizations" className="flex items-center gap-1.5">
+            Regularizations
+            {regularizations.filter(r => r.status === 'pending').length > 0 && (
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                {regularizations.filter(r => r.status === 'pending').length}
+              </span>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="salaries" className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
+            <Calculator className="w-4 h-4" />
+            Salaries & Calculation
+          </TabsTrigger>
           <TabsTrigger value="holidays">Company Holidays</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="hr-chat" className="flex items-center gap-1.5">
@@ -973,6 +1187,7 @@ export default function AttendancePage() {
             <Input
               type="date"
               value={dailyDate}
+              max={format(new Date(), "yyyy-MM-dd")}
               onChange={(e) => setDailyDate(e.target.value)}
               className="w-44"
             />
@@ -1004,139 +1219,384 @@ export default function AttendancePage() {
           </Card>
         </div>
 
+        {/* Inner Sub-tabs */}
+        <Tabs defaultValue="all-staff">
+          <TabsList className="bg-white border shadow-sm">
+            <TabsTrigger value="all-staff" className="text-xs font-medium">
+              <Clock className="w-3.5 h-3.5 mr-1.5" />
+              All Staff Logs
+            </TabsTrigger>
+            <TabsTrigger value="wager-punch" className="text-xs font-medium">
+              <HardHat className="w-3.5 h-3.5 mr-1.5 text-amber-600" />
+              Daily / Hourly Wager Punches
+              {employees.filter(e => (e as any).wage_type === 'daily' || (e as any).wage_type === 'hourly').length > 0 && (
+                <span className="ml-1.5 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-600 text-white">
+                  {employees.filter(e => (e as any).wage_type === 'daily' || (e as any).wage_type === 'hourly').length}
+                </span>
+              )}
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ---- All Staff Tab ---- */}
+          <TabsContent value="all-staff" className="mt-3">
             <Card>
-          <CardContent className="p-0 overflow-auto">
-            {loadingDaily ? (
-              <div className="p-8 text-center text-muted-foreground">Loading attendance logs...</div>
-            ) : employees.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">No active employees found.</div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-slate-50/80">
-                    <TableHead className="font-semibold">Employee</TableHead>
-                    <TableHead className="font-semibold">Shift</TableHead>
-                    <TableHead className="font-semibold text-center">Computed Status</TableHead>
-                    <TableHead className="font-semibold">Clock In Time</TableHead>
-                    <TableHead className="font-semibold">Clock In Location</TableHead>
-                    <TableHead className="font-semibold">Clock Out Time</TableHead>
-                    <TableHead className="font-semibold">Clock Out Location</TableHead>
-                    <TableHead className="font-semibold text-right">Hours Worked</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {employees.map((emp) => {
-                    const log = dailyLogs[emp.id];
-                    const hasClockIn = !!log?.clock_in_time;
-                    const hasClockOut = !!log?.clock_out_time;
-                    const shift = empShiftMap[emp.id];
-
-                    // Compute shift-aware status
-                    const computeStatus = (): { label: string; cls: string } => {
-                      const isHolidayDay = holidays.some((h) => h.date === dailyDate);
-                      if (isHolidayDay) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
-                      const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
-                      if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
-                      if (!hasClockIn) return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
-                      if (!shift) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-
-                      // Compare clock-in time with shift rules
-                      const clockInDate = new Date(log.clock_in_time);
-                      const hh = clockInDate.getHours();
-                      const mm = clockInDate.getMinutes();
-                      const clockInMins = hh * 60 + mm;
-
-                      const toMins = (t: string) => {
-                        if (!t) return 0;
-                        const [h, m] = t.slice(0, 5).split(":").map(Number);
-                        return h * 60 + m;
-                      };
-
-                      const graceEnd = toMins(shift.start_time) + (shift.grace_minutes ?? 15);
-                      const lateStart = toMins(shift.late_start || shift.start_time);
-                      const lateEnd = toMins(shift.late_end || "10:30");
-                      const halfDayStart = toMins(shift.half_day_start || "10:30");
-                      const halfDayEnd = toMins(shift.half_day_end || "14:00");
-
-                      if (clockInMins <= graceEnd) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-                      if (clockInMins <= lateEnd) return { label: "Late", cls: "bg-amber-100 text-amber-800 border-amber-300" };
-                      if (clockInMins <= halfDayEnd) return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
-                      return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
-                    };
-
-                    const statusInfo = computeStatus();
-
-                    return (
-                      <TableRow key={emp.id} className="hover:bg-slate-50/60">
-                        <TableCell>
-                          <button onClick={() => setSelectedEmpDetail(emp)} className="text-left font-medium text-sm text-primary hover:underline">
-                            {emp.name}
-                          </button>
-                          {emp.employee_code && (
-                            <div className="text-xs text-muted-foreground">{emp.employee_code}</div>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {shift ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                              {shift.name} ({shift.start_time?.slice(0,5)}–{shift.end_time?.slice(0,5)})
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No shift</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-center">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.cls}`}>
-                            {statusInfo.label}
-                          </span>
-                        </TableCell>
-
-                        <TableCell>
-                          {hasClockIn ? (
-                            <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
-                              <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                              {formatTime(log.clock_in_time)}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-
-                        </TableCell>
-
-                        <TableCell>
-                          {renderLocation(log?.clock_in_location)}
-                        </TableCell>
-
-                        <TableCell>
-                          {hasClockOut ? (
-                            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
-                              <Clock className="w-3.5 h-3.5 text-amber-600" />
-                              {formatTime(log.clock_out_time)}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          {renderLocation(log?.clock_out_location)}
-                        </TableCell>
-
-                        <TableCell className="text-right font-medium text-sm">
-                          {hasClockIn && hasClockOut
-                            ? calculateHours(log.clock_in_time, log.clock_out_time)
-                            : "-"}
-                        </TableCell>
+              <CardContent className="p-0 overflow-auto">
+                {loadingDaily ? (
+                  <div className="p-8 text-center text-muted-foreground">Loading attendance logs...</div>
+                ) : employees.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">No active employees found.</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50/80">
+                        <TableHead className="font-semibold">Employee</TableHead>
+                        <TableHead className="font-semibold">Shift</TableHead>
+                        <TableHead className="font-semibold text-center">Computed Status</TableHead>
+                        <TableHead className="font-semibold">Clock In Time</TableHead>
+                        <TableHead className="font-semibold">Clock In Location</TableHead>
+                        <TableHead className="font-semibold">Clock Out Time</TableHead>
+                        <TableHead className="font-semibold">Clock Out Location</TableHead>
+                        <TableHead className="font-semibold text-right">Hours Worked</TableHead>
+                        <TableHead className="text-right font-semibold">Action</TableHead>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {employees.map((emp) => {
+                        const log = dailyLogs[emp.id];
+                        const hasClockIn = !!log?.clock_in_time;
+                        const hasClockOut = !!log?.clock_out_time;
+                        const shift = empShiftMap[emp.id];
+
+                        const computeStatus = (): { label: string; cls: string } => {
+                          const isHolidayDay = holidays.some((h) => h.date === dailyDate);
+                          if (isHolidayDay) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
+                          const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
+                          if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
+                          if (!hasClockIn) return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
+                          if (!shift) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+                          const clockInDate = new Date(log.clock_in_time);
+                          const hh = clockInDate.getHours();
+                          const mm = clockInDate.getMinutes();
+                          const clockInMins = hh * 60 + mm;
+                          const toMins = (t: string) => {
+                            if (!t) return 0;
+                            const [h, m] = t.slice(0, 5).split(":").map(Number);
+                            return h * 60 + m;
+                          };
+                          const graceEnd = toMins(shift.start_time) + (shift.grace_minutes ?? 15);
+                          const lateEnd = toMins(shift.late_end || "10:30");
+                          const halfDayEnd = toMins(shift.half_day_end || "14:00");
+                          if (clockInMins <= graceEnd) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+                          if (clockInMins <= lateEnd) return { label: "Late", cls: "bg-amber-100 text-amber-800 border-amber-300" };
+                          if (clockInMins <= halfDayEnd) return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
+                          return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
+                        };
+
+                        const statusInfo = computeStatus();
+
+                        return (
+                          <TableRow key={emp.id} className="hover:bg-slate-50/60">
+                            <TableCell>
+                              <button onClick={() => setSelectedEmpDetail(emp)} className="text-left font-medium text-sm text-primary hover:underline">
+                                {emp.name}
+                              </button>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {(emp as any).employee_code && (
+                                  <span className="text-xs text-muted-foreground">{(emp as any).employee_code}</span>
+                                )}
+                                {(emp as any).wage_type === "daily" && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-800 font-semibold px-1.5 py-0.5 rounded">Daily Wager</span>
+                                )}
+                                {(emp as any).wage_type === "hourly" && (
+                                  <span className="text-[10px] bg-purple-100 text-purple-800 font-semibold px-1.5 py-0.5 rounded">Hourly Wager</span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {shift ? (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                  {shift.name} ({shift.start_time?.slice(0,5)}–{shift.end_time?.slice(0,5)})
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">No shift</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border ${statusInfo.cls}`}>
+                                {statusInfo.label}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {hasClockIn ? (
+                                <div className="flex items-center gap-1.5 text-sm font-medium text-emerald-700">
+                                  <Clock className="w-3.5 h-3.5 text-emerald-600" />
+                                  {formatTime(log.clock_in_time)}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{renderLocation(log?.clock_in_location)}</TableCell>
+                            <TableCell>
+                              {hasClockOut ? (
+                                <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
+                                  <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                  {formatTime(log.clock_out_time)}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{renderLocation(log?.clock_out_location)}</TableCell>
+                            <TableCell className="text-right font-medium text-sm">
+                              {hasClockIn && hasClockOut ? calculateHours(log.clock_in_time, log.clock_out_time) : "-"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs font-medium gap-1"
+                                onClick={() => {
+                                  setManualPunchEmp(emp);
+                                  if (log?.clock_in_time) {
+                                    try { setManualPunchIn(format(new Date(log.clock_in_time), "HH:mm")); } catch {}
+                                  } else {
+                                    setManualPunchIn("09:00");
+                                  }
+                                  if (log?.clock_out_time) {
+                                    try { setManualPunchOut(format(new Date(log.clock_out_time), "HH:mm")); } catch {}
+                                  } else {
+                                    setManualPunchOut("18:00");
+                                  }
+                                }}
+                              >
+                                <Edit3 className="w-3 h-3 text-primary" />
+                                {hasClockIn ? "Edit Punch" : "Set Punch"}
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ---- Daily / Hourly Wager Punch Tab ---- */}
+          <TabsContent value="wager-punch" className="mt-3">
+            {(() => {
+              const wagerEmps = employees.filter(e => (e as any).wage_type === 'daily' || (e as any).wage_type === 'hourly');
+              if (wagerEmps.length === 0) {
+                return (
+                  <Card>
+                    <CardContent className="py-16 text-center">
+                      <HardHat className="h-12 w-12 text-amber-300 mx-auto mb-3" />
+                      <p className="text-base font-semibold text-muted-foreground">No Daily / Hourly Wage Workers found</p>
+                      <p className="text-sm text-muted-foreground mt-1">Add daily or hourly wage workers from the <strong>Employees</strong> page first.</p>
+                    </CardContent>
+                  </Card>
+                );
+              }
+              return (
+                <Card className="border-amber-200">
+                  <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                    <div className="flex items-center gap-2">
+                      <HardHat className="h-5 w-5 text-amber-600" />
+                      <div>
+                        <p className="font-semibold text-sm text-amber-900">Daily & Hourly Wager Attendance</p>
+                        <p className="text-xs text-muted-foreground">Enter check-in & check-out times for each wager worker. Hit <strong>Save</strong> to record.</p>
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-xs">
+                      {format(new Date(dailyDate), "dd MMM yyyy")}
+                    </Badge>
+                  </div>
+                  <CardContent className="p-0 overflow-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-amber-50/60">
+                          <TableHead className="font-semibold text-amber-900">Worker</TableHead>
+                          <TableHead className="font-semibold text-amber-900">Type & Rate</TableHead>
+                          <TableHead className="font-semibold text-amber-900 w-44">Check-In Time</TableHead>
+                          <TableHead className="font-semibold text-amber-900 w-44">Check-Out Time</TableHead>
+                          <TableHead className="font-semibold text-amber-900 text-center w-32">Hours Worked</TableHead>
+                          <TableHead className="font-semibold text-amber-900 text-center w-36">Est. Wage Today</TableHead>
+                          <TableHead className="font-semibold text-right w-28">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {wagerEmps.map((emp) => {
+                          const log = dailyLogs[emp.id];
+                          const hasClockIn = !!log?.clock_in_time;
+                          const hasClockOut = !!log?.clock_out_time;
+                          const existingIn = hasClockIn ? format(new Date(log.clock_in_time), "HH:mm") : "";
+                          const existingOut = hasClockOut ? format(new Date(log.clock_out_time), "HH:mm") : "";
+                          const wageType = (emp as any).wage_type as "daily" | "hourly";
+                          const dailyRate = Number((emp as any).daily_rate) || 0;
+                          const hourlyRate = Number((emp as any).hourly_rate) || 0;
+                          const currency = (org as any)?.currency || "INR";
+
+                          let inInputRef: HTMLInputElement | null = null;
+                          let outInputRef: HTMLInputElement | null = null;
+
+                          const calcHrsDecimal = (inT: string, outT: string) => {
+                            try {
+                              const [ih, im] = inT.split(":").map(Number);
+                              const [oh, om] = outT.split(":").map(Number);
+                              const diff = (oh * 60 + om) - (ih * 60 + im);
+                              return diff > 0 ? diff / 60 : 0;
+                            } catch { return 0; }
+                          };
+                          const hrs = existingIn && existingOut ? calcHrsDecimal(existingIn, existingOut) : 0;
+                          const estWage = wageType === "hourly"
+                            ? hrs * hourlyRate
+                            : hrs >= 6 ? dailyRate : hrs >= 4 ? dailyRate * 0.5 : 0;
+
+                          const handleSavePunch = async () => {
+                            // Prevent saving future dates
+                            const today = format(new Date(), "yyyy-MM-dd");
+                            if (dailyDate > today) {
+                              toast({ title: "Future date not allowed", description: "You can only add attendance for today or past dates.", variant: "destructive" });
+                              return;
+                            }
+                            const inEl = document.getElementById(`wpunch-in-${emp.id}`) as HTMLInputElement;
+                            const outEl = document.getElementById(`wpunch-out-${emp.id}`) as HTMLInputElement;
+                            const inTime = inEl?.value;
+                            const outTime = outEl?.value;
+                            if (!inTime) {
+                              toast({ title: "Clock-In required", description: `Enter check-in time for ${emp.name}`, variant: "destructive" });
+                              return;
+                            }
+                            setSavingManualPunch(true);
+                            try {
+                              const clockInIso = `${dailyDate}T${inTime}:00`;
+                              const clockOutIso = outTime ? `${dailyDate}T${outTime}:00` : null;
+                              if (log?.id) {
+                                const { error } = await (supabase as any).from("attendances").update({
+                                  clock_in_time: clockInIso,
+                                  clock_out_time: clockOutIso,
+                                  status: "present",
+                                }).eq("id", log.id);
+                                if (error) throw error;
+                              } else {
+                                const { error } = await (supabase as any).from("attendances").insert({
+                                  org_id: org?.id,
+                                  employee_id: emp.id,
+                                  date: dailyDate,
+                                  clock_in_time: clockInIso,
+                                  clock_out_time: clockOutIso,
+                                  status: "present",
+                                });
+                                if (error) throw error;
+                              }
+                              toast({ title: "Saved!", description: `Punch recorded for ${emp.name}` });
+                              fetchDailyLogs(dailyDate);
+                            } catch (err: any) {
+                              toast({ title: "Failed", description: err.message, variant: "destructive" });
+                            } finally {
+                              setSavingManualPunch(false);
+                            }
+                          };
+
+                          return (
+                            <TableRow key={emp.id} className={`hover:bg-amber-50/20 ${hasClockIn ? "bg-emerald-50/10" : ""}`}>
+                              <TableCell>
+                                <button onClick={() => setSelectedEmpDetail(emp)} className="text-left font-semibold text-sm text-amber-900 hover:underline">
+                                  {emp.name}
+                                </button>
+                                {(emp as any).employee_code && (
+                                  <div className="text-xs text-muted-foreground">{(emp as any).employee_code}</div>
+                                )}
+                                {(emp as any).designation && (
+                                  <div className="text-xs text-muted-foreground italic">{(emp as any).designation}</div>
+                                )}
+                                {hasClockIn && (
+                                  <div className="mt-0.5">
+                                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-1.5 py-0.5 rounded">✓ Punched</span>
+                                  </div>
+                                )}
+                              </TableCell>
+
+                              <TableCell>
+                                {wageType === "daily" ? (
+                                  <div>
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-[10px] font-bold">Daily Wager</Badge>
+                                    <div className="text-xs text-amber-800 font-semibold mt-0.5">{formatCurrency(dailyRate, currency)} / day</div>
+                                  </div>
+                                ) : (
+                                  <div>
+                                    <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-300 text-[10px] font-bold">Hourly Wager</Badge>
+                                    <div className="text-xs text-purple-800 font-semibold mt-0.5">{formatCurrency(hourlyRate, currency)} / hr</div>
+                                  </div>
+                                )}
+                              </TableCell>
+
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                                  <Input
+                                    id={`wpunch-in-${emp.id}`}
+                                    type="time"
+                                    defaultValue={existingIn || "09:00"}
+                                    className="h-8 text-xs font-mono w-full border-emerald-300 focus:border-emerald-500 focus:ring-emerald-200"
+                                  />
+                                </div>
+                              </TableCell>
+
+                              <TableCell>
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                                  <Input
+                                    id={`wpunch-out-${emp.id}`}
+                                    type="time"
+                                    defaultValue={existingOut || "18:00"}
+                                    className="h-8 text-xs font-mono w-full border-amber-300 focus:border-amber-500 focus:ring-amber-200"
+                                  />
+                                </div>
+                              </TableCell>
+
+                              <TableCell className="text-center">
+                                {hrs > 0 ? (
+                                  <span className={`text-xs font-bold ${hrs >= 9 ? "text-emerald-700" : hrs >= 4 ? "text-amber-700" : "text-red-600"}`}>
+                                    {Math.floor(hrs)}h {Math.round((hrs % 1) * 60)}m
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+
+                              <TableCell className="text-center">
+                                {estWage > 0 ? (
+                                  <span className="text-xs font-bold text-emerald-800">{formatCurrency(estWage, currency)}</span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                )}
+                              </TableCell>
+
+                              <TableCell className="text-right">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1 font-semibold"
+                                  onClick={handleSavePunch}
+                                  disabled={savingManualPunch}
+                                >
+                                  <Save className="w-3 h-3" />
+                                  {hasClockIn ? "Update" : "Save"}
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              );
+            })()}
+          </TabsContent>
+        </Tabs>
       </TabsContent>
 
       <TabsContent value="leaves">
@@ -1190,6 +1650,90 @@ export default function AttendancePage() {
             </Table>
           </CardContent>
         </Card>
+      </TabsContent>
+
+      <TabsContent value="regularizations">
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Regularization Requests</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Employee</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Requested In</TableHead>
+                  <TableHead>Requested Out</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {regularizations.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">No regularization requests found.</TableCell>
+                  </TableRow>
+                ) : (
+                  regularizations.map((reg) => (
+                    <TableRow key={reg.id}>
+                      <TableCell className="font-medium">
+                        <div>{reg.employees?.name || 'Unknown'}</div>
+                        {reg.employees?.designation && (
+                          <div className="text-xs text-muted-foreground">{reg.employees.designation}</div>
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        {format(parseISO(reg.date), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {reg.requested_clock_in ? (
+                          <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <Clock className="w-3 h-3 mr-1 text-emerald-600" />
+                            {format(new Date(reg.requested_clock_in), 'hh:mm a')}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {reg.requested_clock_out ? (
+                          <span className="inline-flex items-center text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                            <Clock className="w-3 h-3 mr-1 text-amber-600" />
+                            {format(new Date(reg.requested_clock_out), 'hh:mm a')}
+                          </span>
+                        ) : '-'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground max-w-[220px] truncate" title={reg.reason}>
+                        {reg.reason}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${reg.status === 'approved' ? 'bg-green-100 text-green-700 border border-green-200' : reg.status === 'rejected' ? 'bg-red-100 text-red-700 border border-red-200' : 'bg-amber-100 text-amber-700 border border-amber-200'}`}>
+                          {reg.status}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {reg.status === 'pending' && (
+                          <div className="flex justify-end gap-2">
+                            <Button size="sm" variant="outline" className="text-green-600 border-green-200 bg-green-50 hover:bg-green-100" onClick={() => updateRegularizationStatus(reg, 'approved')}>
+                              Approve
+                            </Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100" onClick={() => updateRegularizationStatus(reg, 'rejected')}>
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="salaries" className="space-y-4">
+        <SalariesTab />
       </TabsContent>
 
       <TabsContent value="holidays" className="space-y-6">
@@ -1282,17 +1826,42 @@ export default function AttendancePage() {
         </Card>
       </TabsContent>
 
-      <TabsContent value="settings">
-        <Card className="max-w-2xl">
+      <TabsContent value="settings" className="space-y-6">
+        <Card className="max-w-3xl">
           <CardHeader>
-            <CardTitle>Attendance Settings</CardTitle>
+            <CardTitle>Attendance & Wages Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="space-y-3">
+            {/* Daily & Hourly Wages Workers Toggle */}
+            <div className="flex items-start justify-between p-4 border rounded-xl bg-slate-50/70 dark:bg-slate-900/40 gap-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <HardHat className="w-5 h-5 text-amber-600" />
+                  <Label htmlFor="daily-wages-toggle" className="text-base font-semibold cursor-pointer">
+                    Daily & Hourly Wages Workers
+                  </Label>
+                  <Badge variant="outline" className={dailyWagesEnabled ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-slate-100 text-slate-600"}>
+                    {dailyWagesEnabled ? "Enabled" : "Off by Default"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                  Turn this on to manage daily-wage (₹/day) and hourly-wage (₹/hour) workers. 
+                  When enabled, you will see options in <strong>Employees</strong> to add daily/hourly wagers, 
+                  manually set check-in & check-out times, and calculate accurate daily/hourly wage payouts in the <strong>Salaries</strong> tab.
+                </p>
+              </div>
+              <Switch
+                id="daily-wages-toggle"
+                checked={dailyWagesEnabled}
+                onCheckedChange={setDailyWagesEnabled}
+              />
+            </div>
+
+            <div className="space-y-3 pt-2">
               <h3 className="font-semibold text-sm">Weekly Off Days</h3>
               <p className="text-xs text-muted-foreground">Select the days that are fixed weekly off days for your organization. These days will automatically be marked as "Holiday" in the monthly overview.</p>
               
-              <div className="flex flex-wrap gap-4 mt-4">
+              <div className="flex flex-wrap gap-4 mt-2">
                 {[
                   { label: "Sunday", value: 0 },
                   { label: "Monday", value: 1 },
@@ -1302,7 +1871,7 @@ export default function AttendancePage() {
                   { label: "Friday", value: 5 },
                   { label: "Saturday", value: 6 }
                 ].map((day) => (
-                  <label key={day.value} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-slate-50">
+                  <label key={day.value} className="flex items-center space-x-2 border rounded-md p-3 cursor-pointer hover:bg-slate-50 transition-colors">
                     <input 
                       type="checkbox" 
                       className="rounded border-slate-300 text-primary focus:ring-primary"
@@ -1321,7 +1890,7 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            <Button onClick={saveWeeklyOffs}><Save className="h-4 w-4 mr-2" />Save Settings</Button>
+            <Button onClick={saveSettings} className="gap-2"><Save className="h-4 w-4" />Save Settings</Button>
           </CardContent>
         </Card>
       </TabsContent>

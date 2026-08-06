@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -32,6 +32,7 @@ export default function BillDetailPage() {
   const [payDate, setPayDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [payMethod, setPayMethod] = useState("bank_transfer");
   const [payRef, setPayRef] = useState("");
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const load = async () => {
     const { data: b } = await (supabase as any).from("bills").select("*").eq("id", id).maybeSingle();
@@ -144,6 +145,7 @@ export default function BillDetailPage() {
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Bills</Button>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={() => navigate(`/bills/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}
         </div>
@@ -209,6 +211,20 @@ export default function BillDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)}>Cancel</Button>
             <Button onClick={recordPayment}>Record</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Bill?</DialogTitle>
+            <DialogDescription>
+              This will create a new copy of this bill using today's date. You can review and edit it before saving.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setDuplicateDialogOpen(false); navigate(`/bills/new?duplicate=${id}`); }}>Create Duplicate</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

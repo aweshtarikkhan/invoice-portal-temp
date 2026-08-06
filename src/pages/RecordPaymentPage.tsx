@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
+import { formatSequenceNumber } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,7 +20,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
-import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus, Sparkles } from "lucide-react";
+import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus, Sparkles, Search, ArrowUp, ArrowDown } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 
 const PAYMENT_MODES = [
@@ -81,6 +82,20 @@ export default function RecordPaymentPage() {
   const [invoices, setInvoices] = useState<OutstandingInvoice[]>([]);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  type SortKey = "invoice_number" | "issue_date" | "due_date" | "status" | "total" | "balance_due" | "payment";
+  const [sortKey, setSortKey] = useState<SortKey>("issue_date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+  const SortArrow = ({ k }: { k: SortKey }) =>
+    sortKey === k ? (
+      sortDir === "asc" ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
+    ) : null;
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -200,6 +215,40 @@ export default function RecordPaymentPage() {
     );
   };
 
+  const processedInvoices = useMemo(() => {
+    let arr = [...invoices];
+    if (invoiceSearch) {
+      const q = invoiceSearch.toLowerCase();
+      arr = arr.filter(i => 
+        [i.invoice_number, i.status]
+          .filter(Boolean)
+          .some(f => f.toLowerCase().includes(q))
+      );
+    }
+    arr.sort((a, b) => {
+      let av: any, bv: any;
+      switch (sortKey) {
+        case "issue_date":
+        case "due_date":
+          av = a[sortKey] ? new Date(a[sortKey]).getTime() : 0;
+          bv = b[sortKey] ? new Date(b[sortKey]).getTime() : 0;
+          break;
+        case "total":
+        case "balance_due":
+        case "payment":
+          av = Number(a[sortKey] || 0); bv = Number(b[sortKey] || 0); break;
+        case "invoice_number":
+          av = a.invoice_number || ""; bv = b.invoice_number || ""; break;
+        case "status":
+          av = a.status || ""; bv = b.status || ""; break;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [invoices, invoiceSearch, sortKey, sortDir]);
+
   const handleSave = async () => {
     if (!org || !clientId) return;
     if (amountNum <= 0) {
@@ -249,7 +298,7 @@ export default function RecordPaymentPage() {
       for (let i = 0; i < selectedInvoices.length; i++) {
         const inv = selectedInvoices[i];
         const nextSeq = maxSeq + 1 + i;
-        const currentPayNum = `${prefix}-${String(nextSeq).padStart(4, "0")}`;
+        const currentPayNum = formatSequenceNumber(prefix, nextSeq, "PAY");
         recordedPaymentNumbers.push(currentPayNum);
 
         const { error } = await supabase.from("payments").insert({
@@ -433,26 +482,43 @@ export default function RecordPaymentPage() {
                 <p>No outstanding invoices for this client.</p>
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
+              <>
+                <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+                  <div className="relative w-full max-w-sm">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Search invoices..." className="pl-9 h-9" value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} />
+                  </div>
+                </div>
+                {processedInvoices.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">No invoices match your search.</div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/30">
                     <TableHead className="w-10">
                       <Checkbox
-                        checked={invoices.length > 0 && invoices.every((i) => i.selected)}
-                        onCheckedChange={(v) => handleSelectAll(!!v)}
+                        checked={processedInvoices.length > 0 && processedInvoices.every((i) => i.selected)}
+                        onCheckedChange={(v) => {
+                          const checked = !!v;
+                          setInvoices((prev) => {
+                            const updated = prev.map((inv) => processedInvoices.some(pi => pi.id === inv.id) ? { ...inv, selected: checked } : inv);
+                            const amt = parseFloat(amountReceived) || 0;
+                            return allocateAmountAcrossInvoices(updated, amt);
+                          });
+                        }}
                       />
                     </TableHead>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Invoice Amount</TableHead>
-                    <TableHead className="text-right">Balance Due</TableHead>
-                    <TableHead className="text-right w-36">Payment</TableHead>
+                    <TableHead onClick={() => toggleSort("invoice_number")} className="cursor-pointer select-none hover:text-foreground">Invoice #<SortArrow k="invoice_number" /></TableHead>
+                    <TableHead onClick={() => toggleSort("issue_date")} className="cursor-pointer select-none hover:text-foreground">Date<SortArrow k="issue_date" /></TableHead>
+                    <TableHead onClick={() => toggleSort("due_date")} className="cursor-pointer select-none hover:text-foreground">Due Date<SortArrow k="due_date" /></TableHead>
+                    <TableHead onClick={() => toggleSort("status")} className="cursor-pointer select-none hover:text-foreground">Status<SortArrow k="status" /></TableHead>
+                    <TableHead onClick={() => toggleSort("total")} className="cursor-pointer select-none hover:text-foreground text-right">Invoice Amount<SortArrow k="total" /></TableHead>
+                    <TableHead onClick={() => toggleSort("balance_due")} className="cursor-pointer select-none hover:text-foreground text-right">Balance Due<SortArrow k="balance_due" /></TableHead>
+                    <TableHead onClick={() => toggleSort("payment")} className="cursor-pointer select-none hover:text-foreground text-right w-36">Payment<SortArrow k="payment" /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((inv) => (
+                  {processedInvoices.map((inv) => (
                     <TableRow key={inv.id} className={inv.selected ? "bg-primary/5" : ""}>
                       <TableCell>
                         <Checkbox checked={inv.selected} onCheckedChange={(v) => handleSelectInvoice(inv.id, !!v)} />
@@ -482,6 +548,8 @@ export default function RecordPaymentPage() {
                   ))}
                 </TableBody>
               </Table>
+                )}
+              </>
             )}
           </CardContent>
         </Card>

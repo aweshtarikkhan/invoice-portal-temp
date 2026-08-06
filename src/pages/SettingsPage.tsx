@@ -537,9 +537,12 @@ export default function SettingsPage() {
                 <CardHeader><CardTitle className="text-base">Invoice Defaults</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label>Invoice Prefix</Label>
-                      <Input value={orgForm.invoice_prefix} onChange={(e) => setOrgForm({ ...orgForm, invoice_prefix: e.target.value })} />
+                    <div className="col-span-3 space-y-2 mb-2">
+                      <Label>Invoice Number Format</Label>
+                      <Input value={orgForm.invoice_prefix} onChange={(e) => setOrgForm({ ...orgForm, invoice_prefix: e.target.value })} placeholder="e.g. INV-{YYYY}-{NNNN}" />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use placeholders to create a custom format. E.g. <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">INV-{`{YYYY}`}-{`{NNNN}`}</code> produces INV-2024-0001, <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">SALES-{`{YY}`}-{`{NN}`}</code> produces SALES-24-01. If no placeholders are used, we append the year and number automatically.
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label>Currency</Label>

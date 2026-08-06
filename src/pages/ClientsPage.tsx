@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -25,13 +26,14 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2
+  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2, ArrowUp, ArrowDown
 } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { fetchGstDetails } from "@/lib/gst-service";
 import { INDIAN_STATES } from "@/lib/constants";
 import { Badge } from "@/components/ui/badge";
 import { formatDistanceToNow } from "date-fns";
+import { ItemWiseBillingTab } from "@/components/clients/ItemWiseBillingTab";
 
 const clientImportFields: ImportField[] = [
   { key: "display_name", label: "Display Name", required: true },
@@ -70,6 +72,20 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<any[]>([]);
   const [invoiceAgg, setInvoiceAgg] = useState<Record<string, { billed: number; received: number; due: number; lastActivity: string | null }>>({});
   const [search, setSearch] = useState("");
+
+  type SortKey = "status" | "display_name" | "contact_info" | "total_invoiced" | "total_received" | "outstanding_balance" | "last_activity";
+  const [sortKey, setSortKey] = useState<SortKey>("display_name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+  const SortArrow = ({ k }: { k: SortKey }) =>
+    sortKey === k ? (
+      sortDir === "asc" ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
+    ) : null;
+
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editClient, setEditClient] = useState<any>(null);
@@ -178,9 +194,43 @@ export default function ClientsPage() {
     }
   };
 
-  const filtered = clients.filter((c) =>
-    [c.display_name, c.company_name, c.email, c.phone].filter(Boolean).some((f) => f.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = useMemo(() => {
+    let arr = clients;
+    if (search) {
+      const q = search.toLowerCase();
+      arr = arr.filter((c) =>
+        [c.display_name, c.company_name, c.email, c.phone].filter(Boolean).some((f) => f.toLowerCase().includes(q))
+      );
+    }
+    arr.sort((a, b) => {
+      let av: any, bv: any;
+      const aggA = invoiceAgg[a.id] || { billed: 0, received: 0, due: 0, lastActivity: null };
+      const aggB = invoiceAgg[b.id] || { billed: 0, received: 0, due: 0, lastActivity: null };
+
+      switch (sortKey) {
+        case "status":
+          av = a.status !== "inactive" ? 1 : 0; bv = b.status !== "inactive" ? 1 : 0; break;
+        case "display_name":
+          av = a.display_name || ""; bv = b.display_name || ""; break;
+        case "contact_info":
+          av = a.phone || a.email || ""; bv = b.phone || b.email || ""; break;
+        case "total_invoiced":
+          av = aggA.billed; bv = aggB.billed; break;
+        case "total_received":
+          av = aggA.received; bv = aggB.received; break;
+        case "outstanding_balance":
+          av = aggA.due; bv = aggB.due; break;
+        case "last_activity":
+          av = aggA.lastActivity ? new Date(aggA.lastActivity).getTime() : 0;
+          bv = aggB.lastActivity ? new Date(aggB.lastActivity).getTime() : 0;
+          break;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [clients, search, invoiceAgg, sortKey, sortDir]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 2 }).format(n);
@@ -241,23 +291,31 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold tracking-tight">All Customers</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={exportCSV} title="Export">
-            <Download className="h-4 w-4" />
-          </Button>
-          <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => setImportOpen(true)} title="Import">
-            <Upload className="h-4 w-4" />
-          </Button>
-          <Button size="icon" className="h-9 w-9 rounded-full" onClick={openCreate} title="Add Customer">
-            <Plus className="h-4 w-4" />
-          </Button>
+      <Tabs defaultValue="customers" className="w-full">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-bold tracking-tight">Clients</h1>
+            <TabsList>
+              <TabsTrigger value="customers">All Customers</TabsTrigger>
+              <TabsTrigger value="item-wise">Item Wise Billing</TabsTrigger>
+            </TabsList>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={exportCSV} title="Export">
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => setImportOpen(true)} title="Import">
+              <Upload className="h-4 w-4" />
+            </Button>
+            <Button size="icon" className="h-9 w-9 rounded-full" onClick={openCreate} title="Add Customer">
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-      </div>
 
-      {/* Search Card */}
+        <TabsContent value="customers" className="space-y-5 mt-0">
+          {/* Search Card */}
       <Card className="rounded-2xl border-border/60 shadow-sm">
         <CardContent className="p-3">
           <div className="relative">
@@ -317,14 +375,14 @@ export default function ClientsPage() {
                   <TableHead className="w-10 pl-5">
                     <Checkbox checked={selected.size === filtered.length && filtered.length > 0} onCheckedChange={toggleAll} />
                   </TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Status</TableHead>
+                  <TableHead onClick={() => toggleSort("status")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Status<SortArrow k="status" /></TableHead>
                   <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Profile</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Customer Name</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Contact Info</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Total Invoiced</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Total Received</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Outstanding Balance</TableHead>
-                  <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground">Last Activity</TableHead>
+                  <TableHead onClick={() => toggleSort("display_name")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Customer Name<SortArrow k="display_name" /></TableHead>
+                  <TableHead onClick={() => toggleSort("contact_info")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Contact Info<SortArrow k="contact_info" /></TableHead>
+                  <TableHead onClick={() => toggleSort("total_invoiced")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Total Invoiced<SortArrow k="total_invoiced" /></TableHead>
+                  <TableHead onClick={() => toggleSort("total_received")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Total Received<SortArrow k="total_received" /></TableHead>
+                  <TableHead onClick={() => toggleSort("outstanding_balance")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Outstanding Balance<SortArrow k="outstanding_balance" /></TableHead>
+                  <TableHead onClick={() => toggleSort("last_activity")} className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground cursor-pointer select-none hover:text-foreground">Last Activity<SortArrow k="last_activity" /></TableHead>
                   <TableHead className="text-[11px] uppercase font-semibold tracking-wider text-muted-foreground text-right pr-5">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -378,13 +436,19 @@ export default function ClientsPage() {
                     </TableRow>
                   );
                 })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+        </TabsContent>
 
-      {/* Create/Edit Dialog */}
+        <TabsContent value="item-wise" className="mt-0">
+          <ItemWiseBillingTab />
+        </TabsContent>
+      </Tabs>
+
+      {/* Dialogs */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
@@ -73,8 +74,7 @@ export default function DeliveryChallanBuilderPage() {
 
       if (!id) {
         const prefix = o.data?.dc_prefix || "DC-";
-        const next = o.data?.dc_next_number || 1;
-        setNumber(`${prefix}${String(next).padStart(4, "0")}`);
+        setNumber(formatSequenceNumber(prefix, next, "DC"));
         // Default warehouse if exists
         const defWh = wh.data?.find((w: any) => w.is_default);
         if (defWh) setWarehouseId(defWh.id);

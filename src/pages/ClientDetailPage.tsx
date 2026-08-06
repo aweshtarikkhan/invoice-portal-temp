@@ -11,8 +11,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, IndianRupee, FileText, CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Clock, FileSpreadsheet,
+  Search, ArrowUp, ArrowDown
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
@@ -28,6 +30,34 @@ export default function ClientDetailPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [invoiceSearch, setInvoiceSearch] = useState("");
+  type SortKey = "issue_date" | "due_date" | "total" | "balance_due" | "invoice_number" | "amount_paid" | "status";
+  const [sortKey, setSortKey] = useState<SortKey>("issue_date");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const [paymentSearch, setPaymentSearch] = useState("");
+  type PaymentSortKey = "payment_date" | "payment_number" | "payment_mode" | "amount";
+  const [paymentSortKey, setPaymentSortKey] = useState<PaymentSortKey>("payment_date");
+  const [paymentSortDir, setPaymentSortDir] = useState<"asc" | "desc">("desc");
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
+  const SortArrow = ({ k }: { k: SortKey }) =>
+    sortKey === k ? (
+      sortDir === "asc" ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
+    ) : null;
+
+  const togglePaymentSort = (k: PaymentSortKey) => {
+    if (paymentSortKey === k) setPaymentSortDir(paymentSortDir === "asc" ? "desc" : "asc");
+    else { setPaymentSortKey(k); setPaymentSortDir("asc"); }
+  };
+  const PaymentSortArrow = ({ k }: { k: PaymentSortKey }) =>
+    paymentSortKey === k ? (
+      paymentSortDir === "asc" ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
+    ) : null;
 
   useEffect(() => {
     if (!id || !org?.id) return;
@@ -109,6 +139,71 @@ export default function ClientDetailPage() {
     "hsl(201, 96%, 32%)", "hsl(142, 71%, 45%)", "hsl(32, 95%, 44%)",
     "hsl(0, 72%, 51%)", "hsl(262, 83%, 58%)", "hsl(215, 16%, 47%)",
   ];
+
+  const processedInvoices = useMemo(() => {
+    let arr = [...invoices];
+    if (invoiceSearch) {
+      const q = invoiceSearch.toLowerCase();
+      arr = arr.filter(i => 
+        [i.invoice_number, i.status]
+          .filter(Boolean)
+          .some(f => f.toLowerCase().includes(q))
+      );
+    }
+    arr.sort((a, b) => {
+      let av: any, bv: any;
+      switch (sortKey) {
+        case "issue_date":
+        case "due_date":
+          av = a[sortKey] ? new Date(a[sortKey]).getTime() : 0;
+          bv = b[sortKey] ? new Date(b[sortKey]).getTime() : 0;
+          break;
+        case "total":
+        case "balance_due":
+        case "amount_paid":
+          av = Number(a[sortKey] || 0); bv = Number(b[sortKey] || 0); break;
+        case "invoice_number":
+          av = a.invoice_number || ""; bv = b.invoice_number || ""; break;
+        case "status":
+          av = a.status || ""; bv = b.status || ""; break;
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [invoices, invoiceSearch, sortKey, sortDir]);
+
+  const processedPayments = useMemo(() => {
+    let arr = [...payments];
+    if (paymentSearch) {
+      const q = paymentSearch.toLowerCase();
+      arr = arr.filter(p => 
+        [p.payment_number, p.payment_mode, p.reference_number]
+          .filter(Boolean)
+          .some(f => f.toLowerCase().includes(q))
+      );
+    }
+    arr.sort((a, b) => {
+      let av: any, bv: any;
+      switch (paymentSortKey) {
+        case "payment_date":
+          av = a[paymentSortKey] ? new Date(a[paymentSortKey]).getTime() : 0;
+          bv = b[paymentSortKey] ? new Date(b[paymentSortKey]).getTime() : 0;
+          break;
+        case "amount":
+          av = Number(a[paymentSortKey] || 0); bv = Number(b[paymentSortKey] || 0); break;
+        case "payment_number":
+          av = a.payment_number || ""; bv = b.payment_number || ""; break;
+        case "payment_mode":
+          av = a.payment_mode || ""; bv = b.payment_mode || ""; break;
+      }
+      if (av < bv) return paymentSortDir === "asc" ? -1 : 1;
+      if (av > bv) return paymentSortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [payments, paymentSearch, paymentSortKey, paymentSortDir]);
 
   if (loading || !client) {
     return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
@@ -266,23 +361,29 @@ export default function ClientDetailPage() {
         <TabsContent value="invoices">
           <Card>
             <CardContent className="p-0">
-              {invoices.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">No invoices found for this client.</div>
+              <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+                <div className="relative w-full max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search invoices..." className="pl-9 h-9" value={invoiceSearch} onChange={(e) => setInvoiceSearch(e.target.value)} />
+                </div>
+              </div>
+              {processedInvoices.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">No invoices found.</div>
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Invoice #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Due Date</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                      <TableHead className="text-right">Paid</TableHead>
-                      <TableHead className="text-right">Balance</TableHead>
+                    <TableRow className="bg-muted/30">
+                      <TableHead onClick={() => toggleSort("invoice_number")} className="cursor-pointer select-none hover:text-foreground">Invoice #<SortArrow k="invoice_number" /></TableHead>
+                      <TableHead onClick={() => toggleSort("issue_date")} className="cursor-pointer select-none hover:text-foreground">Date<SortArrow k="issue_date" /></TableHead>
+                      <TableHead onClick={() => toggleSort("due_date")} className="cursor-pointer select-none hover:text-foreground">Due Date<SortArrow k="due_date" /></TableHead>
+                      <TableHead onClick={() => toggleSort("status")} className="cursor-pointer select-none hover:text-foreground">Status<SortArrow k="status" /></TableHead>
+                      <TableHead onClick={() => toggleSort("total")} className="cursor-pointer select-none hover:text-foreground text-right">Total<SortArrow k="total" /></TableHead>
+                      <TableHead onClick={() => toggleSort("amount_paid")} className="cursor-pointer select-none hover:text-foreground text-right">Paid<SortArrow k="amount_paid" /></TableHead>
+                      <TableHead onClick={() => toggleSort("balance_due")} className="cursor-pointer select-none hover:text-foreground text-right">Balance<SortArrow k="balance_due" /></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((inv) => {
+                    {processedInvoices.map((inv) => {
                       const isOverdue = inv.status !== "paid" && inv.status !== "void" && new Date(inv.due_date) < new Date();
                       return (
                         <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/invoices/${inv.id}`)}>
@@ -308,21 +409,27 @@ export default function ClientDetailPage() {
         <TabsContent value="payments">
           <Card>
             <CardContent className="p-0">
-              {payments.length === 0 ? (
-                <div className="p-8 text-center text-muted-foreground">No payments received from this client yet.</div>
+              <div className="p-4 border-b flex justify-between items-center bg-muted/20">
+                <div className="relative w-full max-w-sm">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search payments..." className="pl-9 h-9" value={paymentSearch} onChange={(e) => setPaymentSearch(e.target.value)} />
+                </div>
+              </div>
+              {processedPayments.length === 0 ? (
+                <div className="p-8 text-center text-muted-foreground">No payments found.</div>
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Payment #</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
+                    <TableRow className="bg-muted/30">
+                      <TableHead onClick={() => togglePaymentSort("payment_number")} className="cursor-pointer select-none hover:text-foreground">Payment #<PaymentSortArrow k="payment_number" /></TableHead>
+                      <TableHead onClick={() => togglePaymentSort("payment_date")} className="cursor-pointer select-none hover:text-foreground">Date<PaymentSortArrow k="payment_date" /></TableHead>
+                      <TableHead onClick={() => togglePaymentSort("payment_mode")} className="cursor-pointer select-none hover:text-foreground">Mode<PaymentSortArrow k="payment_mode" /></TableHead>
+                      <TableHead className="cursor-pointer select-none">Reference</TableHead>
+                      <TableHead onClick={() => togglePaymentSort("amount")} className="cursor-pointer select-none hover:text-foreground text-right">Amount<PaymentSortArrow k="amount" /></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {payments.map((p) => (
+                    {processedPayments.map((p) => (
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.payment_number}</TableCell>
                         <TableCell>{p.payment_date}</TableCell>

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
@@ -219,8 +220,7 @@ export default function EstimateBuilderPage() {
       if (!id) {
         const prefix = org.estimate_prefix || "EST";
         const num = (org as any).estimate_next_number || 1;
-        const year = new Date().getFullYear();
-        setEstimateNumber(`${prefix}-${year}-${String(num).padStart(4, "0")}`);
+        setEstimateNumber(formatSequenceNumber(prefix, num, "EST"));
         setNotes(org.default_notes || "");
         setTerms(org.default_terms || "");
       }

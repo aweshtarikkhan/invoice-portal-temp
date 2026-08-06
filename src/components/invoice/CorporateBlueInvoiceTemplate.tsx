@@ -242,6 +242,48 @@ export function CorporateBlueInvoiceTemplate({
         </div>
       </div>
 
+      {/* 2.5 E-Invoice & E-Way Bill */}
+      {(invoice.irn || invoice.eway_bill_no) && (
+        <div style={{ marginBottom: 20, padding: 14, border: "1px solid #cbd5e1", borderRadius: 6, background: "#f8fafc", display: "flex", gap: 24 }}>
+          {/* E-Invoice / IRN Details */}
+          {(invoice.irn || invoice.ack_no) && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: darkNavy, marginBottom: 8, textTransform: "uppercase" }}>E-Invoice Details</div>
+              <div style={{ display: "flex", gap: 16 }}>
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6, fontSize: 11 }}>
+                  {invoice.irn && <div><span style={{ color: "#64748b" }}>IRN:</span> <strong style={{ wordBreak: "break-all" }}>{invoice.irn}</strong></div>}
+                  <div style={{ display: "flex", gap: 16 }}>
+                    {invoice.ack_no && <div><span style={{ color: "#64748b" }}>Ack No:</span> <strong>{invoice.ack_no}</strong></div>}
+                    {invoice.ack_date && <div><span style={{ color: "#64748b" }}>Ack Date:</span> <strong>{invoice.ack_date}</strong></div>}
+                  </div>
+                </div>
+                {invoice.irn_qr && (
+                  <div style={{ padding: 4, background: "#fff", border: "1px solid #cbd5e1", borderRadius: 4 }}>
+                    <QRCodeSVG value={invoice.irn_qr} size={56} />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          
+          {/* Divider */}
+          {invoice.irn && invoice.eway_bill_no && <div style={{ width: 1, background: "#cbd5e1" }} />}
+          
+          {/* E-Way Bill Details */}
+          {invoice.eway_bill_no && (
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, fontWeight: 800, color: darkNavy, marginBottom: 8, textTransform: "uppercase" }}>E-Way Bill Details</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 16px", fontSize: 11 }}>
+                <div><span style={{ color: "#64748b" }}>E-Way Bill No:</span> <strong>{invoice.eway_bill_no}</strong></div>
+                {invoice.eway_vehicle_no && <div><span style={{ color: "#64748b" }}>Vehicle No:</span> <strong>{invoice.eway_vehicle_no}</strong></div>}
+                {invoice.eway_transport_mode && <div><span style={{ color: "#64748b" }}>Mode:</span> <strong>{invoice.eway_transport_mode}</strong></div>}
+                {invoice.eway_distance_km && <div><span style={{ color: "#64748b" }}>Distance (Km):</span> <strong>{invoice.eway_distance_km}</strong></div>}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 3. Items Table */}
       <table style={{ width: "100%", borderCollapse: "collapse", marginBottom: 20, border: "1px solid #cbd5e1" }}>
         <thead>

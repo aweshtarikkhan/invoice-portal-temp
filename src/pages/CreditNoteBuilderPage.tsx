@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -144,7 +145,7 @@ export default function CreditNoteBuilderPage() {
       if (!isEdit) {
         const prefix = org.credit_note_prefix || "CN";
         const num = org.credit_note_next_number || 1;
-        setCreditNoteNumber(`${prefix}-${new Date().getFullYear()}-${String(num).padStart(4, "0")}`);
+        setCreditNoteNumber(formatSequenceNumber(prefix, num, "CN"));
         setNotes(org.default_notes || "");
         setTerms(org.default_terms || "");
 

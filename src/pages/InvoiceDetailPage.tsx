@@ -12,7 +12,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +45,7 @@ export default function InvoiceDetailPage() {
   const [paymentForm, setPaymentForm] = useState({
     amount: 0, payment_mode: "bank_transfer", reference_number: "", notes: "", payment_date: new Date().toISOString().split("T")[0],
   });
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
 
   const fetchInvoice = async () => {
     if (!id) return;
@@ -289,6 +290,9 @@ export default function InvoiceDetailPage() {
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <PageHeader title={`Invoice ${invoice.invoice_number}`}>
+        <Button variant="outline" size="sm" onClick={() => setDuplicateDialogOpen(true)}>
+          <Copy className="mr-1 h-4 w-4" /> Duplicate
+        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${id}/edit`)}>
           <Edit className="mr-1 h-4 w-4" /> Edit
         </Button>
@@ -479,6 +483,20 @@ export default function InvoiceDetailPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleRecordPayment}>Record Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Invoice?</DialogTitle>
+            <DialogDescription>
+              This will create a new copy of this invoice using today's date. You can review and edit it before saving.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setDuplicateDialogOpen(false); navigate(`/invoices/new?duplicate=${id}`); }}>Create Duplicate</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -35,6 +35,7 @@ interface Organization {
   inventory_enabled: boolean;
   low_stock_threshold: number;
   weekly_offs: number[];
+  daily_wages_enabled?: boolean;
 }
 
 interface BasicOrgInfo {

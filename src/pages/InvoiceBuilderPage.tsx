@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
@@ -7,6 +7,7 @@ import { logAudit } from "@/lib/audit";
 import { logStockMovements, detectNegativeStock } from "@/lib/stock";
 import { CustomFieldsForm, saveCustomFieldValues } from "@/components/shared/CustomFieldsForm";
 import { CURRENCIES, formatCurrency } from "@/lib/currency";
+import { formatSequenceNumber } from "@/lib/utils";
 import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
 import { stateCodeFromGstin } from "@/lib/gst";
 import { Input } from "@/components/ui/input";
@@ -325,7 +326,10 @@ function SortableLineItem({
         <div className="col-span-2 space-y-0.5">
           <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           {Number(line.discount) > 0 && (
-            <div className="text-[10px] text-emerald-600 font-semibold text-right">{line.discount}% discount</div>
+            <div className="flex flex-col items-end mt-1 text-[10px]">
+              <span className="text-emerald-600 font-semibold">{line.discount_type === 'percentage' ? `${line.discount}%` : `₹${line.discount}`} discount</span>
+              <span className="text-muted-foreground font-medium">= ₹{(line.discount_type === 'percentage' ? Number(line.rate) * (1 - Number(line.discount)/100) : Number(line.rate) - Number(line.discount)).toFixed(2)}</span>
+            </div>
           )}
         </div>
         {/* Tax */}
@@ -381,6 +385,8 @@ function SortableLineItem({
 export default function InvoiceBuilderPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -468,8 +474,7 @@ export default function InvoiceBuilderPage() {
           .single();
         const prefix = freshOrg?.invoice_prefix || org.invoice_prefix || "INV";
         const num = freshOrg?.invoice_next_number || org.invoice_next_number || 1;
-        const year = new Date().getFullYear();
-        setInvoiceNumber(`${prefix}-${year}-${String(num).padStart(4, "0")}`);
+        setInvoiceNumber(formatSequenceNumber(prefix, num, "INV"));
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");
         setTerms(freshOrg?.default_terms || org.default_terms || "");
@@ -500,7 +505,7 @@ export default function InvoiceBuilderPage() {
       }
     };
     fetchData();
-  }, [org?.id, id]);
+  }, [org?.id, id, duplicateId]);
 
   // Update due date when issue date or payment terms change
   useEffect(() => {
@@ -511,23 +516,28 @@ export default function InvoiceBuilderPage() {
     }
   }, [issueDate, paymentTerms]);
 
-  // Load existing invoice for editing
+  // Load existing invoice for editing or duplicating
   useEffect(() => {
-    if (!id || !org?.id) return;
+    const sourceId = id || duplicateId;
+    if (!sourceId || !org?.id) return;
     const loadInvoice = async () => {
       const { data: inv } = await supabase
         .from("invoices")
         .select("*")
-        .eq("id", id)
+        .eq("id", sourceId)
         .single();
       if (!inv) return;
 
       setClientId(inv.client_id);
       const matchedClient = clients.find((c) => c.id === inv.client_id);
       if (matchedClient) setClientSearch(matchedClient.display_name);
-      setInvoiceNumber(inv.invoice_number);
-      setIssueDate(inv.issue_date);
-      setDueDate(inv.due_date);
+      
+      if (!duplicateId) {
+        setInvoiceNumber(inv.invoice_number);
+        setIssueDate(inv.issue_date);
+        setDueDate(inv.due_date);
+      }
+      
       setNotes(inv.notes || "");
       setTerms(inv.terms_conditions || "");
       setDiscount(Number(inv.discount));
@@ -540,7 +550,7 @@ export default function InvoiceBuilderPage() {
       setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
       setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
       setPrevDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
-      setAmountPaid(Number(inv.amount_paid || 0));
+      setAmountPaid(duplicateId ? 0 : Number(inv.amount_paid || 0));
 
       if (inv.bank_details && typeof inv.bank_details === "object") {
         setIncludeBankDetails(!!inv.bank_details.enabled);
@@ -563,28 +573,30 @@ export default function InvoiceBuilderPage() {
       }
 
       // Phase 5 compliance load
-      const _irn = (inv as any).irn || "";
-      const _eway = (inv as any).eway_bill_no || "";
-      setIrn(_irn);
-      setAckNo((inv as any).ack_no || "");
-      setAckDate((inv as any).ack_date ? String((inv as any).ack_date).slice(0, 10) : "");
-      setGenerateIrn(!!_irn);
-      setEwayBillNo(_eway);
-      setEwayValidUntil((inv as any).eway_valid_until ? String((inv as any).eway_valid_until).slice(0, 10) : "");
-      setEwayVehicleNo((inv as any).eway_vehicle_no || "");
-      setEwayTransportMode((inv as any).eway_transport_mode || "road");
-      setEwayDistanceKm((inv as any).eway_distance_km ? String((inv as any).eway_distance_km) : "");
-      setGenerateEway(!!_eway);
+      if (!duplicateId) {
+        const _irn = (inv as any).irn || "";
+        const _eway = (inv as any).eway_bill_no || "";
+        setIrn(_irn);
+        setAckNo((inv as any).ack_no || "");
+        setAckDate((inv as any).ack_date ? String((inv as any).ack_date).slice(0, 10) : "");
+        setGenerateIrn(!!_irn);
+        setEwayBillNo(_eway);
+        setEwayValidUntil((inv as any).eway_valid_until ? String((inv as any).eway_valid_until).slice(0, 10) : "");
+        setEwayVehicleNo((inv as any).eway_vehicle_no || "");
+        setEwayTransportMode((inv as any).eway_transport_mode || "road");
+        setEwayDistanceKm((inv as any).eway_distance_km ? String((inv as any).eway_distance_km) : "");
+        setGenerateEway(!!_eway);
+      }
 
       const { data: lineData } = await supabase
         .from("invoice_lines")
         .select("*")
-        .eq("invoice_id", id)
+        .eq("invoice_id", sourceId)
         .order("sort_order");
 
       if (lineData?.length) {
         setLines(lineData.map((l) => ({
-          id: l.id,
+          id: duplicateId ? crypto.randomUUID() : l.id,
           item_id: l.item_id,
           name: l.name,
           description: l.description || "",
@@ -603,7 +615,7 @@ export default function InvoiceBuilderPage() {
       }
     };
     loadInvoice();
-  }, [id, org?.id]);
+  }, [id, duplicateId, org?.id, clients]);
 
   // Fetch client pending invoices when client changes
   useEffect(() => {

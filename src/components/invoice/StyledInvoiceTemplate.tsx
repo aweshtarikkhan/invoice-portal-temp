@@ -159,6 +159,25 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         )}
       </div>
 
+      {/* IRN & E-Invoice Details */}
+      {(invoice.irn || invoice.ack_no) && (
+        <div style={{ marginBottom: 20, padding: 12, border: "1px solid #e4e4e7", borderRadius: 6, background: "#fafafa" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>E-Invoice Details</div>
+          <div style={{ display: "grid", gridTemplateColumns: invoice.irn_qr ? "1fr auto" : "1fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, fontSize: 11 }}>
+              {invoice.irn && <div style={{ gridColumn: "span 2" }}><span style={{ color: "#71717a" }}>IRN:</span> <strong style={{ display: "block", wordBreak: "break-all" }}>{invoice.irn}</strong></div>}
+              {invoice.ack_no && <div><span style={{ color: "#71717a" }}>Ack No:</span> <strong style={{ display: "block" }}>{invoice.ack_no}</strong></div>}
+              {invoice.ack_date && <div><span style={{ color: "#71717a" }}>Ack Date:</span> <strong style={{ display: "block" }}>{invoice.ack_date}</strong></div>}
+            </div>
+            {invoice.irn_qr && (
+              <div>
+                <QRCodeSVG value={invoice.irn_qr} size={64} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* E-Way Bill Details */}
       {invoice.eway_bill_no && (
         <div style={{ marginBottom: 20, padding: 12, border: "1px solid #e4e4e7", borderRadius: 6, background: "#fafafa" }}>

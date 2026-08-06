@@ -4,7 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Pencil, ArrowLeft, PackageCheck, Printer, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
@@ -18,6 +19,7 @@ export default function PurchaseOrderDetailPage() {
   const [po, setPo] = useState<any>(null);
   const [lines, setLines] = useState<any[]>([]);
   const [grns, setGrns] = useState<any[]>([]);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -117,6 +119,7 @@ export default function PurchaseOrderDetailPage() {
           <Badge variant="outline" className={statusColor[po.status] || ""}>{po.status}</Badge>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Print / Download PDF</Button>
           <Button variant="outline" onClick={() => navigate(`/purchase-orders/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
           <Button onClick={() => navigate(`/grns/new?po=${id}`)}><PackageCheck className="h-4 w-4 mr-1" />Receive (GRN)</Button>
@@ -156,6 +159,21 @@ export default function PurchaseOrderDetailPage() {
           </div>
         </div>
       )}
+
+      <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Duplicate Purchase Order?</DialogTitle>
+            <DialogDescription>
+              This will create a new copy of this PO using today's date. You can review and edit it before saving.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => { setDuplicateDialogOpen(false); navigate(`/purchase-orders/new?duplicate=${id}`); }}>Create Duplicate</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

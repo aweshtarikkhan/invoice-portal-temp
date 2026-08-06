@@ -3,7 +3,7 @@ import fs from 'fs';
 
 const envText = fs.readFileSync('.env', 'utf8');
 const env = {};
-envText.split('\n').forEach(line => {
+envText.split(/\r?\n/).forEach(line => {
   const match = line.match(/^([^=]+)=(.*)$/);
   if (match) {
     let key = match[1].trim();
@@ -15,13 +15,9 @@ envText.split('\n').forEach(line => {
 
 const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
-async function testQuery() {
-  const { data, error } = await supabase.from('items').select('*, custom_field_values(field_value, custom_field_definitions(field_name))').limit(1);
-  if (error) {
-    console.error("ERROR:", error);
-  } else {
-    console.log("SUCCESS");
-  }
+async function inspectColumns() {
+  // Let's test inserting a draft payroll run with from_date / to_date or notes
+  console.log("Supabase client initialized successfully");
 }
 
-testQuery();
+inspectColumns();

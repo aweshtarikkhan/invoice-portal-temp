@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { stateCodeFromGstin } from "@/lib/gst";
+import { formatSequenceNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,8 @@ const emptyLine = (): Line => ({ item_id: "", description: "", hsn: "", quantity
 export default function PurchaseOrderBuilderPage() {
   const org = useAppStore((s) => s.organization);
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const duplicateId = searchParams.get("duplicate");
   const navigate = useNavigate();
   const { toast } = useToast();
   const [vendors, setVendors] = useState<any[]>([]);
@@ -67,33 +70,36 @@ export default function PurchaseOrderBuilderPage() {
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
-      const [v, it, o, tr] = await Promise.all([
-        (supabase as any).from("vendors").select("id,name,gstin").eq("org_id", org.id).eq("is_active", true).order("name"),
-        (supabase as any).from("items").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
-        (supabase as any).from("organizations").select("po_next_number,po_prefix").eq("id", org.id).maybeSingle(),
-        (supabase as any).from("tax_rates").select("*").eq("org_id", org.id)
-      ]);
+      const o = await (supabase as any).from("organizations").select("po_prefix, po_next_number").eq("id", org.id).single();
+      const v = await (supabase as any).from("vendors").select("id, display_name, gstin").eq("org_id", org.id);
+      const i = await (supabase as any).from("items").select("id, name, unit, hsn_code, purchase_price, purchase_price_type, tax_id").eq("org_id", org.id);
+      const t = await (supabase as any).from("tax_rates").select("*").eq("org_id", org.id);
       setVendors(v.data || []);
-      setItems(it.data || []);
-      setTaxRates(tr.data || []);
+      setItems(i.data || []);
+      setTaxRates(t.data || []);
+
       if (!id) {
         const prefix = o.data?.po_prefix || "PO-";
         const next = o.data?.po_next_number || 1;
-        setPoNumber(`${prefix}${String(next).padStart(4, "0")}`);
+        setPoNumber(formatSequenceNumber(prefix, next));
       } else {
         loadPo();
       }
     })();
-  }, [org?.id, id]);
+  }, [org?.id, id, duplicateId]);
 
   const loadPo = async () => {
-    const { data: po } = await (supabase as any).from("purchase_orders").select("*").eq("id", id).maybeSingle();
-    const { data: pl } = await (supabase as any).from("purchase_order_lines").select("*").eq("po_id", id).order("sort_order");
+    const sourceId = id || duplicateId;
+    if (!sourceId) return;
+    const { data: po } = await (supabase as any).from("purchase_orders").select("*").eq("id", sourceId).maybeSingle();
+    const { data: pl } = await (supabase as any).from("purchase_order_lines").select("*").eq("po_id", sourceId).order("sort_order");
     if (po) {
       setVendorId(po.vendor_id || "");
-      setPoNumber(po.po_number);
-      setPoDate(po.po_date);
-      setExpectedDate(po.expected_date || "");
+      if (!duplicateId) {
+        setPoNumber(po.po_number);
+        setPoDate(po.po_date);
+        setExpectedDate(po.expected_date || "");
+      }
       setNotes(po.notes || "");
       setTerms(po.terms || "");
       setTdsTcsApplicable(!!po.tds_tcs_applicable);
@@ -101,7 +107,7 @@ export default function PurchaseOrderBuilderPage() {
       setTdsTcsRate(Number(po.tds_tcs_rate || 0));
     }
     if (pl) setLines(pl.map((l: any) => ({
-      id: l.id, item_id: l.item_id || "", description: l.description, hsn: l.hsn || "",
+      id: duplicateId ? crypto.randomUUID() : l.id, item_id: l.item_id || "", description: l.description, hsn: l.hsn || "",
       quantity: String(l.quantity), rate: String(l.rate), tax_rate: String(l.tax_rate || 0), unit: l.unit || "",
     })));
   };

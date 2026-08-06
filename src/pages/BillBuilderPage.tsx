@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -321,8 +322,14 @@ function SortableLineItem({
           )}
         </div>
         {/* Rate */}
-        <div className="col-span-2">
+        <div className="col-span-2 space-y-0.5">
           <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+          {Number(line.discount) > 0 && (
+            <div className="flex flex-col items-end mt-1 text-[10px]">
+              <span className="text-emerald-600 font-semibold">{line.discount_type === 'percentage' ? `${line.discount}%` : `₹${line.discount}`} discount</span>
+              <span className="text-muted-foreground font-medium">= ₹{(line.discount_type === 'percentage' ? Number(line.rate) * (1 - Number(line.discount)/100) : Number(line.rate) - Number(line.discount)).toFixed(2)}</span>
+            </div>
+          )}
         </div>
         {/* Tax */}
         <div className="col-span-2">
@@ -377,6 +384,8 @@ function SortableLineItem({
 export default function BillBuilderPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -451,15 +460,14 @@ export default function BillBuilderPage() {
         const { data: freshOrg } = await supabase.from("organizations").select("bill_next_number, bill_prefix, payment_terms, default_notes, default_terms").eq("id", org.id).single();
         const prefix = freshOrg?.bill_prefix || org.bill_prefix || "INV";
         const num = freshOrg?.bill_next_number || org.bill_next_number || 1;
-        const year = new Date().getFullYear();
-        setBillNumber(`${prefix}-${year}-${String(num).padStart(4, "0")}`);
+        setBillNumber(formatSequenceNumber(prefix, num, "BILL"));
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");
         setTerms(freshOrg?.default_terms || org.default_terms || "");
       }
     };
     fetchData();
-  }, [org?.id, id]);
+  }, [org?.id, id, duplicateId]);
 
   // Update due date when issue date or payment terms change
   useEffect(() => {
@@ -470,24 +478,28 @@ export default function BillBuilderPage() {
     }
   }, [billDate, paymentTerms]);
 
-  // Load existing bill for editing
+  // Load existing bill for editing or duplicating
   useEffect(() => {
-    if (!id || !org?.id) return;
+    const sourceId = id || duplicateId;
+    if (!sourceId || !org?.id) return;
     const loadBill = async () => {
       const { data: inv } = await supabase
         .from("bills")
         .select("*")
-        .eq("id", id)
+        .eq("id", sourceId)
         .single();
       if (!inv) return;
 
       setVendorId(inv.vendor_id);
       const matchedVendor = vendors.find((c) => c.id === inv.vendor_id);
       if (matchedVendor) setVendorSearch(matchedVendor.display_name);
-      setBillNumber(inv.bill_number);
-      setVendorBillNumber(inv.vendor_bill_number || "");
-      setBillDate(inv.bill_date);
-      setDueDate(inv.due_date);
+      
+      if (!duplicateId) {
+        setBillNumber(inv.bill_number);
+        setBillDate(inv.bill_date);
+        setDueDate(inv.due_date);
+      }
+      
       setNotes(inv.notes || "");
       setTerms(inv.terms_conditions || "");
       setDiscount(Number(inv.discount));
@@ -501,7 +513,8 @@ export default function BillBuilderPage() {
       setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
       setDeductStock(!!(inv as any).deduct_stock);
       setPrevDeductStock(!!(inv as any).deduct_stock);
-      setAmountPaid(Number(inv.amount_paid || 0));
+      setAmountPaid(duplicateId ? 0 : Number(inv.amount_paid || 0));
+      
       // Phase 5 compliance load
       const _irn = (inv as any).irn || "";
       const _eway = (inv as any).eway_bill_no || "";
@@ -519,12 +532,12 @@ export default function BillBuilderPage() {
       const { data: lineData } = await supabase
         .from("bill_lines")
         .select("*")
-        .eq("bill_id", id)
+        .eq("bill_id", sourceId)
         .order("sort_order");
 
       if (lineData?.length) {
         setLines(lineData.map((l) => ({
-          id: l.id,
+          id: duplicateId ? crypto.randomUUID() : l.id,
           item_id: l.item_id,
           name: l.name,
           description: l.description || "",
@@ -543,7 +556,7 @@ export default function BillBuilderPage() {
       }
     };
     loadBill();
-  }, [id, org?.id]);
+  }, [id, duplicateId, org?.id, vendors]);
 
   // Fetch vendor pending bills when vendor changes
   useEffect(() => {

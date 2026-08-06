@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon, Warehouse } from "lucide-react";
+import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon, Warehouse, Plus } from "lucide-react";
 import { logStockMovements } from "@/lib/stock";
 import { useAuth } from "@/lib/auth";
 import { Switch } from "@/components/ui/switch";
@@ -37,19 +37,20 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<"all" | "products" | "services" | "low">("all");
+  const [sortKey, setSortKey] = useState<string>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [target, setTarget] = useState<any>(null);
   const [adjustQty, setAdjustQty] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
-  const [aiOpen, setAiOpen] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiAdvice, setAiAdvice] = useState<string>("");
-  const [seedingDemo, setSeedingDemo] = useState(false);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<any>(null);
   const [historyTarget, setHistoryTarget] = useState<any>(null);
   const [historyRows, setHistoryRows] = useState<any[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
+  const [warehouseStock, setWarehouseStock] = useState<Record<string, Record<string, { qty: number, value: number }>>>({});
+  const [warehouses, setWarehouses] = useState<any[]>([]);
   const { user } = useAuth();
   const multiWarehouseEnabled = (org as any)?.multi_warehouse_enabled;
 
@@ -58,22 +59,41 @@ export default function InventoryPage() {
   const fetchItems = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("items")
-      .select("id, name, sku, unit, stock_quantity, unit_price, category, type, description")
-      .eq("org_id", org.id)
-      .order("type", { ascending: false })
-      .order("name");
-    setItems(data || []);
+    const [itemsRes, whRes, movesRes] = await Promise.all([
+      supabase.from("items").select("id, name, sku, unit, stock_quantity, unit_price, purchase_price, category, type, description, hsn_code").eq("org_id", org.id).order("type", { ascending: false }).order("name"),
+      supabase.from("warehouses").select("id, name").eq("org_id", org.id),
+      supabase.from("stock_movements").select("item_id, warehouse_id, change_qty").eq("org_id", org.id)
+    ]);
+    
+    setItems(itemsRes.data || []);
+    setWarehouses(whRes.data || []);
+    
+    if (movesRes.data) {
+       const wStock: Record<string, Record<string, { qty: number, value: number }>> = {};
+       const pPriceMap: Record<string, number> = {};
+       (itemsRes.data || []).forEach(it => pPriceMap[it.id] = Number(it.purchase_price || 0));
+       
+       movesRes.data.forEach(m => {
+          const iid = m.item_id;
+          const wid = m.warehouse_id;
+          if (!wid || !iid) return;
+          if (!wStock[iid]) wStock[iid] = {};
+          if (!wStock[iid][wid]) wStock[iid][wid] = { qty: 0, value: 0 };
+          
+          wStock[iid][wid].qty += Number(m.change_qty || 0);
+          wStock[iid][wid].value = wStock[iid][wid].qty * (pPriceMap[iid] || 0);
+       });
+       setWarehouseStock(wStock);
+    }
     setLoading(false);
   };
 
   useEffect(() => { fetchItems(); }, [org?.id]);
 
   const filtered = useMemo(() => {
-    return items.filter((i) => {
+    let arr = items.filter((i) => {
       const q = search.toLowerCase();
-      const matchSearch = !q || [i.name, i.sku, i.category].filter(Boolean).some((f: string) => f.toLowerCase().includes(q));
+      const matchSearch = !q || [i.name, i.sku, i.category, i.hsn_code, i.type].filter(Boolean).some((f: string) => f?.toLowerCase().includes(q));
       const stock = Number(i.stock_quantity || 0);
       let matchTab = true;
       if (tab === "products") matchTab = i.type === "product";
@@ -81,7 +101,28 @@ export default function InventoryPage() {
       else if (tab === "low") matchTab = i.type === "product" && stock <= threshold;
       return matchSearch && matchTab;
     });
-  }, [items, search, tab, threshold]);
+    
+    arr.sort((a, b) => {
+      let av = a[sortKey];
+      let bv = b[sortKey];
+      if (sortKey === "stock_quantity" || sortKey === "unit_price") {
+         av = Number(av || 0);
+         bv = Number(bv || 0);
+      } else {
+         av = (av || "").toString().toLowerCase();
+         bv = (bv || "").toString().toLowerCase();
+      }
+      if (av < bv) return sortDir === "asc" ? -1 : 1;
+      if (av > bv) return sortDir === "asc" ? 1 : -1;
+      return 0;
+    });
+    return arr;
+  }, [items, search, tab, threshold, sortKey, sortDir]);
+
+  const toggleSort = (k: string) => {
+    if (sortKey === k) setSortDir(sortDir === "asc" ? "desc" : "asc");
+    else { setSortKey(k); setSortDir("asc"); }
+  };
 
   const stats = useMemo(() => {
     const products = items.filter((i) => i.type === "product");
@@ -158,57 +199,7 @@ export default function InventoryPage() {
 
   const inventoryEnabled = !!(org as any)?.inventory_enabled;
 
-  const getAiAdvice = async () => {
-    const products = items.filter((i) => i.type === "product");
-    if (!products.length) { toast({ title: "No products", description: "Add some products first." }); return; }
-    setAiOpen(true); setAiLoading(true); setAiAdvice("");
-    const { data, error } = await supabase.functions.invoke("inventory-advisor", {
-      body: {
-        items: products.map((i) => ({ name: i.name, stock_quantity: i.stock_quantity, unit: i.unit, unit_price: i.unit_price, category: i.category })),
-        currency: org?.currency_code || "INR",
-        threshold,
-      },
-    });
-    setAiLoading(false);
-    if (error || (data as any)?.error) {
-      toast({ title: "AI error", description: (data as any)?.error || error?.message, variant: "destructive" });
-      setAiAdvice("Could not generate advice. Please try again.");
-      return;
-    }
-    setAiAdvice((data as any)?.advice || "No advice generated.");
-  };
-
-  const seedDemoData = async () => {
-    if (!org?.id) return;
-    setSeedingDemo(true);
-    const demo = [
-      // Services
-      { name: "Web Design Package", description: "Landing page + 5 inner pages", sku: "SVC-WEB-01", category: "Services", type: "service" as const, unit: null, unit_price: 1800, stock_quantity: 0 },
-      { name: "Cloud Hosting (Annual)", description: "Managed hosting with SSL", sku: "SVC-HOST-AN", category: "Services", type: "service" as const, unit: null, unit_price: 480, stock_quantity: 0 },
-      { name: "SEO Audit", description: "Full site SEO report", sku: "SVC-SEO-01", category: "Services", type: "service" as const, unit: null, unit_price: 350, stock_quantity: 0 },
-      // Products — hardware
-      { name: "Wireless Keyboard K2", sku: "HW-KB-K2", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 89, stock_quantity: 142 },
-      { name: "USB-C Hub Pro", sku: "HW-HUB-PRO", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 49, stock_quantity: 12 },
-      { name: '27" 4K Monitor', sku: "HW-MON-27K", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 420, stock_quantity: 38 },
-      { name: "Ergo Mouse", sku: "HW-MS-ERG", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 65, stock_quantity: 4 },
-      { name: "Laptop Stand Aluminium", sku: "HW-STAND-AL", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 39, stock_quantity: 56 },
-      { name: "Webcam 1080p", sku: "HW-CAM-1080", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 75, stock_quantity: 0 },
-      { name: "Noise-Cancel Headphones", sku: "HW-HP-NC", category: "Hardware", type: "product" as const, unit: "pcs", unit_price: 199, stock_quantity: 21 },
-      // Grocery / FMCG
-      { name: "Basmati Rice (5kg)", sku: "RICE-5KG", category: "Grocery", type: "product" as const, unit: "bag", unit_price: 8, stock_quantity: 24 },
-      { name: "Sunflower Oil (1L)", sku: "OIL-SUN-1L", category: "Grocery", type: "product" as const, unit: "ltr", unit_price: 2, stock_quantity: 3 },
-      { name: "Tea Powder (500g)", sku: "TEA-500G", category: "Beverage", type: "product" as const, unit: "pcs", unit_price: 3, stock_quantity: 8 },
-      { name: "Detergent Powder (1kg)", sku: "DET-1KG", category: "Household", type: "product" as const, unit: "kg", unit_price: 1.5, stock_quantity: 1 },
-      { name: "LED Bulb 9W", sku: "LED-9W", category: "Electrical", type: "product" as const, unit: "pcs", unit_price: 1.2, stock_quantity: 6 },
-      { name: "Notebook A5", sku: "NB-A5", category: "Stationery", type: "product" as const, unit: "pcs", unit_price: 0.7, stock_quantity: 80 },
-    ];
-    const rows = demo.map((d) => ({ ...d, org_id: org.id, is_active: true }));
-    const { error } = await supabase.from("items").insert(rows);
-    setSeedingDemo(false);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: "Demo data added", description: `${rows.length} sample items loaded.` });
-    fetchItems();
-  };
+  // AI and Demo features removed
 
   if (!inventoryEnabled) {
     return (
@@ -269,13 +260,7 @@ export default function InventoryPage() {
               + Warehouse
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={getAiAdvice}>
-            <Sparkles className="mr-1.5 h-4 w-4" /> AI Advice
-          </Button>
-          <Button variant="outline" size="sm" onClick={seedDemoData} disabled={seedingDemo}>
-            <Database className="mr-1.5 h-4 w-4" /> {seedingDemo ? "Loading..." : "Load Demo Data"}
-          </Button>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Button size="sm" onClick={() => { setEditTarget(null); setAddOpen(true); }}>
             <PackagePlus className="mr-1.5 h-4 w-4" /> Add Product
           </Button>
         </div>
@@ -329,18 +314,19 @@ export default function InventoryPage() {
               icon={Package}
               title={items.length === 0 ? "No items yet" : "No items match your filter"}
               description={items.length === 0 ? "Add an item or load demo data to get started." : "Try a different tab or search."}
-              actionLabel={items.length === 0 ? "Load Demo Data" : undefined}
-              onAction={items.length === 0 ? seedDemoData : undefined}
+              actionLabel={undefined}
+              onAction={undefined}
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="text-[11px] tracking-wider text-muted-foreground">ITEM</TableHead>
-                  <TableHead className="text-[11px] tracking-wider text-muted-foreground">SKU</TableHead>
-                  <TableHead className="text-[11px] tracking-wider text-muted-foreground">TYPE</TableHead>
-                  <TableHead className="text-[11px] tracking-wider text-muted-foreground text-right">PRICE</TableHead>
-                  <TableHead className="text-[11px] tracking-wider text-muted-foreground text-right">STOCK</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort('name')}>ITEM</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort('sku')}>SKU</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort('type')}>TYPE</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground cursor-pointer select-none" onClick={() => toggleSort('hsn_code')}>HSN CODE</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground text-right cursor-pointer select-none" onClick={() => toggleSort('unit_price')}>PRICE</TableHead>
+                  <TableHead className="text-[11px] tracking-wider text-muted-foreground text-right cursor-pointer select-none" onClick={() => toggleSort('stock_quantity')}>STOCK</TableHead>
                   <TableHead className="w-24"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -366,18 +352,40 @@ export default function InventoryPage() {
                           <Badge className="bg-indigo-100 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 uppercase text-[10px] tracking-wider">Product</Badge>
                         )}
                       </TableCell>
+                      <TableCell>
+                         {item.hsn_code ? <span className="text-sm">{item.hsn_code}</span> : 
+                           <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-orange-500 hover:text-orange-600 hover:bg-orange-50" 
+                             onClick={() => { setEditTarget(item); setAddOpen(true); }}>
+                             <Plus className="h-3 w-3 mr-1"/> Missing
+                           </Button>}
+                      </TableCell>
                       <TableCell className="text-right font-medium">{fmt(Number(item.unit_price))}</TableCell>
                       <TableCell className="text-right">
                         {isService ? (
                           <InfinityIcon className="h-4 w-4 inline text-muted-foreground" />
                         ) : (
-                          <button
-                            onClick={() => openAdjust(item)}
-                            className={`inline-flex items-center gap-1 font-medium hover:underline ${isOut ? "text-destructive" : isLow ? "text-orange-600" : ""}`}
-                          >
-                            {(isOut || isLow) && <AlertTriangle className="h-3.5 w-3.5" />}
-                            {stock}
-                          </button>
+                          <div className="flex flex-col items-end">
+                            <button
+                              onClick={() => openAdjust(item)}
+                              className={`inline-flex items-center gap-1 font-medium hover:underline ${isOut ? "text-destructive" : isLow ? "text-orange-600" : ""}`}
+                            >
+                              {(isOut || isLow) && <AlertTriangle className="h-3.5 w-3.5" />}
+                              {stock} {item.unit || ""}
+                            </button>
+                            {warehouseStock[item.id] && Object.keys(warehouseStock[item.id]).length > 0 && (
+                              <div className="mt-1 flex flex-col items-end border-t pt-1 w-full min-w-[150px]">
+                                {Object.entries(warehouseStock[item.id]).filter(([_, d]) => d.qty !== 0).map(([wid, data]) => {
+                                   const w = warehouses.find(wh => wh.id === wid);
+                                   return (
+                                     <div key={wid} className="flex justify-between items-center w-full text-xs text-muted-foreground">
+                                       <span>{w?.name || "Unknown"}</span>
+                                       <span className="font-medium ml-2">{data.qty} <span className="opacity-70 text-[10px] font-normal">({fmt(data.value)})</span></span>
+                                     </div>
+                                   );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -449,39 +457,15 @@ export default function InventoryPage() {
 
       <ItemFormDialog
         open={addOpen}
-        onOpenChange={setAddOpen}
+        onOpenChange={(v) => { setAddOpen(v); if (!v) setEditTarget(null); }}
+        editItem={editTarget}
         onItemSaved={(item) => {
           if (item) {
-            setItems((prev: any[]) => [...prev, item]);
-            fetchData();
+            setItems((prev: any[]) => [...prev.filter(i => i.id !== item.id), item]);
+            fetchItems();
           }
         }}
       />
-
-      <Dialog open={aiOpen} onOpenChange={setAiOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" /> AI Inventory Advisor
-            </DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh] pr-4">
-            {aiLoading ? (
-              <div className="py-10 text-center text-muted-foreground text-sm">Analyzing your stock... ek minute ⏳</div>
-            ) : (
-              <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown>{aiAdvice}</ReactMarkdown>
-              </div>
-            )}
-          </ScrollArea>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAiOpen(false)}>Close</Button>
-            <Button onClick={getAiAdvice} disabled={aiLoading}>
-              <Sparkles className="mr-1.5 h-4 w-4" /> Regenerate
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Stock movement history dialog */}
       <Dialog open={!!historyTarget} onOpenChange={(v) => { if (!v) setHistoryTarget(null); }}>

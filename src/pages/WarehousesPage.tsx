@@ -40,6 +40,7 @@ import {
 import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { CatalogNav } from "@/components/shared/CatalogNav";
 import { useSearchParams } from "react-router-dom";
+import { formatCurrency } from "@/lib/currency";
 
 export default function WarehousesPage() {
   const org = useAppStore((s) => s.organization);
@@ -52,6 +53,8 @@ export default function WarehousesPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(shouldOpenAdd);
   const [editWarehouse, setEditWarehouse] = useState<any | null>(null);
+  const [warehouseValues, setWarehouseValues] = useState<Record<string, number>>({});
+  const cur = (org as any)?.currency || "INR";
 
   const loadWarehouses = async () => {
     if (!org?.id) return;
@@ -64,8 +67,47 @@ export default function WarehousesPage() {
         .order("is_default", { ascending: false })
         .order("name", { ascending: true });
 
+      const { data: movements } = await (supabase as any)
+        .from("stock_movements")
+        .select("warehouse_id, item_id, change_qty, items(purchase_price)")
+        .eq("org_id", org.id);
+
       if (error) throw error;
       setWarehouses(data || []);
+      
+      if (movements) {
+        const values: Record<string, number> = {};
+        const qtyMap: Record<string, Record<string, number>> = {};
+        
+        movements.forEach((m: any) => {
+          if (!m.warehouse_id) return;
+          const wid = m.warehouse_id;
+          const iid = m.item_id;
+          const qty = Number(m.change_qty || 0);
+          
+          if (!qtyMap[wid]) qtyMap[wid] = {};
+          if (!qtyMap[wid][iid]) qtyMap[wid][iid] = 0;
+          qtyMap[wid][iid] += qty;
+        });
+        
+        const prices: Record<string, number> = {};
+        movements.forEach((m: any) => {
+          if (m.items?.purchase_price) prices[m.item_id] = Number(m.items.purchase_price);
+        });
+        
+        Object.keys(qtyMap).forEach(wid => {
+          let total = 0;
+          Object.keys(qtyMap[wid]).forEach(iid => {
+             const netQty = qtyMap[wid][iid];
+             if (netQty > 0) {
+                total += netQty * (prices[iid] || 0);
+             }
+          });
+          values[wid] = total;
+        });
+        
+        setWarehouseValues(values);
+      }
     } catch (err: any) {
       toast({
         title: "Failed to load warehouses",
@@ -270,6 +312,7 @@ export default function WarehousesPage() {
                   <TableHead>GSTIN</TableHead>
                   <TableHead>Location / Address</TableHead>
                   <TableHead>Manager / Contact</TableHead>
+                  <TableHead className="text-right">Inventory Value</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -357,6 +400,9 @@ export default function WarehousesPage() {
                             <span className="text-muted-foreground/60">—</span>
                           )}
                         </div>
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {warehouseValues[wh.id] ? formatCurrency(warehouseValues[wh.id], cur) : "-"}
                       </TableCell>
                       <TableCell>
                         {wh.is_default ? (

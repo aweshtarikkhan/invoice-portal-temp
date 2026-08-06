@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
+import { postPayrollJournal, postPayrollPaymentJournal, PayrollJournalData } from "@/lib/accounting";
 import { ArrowLeft, Calculator, CheckCircle, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 
@@ -105,7 +106,9 @@ export default function PayrollRunDetailPage() {
     if (!confirm(`Approve payroll for ${monthLabel} and post total net pay as a Salary expense?`)) return;
     setBusy(true);
     const total = slips.reduce((s, p) => s + Number(p.net_pay || 0), 0);
+    const totalGross = slips.reduce((s, p) => s + Number(p.gross_salary || 0), 0);
     if (total > 0) {
+      // Business expense for simple reporting
       await (supabase as any).from("business_expenses").insert({
         org_id: org.id,
         category: "Salary",
@@ -114,20 +117,56 @@ export default function PayrollRunDetailPage() {
         expense_date: format(endOfMonth(period), "yyyy-MM-dd"),
         is_recurring: false,
       });
+
+      // Double-entry journal entry for proper accounting
+      try {
+        const journalData: PayrollJournalData = {
+          runId: run.id,
+          entryDate: format(endOfMonth(period), "yyyy-MM-dd"),
+          monthLabel,
+          totalGross,
+          totalBasic: slips.reduce((s, p) => s + Number(p.basic || 0), 0),
+          totalHra: slips.reduce((s, p) => s + Number(p.hra || 0), 0),
+          totalAllowances: slips.reduce((s, p) => s + Number(p.allowances || 0), 0),
+          totalOvertimePay: 0,
+          totalBonusIncentive: 0,
+          totalPfEmployee: slips.reduce((s, p) => s + Number(p.pf_employee || 0), 0),
+          totalPfEmployer: slips.reduce((s, p) => s + Number(p.pf_employee || 0), 0),
+          totalEsicEmployee: slips.reduce((s, p) => s + Number(p.esic_employee || 0), 0),
+          totalEsicEmployer: 0,
+          totalTds: slips.reduce((s, p) => s + Number(p.tds || 0), 0),
+          totalPt: 0,
+          totalOtherDeductions: slips.reduce((s, p) => s + Number(p.other_deductions || 0), 0),
+          totalNetPay: total,
+        };
+        await postPayrollJournal(org.id, journalData);
+      } catch (e) {
+        console.error("Failed to post payroll journal:", e);
+      }
     }
     await (supabase as any).from("payroll_runs").update({ status: "approved" }).eq("id", run.id);
     setBusy(false);
-    toast({ title: "Approved & posted to Expenses" });
+    toast({ title: "Approved & posted to Expenses & Journal" });
     load();
   };
 
   const markAllPaid = async () => {
-    if (!run) return;
+    if (!run || !org?.id) return;
     setBusy(true);
-    await (supabase as any).from("payslips").update({ payment_status: "paid", payment_date: format(new Date(), "yyyy-MM-dd") }).eq("run_id", run.id);
+    const payDate = format(new Date(), "yyyy-MM-dd");
+    await (supabase as any).from("payslips").update({ payment_status: "paid", payment_date: payDate }).eq("run_id", run.id);
     await (supabase as any).from("payroll_runs").update({ status: "paid" }).eq("id", run.id);
+
+    // Post payment journal entry (Salary Payable Dr, Bank Cr)
+    try {
+      const netPay = slips.reduce((s, p) => s + Number(p.net_pay || 0), 0);
+      await postPayrollPaymentJournal(org.id, run.id, payDate, monthLabel, netPay, "bank");
+    } catch (e) {
+      console.error("Failed to post payroll payment journal:", e);
+    }
+
     setBusy(false);
-    toast({ title: "Marked as paid" });
+    toast({ title: "Marked as paid & journal posted" });
     load();
   };
 
