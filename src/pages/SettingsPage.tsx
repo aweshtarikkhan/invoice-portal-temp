@@ -12,6 +12,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { stateCodeFromGstin } from "@/lib/gst";
+import { INDIAN_STATES } from "@/lib/constants";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -136,14 +138,15 @@ export default function SettingsPage() {
     setIsFetchingGst(true);
     try {
       const details = await fetchGstDetails(orgForm.gst_number);
+      const extractedState = stateCodeFromGstin(orgForm.gst_number);
       setOrgForm(prev => ({
         ...prev,
         name: details.legalName || details.tradeName || prev.name,
         address: {
           ...prev.address,
           street: details.address || prev.address.street,
-          city: prev.address.city, // Keep city or derive if possible
-          state: details.state || prev.address.state,
+          city: prev.address.city,
+          state: extractedState || details.state || prev.address.state,
           zip: details.pincode || prev.address.zip,
         }
       }));
@@ -192,7 +195,6 @@ export default function SettingsPage() {
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
         </TabsList>
 
-        {/* ── PROFILE TAB ── */}
         <TabsContent value="profile" className="space-y-6 mt-4">
           <Card>
             <CardHeader>
@@ -268,6 +270,33 @@ export default function SettingsPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Business Details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-2 mb-6">
+                <Label className="text-emerald-500 font-semibold">Your GST Number</Label>
+                <div className="flex gap-2">
+                  <Input 
+                    value={orgForm.gst_number || ""} 
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      const st = stateCodeFromGstin(val);
+                      setOrgForm({ ...orgForm, gst_number: val, address: { ...orgForm.address, state: st || orgForm.address.state } });
+                    }} 
+                    placeholder="e.g. 22AAAAA0000A1Z5" 
+                    maxLength={15}
+                    className="border-emerald-500/50 focus-visible:ring-emerald-500 max-w-sm"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={handleFetchGst}
+                    disabled={isFetchingGst || (orgForm.gst_number || "").length !== 15}
+                  >
+                    {isFetchingGst ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                    Fetch Business Details
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Enter GST to auto-fetch business name & address. Leave blank if not registered.</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Organization Name</Label>
@@ -302,15 +331,9 @@ export default function SettingsPage() {
                       <SelectValue placeholder="Select State" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="27">27 - Maharashtra</SelectItem>
-                      <SelectItem value="07">07 - Delhi</SelectItem>
-                      <SelectItem value="09">09 - Uttar Pradesh</SelectItem>
-                      <SelectItem value="24">24 - Gujarat</SelectItem>
-                      <SelectItem value="29">29 - Karnataka</SelectItem>
-                      <SelectItem value="33">33 - Tamil Nadu</SelectItem>
-                      <SelectItem value="19">19 - West Bengal</SelectItem>
-                      <SelectItem value="08">08 - Rajasthan</SelectItem>
-                      <SelectItem value="00">00 - Other / Unregistered</SelectItem>
+                      {INDIAN_STATES.map((st) => (
+                        <SelectItem key={st.code} value={st.code}>{st.code} - {st.name}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -319,16 +342,7 @@ export default function SettingsPage() {
                   <Input value={orgForm.address.country} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, country: e.target.value } })} />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tax Name (e.g. GST, VAT)</Label>
-                  <Input value={orgForm.tax_name} onChange={(e) => setOrgForm({ ...orgForm, tax_name: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tax Number</Label>
-                  <Input value={orgForm.tax_number} onChange={(e) => setOrgForm({ ...orgForm, tax_number: e.target.value })} />
-                </div>
-              </div>
+              {/* Tax Name and Tax Number removed as per request */}
               <Button onClick={saveOrg}>Save Changes</Button>
             </CardContent>
           </Card>
@@ -409,26 +423,7 @@ export default function SettingsPage() {
                   </div>
                   {orgForm.gst_enabled && (
                     <>
-                      <div className="space-y-2">
-                        <Label>Your GST Number</Label>
-                        <div className="flex gap-2">
-                          <Input 
-                            value={orgForm.gst_number || ""} 
-                            onChange={(e) => setOrgForm({ ...orgForm, gst_number: e.target.value.toUpperCase() })} 
-                            placeholder="e.g. 22AAAAA0000A1Z5" 
-                            maxLength={15}
-                          />
-                          <Button 
-                            type="button" 
-                            variant="secondary" 
-                            onClick={handleFetchGst}
-                            disabled={isFetchingGst || (orgForm.gst_number || "").length !== 15}
-                          >
-                            {isFetchingGst ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                            Fetch Details
-                          </Button>
-                        </div>
-                      </div>
+                      {/* GST Number moved to Business Details top */}
                       <div className="flex items-center justify-between">
                         <div>
                           <Label>Show Client GST</Label>

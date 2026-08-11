@@ -154,7 +154,7 @@ export default function TdsTcsReportsPage() {
 
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
-      <SEO title="TDS/TCS Returns - Satah Invoice" description="Track and export TDS deducted and TCS collected across sales and purchases." />
+      <SEO title="TDS/TCS Returns - Assay Biz" description="Track and export TDS deducted and TCS collected across sales and purchases." />
       <PageHeader 
         title="TDS/TCS Returns"
         description="Track and export TDS deducted and TCS collected across sales and purchases."

@@ -23,6 +23,7 @@ import { Plus, Trash2, Pencil, Download, Database } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import { createExpenseJournalEntry, deleteExpenseJournalEntry, updateExpenseJournalEntry } from "@/lib/expense-journal-sync";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from "recharts";
@@ -149,23 +150,48 @@ export default function BusinessExpensesPage() {
       recurring_frequency: form.is_recurring ? form.recurring_frequency : null,
     };
 
-    const { error } = editId
-      ? await supabase.from("business_expenses").update(payload).eq("id", editId)
-      : await supabase.from("business_expenses").insert(payload);
-
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    if (editId) {
+      // For update: find old expense to delete its journal entry
+      const oldExpense = expenses.find(e => e.id === editId);
+      const { error } = await supabase.from("business_expenses").update(payload).eq("id", editId);
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      // Sync journal: update old → new
+      if (oldExpense) {
+        updateExpenseJournalEntry(
+          org!.id,
+          oldExpense.category, Number(oldExpense.amount), oldExpense.expense_date, oldExpense.description,
+          payload.category, payload.amount, payload.expense_date, payload.description
+        );
+      }
     } else {
-      setDialogOpen(false);
-      setEditId(null);
-      setForm(emptyForm);
-      fetchExpenses();
-      toast({ title: editId ? "Expense updated!" : "Expense added!" });
+      const { data: inserted, error } = await supabase.from("business_expenses").insert(payload).select("id").single();
+      if (error) {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+        return;
+      }
+      // Sync journal: create new entry
+      createExpenseJournalEntry(
+        org!.id, inserted.id, payload.category, payload.amount, payload.expense_date, payload.description
+      );
     }
+
+    setDialogOpen(false);
+    setEditId(null);
+    setForm(emptyForm);
+    fetchExpenses();
+    toast({ title: editId ? "Expense updated!" : "Expense added!" });
   };
 
   const deleteExpense = async (id: string) => {
+    const expense = expenses.find(e => e.id === id);
     await supabase.from("business_expenses").delete().eq("id", id);
+    // Sync journal: delete corresponding entry
+    if (expense) {
+      deleteExpenseJournalEntry(org!.id, expense.category, Number(expense.amount), expense.expense_date, expense.description);
+    }
     fetchExpenses();
     toast({ title: "Expense deleted" });
   };
@@ -333,14 +359,18 @@ export default function BusinessExpensesPage() {
                       ) : "—"}
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
-                          <Pencil className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => deleteExpense(e.id)}>
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </div>
+                      {e.description?.startsWith("Payroll —") ? (
+                        <span className="text-xs text-muted-foreground italic">System generated</span>
+                      ) : (
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => openEdit(e)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => deleteExpense(e.id)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}

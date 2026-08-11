@@ -9,6 +9,10 @@ import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
 import { CommandPalette } from "@/components/shared/CommandPalette";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+import { TrialBanner } from "@/components/shared/TrialBanner";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,7 +38,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const handleCreate = async () => {
     if (!name.trim() || !profile) return;
     setSaving(true);
-    const { error } = await supabase.rpc("create_organization_for_current_user", {
+    const { data: orgData, error } = await supabase.rpc("create_organization_for_current_user", {
       org_name: name.trim(),
     });
 
@@ -42,6 +46,33 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       setSaving(false);
       return;
+    }
+
+    // Handle initial plan and trial
+    try {
+      const planName = sessionStorage.getItem("onboarding_plan") || "free";
+      const { data: settingsData } = await supabase
+        .from("platform_settings")
+        .select("value")
+        .eq("key", "trial_days")
+        .maybeSingle();
+
+      const trialDays = settingsData ? parseInt(settingsData.value) : 14;
+
+      if (trialDays > 0) {
+        // We need to fetch the org_id to start the trial. 
+        // create_organization_for_current_user returns the org row.
+        const orgId = orgData?.id;
+        
+        if (orgId) {
+          await supabase.rpc("start_org_trial", {
+            p_org_id: orgId,
+            p_plan_name: planName
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to start trial:", err);
     }
 
     toast({ title: "Organization created!" });
@@ -77,7 +108,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
         </CardContent>
         <CardFooter className="flex justify-between border-t pt-4">
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/"><Home className="h-4 w-4 mr-2" /> Home</Link>
+            <Link to="/dashboard"><Home className="h-4 w-4 mr-2" /> Home</Link>
           </Button>
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-rose-500 hover:text-rose-600">
             <LogOut className="h-4 w-4 mr-2" /> Sign Out
@@ -96,6 +127,8 @@ export function AppLayout() {
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const { subscriptionPlan } = useSubscription();
   const navigate = useNavigate();
 
   const loadOrg = async () => {
@@ -161,8 +194,19 @@ export function AppLayout() {
           const { data: subData } = await supabase.rpc("get_my_org_subscription", {
             p_org_id: activeOrgId
           });
-          if (subData && Array.isArray(subData.enabled_features)) {
-            useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+          
+          if (subData) {
+            if (Array.isArray(subData.enabled_features)) {
+              useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+            }
+            useFeatureStore.getState().setSubscriptionMeta({
+              plan_name: subData.plan_name,
+              status: subData.status,
+              trial_ends_at: subData.trial_ends_at,
+              employee_limit: subData.employee_limit,
+              employee_count: subData.employee_count,
+              current_period_end: subData.current_period_end,
+            });
           }
         } catch (err) {
           console.error("Failed to load subscription features via RPC:", err);
@@ -174,51 +218,58 @@ export function AppLayout() {
       }
     }
 
+    // memberOrgs was empty or org not found in member list — try profile.org_id directly
     if (profile.org_id) {
-      // Fallback: Fetch org data directly by profile.org_id if organization_members was empty
-      const { data, error: directOrgErr } = await supabase
+      const { data: fallbackOrg } = await supabase
         .from("organizations")
         .select("*")
         .eq("id", profile.org_id)
         .maybeSingle();
 
-      console.log("[loadOrg] fallback org:", data, "error:", directOrgErr);
-        
-      if (data) {
-        setOrganization(data as any);
-        const { data: roleData } = await supabase.rpc("get_current_org_role");
-        if (roleData) {
-          setUserRole(roleData as string);
-        }
+      console.log("[loadOrg] fallback org by profile.org_id:", fallbackOrg);
 
-        if ((data as any).enabled_features && Array.isArray((data as any).enabled_features)) {
-          useFeatureStore.getState().setOrgFeatures(profile.org_id, (data as any).enabled_features);
+      if (fallbackOrg) {
+        setOrganization(fallbackOrg as any);
+        setUserRole("admin"); // Assume admin since they have org_id on profile
+
+        if ((fallbackOrg as any).enabled_features && Array.isArray((fallbackOrg as any).enabled_features)) {
+          useFeatureStore.getState().setOrgFeatures(profile.org_id, (fallbackOrg as any).enabled_features);
         } else {
           useFeatureStore.getState().initOrgFeatures(profile.org_id);
         }
-        
+
         try {
-          const { data: subData } = await supabase.rpc("get_my_org_subscription", {
-            p_org_id: profile.org_id
-          });
-          if (subData && Array.isArray(subData.enabled_features)) {
-            useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+          const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: profile.org_id });
+          if (subData) {
+            if (Array.isArray(subData.enabled_features)) {
+              useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+            }
+            useFeatureStore.getState().setSubscriptionMeta({
+              plan_name: subData.plan_name,
+              status: subData.status,
+              trial_ends_at: subData.trial_ends_at,
+              employee_limit: subData.employee_limit,
+              employee_count: subData.employee_count,
+              current_period_end: subData.current_period_end,
+            });
           }
         } catch (err) {
-          console.error("Failed to load subscription features via RPC:", err);
+          console.error("Failed to load subscription via RPC:", err);
         }
-        
+
         setNeedsSetup(false);
-      } else {
-        // User has org_id on profile but org fetch failed (RLS issue or deleted org)
-        // They are still an org user — show setup, NEVER block as employee
-        console.warn("[loadOrg] org_id set but org not found, showing setup");
-        setNeedsSetup(true);
+        setChecking(false);
+        return;
       }
-    } else {
-      // No org_id at all — could be a pure employee or brand new user
-      await checkEmployeeAndBlock();
+      // profile.org_id exists but org not found - user has org, don't show setup
+      // Just show dashboard with empty state rather than setup screen
+      setNeedsSetup(false);
+      setChecking(false);
+      return;
     }
+
+    // Truly no org at all — could be a pure employee or brand new user
+    await checkEmployeeAndBlock();
     setChecking(false);
   };
 
@@ -343,11 +394,12 @@ export function AppLayout() {
                         {user?.email || ""}
                       </p>
                       {org && (
-                        <p className="text-xs leading-none text-muted-foreground flex items-center gap-1 pt-1">
+                        <p className="text-xs leading-none text-muted-foreground flex items-center gap-1 pt-1 mb-2">
                           <Building2 className="h-3 w-3" />
                           {org.name}
                         </p>
                       )}
+                      <SubscriptionBadge />
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -374,11 +426,18 @@ export function AppLayout() {
               </DropdownMenu>
             </div>
           </header>
+          <TrialBanner onUpgrade={() => setShowPlanModal(true)} />
           <main className="flex-1 overflow-auto px-6 py-6">
             <Outlet />
           </main>
         </div>
       </div>
+      
+      <PlanSelectorModal 
+        open={showPlanModal}
+        onClose={() => setShowPlanModal(false)}
+        currentPlanName={subscriptionPlan || undefined}
+      />
     </SidebarProvider>
   );
 }

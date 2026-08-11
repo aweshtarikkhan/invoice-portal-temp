@@ -153,7 +153,7 @@ export function AppSidebar() {
   const myOrganizations = useAppStore((s) => s.myOrganizations);
   const userRole = useAppStore((s) => s.userRole);
   const inventoryEnabled = (org as any)?.inventory_enabled;
-  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled } = useFeatureStore();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
@@ -193,11 +193,11 @@ export function AppSidebar() {
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems },
     { key: "catalog", label: "Catalog", items: catalogVisible },
-  ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key));
+  ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key));
 
   // Admin controlled groups - mapped from the feature store
   const featureGroups = ADMIN_FEATURE_GROUPS
-    .filter((g) => g.key !== "sales" && g.key !== "catalog" && isGroupEnabled(g.key) && isGroupAccessible(g.key)) // Must be enabled for org AND accessible by user
+    .filter((g) => g.key !== "sales" && g.key !== "catalog" && isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key))
     .map((g) => {
       let icon = ShoppingCart;
       if (g.icon === "Landmark") icon = Landmark;
@@ -264,33 +264,27 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar collapsible="icon" className="dark border-r-0 bg-[#0f172a] text-slate-200">
+    <Sidebar collapsible="icon" className="border-r-0 bg-sidebar text-sidebar-foreground">
       <SidebarHeader className="px-4 py-6 flex flex-col gap-6">
-        <NavLink to="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-600 text-white font-bold text-xl shadow-lg shadow-blue-600/20">
-            S
+        <NavLink to="/dashboard" className="flex items-center justify-center gap-3 hover:opacity-90 transition-opacity w-full">
+          <div className="bg-white/95 px-4 py-2 rounded-xl shadow-sm w-full flex justify-center border border-white/20">
+            <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-10 w-auto object-contain" />
           </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-xl font-bold tracking-tight text-white leading-tight">Satah</span>
-              <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest leading-tight">Invoice</span>
-            </div>
-          )}
         </NavLink>
 
         {/* Organization Switcher */}
         {!collapsed && myOrganizations.length > 0 && (
           <div className="px-0">
             <div className="relative group/org-switcher">
-              <button className="w-full flex items-center gap-3 bg-[#1e293b] hover:bg-[#334155] text-slate-200 px-3 py-3 rounded-xl border border-slate-700/50 transition-all text-left">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-500/20 text-blue-400">
+              <button className="w-full flex items-center gap-3 bg-sidebar-accent hover:bg-sidebar-accent/80 text-sidebar-foreground px-3 py-3 rounded-xl border border-sidebar-border transition-all text-left">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
                   <Building2 className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col min-w-0 flex-1">
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Current Business</span>
-                  <span className="text-sm font-bold text-white truncate">{org?.name || "Loading..."}</span>
+                  <span className="text-[10px] text-sidebar-foreground/70 font-semibold uppercase tracking-wider">Current Business</span>
+                  <span className="text-sm font-bold text-sidebar-foreground truncate">{org?.name || "Loading..."}</span>
                 </div>
-                <ChevronDown className="h-4 w-4 text-slate-400" />
+                <ChevronDown className="h-4 w-4 text-sidebar-foreground/70" />
               </button>
               
               {/* Dropdown Menu */}
@@ -472,7 +466,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="flex items-center justify-between px-3 mt-2">
             <div className="flex flex-col">
-              <span className="text-xs font-semibold text-white">Satah Invoice</span>
+              <span className="text-xs font-semibold text-sidebar-foreground">Assay Biz</span>
               <span className="text-[10px] text-slate-500">Version 2.0.0</span>
             </div>
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="System Online"></div>

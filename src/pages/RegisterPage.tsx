@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,13 +14,25 @@ import logoImg from "@/assets/logo.png";
 export default function RegisterPage() {
   const [email, setEmail] = useState(() => sessionStorage.getItem("reg_email") || "");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const plan = params.get("plan");
+    if (plan) {
+      sessionStorage.setItem("onboarding_plan", plan);
+    } else {
+      // Direct sign up without a plan is blocked. Redirect to landing page.
+      navigate("/");
+    }
+  }, [navigate]);
+  
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(() => sessionStorage.getItem("reg_otpSent") === "true");
   const [otp, setOtp] = useState("");
-  const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -48,8 +60,8 @@ export default function RegisterPage() {
 
     if (authData.user) {
       if (authData.session) {
-        toast({ title: "Account created!", description: "Welcome to Satah Invoices" });
-        navigate("/admin", { replace: true });
+        toast({ title: "Account created!", description: "Welcome to Assay Biz Invoices" });
+        navigate("/dashboard", { replace: true });
       } else {
         toast({ title: "OTP Sent", description: "Please enter the 6-digit OTP sent to your email." });
         setOtpSent(true);
@@ -75,10 +87,10 @@ export default function RegisterPage() {
     if (error) {
       toast({ title: "Verification failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account verified!", description: "Welcome to Satah Invoices" });
+      toast({ title: "Account verified!", description: "Welcome to Assay Biz Invoices" });
       sessionStorage.removeItem("reg_email");
       sessionStorage.removeItem("reg_otpSent");
-      navigate("/admin", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   };
 
@@ -89,11 +101,11 @@ export default function RegisterPage() {
 
   return (
     <>
-      <SEO title="Create Account" description="Create your free Satah Invoices account and start sending professional GST invoices in minutes." path="/register" />
+      <SEO title="Create Account" description="Create your free Assay Biz Invoices account and start sending professional GST invoices in minutes." path="/register" />
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logoImg} alt="Satah Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
+          <img src={logoImg} alt="Assay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>Start managing invoices in minutes</CardDescription>
         </CardHeader>

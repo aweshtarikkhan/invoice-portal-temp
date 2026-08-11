@@ -7,7 +7,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Lock, Send, CheckCircle2 } from "lucide-react";
+import { Lock, Send, CheckCircle2, IndianRupee } from "lucide-react";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { useSubscription } from "@/hooks/use-subscription";
 
 interface FeatureGuardProps {
   children?: ReactNode;
@@ -23,6 +25,9 @@ export function FeatureGuard({ children, featureKey, featureName }: FeatureGuard
   const [requestSent, setRequestSent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
+  const [showPlanModal, setShowPlanModal] = useState(false);
+
+  const { subscriptionPlan, getPlanForFeature } = useSubscription();
 
   const currentUserEmail = session?.user?.email?.toLowerCase().trim();
   const isUserAdmin = isAdmin(currentUserEmail);
@@ -58,7 +63,7 @@ export function FeatureGuard({ children, featureKey, featureName }: FeatureGuard
     
     setSubmitting(true);
     try {
-      await supabase.from("feature_requests").insert({
+      const { error } = await supabase.from("feature_requests").insert({
         org_id: org.id,
         user_id: session.user.id,
         user_email: session.user.email,
@@ -66,9 +71,14 @@ export function FeatureGuard({ children, featureKey, featureName }: FeatureGuard
         message: message.trim() || `Requested access to ${featureName}`,
         status: "pending"
       });
+      if (error) {
+        throw error;
+      }
       setRequestSent(true);
     } catch (err) {
       console.error("Failed to submit request", err);
+      // fallback in case of RLS issue, we can let user know
+      alert("Failed to submit request. Please try again.");
     } finally {
       setSubmitting(false);
     }
@@ -114,22 +124,40 @@ export function FeatureGuard({ children, featureKey, featureName }: FeatureGuard
           )}
         </CardContent>
         {!requestSent && (
-          <CardFooter>
-            <Button 
-              className="w-full gap-2" 
-              onClick={handleRequestAccess}
-              disabled={submitting}
-            >
-              {submitting ? (
-                <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              Request Access
-            </Button>
+          <CardFooter className="flex flex-col gap-2">
+            {isUserAdmin ? (
+              <Button 
+                className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white" 
+                onClick={() => setShowPlanModal(true)}
+              >
+                <IndianRupee className="w-4 h-4" />
+                Upgrade to {getPlanForFeature(featureKey) || "Premium"}
+              </Button>
+            ) : (
+              <Button 
+                className="w-full gap-2" 
+                onClick={handleRequestAccess}
+                disabled={submitting}
+              >
+                {submitting ? (
+                  <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Request Access
+              </Button>
+            )}
           </CardFooter>
         )}
       </Card>
+
+      {isUserAdmin && (
+        <PlanSelectorModal 
+          open={showPlanModal} 
+          onClose={() => setShowPlanModal(false)}
+          currentPlanName={subscriptionPlan || undefined}
+        />
+      )}
     </div>
   );
 }

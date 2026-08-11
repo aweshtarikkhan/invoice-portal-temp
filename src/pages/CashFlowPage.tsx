@@ -12,18 +12,21 @@ export default function CashFlowPage() {
   const cur = (org as any)?.currency || "INR";
   const [txns, setTxns] = useState<any[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
+  const [bizExpenses, setBizExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
       setLoading(true);
-      const [t, a] = await Promise.all([
+      const [t, a, exp] = await Promise.all([
         (supabase as any).from("bank_transactions").select("*, bank_accounts(name)").eq("org_id", org.id).order("txn_date"),
         (supabase as any).from("bank_accounts").select("*").eq("org_id", org.id),
+        supabase.from("business_expenses").select("amount, expense_date, category, description").eq("org_id", org.id),
       ]);
       setTxns(t.data || []);
       setAccounts(a.data || []);
+      setBizExpenses(exp.data || []);
       setLoading(false);
     })();
   }, [org?.id]);
@@ -43,8 +46,14 @@ export default function CashFlowPage() {
       if (t.direction === "credit") b.inflow += Number(t.amount);
       else b.outflow += Number(t.amount);
     });
+    // Add business expenses as outflows
+    bizExpenses.forEach(e => {
+      const d = new Date(e.expense_date);
+      const b = buckets.find(b => isWithinInterval(d, { start: b.start, end: b.end }));
+      if (b) b.outflow += Number(e.amount);
+    });
     return buckets;
-  }, [txns]);
+  }, [txns, bizExpenses]);
 
   const totalBalance = accounts.reduce((s, a) => s + Number(a.current_balance || 0), 0);
   const maxBar = Math.max(1, ...monthly.flatMap(m => [m.inflow, m.outflow]));

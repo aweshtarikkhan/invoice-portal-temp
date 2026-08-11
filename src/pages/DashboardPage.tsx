@@ -128,7 +128,7 @@ function FeatureTilesGrid() {
   const navigate = useNavigate();
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const { t } = useLanguage();
-  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled } = useFeatureStore();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures } = useFeatureStore();
   const { session } = useAuth();
   const org = useAppStore((s) => s.organization);
 
@@ -161,7 +161,7 @@ function FeatureTilesGrid() {
         {ALL_FEATURE_GROUPS.filter(g => 
           isGroupAccessible(g.key) && (
             g.key === "system" || 
-            isGroupEnabled(g.key)
+            (isGroupEnabled(g.key) && platformFeatures.includes(g.key))
           )
         ).map((group, gIdx) => {
           const Icon = FEATURE_ICON_MAP[group.icon] || Package;
@@ -252,6 +252,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const org = useAppStore((s) => s.organization);
+  const { isGroupEnabled } = useFeatureStore();
   const { t } = useLanguage();
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -985,17 +986,17 @@ export default function DashboardPage() {
     <div className="space-y-6" ref={dashboardRef}>
       <SEO
         title="Dashboard"
-        description="Manage invoices, estimates, clients, payments and inventory in one place. Track receivables, profit & loss, and grow your business with Satah Invoices."
+        description="Manage invoices, estimates, clients, payments and inventory in one place. Track receivables, profit & loss, and grow your business with Assay Biz Invoices."
         path="/dashboard"
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "SoftwareApplication",
-          name: "Satah Invoices",
+          name: "Assay Biz Invoices",
           description:
             "Cloud invoicing and billing platform for small businesses. Create GST-compliant invoices, estimates, manage clients, payments, inventory and reports.",
           applicationCategory: "BusinessApplication",
           operatingSystem: "Web",
-          url: "https://satahinvoice.com",
+          url: "https://Assay Bizinvoice.com",
           offers: {
             "@type": "Offer",
             price: "0",
@@ -1003,8 +1004,8 @@ export default function DashboardPage() {
           },
           publisher: {
             "@type": "Organization",
-            name: "Satah Invoices",
-            url: "https://satahinvoice.com",
+            name: "Assay Biz Invoices",
+            url: "https://Assay Bizinvoice.com",
           },
         }}
       />
@@ -1019,12 +1020,16 @@ export default function DashboardPage() {
             {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4 text-slate-500" />}
             {exporting ? "Exporting..." : t("Export PDF")}
           </Button>
-          <Button onClick={() => navigate("/invoices/new")} className="rounded-full shadow-md shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 transition-all">
-            <Plus className="mr-1.5 h-4 w-4" /> {t("New Invoice")}
-          </Button>
-          <Button variant="outline" onClick={() => navigate("/clients")} className="rounded-full shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-medium border-slate-200 dark:border-slate-700">
-            <Plus className="mr-1.5 h-4 w-4 text-slate-500" /> {t("New Client")}
-          </Button>
+          {isGroupEnabled("sales") && (
+            <>
+              <Button onClick={() => navigate("/invoices/new")} className="rounded-full shadow-md shadow-blue-500/20 bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 transition-all">
+                <Plus className="mr-1.5 h-4 w-4" /> {t("New Invoice")}
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/clients")} className="rounded-full shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-all font-medium border-slate-200 dark:border-slate-700">
+                <Plus className="mr-1.5 h-4 w-4 text-slate-500" /> {t("New Client")}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -1547,7 +1552,7 @@ export default function DashboardPage() {
       })()}
 
       <footer className="mt-12 mb-8 pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-center gap-2">
-        <p className="text-sm font-medium text-slate-500">© 2024 Satah Invoice. All rights reserved.</p>
+        <p className="text-sm font-medium text-slate-500">© 2024 Assay Biz Invoice. All rights reserved.</p>
         <p className="text-xs text-slate-400">Made with ❤️ for your business</p>
       </footer>
     </div>

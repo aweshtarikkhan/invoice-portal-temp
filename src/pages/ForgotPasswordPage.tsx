@@ -80,11 +80,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <>
-      <SEO title="Forgot Password" description="Reset your Satah Invoices account password securely via email." path="/forgot-password" />
+      <SEO title="Forgot Password" description="Reset your Assay Biz Invoices account password securely via email." path="/forgot-password" />
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logoImg} alt="Satah Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
+          <img src={logoImg} alt="Assay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
           <CardTitle className="text-2xl">Reset Password</CardTitle>
           <CardDescription>
             {sent ? "Enter the OTP sent to your email and a new password" : "Enter your email to receive an OTP"}

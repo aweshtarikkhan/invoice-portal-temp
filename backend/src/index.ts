@@ -1,10 +1,9 @@
+import "dotenv/config";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import dotenv from "dotenv";
 import aiImportRoute from "./ai-import";
-
-dotenv.config();
+import razorpayRoute from "./razorpay";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -18,6 +17,7 @@ app.get("/health", (req, res) => {
 });
 
 app.use("/api/ai-import", aiImportRoute);
+app.use("/api/razorpay", razorpayRoute);
 
 app.get("/api/gst/:gstNumber", async (req, res) => {
   const { gstNumber } = req.params;

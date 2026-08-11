@@ -11,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Download, TrendingUp, Clock, IndianRupee, FileText } from "lucide-react";
+import { Download, TrendingUp, Clock, IndianRupee, FileText, Wallet } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "#94a3b8"];
@@ -21,6 +21,7 @@ export default function ReportsPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [bizExpenses, setBizExpenses] = useState<any[]>([]);
   const [period, setPeriod] = useState("12");
   const [loading, setLoading] = useState(true);
 
@@ -28,14 +29,16 @@ export default function ReportsPage() {
     if (!org?.id) return;
     const fetch = async () => {
       setLoading(true);
-      const [inv, pay, cl] = await Promise.all([
+      const [inv, pay, cl, exp] = await Promise.all([
         supabase.from("invoices").select("*").eq("org_id", org.id),
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("clients").select("*").eq("org_id", org.id),
+        supabase.from("business_expenses").select("*").eq("org_id", org.id),
       ]);
       setInvoices(inv.data || []);
       setPayments(pay.data || []);
       setClients(cl.data || []);
+      setBizExpenses(exp.data || []);
       setLoading(false);
     };
     fetch();
@@ -111,6 +114,24 @@ export default function ReportsPage() {
       .reduce((s, inv) => s + Number(inv.balance_due), 0);
     return { totalTax, totalRevenue, totalCollected, totalOutstanding };
   }, [invoices, payments]);
+
+  // Expense analytics
+  const expenseTotal = useMemo(() => bizExpenses.reduce((s, e) => s + Number(e.amount), 0), [bizExpenses]);
+
+  const expenseCategoryData = useMemo(() => {
+    const map: Record<string, number> = {};
+    bizExpenses.forEach(e => { map[e.category] = (map[e.category] || 0) + Number(e.amount); });
+    return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
+  }, [bizExpenses]);
+
+  const expenseMonthlyData = useMemo(() => {
+    return months.map(m => {
+      const monthExp = bizExpenses.filter(e =>
+        isWithinInterval(new Date(e.expense_date), { start: m.start, end: m.end })
+      );
+      return { name: m.label, expenses: monthExp.reduce((s, e) => s + Number(e.amount), 0) };
+    });
+  }, [months, bizExpenses]);
 
   const downloadCSV = (data: any[], filename: string) => {
     if (!data.length) return;
@@ -188,6 +209,7 @@ export default function ReportsPage() {
       <Tabs defaultValue="revenue">
         <TabsList>
           <TabsTrigger value="revenue">Revenue</TabsTrigger>
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
           <TabsTrigger value="aging">Aging</TabsTrigger>
           <TabsTrigger value="clients">Top Clients</TabsTrigger>
           <TabsTrigger value="status">Invoice Status</TabsTrigger>
@@ -213,6 +235,70 @@ export default function ReportsPage() {
                   <Bar dataKey="revenue" name="Collected" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="expenses" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle>Monthly Expense Trend</CardTitle>
+                <Button variant="outline" size="sm" onClick={() => downloadCSV(expenseMonthlyData, "expense-trend")}>
+                  <Download className="mr-1 h-4 w-4" /> Export CSV
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart data={expenseMonthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                    <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
+                    <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+                    <Tooltip formatter={(v: number) => fmt(v)} />
+                    <Bar dataKey="expenses" name="Expenses" fill="hsl(0, 72%, 55%)" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Expenses by Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <PieChart>
+                    <Pie data={expenseCategoryData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={3}>
+                      {expenseCategoryData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                    </Pie>
+                    <Tooltip formatter={(v: number) => fmt(v)} />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Category Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">% of Total</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {expenseCategoryData.map(cat => (
+                    <TableRow key={cat.name}>
+                      <TableCell className="font-medium">{cat.name}</TableCell>
+                      <TableCell className="text-right">{fmt(cat.value)}</TableCell>
+                      <TableCell className="text-right">{expenseTotal ? ((cat.value / expenseTotal) * 100).toFixed(1) : 0}%</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="font-bold border-t-2">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-right">{fmt(expenseTotal)}</TableCell>
+                    <TableCell className="text-right">100%</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         </TabsContent>

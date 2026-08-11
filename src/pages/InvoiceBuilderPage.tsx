@@ -333,9 +333,10 @@ function SortableLineItem({
           )}
         </div>
         {/* Tax */}
-        <div className="col-span-2">
-          <Select 
-            value={
+        {org?.gst_number && (
+          <div className="col-span-2">
+            <Select 
+              value={
               line.tax_id 
                 ? (INDIAN_GST_SLABS.find(s => s.id === line.tax_id)?.id || 
                    INDIAN_GST_SLABS.find(s => {
@@ -370,9 +371,10 @@ function SortableLineItem({
             </SelectContent>
           </Select>
         </div>
+        )}
         {/* Amount */}
-        <div className="col-span-2 text-right pt-1">
-          <span className="text-sm font-bold">{fmt(line.amount - (line.tax_amount || 0))}</span>
+        <div className={`text-right pt-1 ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>
+          <span className="text-sm font-bold">{fmt(org?.gst_number ? line.amount - (line.tax_amount || 0) : line.amount)}</span>
         </div>
       </div>
       <button onClick={() => onRemove(index)} className="text-muted-foreground hover:text-destructive shrink-0 mt-2 ml-1">
@@ -670,15 +672,26 @@ export default function InvoiceBuilderPage() {
     const afterDiscount = Math.max(0, lineSubtotal - itemDiscount - globalDiscountAllocated);
     
     let tax_amount = 0;
+    let computedAmount = afterDiscount;
+    const hasGst = Boolean(org?.gst_number);
+
     if (line.tax_id) {
       const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
       const taxRateObj = taxRates.find((t: any) => t.id === line.tax_id);
       const rate = slab ? slab.rate : (taxRateObj ? Number(taxRateObj.rate) : 0);
-      tax_amount = afterDiscount * (rate / 100);
+      const computedTax = afterDiscount * (rate / 100);
+      
+      if (!hasGst) {
+        computedAmount += computedTax;
+        tax_amount = 0; // absorb tax into item amount
+      } else {
+        tax_amount = computedTax;
+        computedAmount += tax_amount;
+      }
     }
     
-    return { ...line, tax_amount, amount: afterDiscount + tax_amount };
-  }, [taxRates]);
+    return { ...line, tax_amount, amount: computedAmount };
+  }, [taxRates, org?.gst_number]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
     setLines((prev) => {
@@ -835,6 +848,13 @@ export default function InvoiceBuilderPage() {
     const invoicePayload = {
       org_id: org!.id,
       client_id: clientId,
+      metadata: {
+        template_style: org?.template_style,
+        template_accent_color: org?.template_accent_color,
+        template_font: org?.template_font,
+        template_paper_size: org?.template_paper_size,
+        has_gst: Boolean(org?.gst_number),
+      },
       invoice_number: invoiceNumber,
       issue_date: issueDate,
       due_date: dueDate,
@@ -882,12 +902,42 @@ export default function InvoiceBuilderPage() {
         // Delete old lines and re-insert
         await supabase.from("invoice_lines").delete().eq("invoice_id", id);
       } else {
-        const { data, error } = await supabase.from("invoices").insert(invoicePayload).select().single();
-        if (error) throw error;
-        invoiceId = data.id;
-        // Increment org next number using fresh DB value
-        const { data: currentOrg } = await supabase.from("organizations").select("invoice_next_number").eq("id", org!.id).single();
-        const currentNum = currentOrg?.invoice_next_number || 1;
+        let currentPayload = { ...invoicePayload };
+        let currentNum = -1;
+        let retryCount = 0;
+        let insertData = null;
+        
+        while (retryCount < 3) {
+          const { data, error } = await supabase.from("invoices").insert(currentPayload).select().single();
+          if (error) {
+            if (error.code === "23505" && error.message.includes("invoices_org_id_invoice_number_key")) {
+              // Fetch fresh invoice number and retry
+              const { data: currentOrg } = await supabase.from("organizations").select("invoice_next_number, invoice_prefix").eq("id", org!.id).single();
+              currentNum = currentOrg?.invoice_next_number || 1;
+              const newNum = formatSequenceNumber(currentOrg?.invoice_prefix || "INV", currentNum, "INV");
+              currentPayload.invoice_number = newNum;
+              setInvoiceNumber(newNum); // Update UI state
+              retryCount++;
+              continue;
+            }
+            throw error;
+          }
+          insertData = data;
+          break;
+        }
+        
+        if (!insertData) {
+           throw new Error("Failed to generate a unique invoice number. Please try again.");
+        }
+        
+        invoiceId = insertData.id;
+        
+        // If we didn't fetch currentNum during retry, fetch it now to increment
+        if (currentNum === -1) {
+           const { data: currentOrg } = await supabase.from("organizations").select("invoice_next_number").eq("id", org!.id).single();
+           currentNum = currentOrg?.invoice_next_number || 1;
+        }
+        
         await supabase.from("organizations").update({
           invoice_next_number: currentNum + 1,
         }).eq("id", org!.id);
@@ -1273,8 +1323,8 @@ export default function InvoiceBuilderPage() {
             <div className="col-span-4">Item Details</div>
             <div className="col-span-2 text-center">Quantity</div>
             <div className="col-span-2 text-right">Rate</div>
-            <div className="col-span-2 text-left pl-2">Tax</div>
-            <div className="col-span-2 text-right">Amount</div>
+            {org?.gst_number && <div className="col-span-2 text-left pl-2">Tax</div>}
+            <div className={`text-right ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>Amount</div>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={lines.map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -1303,7 +1353,8 @@ export default function InvoiceBuilderPage() {
               </div>
               <div className="col-span-2 text-center text-xs">1.00</div>
               <div className="col-span-2 text-right text-xs">0.00</div>
-              <div className="col-span-3 text-right text-xs">0.00</div>
+              {org?.gst_number && <div className="col-span-3 text-right text-xs">0.00</div>}
+              {!org?.gst_number && <div className="col-span-3 text-right text-xs">0.00</div>}
             </div>
           </div>
           {/* Live Calculation Totals Row */}
@@ -1323,10 +1374,10 @@ export default function InvoiceBuilderPage() {
                     </div>
                   )}
                 </div>
-                <div className="col-span-2 text-left pl-2 text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + l.tax_amount, 0), org?.currency_code || "INR")}</div>
-                <div className="col-span-2 text-right text-sm font-bold">
+                {org?.gst_number && <div className="col-span-2 text-left pl-2 text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + l.tax_amount, 0), org?.currency_code || "INR")}</div>}
+                <div className={`text-right text-sm font-bold ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>
                   {/* Amount = discounted price WITHOUT GST */}
-                  {formatCurrency(calculatedLines.reduce((s, l) => s + (l.amount - l.tax_amount), 0), org?.currency_code || "INR")}
+                  {formatCurrency(calculatedLines.reduce((s, l) => s + (org?.gst_number ? l.amount - l.tax_amount : l.amount), 0), org?.currency_code || "INR")}
                 </div>
               </div>
             </div>

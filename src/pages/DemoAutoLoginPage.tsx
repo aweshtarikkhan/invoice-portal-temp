@@ -41,7 +41,7 @@ export default function DemoAutoLoginPage() {
 
   return (
     <>
-      <SEO title="Demo Access" description="Instant demo access to Satah Invoices with full features." path="/demo" />
+      <SEO title="Demo Access" description="Instant demo access to Assay Biz with full features." path="/demo" />
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-muted/30 px-4 text-center">
         {error ? (
           <>

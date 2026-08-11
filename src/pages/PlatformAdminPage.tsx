@@ -10,9 +10,14 @@ import {
   Shield, Building2, BarChart3, Settings2, TrendingUp,
   Users2, CreditCard, Mail, Phone, FileText, UserCircle,
   Calendar, Globe, ChevronDown, ChevronUp, Hash, MessageSquare,
-  CheckCircle2
+  CheckCircle2, IndianRupee
 } from "lucide-react";
 import { ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
+import { PlansManager } from "@/components/admin/PlansManager";
+import { CouponsManager } from "@/components/admin/CouponsManager";
+import { PlatformSettingsManager } from "@/components/admin/PlatformSettingsManager";
+import { LandingPageReviewsManager } from "@/components/admin/LandingPageReviewsManager";
+
 
 interface UserData {
   user_id: string;
@@ -53,10 +58,25 @@ interface DashboardData {
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  Free: "bg-slate-700 text-slate-200",
-  Basic: "bg-blue-900/60 text-blue-300",
-  Pro: "bg-purple-900/60 text-purple-300",
-  Enterprise: "bg-amber-900/60 text-amber-300",
+  free: "bg-slate-700 text-slate-200",
+  basic: "bg-blue-900/60 text-blue-300",
+  pro: "bg-purple-900/60 text-purple-300",
+  premium: "bg-pink-900/60 text-pink-300",
+  bundle: "bg-amber-900/60 text-amber-300",
+  hrms: "bg-emerald-900/60 text-emerald-300",
+  crm: "bg-cyan-900/60 text-cyan-300",
+  marketing: "bg-rose-900/60 text-rose-300",
+};
+
+const PLAN_DISPLAY_NAMES: Record<string, string> = {
+  free: "Free",
+  basic: "Starter",
+  pro: "Pro",
+  premium: "Premium",
+  bundle: "Complete Portal",
+  hrms: "HRMS",
+  crm: "CRM",
+  marketing: "Marketing"
 };
 
 export default function PlatformAdminPage() {
@@ -93,40 +113,46 @@ export default function PlatformAdminPage() {
     fetchDashboardData();
   }, []);
 
-  const handleToggleFeature = async (orgId: string, featureKey: string, currentFeatures: string[]) => {
-    const isEnabled = currentFeatures.includes(featureKey);
-    const newFeatures = isEnabled
-      ? currentFeatures.filter(k => k !== featureKey)
-      : [...currentFeatures, featureKey];
+  const handleToggleFeature = async (orgId: string, featureKey: string, isEnabled: boolean) => {
+    const org = dashData?.organizations.find(o => o.id === orgId);
+    if (!org) return;
 
-    await supabase.rpc("update_org_subscription", {
-      p_org_id: orgId,
-      p_features: newFeatures,
-    });
-    fetchDashboardData(false);
-  };
+    const sub = org.subscription || { plan_name: "free", plan_display_name: "Free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
+    const currentFeatures = Array.isArray(sub.enabled_features) ? sub.enabled_features : ADMIN_FEATURE_GROUPS.map(g => g.key);
+    
+    const newFeatures = isEnabled 
+      ? [...currentFeatures, featureKey]
+      : currentFeatures.filter(f => f !== featureKey);
 
-  const handlePlanChange = async (orgId: string, plan: string) => {
-    await supabase.rpc("update_org_subscription", {
+    await supabase.rpc("admin_set_features", {
       p_org_id: orgId,
-      p_plan_name: plan,
+      p_features: newFeatures
     });
+    
     fetchDashboardData(false);
   };
 
   const handleEnableAll = async (orgId: string) => {
     const allFeatures = ADMIN_FEATURE_GROUPS.map(g => g.key);
-    await supabase.rpc("update_org_subscription", {
+    await supabase.rpc("admin_set_features", {
       p_org_id: orgId,
-      p_features: allFeatures,
+      p_features: allFeatures
     });
     fetchDashboardData(false);
   };
 
   const handleDisableAll = async (orgId: string) => {
-    await supabase.rpc("update_org_subscription", {
+    await supabase.rpc("admin_set_features", {
       p_org_id: orgId,
-      p_features: [],
+      p_features: []
+    });
+    fetchDashboardData(false);
+  };
+
+  const handlePlanChange = async (orgId: string, plan: string) => {
+    await supabase.rpc("admin_set_plan", {
+      p_org_id: orgId,
+      p_plan_name: plan,
     });
     fetchDashboardData(false);
   };
@@ -181,6 +207,12 @@ export default function PlatformAdminPage() {
           <TabsTrigger value="admins" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <Shield className="w-4 h-4 mr-2" /> Admins
           </TabsTrigger>
+          <TabsTrigger value="pricing" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <IndianRupee className="w-4 h-4 mr-2" /> Plans & Pricing
+          </TabsTrigger>
+          <TabsTrigger value="reviews" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <MessageSquare className="w-4 h-4 mr-2" /> Reviews
+          </TabsTrigger>
           <TabsTrigger value="requests" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <MessageSquare className="w-4 h-4 mr-2" /> Requests
             {featureRequests.length > 0 && (
@@ -208,15 +240,15 @@ export default function PlatformAdminPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {["Free", "Basic", "Pro", "Enterprise"].map(plan => {
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+                {["free", "basic", "pro", "premium", "bundle", "hrms", "crm", "marketing"].map(plan => {
                   const count = dashData.organizations.filter(o =>
-                    (o.subscription?.plan_name || "Free") === plan
+                    (o.subscription?.plan_name || "free") === plan
                   ).length;
                   return (
-                    <div key={plan} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center">
+                    <div key={plan} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center flex flex-col justify-center items-center">
                       <p className="text-3xl font-bold text-white">{count}</p>
-                      <Badge className={PLAN_COLORS[plan] + " mt-2"}>{plan}</Badge>
+                      <Badge className={(PLAN_COLORS[plan] || PLAN_COLORS.free) + " mt-2 whitespace-nowrap"}>{PLAN_DISPLAY_NAMES[plan] || plan}</Badge>
                     </div>
                   );
                 })}
@@ -243,8 +275,8 @@ export default function PlatformAdminPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <Badge className={PLAN_COLORS[org.subscription?.plan_name || "Free"]}>
-                        {org.subscription?.plan_name || "Free"}
+                      <Badge className={PLAN_COLORS[org.subscription?.plan_name || "free"] || PLAN_COLORS.free}>
+                        {org.subscription?.plan_display_name || PLAN_DISPLAY_NAMES[org.subscription?.plan_name || "free"] || "Free"}
                       </Badge>
                       <span className="text-xs text-slate-500">{org.member_count} users</span>
                     </div>
@@ -263,7 +295,7 @@ export default function PlatformAdminPage() {
             </Card>
           ) : (
             dashData.organizations.map(org => {
-              const sub = org.subscription || { plan_name: "Free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
+              const sub = org.subscription || { plan_name: "free", plan_display_name: "Free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
               const currentFeatures = Array.isArray(sub.enabled_features) ? sub.enabled_features : ADMIN_FEATURE_GROUPS.map(g => g.key);
               const isExpanded = expandedOrg === org.id;
 
@@ -333,13 +365,17 @@ export default function PlatformAdminPage() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="Free">🆓 Free</SelectItem>
-                            <SelectItem value="Basic">💎 Basic — ₹999/mo</SelectItem>
-                            <SelectItem value="Pro">🚀 Pro — ₹2,999/mo</SelectItem>
-                            <SelectItem value="Enterprise">🏢 Enterprise</SelectItem>
+                            <SelectItem value="free">🆓 Free</SelectItem>
+                            <SelectItem value="basic">💎 Starter</SelectItem>
+                            <SelectItem value="pro">🚀 Pro</SelectItem>
+                            <SelectItem value="premium">✨ Premium</SelectItem>
+                            <SelectItem value="bundle">🏢 Complete Portal</SelectItem>
+                            <SelectItem value="hrms">👥 HRMS</SelectItem>
+                            <SelectItem value="crm">🤝 CRM</SelectItem>
+                            <SelectItem value="marketing">📈 Marketing</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Badge className={PLAN_COLORS[sub.plan_name]}>{sub.plan_name} Plan</Badge>
+                        <Badge className={PLAN_COLORS[sub.plan_name] || PLAN_COLORS.free}>{sub.plan_display_name || PLAN_DISPLAY_NAMES[sub.plan_name] || "Free"} Plan</Badge>
                       </div>
                     </div>
                   </CardHeader>
@@ -353,6 +389,11 @@ export default function PlatformAdminPage() {
                       <span className="flex items-center gap-2">
                         <Settings2 className="w-4 h-4" />
                         Feature Access Control ({currentFeatures.length} of {ADMIN_FEATURE_GROUPS.length} enabled)
+                        {sub.employee_limit && (
+                          <span className="ml-4 text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            Employee Limit: {sub.employee_limit}
+                          </span>
+                        )}
                       </span>
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
@@ -389,7 +430,7 @@ export default function PlatformAdminPage() {
                                 </div>
                                 <Switch
                                   checked={isEnabled}
-                                  onCheckedChange={() => handleToggleFeature(org.id, group.key, currentFeatures)}
+                                  onCheckedChange={(checked) => handleToggleFeature(org.id, group.key, checked)}
                                   className="data-[state=checked]:bg-indigo-500 shrink-0 ml-2"
                                 />
                               </div>
@@ -559,7 +600,31 @@ export default function PlatformAdminPage() {
             </CardContent>
           </Card>
         </TabsContent>
+        {/* ── Plans & Pricing Tab ── */}
+        <TabsContent value="pricing" className="space-y-8">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Plans & Pricing</h3>
+            <p className="text-slate-400 text-sm mb-6">Manage subscription prices, global settings, and promo codes.</p>
+            <PlansManager />
+          </div>
+          <hr className="border-slate-800 my-8" />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+            <PlatformSettingsManager />
+            <CouponsManager />
+          </div>
+        </TabsContent>
+
+        {/* --- Reviews Tab --- */}
+        <TabsContent value="reviews" className="space-y-8">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Customer Reviews</h3>
+            <p className="text-slate-400 mb-6 text-sm">Manage the testimonials displayed on the landing page.</p>
+            <LandingPageReviewsManager />
+          </div>
+        </TabsContent>
+
       </Tabs>
+
     </div>
   );
 }

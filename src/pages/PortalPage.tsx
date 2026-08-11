@@ -152,7 +152,7 @@ export default function PortalPage() {
                   <TableHead>Item</TableHead>
                   <TableHead className="text-right">Qty</TableHead>
                   <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Tax</TableHead>
+                  {((entity.metadata as any)?.has_gst ?? Boolean(org.gst_number)) && <TableHead className="text-right">Tax</TableHead>}
                   <TableHead className="text-right">Amount</TableHead>
                 </TableRow>
               </TableHeader>
@@ -165,8 +165,8 @@ export default function PortalPage() {
                     </TableCell>
                     <TableCell className="text-right">{line.quantity}</TableCell>
                     <TableCell className="text-right">{fmt(Number(line.rate))}</TableCell>
-                    <TableCell className="text-right">{fmt(Number(line.tax_amount))}</TableCell>
-                    <TableCell className="text-right">{fmt(Number(line.amount))}</TableCell>
+                    {((entity.metadata as any)?.has_gst ?? Boolean(org.gst_number)) && <TableCell className="text-right">{fmt(Number(line.tax_amount))}</TableCell>}
+                    <TableCell className="text-right">{fmt(Number(line.amount) - (((entity.metadata as any)?.has_gst ?? Boolean(org.gst_number)) ? Number(line.tax_amount) : 0))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

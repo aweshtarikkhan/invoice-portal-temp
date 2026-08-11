@@ -55,7 +55,7 @@ export function PlatformAdminLayout() {
           <div className="w-8 h-8 rounded bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
             <span className="text-white font-bold text-sm">S</span>
           </div>
-          <h1 className="font-bold tracking-tight text-white">Satah Platform Admin</h1>
+          <h1 className="font-bold tracking-tight text-white">Assay Biz Platform Admin</h1>
         </div>
         
         <div className="flex items-center gap-4">

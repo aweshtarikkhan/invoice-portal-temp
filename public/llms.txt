@@ -1,14 +1,14 @@
-# Satah Invoices
+# Assay Biz
 
 > Cloud invoicing software for small businesses in India: create GST-ready invoices, estimates, credit notes; manage clients, payments, expenses and inventory.
 
-Satah Invoices helps small businesses send professional invoices in seconds, track receivables, record payments, manage recurring billing, and generate GST-compliant documents (CGST/SGST/IGST) with QR codes and UPI links. Multi-currency, multi-template, and built for fast bulk entry.
+Assay Biz helps small businesses send professional invoices in seconds, track receivables, record payments, manage recurring billing, and generate GST-compliant documents (CGST/SGST/IGST) with QR codes and UPI links. Multi-currency, multi-template, and built for fast bulk entry.
 
 ## Pages
 
 - [Home](/): Product overview and sign-in entry point.
 - [Sign In](/login): Log in to your account or try the demo.
-- [Sign Up](/register): Create a new Satah Invoices account.
+- [Sign Up](/register): Create a new Assay Biz account.
 - [Forgot Password](/forgot-password): Email-based password reset.
 - [Dashboard](/dashboard): KPIs, receivables aging and smart insights.
 - [Invoices](/invoices): Create, send and track GST invoices.

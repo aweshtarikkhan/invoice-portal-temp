@@ -114,36 +114,43 @@ const App = () => (
               }
             >
               <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/clients" element={<ClientsPage />} />
+              <Route element={<FeatureGuard featureKey="sales" featureName="Sales" />}>
+                <Route path="/clients" element={<ClientsPage />} />
+                <Route path="/clients/:id" element={<ClientDetailPage />} />
+                <Route path="/invoices" element={<InvoicesPage />} />
+                <Route path="/invoices/new" element={<InvoiceBuilderPage />} />
+                <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+                <Route path="/invoices/:id/edit" element={<InvoiceBuilderPage />} />
+                <Route path="/estimates" element={<EstimatesPage />} />
+                <Route path="/estimates/new" element={<EstimateBuilderPage />} />
+                <Route path="/estimates/:id" element={<EstimateDetailPage />} />
+                <Route path="/estimates/:id/edit" element={<EstimateBuilderPage />} />
+                <Route path="/estimates/:id/convert" element={<EstimateDetailPage />} />
+                <Route path="/payments" element={<PaymentsPage />} />
+                <Route path="/payments/new" element={<RecordPaymentPage />} />
+                <Route path="/credit-notes" element={<CreditNotesPage />} />
+                <Route path="/credit-notes/new" element={<CreditNoteBuilderPage />} />
+                <Route path="/credit-notes/:id" element={<CreditNoteDetailPage />} />
+                <Route path="/credit-notes/:id/edit" element={<CreditNoteBuilderPage />} />
+                <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
+              </Route>
 
-              <Route path="/clients/:id" element={<ClientDetailPage />} />
-              <Route path="/items" element={<ItemsPage />} />
-              <Route path="/inventory" element={<InventoryPage />} />
-              <Route path="/invoices" element={<InvoicesPage />} />
-              <Route path="/invoices/new" element={<InvoiceBuilderPage />} />
-              <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
-              <Route path="/invoices/:id/edit" element={<InvoiceBuilderPage />} />
-              <Route path="/estimates" element={<EstimatesPage />} />
-              <Route path="/estimates/new" element={<EstimateBuilderPage />} />
-              <Route path="/estimates/:id" element={<EstimateDetailPage />} />
-              <Route path="/estimates/:id/edit" element={<EstimateBuilderPage />} />
-              <Route path="/estimates/:id/convert" element={<EstimateDetailPage />} />
-              <Route path="/payments" element={<PaymentsPage />} />
-              <Route path="/payments/new" element={<RecordPaymentPage />} />
-              <Route path="/credit-notes" element={<CreditNotesPage />} />
-              <Route path="/credit-notes/new" element={<CreditNoteBuilderPage />} />
-              <Route path="/credit-notes/:id" element={<CreditNoteDetailPage />} />
-              <Route path="/credit-notes/:id/edit" element={<CreditNoteBuilderPage />} />
-              <Route path="/reports" element={<ReportsPage />} />
+              <Route element={<FeatureGuard featureKey="catalog" featureName="Catalog" />}>
+                <Route path="/items" element={<ItemsPage />} />
+                <Route path="/inventory" element={<InventoryPage />} />
+              </Route>
+
+              <Route element={<FeatureGuard featureKey="reports" featureName="Reports" />}>
+                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/aging-details" element={<AgingDetailsPage />} />
+                <Route path="/profit-loss" element={<ProfitLossPage />} />
+                <Route path="/gst-returns" element={<GstReturnsPage />} />
+              </Route>
+
               <Route path="/templates" element={<InvoiceTemplatePage />} />
               <Route path="/templates/customize" element={<TemplateCustomizationPage />} />
               <Route path="/audit-logs" element={<AuditLogsPage />} />
               <Route path="/custom-fields" element={<CustomFieldsPage />} />
-
-              <Route path="/aging-details" element={<AgingDetailsPage />} />
-              <Route path="/profit-loss" element={<ProfitLossPage />} />
-              <Route path="/gst-returns" element={<GstReturnsPage />} />
-              <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
               <Route element={<FeatureGuard featureKey="people" featureName="People & HR" />}>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
@@ -154,8 +161,10 @@ const App = () => (
                 <Route path="/payroll" element={<PayrollPage />} />
                 <Route path="/payroll/:id" element={<PayrollRunDetailPage />} />
               </Route>
-              <Route path="/statements" element={<CustomerStatementPage />} />
-              <Route path="/statements/:clientId" element={<CustomerStatementPage />} />
+              <Route element={<FeatureGuard featureKey="sales" featureName="Sales" />}>
+                <Route path="/statements" element={<CustomerStatementPage />} />
+                <Route path="/statements/:clientId" element={<CustomerStatementPage />} />
+              </Route>
               <Route element={<FeatureGuard featureKey="purchases" featureName="Purchases" />}>
                 <Route path="/vendors" element={<VendorsPage />} />
                 <Route path="/bills" element={<BillsPage />} />

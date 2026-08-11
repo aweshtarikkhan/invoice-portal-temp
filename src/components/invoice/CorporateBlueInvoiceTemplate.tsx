@@ -292,9 +292,9 @@ export function CorporateBlueInvoiceTemplate({
             <th style={{ padding: "8px 10px", textAlign: "left", borderRight: "1px solid #2563eb" }}>DESCRIPTION</th>
             <th style={{ padding: "8px 6px", textAlign: "center", width: 90, borderRight: "1px solid #2563eb" }}>HSN / SAC</th>
             <th style={{ padding: "8px 6px", textAlign: "center", width: 50, borderRight: "1px solid #2563eb" }}>QTY</th>
-            <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: "1px solid #2563eb" }}>RATE (₹)</th>
-            <th style={{ padding: "8px 6px", textAlign: "center", width: 70, borderRight: "1px solid #2563eb" }}>GST %</th>
-            <th style={{ padding: "8px 10px", textAlign: "right", width: 110, borderRight: "1px solid #2563eb" }}>GST AMOUNT (₹)</th>
+            <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: hasGst ? "1px solid #2563eb" : "none" }}>RATE (₹)</th>
+            {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 70, borderRight: "1px solid #2563eb" }}>GST %</th>}
+            {hasGst && <th style={{ padding: "8px 10px", textAlign: "right", width: 110, borderRight: "1px solid #2563eb" }}>GST AMOUNT (₹)</th>}
             <th style={{ padding: "8px 10px", textAlign: "right", width: 100 }}>TOTAL (₹)</th>
           </tr>
         </thead>
@@ -322,17 +322,17 @@ export function CorporateBlueInvoiceTemplate({
                     </div>
                   )}
                 </td>
-                <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #e2e8f0" }}>
-                  <div>{Number(line.rate).toFixed(2)}</div>
+                <td style={{ padding: "8px 10px", textAlign: "right", borderRight: hasGst ? "1px solid #e2e8f0" : "none" }}>
+                  <div>{hasGst ? Number(line.rate).toFixed(2) : (Number(line.amount || 0) / (Number(line.quantity) || 1)).toFixed(2)}</div>
                   {Number(line.discount) > 0 && (
                     <div style={{ fontSize: 9, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
                       ({line.discount_type === "percentage" ? `${line.discount}% off` : `₹${Number(line.discount).toFixed(2)} off`})
                     </div>
                   )}
                 </td>
-                <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0" }}>{gstRate > 0 ? `${gstRate}%` : "-"}</td>
-                <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #e2e8f0" }}>{taxAmt > 0 ? taxAmt.toFixed(2) : "-"}</td>
-                <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{lineTaxableAmt.toFixed(2)}</td>
+                {hasGst && <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0" }}>{gstRate > 0 ? `${gstRate}%` : "-"}</td>}
+                {hasGst && <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #e2e8f0" }}>{taxAmt > 0 ? taxAmt.toFixed(2) : "-"}</td>}
+                <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{hasGst ? lineTaxableAmt.toFixed(2) : lineAmt.toFixed(2)}</td>
               </tr>
             );
           })}
@@ -341,13 +341,13 @@ export function CorporateBlueInvoiceTemplate({
             <td colSpan={2} style={{ padding: "8px 10px", textAlign: "center", borderRight: "1px solid #cbd5e1" }}>TOTAL</td>
             <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #cbd5e1" }}>-</td>
             <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #cbd5e1" }}>{totalQty}</td>
-            <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #cbd5e1" }}>
+            <td style={{ padding: "8px 10px", textAlign: "right", borderRight: hasGst ? "1px solid #cbd5e1" : "none" }}>
               {/* Sum of original rates (before discount) */}
-              {lines.reduce((s: number, l: any) => s + (Number(l.quantity || 0) * Number(l.rate || 0)), 0).toFixed(2)}
+              {lines.reduce((s: number, l: any) => s + (Number(l.quantity || 0) * (hasGst ? Number(l.rate || 0) : (Number(l.amount || 0) / (Number(l.quantity) || 1)))), 0).toFixed(2)}
             </td>
-            <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #cbd5e1" }}>-</td>
-            <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #cbd5e1" }}>{totalTax.toFixed(2)}</td>
-            <td style={{ padding: "8px 10px", textAlign: "right", color: darkNavy, fontSize: 13 }}>{lines.reduce((s: number, l: any) => s + (Number(l.amount || 0) - Number(l.tax_amount || 0)), 0).toFixed(2)}</td>
+            {hasGst && <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #cbd5e1" }}>-</td>}
+            {hasGst && <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #cbd5e1" }}>{totalTax.toFixed(2)}</td>}
+            <td style={{ padding: "8px 10px", textAlign: "right", color: darkNavy, fontSize: 13 }}>{lines.reduce((s: number, l: any) => s + (Number(l.amount || 0) - (hasGst ? Number(l.tax_amount || 0) : 0)), 0).toFixed(2)}</td>
           </tr>
         </tbody>
       </table>
@@ -364,7 +364,6 @@ export function CorporateBlueInvoiceTemplate({
               </div>
             </div>
           ) : null}
-          
           <div style={{ textAlign: "left", marginTop: invoice.notes ? 20 : 12, color: primaryBlue, fontFamily: "serif", fontStyle: "italic", fontSize: 12, fontWeight: 600 }}>
             —— Thank you for your business! ——
           </div>
@@ -374,14 +373,13 @@ export function CorporateBlueInvoiceTemplate({
         <div style={{ width: 330, fontSize: 11 }}>
           <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
             <span style={{ color: "#475569" }}>Total Items</span>
-            <span style={{ fontWeight: 700 }}>: {lines.length}</span>
+            <span style={{ fontWeight: 600 }}>{lines.length} ({totalQty} Qty)</span>
           </div>
-          
 
           <div style={{ borderTop: "1px dashed #cbd5e1", margin: "6px 0" }} />
 
-          {/* Explicit GST Breakdown Rows */}
-          {taxGroupBreakdown.length > 0 ? (
+          {/* Explicit GST Breakdown Rows - Only show if hasGst */}
+          {hasGst && taxGroupBreakdown.length > 0 ? (
             taxGroupBreakdown.map((tb) => {
               if (!isInterstate) {
                 const halfRate = tb.rate / 2;
@@ -390,11 +388,11 @@ export function CorporateBlueInvoiceTemplate({
                   <div key={tb.rate}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                       <span style={{ color: "#475569" }}>CGST @ {halfRate}%</span>
-                      <span style={{ fontWeight: 700 }}>: ₹ {halfTax.toFixed(2)}</span>
+                      <span style={{ fontWeight: 700 }}>{currencySymbol} {halfTax.toFixed(2)}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                       <span style={{ color: "#475569" }}>SGST @ {halfRate}%</span>
-                      <span style={{ fontWeight: 700 }}>: ₹ {halfTax.toFixed(2)}</span>
+                      <span style={{ fontWeight: 700 }}>{currencySymbol} {halfTax.toFixed(2)}</span>
                     </div>
                   </div>
                 );
@@ -402,19 +400,23 @@ export function CorporateBlueInvoiceTemplate({
                 return (
                   <div key={tb.rate} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                     <span style={{ color: "#475569" }}>IGST @ {tb.rate}%</span>
-                    <span style={{ fontWeight: 700 }}>: ₹ {tb.amount.toFixed(2)}</span>
+                    <span style={{ fontWeight: 700 }}>{currencySymbol} {tb.amount.toFixed(2)}</span>
                   </div>
                 );
               }
             })
-          ) : taxBreakdown && taxBreakdown.length > 0 ? (
+          ) : hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
             taxBreakdown.map((tb, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                 <span style={{ color: "#475569" }}>{tb.name}</span>
-                <span style={{ fontWeight: 700 }}>: ₹ {tb.amount.toFixed(2)}</span>
+                <span style={{ fontWeight: 700 }}>{currencySymbol} {tb.amount.toFixed(2)}</span>
               </div>
             ))
           ) : null}
+
+          {hasGst && (taxGroupBreakdown.length > 0 || (taxBreakdown && taxBreakdown.length > 0)) && (
+            <div style={{ borderTop: "1px dashed #cbd5e1", margin: "6px 0" }} />
+          )}
 
           {/* TCS / TDS */}
           {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (

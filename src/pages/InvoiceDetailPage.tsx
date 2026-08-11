@@ -21,8 +21,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2 } from "lucide-react";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal } from "lucide-react";
 import { getOrCreatePortalToken, portalUrl, openWhatsappShare, buildInvoiceWhatsappMessage } from "@/lib/share";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
 import { QRCodeSVG } from "qrcode.react";
 import html2canvas from "html2canvas";
@@ -159,56 +162,6 @@ export default function InvoiceDetailPage() {
     fetchInvoice();
   };
 
-  const handleDuplicate = async () => {
-    if (!invoice || !org) return;
-    const prefix = org.invoice_prefix || "INV";
-    const num = org.invoice_next_number || 1;
-    const year = new Date().getFullYear();
-    const newNum = `${prefix}-${year}-${String(num).padStart(4, "0")}`;
-
-    const { data: newInv } = await supabase.from("invoices").insert({
-      org_id: org.id,
-      client_id: invoice.client_id,
-      invoice_number: newNum,
-      status: "draft",
-      issue_date: new Date().toISOString().split("T")[0],
-      due_date: new Date(Date.now() + (org.payment_terms || 30) * 86400000).toISOString().split("T")[0],
-      currency_code: invoice.currency_code,
-      discount: Number(invoice.discount),
-      discount_type: invoice.discount_type,
-      shipping_charge: Number(invoice.shipping_charge),
-      subtotal: Number(invoice.subtotal),
-      total_tax: Number(invoice.total_tax),
-      total_discount: Number(invoice.total_discount),
-      total: Number(invoice.total),
-      balance_due: Number(invoice.total),
-      notes: invoice.notes,
-      terms_conditions: invoice.terms_conditions,
-    }).select().single();
-
-    if (newInv) {
-      // Copy lines
-      const newLines = lines.map((l) => ({
-        invoice_id: newInv.id,
-        item_id: l.item_id,
-        name: l.name,
-        description: l.description,
-        quantity: Number(l.quantity),
-        rate: Number(l.rate),
-        discount: Number(l.discount),
-        discount_type: l.discount_type,
-        tax_id: l.tax_id,
-        tax_amount: Number(l.tax_amount),
-        amount: Number(l.amount),
-        sort_order: l.sort_order,
-      }));
-      await supabase.from("invoice_lines").insert(newLines);
-      await supabase.from("organizations").update({ invoice_next_number: num + 1 }).eq("id", org.id);
-      toast({ title: "Invoice duplicated!" });
-      navigate(`/invoices/${newInv.id}`);
-    }
-  };
-
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const handleDownloadPDF = useCallback(async () => {
@@ -282,7 +235,17 @@ export default function InvoiceDetailPage() {
     return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
   }
 
-  const printCSS = getPrintPageCSS(org?.template_paper_size);
+  const snapshot = (invoice.metadata as any) || {};
+  const effectiveOrg = {
+    ...org,
+    template_style: snapshot.template_style || org?.template_style,
+    template_accent_color: snapshot.template_accent_color || org?.template_accent_color,
+    template_font: snapshot.template_font || org?.template_font,
+    template_paper_size: snapshot.template_paper_size || org?.template_paper_size,
+    gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? "GST-ENABLED" : "") : org?.gst_number,
+  };
+
+  const printCSS = getPrintPageCSS(effectiveOrg.template_paper_size);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -290,58 +253,21 @@ export default function InvoiceDetailPage() {
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <PageHeader title={`Invoice ${invoice.invoice_number}`}>
-        <Button variant="outline" size="sm" onClick={() => setDuplicateDialogOpen(true)}>
-          <Copy className="mr-1 h-4 w-4" /> Duplicate
-        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${id}/edit`)}>
           <Edit className="mr-1 h-4 w-4" /> Edit
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
-          <Printer className="mr-1 h-4 w-4" /> Print
         </Button>
         <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
           <Download className="mr-1 h-4 w-4" /> Download PDF
         </Button>
-        <Button variant="outline" size="sm" onClick={handleDuplicate}>
-          <Copy className="mr-1 h-4 w-4" /> Duplicate
-        </Button>
-        {invoice.status === "draft" && (
-          <Button variant="outline" size="sm" onClick={handleMarkSent}>
-            <Send className="mr-1 h-4 w-4" /> Mark as Sent
-          </Button>
-        )}
         {invoice.status !== "void" && invoice.status !== "paid" && (
-          <Button variant="outline" size="sm" onClick={handleVoid}>
-            <Ban className="mr-1 h-4 w-4" /> Void
-          </Button>
-        )}
-        {invoice.status !== "void" && invoice.status !== "paid" && (
-          <Button size="sm" onClick={() => setPaymentDialogOpen(true)}>
+          <Button size="sm" onClick={() => setPaymentDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
             <CreditCard className="mr-1 h-4 w-4" /> Record Payment
           </Button>
         )}
-        {invoice.status !== "void" && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(`/credit-notes/new?invoice_id=${invoice.id}&client_id=${invoice.client_id}`)}
-          >
-            <FileMinus2 className="mr-1 h-4 w-4" /> Credit Note
-          </Button>
-        )}
-        <Button variant="outline" size="sm" onClick={async () => {
-          const token = await getOrCreatePortalToken(org!.id, "invoice", id!);
-          if (token) {
-            await navigator.clipboard.writeText(portalUrl(token));
-            toast({ title: "Portal link copied!" });
-          }
-        }}>
-          <Share2 className="mr-1 h-4 w-4" /> Share Link
-        </Button>
         <Button
           variant="outline"
           size="sm"
-          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300"
+          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200"
           onClick={async () => {
             const token = await getOrCreatePortalToken(org!.id, "invoice", id!);
             const client: any = (invoice as any)?.clients;
@@ -365,6 +291,49 @@ export default function InvoiceDetailPage() {
         >
           <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
         </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setDuplicateDialogOpen(true)}>
+              <Copy className="mr-2 h-4 w-4" /> Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.print()}>
+              <Printer className="mr-2 h-4 w-4" /> Print
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={async () => {
+              const token = await getOrCreatePortalToken(org!.id, "invoice", id!);
+              if (token) {
+                await navigator.clipboard.writeText(portalUrl(token));
+                toast({ title: "Portal link copied!" });
+              }
+            }}>
+              <Share2 className="mr-2 h-4 w-4" /> Share Link
+            </DropdownMenuItem>
+            
+            {invoice.status === "draft" && (
+              <DropdownMenuItem onClick={handleMarkSent}>
+                <Send className="mr-2 h-4 w-4" /> Mark as Sent
+              </DropdownMenuItem>
+            )}
+            
+            {invoice.status !== "void" && (
+              <DropdownMenuItem onClick={() => navigate(`/credit-notes/new?invoice_id=${invoice.id}&client_id=${invoice.client_id}`)}>
+                <FileMinus2 className="mr-2 h-4 w-4" /> Credit Note
+              </DropdownMenuItem>
+            )}
+
+            {invoice.status !== "void" && invoice.status !== "paid" && (
+              <DropdownMenuItem onClick={handleVoid} className="text-red-600 focus:text-red-700">
+                <Ban className="mr-2 h-4 w-4" /> Void
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </PageHeader>
 
       {/* Status + Summary */}
@@ -405,8 +374,8 @@ export default function InvoiceDetailPage() {
       {/* Invoice Preview */}
       <div ref={invoiceRef}>
         <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center">
-          <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-            <StyledInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
+          <div className={getDocumentPreviewClass(effectiveOrg.template_style, effectiveOrg.template_paper_size)}>
+            <StyledInvoiceTemplate org={effectiveOrg} invoice={invoice} lines={lines} fmt={fmt} type="invoice" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
           </div>
         </div>
       </div>

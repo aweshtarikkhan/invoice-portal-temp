@@ -184,6 +184,22 @@ interface FeatureState {
   setPlatformFeatures: (features: string[]) => void;
   setFeatures: (features: string[]) => void;
 
+  // Subscription Metadata
+  subscriptionPlan: string | null;
+  subscriptionStatus: 'trial' | 'active' | 'expired' | 'cancelled' | 'courtesy' | null;
+  employeeLimit: number | null;
+  employeeCount: number;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  setSubscriptionMeta: (meta: {
+    plan_name: string;
+    status: 'trial' | 'active' | 'expired' | 'cancelled' | 'courtesy';
+    trial_ends_at: string | null;
+    employee_limit: number | null;
+    employee_count: number;
+    current_period_end: string | null;
+  }) => void;
+
   // Admin management
   isSuperAdmin: (email: string | null | undefined) => boolean;
   isAdmin: (email: string | null | undefined) => boolean;
@@ -242,6 +258,24 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
   platformFeatures: ADMIN_FEATURE_GROUPS.map(g => g.key),
   adminEmails: loadAdminEmails(),
   teamMembers: loadTeamMembers(),
+
+  subscriptionPlan: null,
+  subscriptionStatus: null,
+  employeeLimit: null,
+  employeeCount: 0,
+  trialEndsAt: null,
+  currentPeriodEnd: null,
+
+  setSubscriptionMeta: (meta) => {
+    set({
+      subscriptionPlan: meta.plan_name,
+      subscriptionStatus: meta.status,
+      trialEndsAt: meta.trial_ends_at,
+      employeeLimit: meta.employee_limit,
+      employeeCount: meta.employee_count,
+      currentPeriodEnd: meta.current_period_end,
+    });
+  },
 
   setOrgFeatures: (orgId: string, features: string[]) => {
     const newOrgFeatures = { ...get().orgFeatures, [orgId]: features };

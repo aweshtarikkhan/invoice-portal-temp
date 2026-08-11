@@ -41,6 +41,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
   const clientGst = (invoice.clients as any)?.tax_number;
   const number = type === "estimate" ? invoice.estimate_number : (type === "po" ? invoice.po_number : invoice.invoice_number);
   const balanceDue = type === "estimate" ? Number(invoice.total) : Number(invoice.balance_due ?? invoice.total);
+  const hasGst = Boolean(org?.gst_number);
 
   const addressLines: string[] = [];
   if (org?.address) {
@@ -200,12 +201,13 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             <th style={{ ...thStyle, textAlign: "left", width: 60 }}>HSN/SAC</th>
             <th style={{ ...thStyle, width: 60 }}>Qty</th>
             <th style={{ ...thStyle, width: 80 }}>Rate</th>
-            {!isInterstate ? (
+            {hasGst && !isInterstate && (
               <>
                 <th style={{ ...thStyle, width: 80 }}>CGST</th>
                 <th style={{ ...thStyle, width: 80 }}>SGST</th>
               </>
-            ) : (
+            )}
+            {hasGst && isInterstate && (
               <th style={{ ...thStyle, width: 80 }}>IGST</th>
             )}
             <th style={{ ...thStyle, width: 100 }}>Amount</th>
@@ -243,7 +245,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
                   )}
                 </td>
                 <td style={{ ...tdStyle }}>
-                  <div style={{ fontWeight: 600 }}>{Number(line.rate).toFixed(2)}</div>
+                  <div style={{ fontWeight: 600 }}>{hasGst ? Number(line.rate).toFixed(2) : (Number(line.amount || 0) / (Number(line.quantity) || 1)).toFixed(2)}</div>
                   {Number(line.discount) > 0 && (
                     <div style={{ fontSize: 9, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
                       {line.discount}% disc.
@@ -255,15 +257,18 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
                     </div>
                   )}
                 </td>
-                {!isInterstate ? (
+                {hasGst && !isInterstate && (
                   <>
                     <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax)}</td>
                     <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax)}</td>
                   </>
-                ) : (
+                )}
+                {hasGst && isInterstate && (
                   <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(taxAmount)}</td>
                 )}
-                <td style={{ ...tdStyle, fontWeight: 600 }}>{fmt(Number(line.amount))}</td>
+                <td style={{ ...tdStyle, fontWeight: 700 }}>
+                  {fmt(hasGst ? lineAmt - taxAmount : lineAmt)}
+                </td>
               </tr>
             );
           })}
@@ -342,11 +347,11 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             <Row label="Discount" value={"-${fmt(Number(invoice.total_discount))}"} />
           )}
 
-          {taxBreakdown && taxBreakdown.length > 0 ? (
+          {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
             taxBreakdown.map((t, idx) => (
               <Row key={idx} label={t.name} value={fmt(t.amount)} />
             ))
-          ) : Number(invoice.total_tax) > 0 ? (
+          ) : hasGst && Number(invoice.total_tax) > 0 ? (
             <Row label="Tax" value={fmt(Number(invoice.total_tax))} />
           ) : null}
 

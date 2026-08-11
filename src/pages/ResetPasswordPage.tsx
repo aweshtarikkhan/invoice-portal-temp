@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
     } else {
       toast({
         title: isInvite ? "Password set successfully!" : "Password updated!",
-        description: "Your account is ready. Welcome to Satah Invoices."
+        description: "Your account is ready. Welcome to Assay Biz Invoices."
       });
       navigate("/dashboard", { replace: true });
     }
@@ -59,9 +59,9 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logoImg} alt="Satah Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
+          <img src={logoImg} alt="Assay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
           <CardTitle className="text-2xl">
-            {isInvite ? "Welcome to Satah Invoices" : "Set New Password"}
+            {isInvite ? "Welcome to Assay Biz Invoices" : "Set New Password"}
           </CardTitle>
           <CardDescription>
             {ready
