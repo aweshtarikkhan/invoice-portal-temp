@@ -9,6 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { openWhatsappShare, normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppTemplates } from "@/components/whatsapp/WhatsAppTemplates";
+import { useAppStore } from "@/lib/store";
 
 interface Chat {
   id: string;
@@ -35,22 +36,13 @@ export default function ChatUIPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
-  const [orgId, setOrgId] = useState<string | null>(null);
+  const orgId = useAppStore((s) => s.organization?.id);
   const [connectionStatus, setConnectionStatus] = useState<string>('connecting');
   const [qrCode, setQrCode] = useState<string | null>(null);
   
   const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
 
-  useEffect(() => {
-    const fetchOrg = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: mem } = await supabase.from('organization_members').select('org_id').eq('user_id', user.id).single();
-        if (mem) setOrgId(mem.org_id);
-      }
-    };
-    fetchOrg();
-  }, []);
+  const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -106,8 +98,8 @@ export default function ChatUIPage() {
     
     const checkStatus = async () => {
       try {
-        if (!organization?.id) return;
-        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr?org_id=${organization.id}`);
+        if (!orgId) return;
+        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr?org_id=${orgId}`);
         if (res.ok) {
           const data = await res.json();
           setConnectionStatus(data.status);
@@ -125,7 +117,7 @@ export default function ChatUIPage() {
     checkStatus();
     interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, [WHATSAPP_SERVICE_URL]);
+  }, [WHATSAPP_SERVICE_URL, orgId]);
 
   useEffect(() => {
     if (!activeChat) return;
