@@ -9,7 +9,7 @@ import { useAuth } from "@/lib/auth";
 import { openWhatsappShare, normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppTemplates } from "@/components/whatsapp/WhatsAppTemplates";
-import { useAppStore } from "@/lib/store";
+import { useAppStore } from "@/store/app-store";
 
 interface Chat {
   id: string;
