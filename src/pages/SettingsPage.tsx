@@ -31,6 +31,7 @@ import { fetchGstDetails } from "@/lib/gst-service";
 import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
+import { WhatsAppSettingsTab } from "@/components/settings/WhatsAppSettingsTab";
 
 
 export default function SettingsPage() {
@@ -234,12 +235,17 @@ export default function SettingsPage() {
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="email">Email Settings</TabsTrigger>
+          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
         </TabsList>
 
         <TabsContent value="email" className="space-y-6 mt-4">
           <EmailSettingsTab />
+        </TabsContent>
+
+        <TabsContent value="whatsapp" className="space-y-6 mt-4">
+          <WhatsAppSettingsTab />
         </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-4">
