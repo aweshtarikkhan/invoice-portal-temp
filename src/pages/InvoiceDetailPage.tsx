@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal } from "lucide-react";
-import { getOrCreatePortalToken, portalUrl, openWhatsappShare, buildInvoiceWhatsappMessage } from "@/lib/share";
+import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
+import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -177,7 +178,7 @@ export default function InvoiceDetailPage() {
 
     const target = (invoiceRef.current.querySelector(".invoice-printable") as HTMLElement) || invoiceRef.current;
     const canvas = await html2canvas(target, {
-      scale: 2,
+      scale: 1.5,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
@@ -196,14 +197,14 @@ export default function InvoiceDetailPage() {
       },
     });
 
-    const imgData = canvas.toDataURL("image/png");
+    const imgData = canvas.toDataURL("image/jpeg", 0.7);
     const imgWmm = pW;
     const imgHmm = (canvas.height * imgWmm) / canvas.width;
 
     if (paperKey === "pos80") {
       const pageH = imgHmm + 4;
       const pdf = new jsPDF("p", "mm", [pW, pageH]);
-      pdf.addImage(imgData, "PNG", 0, 2, pW, imgHmm);
+      pdf.addImage(imgData, "JPEG", 0, 2, pW, imgHmm);
       pdf.save(`${invoice?.invoice_number || "invoice"}.pdf`);
       return;
     }
@@ -212,24 +213,89 @@ export default function InvoiceDetailPage() {
 
     // If total invoice content fits on one page (with 3mm tolerance):
     if (imgHmm <= pH + 3) {
-      pdf.addImage(imgData, "PNG", 0, 0, pW, Math.min(imgHmm, pH));
+      pdf.addImage(imgData, "JPEG", 0, 0, pW, Math.min(imgHmm, pH));
     } else {
       // Clean multi-page handling
       let heightLeft = imgHmm;
       let position = 0;
-      pdf.addImage(imgData, "PNG", 0, position, pW, imgHmm);
+      pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
       heightLeft -= pH;
 
       while (heightLeft > 0) {
         position -= pH;
         pdf.addPage([pW, pH]);
-        pdf.addImage(imgData, "PNG", 0, position, pW, imgHmm);
+        pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
         heightLeft -= pH;
       }
     }
 
     pdf.save(`${invoice?.invoice_number || "invoice"}.pdf`);
   }, [invoice, org]);
+
+  const generatePDFBlob = useCallback(async (): Promise<Blob | null> => {
+    if (!invoiceRef.current || !invoice || !org) return null;
+
+    const paperSizes: Record<string, [number, number]> = {
+      a4: [210, 297], letter: [215.9, 279.4], legal: [215.9, 355.6], a5: [148, 210], a6: [105, 148], pos80: [80, 297],
+    };
+    const paperKey = (org as any).template_paper_size || "a4";
+    const [pW, pH] = paperSizes[paperKey] || paperSizes.a4;
+    const targetPxWidth = Math.round(pW * 3.779528);
+
+    const target = (invoiceRef.current.querySelector(".invoice-printable") as HTMLElement) || invoiceRef.current;
+    
+    const canvas = await html2canvas(target, {
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      windowWidth: targetPxWidth,
+      onclone: (clonedDoc) => {
+        const el = (clonedDoc.querySelector(".invoice-printable") as HTMLElement) || (clonedDoc.body.firstElementChild as HTMLElement);
+        if (el) {
+          el.style.width = `${targetPxWidth}px`;
+          el.style.maxWidth = `${targetPxWidth}px`;
+          el.style.minWidth = `${targetPxWidth}px`;
+          el.style.boxShadow = "none";
+          el.style.border = "none";
+          el.style.borderRadius = "0";
+          el.style.margin = "0";
+        }
+      },
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.7);
+    const imgWmm = pW;
+    const imgHmm = (canvas.height * imgWmm) / canvas.width;
+
+    if (paperKey === "pos80") {
+      const pageH = imgHmm + 4;
+      const pdf = new jsPDF("p", "mm", [pW, pageH]);
+      pdf.addImage(imgData, "JPEG", 0, 2, pW, imgHmm);
+      return pdf.output('blob');
+    }
+
+    const pdf = new jsPDF("p", "mm", [pW, pH]);
+    if (imgHmm <= pH + 3) {
+      pdf.addImage(imgData, "JPEG", 0, 0, pW, Math.min(imgHmm, pH));
+    } else {
+      let heightLeft = imgHmm;
+      let position = 0;
+      pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
+      heightLeft -= pH;
+      while (heightLeft > 0) {
+        position -= pH;
+        pdf.addPage([pW, pH]);
+        pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
+        heightLeft -= pH;
+      }
+    }
+    return pdf.output('blob');
+  }, [invoice, org]);
+
+
+
+
 
   if (!invoice) {
     return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
@@ -264,34 +330,6 @@ export default function InvoiceDetailPage() {
             <CreditCard className="mr-1 h-4 w-4" /> Record Payment
           </Button>
         )}
-        <Button
-          variant="outline"
-          size="sm"
-          className="bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200"
-          onClick={async () => {
-            const token = await getOrCreatePortalToken(org!.id, "invoice", id!);
-            const client: any = (invoice as any)?.clients;
-            const msg = buildInvoiceWhatsappMessage({
-              orgName: org?.name,
-              clientName: client?.display_name,
-              invoiceNumber: invoice.invoice_number,
-              amountFormatted: fmt(Number(invoice.total)),
-              dueDate: invoice.due_date,
-              portalLink: token ? portalUrl(token) : null,
-            });
-            openWhatsappShare({ phone: client?.phone, message: msg });
-            await supabase
-              .from("invoices")
-              .update({
-                last_reminder_at: new Date().toISOString(),
-                reminder_count: ((invoice as any).reminder_count || 0) + 1,
-              })
-              .eq("id", id!);
-          }}
-        >
-          <MessageCircle className="mr-1 h-4 w-4" /> WhatsApp
-        </Button>
-
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm">
@@ -313,6 +351,34 @@ export default function InvoiceDetailPage() {
               }
             }}>
               <Share2 className="mr-2 h-4 w-4" /> Share Link
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={async () => {
+              if (!org || !invoice || !invoice.clients) return;
+              const token = await getOrCreatePortalToken(org.id, "invoice", invoice.id);
+              
+              const template = await getWhatsappTemplate(org.id, "invoice");
+              const txt = compileWhatsappMessage(template, {
+                client_name: invoice.clients.display_name,
+                document_no: invoice.invoice_number,
+                total: fmt(Number(invoice.total)),
+                due_date: invoice.due_date || "",
+                subtotal: fmt(Number(invoice.subtotal)),
+                tax: fmt(Number(invoice.tax_total)),
+                discount: fmt(Number(invoice.discount_total)),
+                tds: invoice.tds_amount ? fmt(Number(invoice.tds_amount)) : "0.00",
+                adjustment: invoice.adjustment ? fmt(Number(invoice.adjustment)) : "0.00",
+                items: lines.map(l => `- ${l.items?.name || 'Item'} x${l.quantity}`).join('\n'),
+                portal_link: token ? portalUrl(token) : "",
+                org_name: org.name
+              });
+
+              await openWhatsappShare({
+                phone: invoice.clients.phone,
+                message: txt,
+                orgId: org.id
+              });
+            }}>
+              <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Send WhatsApp Text
             </DropdownMenuItem>
             
             {invoice.status === "draft" && (

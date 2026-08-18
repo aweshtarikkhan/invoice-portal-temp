@@ -20,7 +20,7 @@ export default function MessageLogsPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Message Logs</h1>
-        <p className="text-sm text-muted-foreground">All outbound WhatsApp, SMS and Email messages.</p>
+        <p className="text-sm text-muted-foreground">All outbound SMS and Email messages.</p>
       </div>
       <Card>
         <CardHeader><CardTitle>Recent (last 200)</CardTitle></CardHeader>

@@ -19,9 +19,10 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, MoreHorizontal, FileText, ArrowRightLeft, Trash2, Upload, Download } from "lucide-react";
+import { Plus, Search, MoreHorizontal, FileText, ArrowRightLeft, Trash2, Upload, Download, MessageCircle, CheckCircle, XCircle } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { format, parseISO, differenceInDays } from "date-fns";
+
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -145,6 +146,12 @@ export default function EstimatesPage() {
   };
 
   const handleConvert = (id: string) => navigate(`/estimates/${id}/convert`);
+
+  const updateStatus = async (id: string, newStatus: string, dateField: string) => {
+    await supabase.from("estimates").update({ status: newStatus, [dateField]: new Date().toISOString() }).eq("id", id);
+    fetchEstimates();
+  };
+
 
   return (
     <div className="space-y-6">
@@ -293,26 +300,51 @@ export default function EstimatesPage() {
                       <TableCell className="text-right font-medium text-sm">{fmt(Number(est.total))}</TableCell>
                       <TableCell><StatusBadge status={est.status}>{s.label}</StatusBadge></TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
+                        <div className="flex justify-end gap-1">
+
+                          {est.status === "accepted" && (
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50" title="Convert to Invoice" onClick={() => handleConvert(est.id)}>
+                              <ArrowRightLeft className="h-4 w-4" />
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => navigate(`/estimates/${est.id}/edit`)}>
-                              <FileText className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            {(est.status === "accepted" || est.status === "sent" || est.status === "draft") && est.status !== "converted" && (
-                              <DropdownMenuItem onClick={() => handleConvert(est.id)}>
-                                <ArrowRightLeft className="mr-2 h-4 w-4" /> Convert to Invoice
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => navigate(`/estimates/${est.id}/edit`)}>
+                                <FileText className="mr-2 h-4 w-4" /> Edit
                               </DropdownMenuItem>
-                            )}
-                            <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(est.id)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                              {(est.status === "draft" || est.status === "sent" || est.status === "viewed" || est.status === "accepted") && (
+                                <>
+                                  {est.status !== "accepted" && (
+                                    <DropdownMenuItem onClick={() => updateStatus(est.id, "accepted", "accepted_at")}>
+                                      <CheckCircle className="mr-2 h-4 w-4 text-emerald-600" /> Mark as Accepted
+                                    </DropdownMenuItem>
+                                  )}
+                                  <DropdownMenuItem onClick={() => updateStatus(est.id, "declined", "declined_at")}>
+                                    <XCircle className="mr-2 h-4 w-4 text-red-600" /> Mark as Declined
+                                  </DropdownMenuItem>
+                                  {est.status === "accepted" && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => updateStatus(est.id, "converted", "accepted_at")}>
+                                        <CheckCircle className="mr-2 h-4 w-4 text-blue-600" /> Mark as Converted
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => handleConvert(est.id)}>
+                                        <ArrowRightLeft className="mr-2 h-4 w-4 text-blue-600" /> Send to Invoice
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </>
+                              )}
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(est.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

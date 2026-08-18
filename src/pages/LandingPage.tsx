@@ -18,7 +18,7 @@ const t = {
   en: {
     nav_features: "Features", nav_pricing: "Pricing", nav_compare: "Compare", nav_login: "Sign in",
     hero_eyebrow: "Built for Indian SMBs · 100% GST Ready",
-    hero_title: "Send GST invoices on WhatsApp in 30 seconds.",
+    hero_title: "Send GST invoices in 30 seconds.",
     hero_sub: "Assay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.",
     cta_primary: "Create your first invoice — Free",
     cta_secondary: "Watch 60-sec demo",
@@ -31,10 +31,10 @@ const t = {
     badges_title: "Built for India. Verified for GST.",
     feat_title: "Everything you need to run your business",
     feat_sub: "Invoicing, inventory, GST returns, payments — no spreadsheets required.",
-    wa_eyebrow: "WhatsApp-first",
-    wa_title: "Send invoices on WhatsApp. Get paid 2x faster.",
+    wa_eyebrow: "Instant Sharing",
+    wa_title: "Send invoices instantly. Get paid 2x faster.",
     wa_sub: "One tap to share a polished PDF with a UPI QR. Your customers pay instantly — no app downloads, no logins.",
-    wa_bullets: ["1-tap WhatsApp share with PDF + UPI QR", "Auto payment reminders for overdue invoices", "Customer portal — pay without sign-up"],
+    wa_bullets: ["1-tap share with PDF + UPI QR", "Auto payment reminders for overdue invoices", "Customer portal — pay without sign-up"],
     cmp_title: "Why teams switch to Assay Biz",
     cmp_sub: "Honest comparison with the tools you're probably using today.",
     test_title: "our business made more then 12,000 invoices",
@@ -49,7 +49,7 @@ const t = {
   hi: {
     nav_features: "फीचर्स", nav_pricing: "प्राइसिंग", nav_compare: "तुलना", nav_login: "साइन इन",
     hero_eyebrow: "भारतीय व्यापारियों के लिए · 100% GST रेडी",
-    hero_title: "WhatsApp पर 30 सेकंड में GST बिल भेजें।",
+    hero_title: "30 सेकंड में GST बिल भेजें।",
     hero_sub: "Assay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह।",
     cta_primary: "अभी मुफ़्त बिल बनाएं",
     cta_secondary: "60-सेकंड डेमो देखें",
@@ -62,10 +62,10 @@ const t = {
     badges_title: "भारत के लिए बना। GST के लिए वेरिफ़ाइड।",
     feat_title: "आपके बिज़नेस के लिए सब कुछ — एक ही जगह",
     feat_sub: "बिलिंग, स्टॉक, GST रिटर्न, पेमेंट — कोई एक्सेल नहीं चाहिए।",
-    wa_eyebrow: "WhatsApp-फर्स्ट",
-    wa_title: "WhatsApp पर बिल भेजें। 2x तेज़ पेमेंट पाएं।",
+    wa_eyebrow: "इंस्टेंट शेयर",
+    wa_title: "बिल भेजें। 2x तेज़ पेमेंट पाएं।",
     wa_sub: "एक टैप में PDF + UPI QR के साथ बिल भेजें। कस्टमर तुरंत पेमेंट करें — कोई ऐप या लॉगिन नहीं।",
-    wa_bullets: ["1-टैप WhatsApp शेयर — PDF + UPI QR के साथ", "ओवरड्यू बिल के लिए ऑटो रिमाइंडर", "कस्टमर पोर्टल — बिना साइन-अप पेमेंट"],
+    wa_bullets: ["1-टैप शेयर — PDF + UPI QR के साथ", "ओवरड्यू बिल के लिए ऑटो रिमाइंडर", "कस्टमर पोर्टल — बिना साइन-अप पेमेंट"],
     cmp_title: "लोग Assay Biz क्यों चुनते हैं",
     cmp_sub: "जो टूल्स आप आज इस्तेमाल कर रहे हैं उनसे ईमानदार तुलना।",
     test_title: "our business made more then 12,000 invoices",
@@ -90,7 +90,7 @@ const complianceBadges = [
 
 const features = [
   { icon: Zap, title: "30-second invoicing", desc: "Pre-filled GST rates, HSN lookup, auto-numbering. Done before your chai gets cold." },
-  { icon: MessageCircle, title: "WhatsApp share + UPI QR", desc: "Send a polished PDF with a UPI QR. Customers pay in one tap." },
+  { icon: MessageCircle, title: "Share + UPI QR", desc: "Send a polished PDF with a UPI QR. Customers pay in one tap." },
   { icon: Package, title: "Inventory with stock ledger", desc: "Auto-deduct stock on sales, restock on credit notes. Negative-stock warnings." },
   { icon: FileText, title: "GSTR-1, GSTR-3B, HSN summary", desc: "Generate filing-ready JSON and CSV. Tally export included." },
   { icon: BarChart3, title: "P&L, receivables, aging", desc: "Know who owes you, what's overdue, and what you actually earned." },
@@ -99,7 +99,7 @@ const features = [
 
 type Cell = boolean | "partial";
 const comparison: { label: string; satah: Cell; vyapar: Cell; zoho: Cell; cleartax: Cell }[] = [
-  { label: "WhatsApp-first share with UPI QR", satah: true, vyapar: "partial", zoho: false, cleartax: false },
+  { label: "Instant share with UPI QR", satah: true, vyapar: "partial", zoho: false, cleartax: false },
   { label: "GSTR-1 + 3B export (free tier)", satah: true, vyapar: false, zoho: false, cleartax: "partial" },
   { label: "Unlimited invoices on free plan", satah: true, vyapar: "partial", zoho: false, cleartax: false },
   { label: "Customer portal (no login)", satah: true, vyapar: false, zoho: true, cleartax: false },
@@ -110,7 +110,7 @@ const comparison: { label: string; satah: Cell; vyapar: Cell; zoho: Cell; cleart
 ];
 
 const testimonials = [
-  { name: "Rajesh Sharma", role: "Owner, Sharma Hardware · Jaipur", quote: "Pehle Excel pe bill banata tha, ab WhatsApp pe seedha bhej deta hoon. Customer 5 minute mein UPI se paisa de deta hai.", rating: 5 },
+  { name: "Rajesh Sharma", role: "Owner, Sharma Hardware · Jaipur", quote: "Pehle Excel pe bill banata tha, ab seedha bhej deta hoon. Customer 5 minute mein UPI se paisa de deta hai.", rating: 5 },
   { name: "Priya Mehta", role: "Founder, Mehta Textiles · Surat", quote: "GSTR-1 file karne mein pehle CA ko 3 din lagte the. Assay Biz se 10 minute mein JSON ready ho jata hai. Game changer.", rating: 5 },
   { name: "Amit Patel", role: "CA, Patel & Associates · Ahmedabad", quote: "My 40+ clients moved from Tally + Vyapar to Assay Biz. The HSN summary and 3B export saves us hours every month.", rating: 5 },
   { name: "Sneha Iyer", role: "Freelance Designer · Bengaluru", quote: "Clean, fast, no bloat. The portal link means clients pay without me chasing. Worth every rupee.", rating: 5 },
@@ -229,7 +229,7 @@ export default function LandingPage() {
             <Card className="relative overflow-hidden shadow-2xl border-2">
               <div className="bg-primary text-primary-foreground px-5 py-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm font-medium">
-                  <MessageCircle className="h-4 w-4" /> WhatsApp Preview
+                  <MessageCircle className="h-4 w-4" /> Message Preview
                 </div>
                 <span className="text-xs opacity-80">Just now</span>
               </div>
@@ -307,7 +307,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* WhatsApp highlight */}
+      {/* Share highlight */}
       <section className="py-20 border-b bg-emerald-50/40 ">
         <div className="mx-auto max-w-6xl px-4 grid md:grid-cols-2 gap-10 items-center">
           <div>
@@ -459,7 +459,7 @@ export default function LandingPage() {
               bundle: { icon: "🚀", color: "text-emerald-600", gradient: "from-emerald-500 to-teal-500", desc: "The ultimate all-in-one solution — Invoicing, HR, CRM & Marketing." },
               hrms: { icon: "👥", color: "text-indigo-600", gradient: "from-indigo-500 to-indigo-600", desc: "Complete HR solution — attendance, leaves, payroll & employee management." },
               crm: { icon: "🎯", color: "text-pink-600", gradient: "from-pink-500 to-rose-500", desc: "Manage leads, deals, pipeline and customer relationships in one place." },
-              marketing: { icon: "📢", color: "text-orange-600", gradient: "from-orange-500 to-red-500", desc: "WhatsApp campaigns, email marketing, journeys and automation." },
+              marketing: { icon: "📢", color: "text-orange-600", gradient: "from-orange-500 to-red-500", desc: "SMS campaigns, email marketing, journeys and automation." },
             };
 
             return (

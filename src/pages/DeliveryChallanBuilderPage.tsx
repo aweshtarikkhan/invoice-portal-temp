@@ -196,17 +196,6 @@ export default function DeliveryChallanBuilderPage() {
             type="button"
             variant="outline"
             size="sm"
-            className="gap-1.5 text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 hover:text-emerald-800 border-emerald-300"
-            onClick={() => setPreviewOpen(true)}
-          >
-            <MessageSquare className="h-3.5 w-3.5" />
-            WhatsApp Driver
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
             className="gap-1.5 text-xs"
             onClick={() => setPreviewOpen(true)}
           >
@@ -345,7 +334,7 @@ export default function DeliveryChallanBuilderPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Driver Phone (for WhatsApp)</Label>
+            <Label className="text-xs font-semibold">Driver Phone</Label>
             <Input
               className="text-xs h-9 font-mono"
               value={driverPhone}

@@ -39,7 +39,7 @@ export default function PipelinePage() {
       ({ data: st } = await (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order"));
     }
     const [{ data: op }, { data: cl }] = await Promise.all([
-      (supabase as any).from("opportunities").select("*, clients(name)").eq("org_id", org.id).order("sort_order"),
+      (supabase as any).from("opportunities").select("*, clients(display_name)").eq("org_id", org.id).order("sort_order"),
       (supabase as any).from("clients").select("id,name").eq("org_id", org.id).order("name"),
     ]);
     setStages(st || []); setOpps(op || []); setClients(cl || []);
@@ -147,8 +147,8 @@ export default function PipelinePage() {
                 <div
                   key={stg.id}
                   onDragOver={(e) => e.preventDefault()}
-                  onDrop={() => onDropOnStage(stg.id)}
-                  className="w-72 bg-muted/40 rounded-lg p-3 flex flex-col max-h-[calc(100vh-220px)]"
+                  onDrop={() => { if (draggingId) moveTo(draggingId, stg.id); setDraggingId(null); }}
+                  className={`w-72 rounded-lg p-3 flex flex-col max-h-[calc(100vh-220px)] transition-colors ${draggingId ? 'bg-primary/5 border-2 border-dashed border-primary/30' : 'bg-muted/40'}`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">

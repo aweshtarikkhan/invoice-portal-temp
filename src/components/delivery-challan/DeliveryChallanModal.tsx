@@ -13,6 +13,7 @@ import {
   DeliveryChallanLineData,
 } from "./DeliveryChallanDocument";
 
+
 interface DeliveryChallanModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,8 +38,7 @@ export function DeliveryChallanModal({
   const { toast } = useToast();
   const documentRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
-  const [driverPhonePrompt, setDriverPhonePrompt] = useState(false);
-  const [customPhone, setCustomPhone] = useState(challan.driver_phone || "");
+
   const [copied, setCopied] = useState(false);
 
   // Generate WhatsApp Message text for driver / logistics
@@ -74,23 +74,7 @@ ${itemsText}
 ━━━━━━━━━━━━━━━━━━━━`;
   };
 
-  // Direct WhatsApp Trigger
-  const handleWhatsAppSend = (phoneNumber?: string) => {
-    const rawPhone = phoneNumber || customPhone || challan.driver_phone || "";
-    const cleanPhone = rawPhone.replace(/\D/g, "");
 
-    if (!cleanPhone) {
-      setDriverPhonePrompt(true);
-      return;
-    }
-
-    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const msg = generateWhatsAppMessage();
-    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank");
-    setDriverPhonePrompt(false);
-    toast({ title: "Opening WhatsApp with trip & goods details" });
-  };
 
   // Direct 1-Page PDF Download
   const handleDownloadPDF = async () => {
@@ -168,15 +152,7 @@ ${itemsText}
 
             {/* Actions */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs bg-white text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300"
-                onClick={() => handleWhatsAppSend()}
-              >
-                <MessageSquare className="h-3.5 w-3.5 fill-emerald-600 text-emerald-600" />
-                WhatsApp Driver
-              </Button>
+
 
               <Button
                 variant="outline"
@@ -249,45 +225,7 @@ ${itemsText}
         </DialogContent>
       </Dialog>
 
-      {/* Prompt if driver phone is missing */}
-      <Dialog open={driverPhonePrompt} onOpenChange={setDriverPhonePrompt}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="text-base flex items-center gap-2">
-              <MessageSquare className="h-4 w-4 text-emerald-600" />
-              WhatsApp Driver
-            </DialogTitle>
-            <DialogDescription className="text-xs">
-              Driver ka mobile number enter karein jisme Delivery Challan ki details bhejna chahte hain.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="drv-phone" className="text-xs">Driver Mobile Number (10 Digits)</Label>
-              <Input
-                id="drv-phone"
-                placeholder="e.g. 9876543210"
-                value={customPhone}
-                onChange={(e) => setCustomPhone(e.target.value)}
-                autoFocus
-              />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="outline" size="sm" onClick={() => setDriverPhonePrompt(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5"
-              onClick={() => handleWhatsAppSend(customPhone)}
-            >
-              <MessageSquare className="h-3.5 w-3.5" />
-              Send on WhatsApp
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+
     </>
   );
 }

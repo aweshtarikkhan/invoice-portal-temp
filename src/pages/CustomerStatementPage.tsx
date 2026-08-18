@@ -62,11 +62,11 @@ export default function CustomerStatementPage() {
       const [clientRes, invRes, payRes, cnRes] = await Promise.all([
         supabase.from("clients").select("*").eq("id", selectedClientId).single(),
         supabase.from("invoices").select("*").eq("client_id", selectedClientId).eq("org_id", org.id)
-          .gte("issue_date", dateFrom).lte("issue_date", dateTo).neq("status", "void").order("issue_date"),
+          .gte("issue_date", dateFrom).lte("issue_date", dateTo).neq("status", "void").neq("status", "draft").order("issue_date"),
         supabase.from("payments").select("*").eq("client_id", selectedClientId).eq("org_id", org.id)
           .gte("payment_date", dateFrom).lte("payment_date", dateTo).order("payment_date"),
         supabase.from("credit_notes").select("*").eq("client_id", selectedClientId).eq("org_id", org.id)
-          .gte("issue_date", dateFrom).lte("issue_date", dateTo).neq("status", "void").order("issue_date"),
+          .gte("issue_date", dateFrom).lte("issue_date", dateTo).neq("status", "void").neq("status", "draft").order("issue_date"),
       ]);
       setClient(clientRes.data);
       setInvoices(invRes.data || []);

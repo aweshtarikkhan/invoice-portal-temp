@@ -115,6 +115,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "Send",
     description: "Campaigns, Templates & Automations",
     items: [
+      { key: "festival-posters", title: "Festival Posters", description: "Create & download festival marketing posters", icon: "Image", url: "/marketing/posters" },
       { key: "campaigns", title: "Campaigns", description: "Email & SMS campaigns", icon: "Send", url: "/campaigns" },
       { key: "marketing-templates", title: "Templates", description: "Marketing templates", icon: "MessageSquare", url: "/marketing/templates" },
       { key: "journeys", title: "Journeys", description: "Customer journeys", icon: "Workflow", url: "/journeys" },

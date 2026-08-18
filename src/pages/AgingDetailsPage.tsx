@@ -13,6 +13,7 @@ import { format, differenceInDays } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+
 interface AgingInvoice {
   id: string;
   invoice_number: string;
@@ -158,46 +159,7 @@ export default function AgingDetailsPage() {
     return !document.hidden;
   };
 
-  const sendWhatsAppReminder = (inv: AgingInvoice, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const orgName = org?.name || "Our Company";
-    const message =
-      `Hi ${inv.client_name},\n\n` +
-      `This is a friendly payment reminder from ${orgName}.\n\n` +
-      `Invoice: ${inv.invoice_number}\n` +
-      `Due Date: ${format(new Date(inv.due_date), "dd/MM/yyyy")}\n` +
-      `Amount Due: ${fmt(inv.balance_due)}\n` +
-      `Overdue by: ${inv.age_days} days\n\n` +
-      `Kindly arrange the payment at your earliest convenience.\n\n` +
-      `Thank you!`;
 
-    // Normalize phone: digits only, prepend default country code (91/India) if missing
-    let phone = (inv.client_phone || "").replace(/[^\d]/g, "");
-    if (phone && phone.length === 10) phone = "91" + phone; // assume India if 10-digit local
-    if (phone && phone.startsWith("0")) phone = "91" + phone.replace(/^0+/, "");
-
-    const encoded = encodeURIComponent(message);
-    const url = !phone
-      ? `https://wa.me/?text=${encoded}`
-      : `https://wa.me/${phone}?text=${encoded}`;
-
-    const opened = openExternalLink(url);
-
-    if (!phone) {
-      toast({
-        title: "No phone number",
-        description: `${inv.client_name} has no phone saved. Pick a contact in WhatsApp.`,
-      });
-      return;
-    }
-
-    if (!opened && !isMobile) {
-      toast({
-        title: "WhatsApp blocked by browser",
-        description: "Allow pop-ups for this site, then tap WhatsApp again.",
-      });
-    }
-  };
 
   const downloadCSV = () => {
     const headers = ["Aging Bucket", "Date", "Due Date", "Invoice#", "Status", "Customer Name", "Age (Days)", "Amount", "Balance Due"];
@@ -319,7 +281,7 @@ export default function AgingDetailsPage() {
                   >
                     BALANCE DUE{sortIcon("balance_due")}
                   </TableHead>
-                  <TableHead className="w-[140px] text-center">REMINDER</TableHead>
+
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -370,18 +332,6 @@ export default function AgingDetailsPage() {
                           </TableCell>
                           <TableCell className="text-sm text-right font-medium text-destructive">
                             {fmt(inv.balance_due)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-8 gap-1 border-emerald-500/40 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
-                              onClick={(e) => sendWhatsAppReminder(inv, e)}
-                              title={inv.client_phone ? `Send to ${inv.client_phone}` : "No phone — pick contact"}
-                            >
-                              <MessageCircle className="h-3.5 w-3.5" />
-                              WhatsApp
-                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}

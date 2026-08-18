@@ -19,8 +19,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { BillSettingsSheet } from "@/components/shared/BillSettingsSheet";
 import {
@@ -30,6 +31,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddVendorDialog } from "@/components/shared/AddVendorDialog";
+import { openWhatsappShare } from "@/lib/share";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import {
   DndContext,
@@ -436,6 +438,9 @@ export default function BillBuilderPage() {
   const [vendorBills, setVendorBills] = useState<any[]>([]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
+  const [contactPromptOpen, setContactPromptOpen] = useState(false);
+  const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
+  const [pendingAction, setPendingAction] = useState<"email" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -721,7 +726,22 @@ export default function BillBuilderPage() {
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
-  const handleSave = async (status: "draft" | "received" = "received") => {
+  const handleActionClick = (action: "email") => {
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (!vendor) {
+      toast({ title: "Select a vendor first", variant: "destructive" });
+      return;
+    }
+    if (action === "email" && !vendor.email) {
+      setContactPromptMissing("email");
+      setPendingAction("email");
+      setContactPromptOpen(true);
+      return;
+    }
+    handleSave("received", action);
+  };
+
+  const handleSave = async (status: "draft" | "received" = "received", postAction?: "email") => {
     if (!org) return;
     if (!vendorId) {
       toast({ title: "Please select a vendor", variant: "destructive" });
@@ -886,7 +906,18 @@ export default function BillBuilderPage() {
         await supabase.from("vendors").update({ opening_balance: totalDue }).eq("id", vendorId);
       }
 
-      toast({ title: status === "sent" ? "Bill sent!" : "Bill saved!" });
+      if (postAction === "email") {
+        const vendor = vendors.find(v => v.id === vendorId);
+        if (vendor?.email) {
+          await supabase.functions.invoke("send-document-email", {
+            body: { entityId: billId, entityType: "bill", recipientEmail: vendor.email }
+          });
+          toast({ title: "Bill saved and emailed!" });
+        }
+      } else {
+        toast({ title: status === "received" ? "Bill saved!" : "Bill saved as draft!" });
+      }
+
       navigate(`/bills`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -917,24 +948,63 @@ export default function BillBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <ContactPromptDialog
+        open={contactPromptOpen}
+        onOpenChange={setContactPromptOpen}
+        entityType="vendor"
+        entityId={vendorId || ""}
+        entityName={vendors.find(v => v.id === vendorId)?.display_name || ""}
+        missingField={contactPromptMissing}
+        onSuccess={(val) => {
+          setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, [contactPromptMissing]: val } : v));
+          if (pendingAction) handleSave("received", pendingAction);
+        }}
+      />
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{id ? "Edit Bill" : "New Bill"}</h1>
         <div className="flex gap-2">
           <BillSettingsSheet />
           <Button variant="outline" onClick={() => navigate("/bills")}>Cancel</Button>
+          <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
+            <Save className="mr-1.5 h-4 w-4" /> Save as Draft
+          </Button>
           <div className="flex">
-            <Button className="rounded-r-none" onClick={() => handleSave("received")} disabled={saving}>
-              <Save className="mr-1 h-4 w-4" /> Save Bill
+            <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("received")} disabled={saving}>
+              <Save className="mr-1.5 h-4 w-4" /> Save Bill
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="secondary" className="rounded-l-none px-2 border-l border-white/20">
+                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2.5 shadow-sm" disabled={saving}>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => handleActionClick("email")}>
+                  <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={async () => { await handleSave("received"); setTimeout(() => window.print(), 500); }}>
+                  <Printer className="mr-2 h-4 w-4" /> Save and Print
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  await handleSave("received");
+                  if (id) {
+                    const { data: existing } = await supabase.from("portal_tokens").select("token").eq("entity_type", "bill").eq("entity_id", id).maybeSingle();
+                    let token = existing?.token;
+                    if (!token) {
+                      const { data } = await supabase.from("portal_tokens").insert({ org_id: org!.id, entity_type: "bill", entity_id: id }).select("token").single();
+                      token = data?.token;
+                    }
+                    if (token) {
+                      await navigator.clipboard.writeText(`${window.location.origin}/portal/${token}`);
+                      toast({ title: "Bill saved & portal link copied!" });
+                    }
+                  }
+                }}>
+                  <Share2 className="mr-2 h-4 w-4" /> Save and Share
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleSave("draft")}>
-                  <Clock className="mr-2 h-4 w-4" /> Save as Draft
+                  <Clock className="mr-2 h-4 w-4" /> Save and Send Later
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

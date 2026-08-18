@@ -19,7 +19,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { CreditCard, Search, Upload, Plus, Filter, Trash2, Download } from "lucide-react";
+import { CreditCard, Search, Upload, Plus, Filter, Trash2, Download, ArrowUpDown } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { SummaryRibbon } from "@/components/shared/SummaryRibbon";
 import { AnalyticsGrid } from "@/components/shared/AnalyticsGrid";
@@ -84,7 +84,7 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [agingFilter, setAgingFilter] = useState("all");
-  const [amountSort, setAmountSort] = useState<"asc" | "desc" | "none">("none");
+  const [sortConfig, setSortConfig] = useState<{ key: keyof ClientSummary | null, direction: "asc" | "desc" }>({ key: null, direction: "asc" });
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -113,6 +113,8 @@ export default function PaymentsPage() {
     const map: Record<string, ClientSummary> = {};
     const today = new Date();
     invoices.forEach((inv) => {
+      if (inv.status === "draft" || inv.status === "void") return;
+
       const clientId = inv.client_id;
       const clientName = (inv.clients as any)?.display_name || "Unknown";
       if (!map[clientId]) map[clientId] = { id: clientId, name: clientName, totalBilled: 0, totalPaid: 0, pending: 0, oldestDueDays: 0, overdueInvoices: 0 };
@@ -132,10 +134,32 @@ export default function PaymentsPage() {
     let list = clientSummaries;
     if (clientSearch) list = list.filter((c) => c.name.toLowerCase().includes(clientSearch.toLowerCase()));
     if (agingFilter !== "all") list = list.filter((c) => c.oldestDueDays > parseInt(agingFilter));
-    if (amountSort === "asc") list = [...list].sort((a, b) => a.pending - b.pending);
-    else list = [...list].sort((a, b) => b.pending - a.pending);
+    
+    if (sortConfig.key) {
+      list = [...list].sort((a, b) => {
+        const valA = a[sortConfig.key!];
+        const valB = b[sortConfig.key!];
+        
+        if (typeof valA === "string" && typeof valB === "string") {
+          return sortConfig.direction === "asc" ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        }
+        
+        return sortConfig.direction === "asc" 
+          ? (valA as number) - (valB as number) 
+          : (valB as number) - (valA as number);
+      });
+    } else {
+      list = [...list].sort((a, b) => b.pending - a.pending);
+    }
     return list;
-  }, [clientSummaries, clientSearch, agingFilter, amountSort]);
+  }, [clientSummaries, clientSearch, agingFilter, sortConfig]);
+
+  const handleSort = (key: keyof ClientSummary) => {
+    setSortConfig(current => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc"
+    }));
+  };
 
   const globalTotalBilled = clientSummaries.reduce((s, c) => s + c.totalBilled, 0);
   const globalTotalPaid = clientSummaries.reduce((s, c) => s + c.totalPaid, 0);
@@ -189,7 +213,7 @@ export default function PaymentsPage() {
 
       // Sync client opening_balance
       for (const cId of affectedClientIds) {
-        const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", cId).neq("status", "void");
+        const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", cId).neq("status", "void").neq("status", "draft");
         const totalDue = (cInvs || []).reduce((s, i) => s + Number(i.balance_due || 0), 0);
         await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cId);
       }
@@ -302,14 +326,7 @@ export default function PaymentsPage() {
                 <SelectTrigger className="w-[140px] h-8 text-sm"><Filter className="mr-1 h-3.5 w-3.5" /><SelectValue /></SelectTrigger>
                 <SelectContent>{AGING_FILTERS.map((f) => <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>)}</SelectContent>
               </Select>
-              <Select value={amountSort} onValueChange={(v: any) => setAmountSort(v)}>
-                <SelectTrigger className="w-[150px] h-8 text-sm"><SelectValue placeholder="Sort by amount" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Default</SelectItem>
-                  <SelectItem value="desc">Highest Pending</SelectItem>
-                  <SelectItem value="asc">Lowest Pending</SelectItem>
-                </SelectContent>
-              </Select>
+
             </div>
           </div>
         </CardHeader>
@@ -320,17 +337,27 @@ export default function PaymentsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Client</TableHead>
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Total Billed</TableHead>
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Paid</TableHead>
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Pending</TableHead>
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-center">Overdue Since</TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("name")}>
+                    <div className="flex items-center">Client <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("totalBilled")}>
+                    <div className="flex items-center justify-end">Total Billed <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("totalPaid")}>
+                    <div className="flex items-center justify-end">Paid <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("pending")}>
+                    <div className="flex items-center justify-end">Pending <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("oldestDueDays")}>
+                    <div className="flex items-center justify-center">Overdue Since <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredClients.map((c) => (
-                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients`)}>
+                  <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/clients/${c.id}`)}>
                     <TableCell className="font-medium text-sm">{c.name}</TableCell>
                     <TableCell className="text-right text-sm text-blue-600 dark:text-blue-400">{fmt(c.totalBilled)}</TableCell>
                     <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{fmt(c.totalPaid)}</TableCell>
@@ -544,7 +571,7 @@ export default function PaymentsPage() {
             if (cId) affectedClients.add(cId);
           });
           for (const cId of affectedClients) {
-            const { data: cInvs } = await supabase.from("invoices").select("balance_due, status").eq("client_id", cId).neq("status", "void");
+            const { data: cInvs } = await supabase.from("invoices").select("balance_due, status").eq("client_id", cId).neq("status", "void").neq("status", "draft");
             const totalDue = (cInvs || []).reduce((s, i) => s + Number(i.balance_due || 0), 0);
             await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cId);
           }

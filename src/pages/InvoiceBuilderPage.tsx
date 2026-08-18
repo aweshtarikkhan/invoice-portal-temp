@@ -10,6 +10,7 @@ import { CURRENCIES, formatCurrency } from "@/lib/currency";
 import { formatSequenceNumber } from "@/lib/utils";
 import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
 import { stateCodeFromGstin } from "@/lib/gst";
+import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -19,9 +20,10 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
+
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
@@ -30,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
+import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import {
   DndContext,
   closestCenter,
@@ -447,6 +450,10 @@ export default function InvoiceBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [clientInvoices, setClientInvoices] = useState<any[]>([]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
+
+  const [contactPromptOpen, setContactPromptOpen] = useState(false);
+  const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
+  const [pendingAction, setPendingAction] = useState<"email" | "whatsapp" | null>(null);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
 
   const sensors = useSensors(
@@ -798,7 +805,28 @@ export default function InvoiceBuilderPage() {
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
-  const handleSave = async (status: "draft" | "sent" = "draft") => {
+  const handleActionClick = (action: "email" | "whatsapp") => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) {
+      toast({ title: "Select a client first", variant: "destructive" });
+      return;
+    }
+    if (action === "email" && !client.email) {
+      setContactPromptMissing("email");
+      setPendingAction("email");
+      setContactPromptOpen(true);
+      return;
+    }
+    if (action === "whatsapp" && !client.phone) {
+      setContactPromptMissing("phone");
+      setPendingAction("whatsapp");
+      setContactPromptOpen(true);
+      return;
+    }
+    handleSave("sent", action);
+  };
+
+  const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email" | "whatsapp") => {
     if (!clientId) {
       toast({ title: "Select a client", variant: "destructive" });
       return;
@@ -1001,8 +1029,6 @@ export default function InvoiceBuilderPage() {
       if (lineError) throw lineError;
 
       // Inventory: adjust stock for product items (only when invoice opts in)
-      // Restore prev quantities if the previous version of this invoice deducted stock,
-      // and subtract new quantities if the current save opts in.
       if (prevDeductStock || deductStock) {
         const delta: Record<string, number> = {};
         if (prevDeductStock) {
@@ -1074,6 +1100,52 @@ export default function InvoiceBuilderPage() {
         }).eq("id", org!.id);
       }
 
+      // Check Post Actions (Email / WhatsApp)
+      if (postAction === "email") {
+        const client = clients.find(c => c.id === clientId);
+        if (client?.email) {
+          await supabase.functions.invoke("send-document-email", {
+            body: { entityId: invoiceId, entityType: "invoice", recipientEmail: client.email }
+          });
+          toast({ title: "Invoice saved and emailed!" });
+        }
+      } else if (postAction === "whatsapp") {
+        const client = clients.find(c => c.id === clientId);
+        if (client?.phone) {
+          const { data: existing } = await supabase.from("portal_tokens").select("token").eq("entity_type", "invoice").eq("entity_id", invoiceId).maybeSingle();
+          let token = existing?.token;
+          if (!token) {
+            const { data } = await supabase.from("portal_tokens").insert({ org_id: org!.id, entity_type: "invoice", entity_id: invoiceId }).select("token").single();
+            token = data?.token;
+          }
+
+          const template = await getWhatsappTemplate(org!.id, "invoice");
+          const txt = compileWhatsappMessage(template, {
+            client_name: client.display_name,
+            document_no: invoiceNumber,
+            total: fmt(Number(calculateTotal())),
+            due_date: dueDate || "",
+            subtotal: fmt(Number(calculateSubtotal())),
+            tax: fmt(Number(calculateTax())),
+            discount: fmt(Number(discountTotal)),
+            tds: tdsEnabled && tdsPercentage > 0 ? fmt(Number(calculateTdsAmount())) : "0.00",
+            adjustment: adjustmentEnabled && adjustmentAmount ? fmt(Number(adjustmentAmount)) : "0.00",
+            items: lines.map(l => `- ${l.name || 'Item'} x${l.quantity}`).join('\n'),
+            portal_link: token ? `${window.location.origin}/portal/${token}` : "",
+            org_name: org!.name
+          });
+
+          await openWhatsappShare({
+            phone: client.phone,
+            message: txt,
+            orgId: org!.id
+          });
+          toast({ title: "Invoice saved and WhatsApp sent!" });
+        }
+      }
+
+
+
       toast({ title: status === "sent" ? "Invoice sent!" : "Invoice saved!" });
       navigate(`/invoices`);
     } catch (err: any) {
@@ -1105,31 +1177,50 @@ export default function InvoiceBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <ContactPromptDialog
+        open={contactPromptOpen}
+        onOpenChange={setContactPromptOpen}
+        entityType="client"
+        entityId={clientId || ""}
+        entityName={clients.find(c => c.id === clientId)?.display_name || ""}
+        missingField={contactPromptMissing}
+        onSuccess={(val) => {
+          setClients(prev => prev.map(c => c.id === clientId ? { ...c, [contactPromptMissing]: val } : c));
+          if (pendingAction) handleSave("sent", pendingAction);
+        }}
+      />
+      
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{id ? "Edit Invoice" : "New Invoice"}</h1>
         <div className="flex gap-2">
           <InvoiceSettingsSheet />
           <Button variant="outline" onClick={() => navigate("/invoices")}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
-            <Save className="mr-1 h-4 w-4" /> Save as Draft
+            <Save className="mr-1.5 h-4 w-4" /> Save as Draft
           </Button>
           <div className="flex">
-            <Button className="rounded-r-none" onClick={() => handleSave("sent")} disabled={saving}>
-              <Eye className="mr-1 h-4 w-4" /> Save and Send
+            <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
+              <Save className="mr-1.5 h-4 w-4" /> Save Invoice
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2" disabled={saving}>
+                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2.5 shadow-sm" disabled={saving}>
                   <ChevronDown className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => handleActionClick("email")}>
+                  <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("whatsapp")}>
+                  <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Save and WhatsApp
+                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
                   <Printer className="mr-2 h-4 w-4" /> Save and Print
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={async () => {
                   await handleSave("sent");
-                  // Copy portal share link
                   if (id) {
                     const { data: existing } = await supabase.from("portal_tokens").select("token").eq("entity_type", "invoice").eq("entity_id", id).maybeSingle();
                     let token = existing?.token;
@@ -1787,7 +1878,7 @@ export default function InvoiceBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
-              <Eye className="mr-1.5 h-4 w-4" /> Save and Send
+              <Save className="mr-1.5 h-4 w-4" /> Save Invoice
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1796,6 +1887,13 @@ export default function InvoiceBuilderPage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => handleActionClick("email")}>
+                  <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleActionClick("whatsapp")}>
+                  <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Save and WhatsApp
+                </DropdownMenuItem>
+
                 <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
                   <Printer className="mr-2 h-4 w-4" /> Save and Print
                 </DropdownMenuItem>

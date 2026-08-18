@@ -38,6 +38,7 @@ interface Employee {
   wage_type?: "monthly" | "daily" | "hourly";
   daily_rate?: number;
   hourly_rate?: number;
+  weekly_offs?: number[] | null;
 }
 
 const empty = {
@@ -49,6 +50,7 @@ const empty = {
   basic_percent: "50", hra_percent: "20",
   pf_applicable: false, esic_applicable: false,
   grant_portal_access: false, portal_password: "",
+  weekly_offs: [],
 };
 
 export default function EmployeesPage() {
@@ -66,10 +68,14 @@ export default function EmployeesPage() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [shifts, setShifts] = useState<any[]>([]);
   const [selectedShiftId, setSelectedShiftId] = useState<string>("none");
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docType, setDocType] = useState<string>("ID Proof");
   const [selectedEmpForStructure, setSelectedEmpForStructure] = useState<any | null>(null);
   const [structureModalOpen, setStructureModalOpen] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "monthly" | "wagers">("all");
   const [dailyWagesEnabled, setDailyWagesEnabled] = useState<boolean>(true);
+  const [weekOffEmp, setWeekOffEmp] = useState<any | null>(null);
+  const [quickWeekOffs, setQuickWeekOffs] = useState<number[]>([]);
 
   const load = async () => {
     if (!org?.id) return;
@@ -121,6 +127,8 @@ export default function EmployeesPage() {
       wage_type: presetType,
     });
     setSelectedShiftId("none");
+    setDocFile(null);
+    setDocType("ID Proof");
     setOpen(true);
   };
 
@@ -150,6 +158,7 @@ export default function EmployeesPage() {
       esic_applicable: !!e.esic_applicable,
       grant_portal_access: false,
       portal_password: "",
+      weekly_offs: e.weekly_offs || [],
     });
     // Fetch current shift assignment for this employee
     const { data: assignData } = await (supabase as any)
@@ -158,6 +167,8 @@ export default function EmployeesPage() {
       .eq("employee_id", e.id)
       .maybeSingle();
     setSelectedShiftId(assignData?.shift_id || "none");
+    setDocFile(null);
+    setDocType("ID Proof");
     setOpen(true);
   };
 
@@ -195,6 +206,7 @@ export default function EmployeesPage() {
       hra_percent: Number(form.hra_percent) || 0,
       pf_applicable: !!form.pf_applicable,
       esic_applicable: !!form.esic_applicable,
+      weekly_offs: (org as any).enable_individual_week_offs ? (form.weekly_offs || []) : null,
     };
 
     const q = editId
@@ -207,6 +219,24 @@ export default function EmployeesPage() {
 
     // Handle shift assignment
     if (empId) {
+      if (docFile) {
+        try {
+          const safeName = docFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const path = `${org.id}/${empId}/${Date.now()}_${safeName}`;
+          const { error: upErr } = await supabase.storage.from("employee-documents").upload(path, docFile);
+          if (!upErr) {
+            await (supabase as any).from("employee_documents").insert({
+              org_id: org.id, employee_id: empId, doc_type: docType, file_path: path, file_name: docFile.name
+            });
+            toast({ title: "Document uploaded successfully" });
+          } else {
+            toast({ title: "Document upload failed", description: upErr.message, variant: "destructive" });
+          }
+        } catch(e: any) {
+          console.error("Doc upload error", e);
+        }
+      }
+
       if (selectedShiftId && selectedShiftId !== "none") {
         await (supabase as any).from("employee_shifts").upsert(
           { org_id: org.id, employee_id: empId, shift_id: selectedShiftId, effective_from: new Date().toISOString().split("T")[0] },
@@ -280,6 +310,18 @@ export default function EmployeesPage() {
     else { toast({ title: "Deleted" }); load(); }
   };
 
+  const saveQuickWeekOff = async () => {
+    if (!weekOffEmp) return;
+    const { error } = await (supabase as any).from("employees").update({ weekly_offs: quickWeekOffs }).eq("id", weekOffEmp.id);
+    if (error) {
+      toast({ title: "Failed to update", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Week Offs Updated", description: `Updated week offs for ${weekOffEmp.name}` });
+      setWeekOffEmp(null);
+      load();
+    }
+  };
+
   // Filtered rows
   const filteredRows = useMemo(() => {
     if (activeTabFilter === "all") return rows;
@@ -310,12 +352,14 @@ export default function EmployeesPage() {
             <Plus className="h-4 w-4 mr-1.5" />New Employee
           </Button>
 
-          <Button
-            className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
-            onClick={() => openNew("daily")}
-          >
-            <HardHat className="h-4 w-4 mr-1.5" />+ Add Daily / Hourly Wager
-          </Button>
+          {dailyWagesEnabled && (
+            <Button
+              className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
+              onClick={() => openNew("daily")}
+            >
+              <HardHat className="h-4 w-4 mr-1.5" />+ Add Daily / Hourly Wager
+            </Button>
+          )}
         </div>
       </div>
 
@@ -330,10 +374,12 @@ export default function EmployeesPage() {
             <TabsTrigger value="monthly" className="text-xs">
               Monthly Salaried ({rows.filter(r => !r.wage_type || r.wage_type === 'monthly').length})
             </TabsTrigger>
-            <TabsTrigger value="wagers" className="text-xs text-amber-800 dark:text-amber-300 font-semibold">
-              <HardHat className="w-3.5 h-3.5 mr-1 text-amber-600" />
-              Daily & Hourly Wagers ({rows.filter(r => r.wage_type === 'daily' || r.wage_type === 'hourly').length})
-            </TabsTrigger>
+            {dailyWagesEnabled && (
+              <TabsTrigger value="wagers" className="text-xs text-amber-800 dark:text-amber-300 font-semibold">
+                <HardHat className="w-3.5 h-3.5 mr-1 text-amber-600" />
+                Daily & Hourly Wagers ({rows.filter(r => r.wage_type === 'daily' || r.wage_type === 'hourly').length})
+              </TabsTrigger>
+            )}
           </TabsList>
         </Tabs>
 
@@ -434,6 +480,19 @@ export default function EmployeesPage() {
                         </Button>
                       )}
                       <Button size="icon" variant="ghost" onClick={() => openEdit(e)}><Pencil className="h-4 w-4" /></Button>
+                      {((org as any)?.enable_individual_week_offs) && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          title="Change Week Off"
+                          onClick={() => {
+                            setWeekOffEmp(e);
+                            setQuickWeekOffs(e.weekly_offs || []);
+                          }}
+                        >
+                          <CalendarCheck className="h-4 w-4 text-blue-600" />
+                        </Button>
+                      )}
                       <Button size="icon" variant="ghost" onClick={() => remove(e.id)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   </TableCell>
@@ -454,54 +513,82 @@ export default function EmployeesPage() {
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 py-1">
             
-            {/* Employment & Wage Model Selection (Always Visible in Dialog) */}
-            <div className="col-span-2 p-3 bg-slate-50 dark:bg-slate-900/60 border rounded-lg space-y-2">
-              <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Employment & Wage Model</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, wage_type: "monthly" })}
-                  className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
-                    form.wage_type === "monthly" || !form.wage_type
-                      ? "border-primary bg-primary/5 text-primary font-bold shadow-sm"
-                      : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="font-semibold text-sm">Monthly Salaried</div>
-                  <div className="text-[10px] text-muted-foreground">Fixed monthly CTC & benefits</div>
-                </button>
+            {/* Employment & Wage Model Selection */}
+            {dailyWagesEnabled && (
+              <div className="col-span-2 p-3 bg-slate-50 dark:bg-slate-900/60 border rounded-lg space-y-2">
+                <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Employment & Wage Model</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, wage_type: "monthly" })}
+                    className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                      form.wage_type === "monthly" || !form.wage_type
+                        ? "border-primary bg-primary/5 text-primary font-bold shadow-sm"
+                        : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm">Monthly Salaried</div>
+                    <div className="text-[10px] text-muted-foreground">Fixed monthly CTC & benefits</div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, wage_type: "daily" })}
-                  className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
-                    form.wage_type === "daily"
-                      ? "border-amber-600 bg-amber-50 text-amber-900 font-bold shadow-sm"
-                      : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="font-semibold text-sm flex items-center gap-1">
-                    <HardHat className="w-3.5 h-3.5 text-amber-600" /> Daily Wager
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">Paid per day worked (₹/day)</div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, wage_type: "daily" })}
+                    className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                      form.wage_type === "daily"
+                        ? "border-amber-600 bg-amber-50 text-amber-900 font-bold shadow-sm"
+                        : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm flex items-center gap-1">
+                      <HardHat className="w-3.5 h-3.5 text-amber-600" /> Daily Wager
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Paid per day worked (₹/day)</div>
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, wage_type: "hourly" })}
-                  className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
-                    form.wage_type === "hourly"
-                      ? "border-purple-600 bg-purple-50 text-purple-900 font-bold shadow-sm"
-                      : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
-                  }`}
-                >
-                  <div className="font-semibold text-sm flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-purple-600" /> Hourly Wager
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">Paid per hour clocked (₹/hr)</div>
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm({ ...form, wage_type: "hourly" })}
+                    className={`p-2.5 rounded-lg border text-left text-xs transition-all ${
+                      form.wage_type === "hourly"
+                        ? "border-purple-600 bg-purple-50 text-purple-900 font-bold shadow-sm"
+                        : "bg-white dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300"
+                    }`}
+                  >
+                    <div className="font-semibold text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-purple-600" /> Hourly Wager
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">Paid per hour clocked (₹/hr)</div>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
+
+            {(org as any)?.enable_individual_week_offs && (
+              <div className="col-span-2 space-y-2 mb-2 p-3 bg-blue-50/50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg">
+                <Label className="text-blue-900 dark:text-blue-200">Individual Week Offs</Label>
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => {
+                    const isSelected = form.weekly_offs?.includes(idx);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          const current = form.weekly_offs || [];
+                          if (isSelected) setForm({ ...form, weekly_offs: current.filter((x: number) => x !== idx) });
+                          else setForm({ ...form, weekly_offs: [...current, idx] });
+                        }}
+                        className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${isSelected ? "bg-blue-600 text-white border-blue-600 font-medium shadow-sm" : "bg-white dark:bg-slate-800 text-muted-foreground border-slate-200 dark:border-slate-700 hover:border-blue-400"}`}
+                      >
+                        {day}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="text-[11px] text-blue-700/80 dark:text-blue-300/80">Select specific week off days for this employee (Rotational Shift logic).</p>
+              </div>
+            )}
 
             <div className="col-span-2">
               <Label>Full Name *</Label>
@@ -553,6 +640,8 @@ export default function EmployeesPage() {
               <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
 
+
+
             {/* Compensation Details based on Wage Type */}
             <div className="col-span-2 mt-2 pt-2 border-t">
               <div className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Compensation & Pay Rates</div>
@@ -594,6 +683,38 @@ export default function EmployeesPage() {
             )}
 
             {/* Optional Portal Access Setup on New Creation */}
+            <div className="col-span-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-sm font-medium mb-2 text-slate-800 dark:text-slate-200">Upload Document (Optional)</div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Document Type</Label>
+                  <Select value={docType} onValueChange={setDocType}>
+                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["Aadhaar", "PAN", "ID Proof", "Resume", "Other"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>File (Max 2MB)</Label>
+                  <Input type="file" className="mt-1" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) {
+                      if (f.size > 2 * 1024 * 1024) {
+                        toast({ title: "File too large", description: "Max file size is 2MB", variant: "destructive" });
+                        e.target.value = "";
+                        setDocFile(null);
+                      } else {
+                        setDocFile(f);
+                      }
+                    } else {
+                      setDocFile(null);
+                    }
+                  }} />
+                </div>
+              </div>
+            </div>
+
             {!editId && (
               <div className="col-span-2 mt-2 p-3 bg-blue-50/50 dark:bg-slate-900/50 border border-blue-200 dark:border-blue-900 rounded-lg space-y-3">
                 <div className="flex items-center justify-between">
@@ -720,6 +841,40 @@ export default function EmployeesPage() {
           currency={currency}
           onSaved={load}
         />
+      )}
+
+      {weekOffEmp && (
+        <Dialog open={!!weekOffEmp} onOpenChange={(o) => !o && setWeekOffEmp(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Change Week Off</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <p className="text-sm font-medium">Select week-off days for <span className="font-bold">{weekOffEmp.name}</span></p>
+              <div className="flex flex-wrap gap-2">
+                {["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day, idx) => {
+                  const isSelected = quickWeekOffs.includes(idx);
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (isSelected) setQuickWeekOffs(quickWeekOffs.filter((x) => x !== idx));
+                        else setQuickWeekOffs([...quickWeekOffs, idx]);
+                      }}
+                      className={`px-3 py-1.5 text-xs rounded-full border transition-colors ${isSelected ? "bg-blue-600 text-white border-blue-600 font-medium" : "bg-white dark:bg-slate-800 text-muted-foreground hover:border-blue-400"}`}
+                    >
+                      {day}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setWeekOffEmp(null)}>Cancel</Button>
+              <Button onClick={saveQuickWeekOff}>Save Changes</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

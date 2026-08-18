@@ -19,6 +19,7 @@ import { PlatformSettingsManager } from "@/components/admin/PlatformSettingsMana
 import { LandingPageReviewsManager } from "@/components/admin/LandingPageReviewsManager";
 
 
+
 interface UserData {
   user_id: string;
   first_name: string | null;
@@ -210,6 +211,7 @@ export default function PlatformAdminPage() {
           <TabsTrigger value="pricing" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <IndianRupee className="w-4 h-4 mr-2" /> Plans & Pricing
           </TabsTrigger>
+
           <TabsTrigger value="reviews" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <MessageSquare className="w-4 h-4 mr-2" /> Reviews
           </TabsTrigger>
@@ -613,6 +615,8 @@ export default function PlatformAdminPage() {
             <CouponsManager />
           </div>
         </TabsContent>
+
+
 
         {/* --- Reviews Tab --- */}
         <TabsContent value="reviews" className="space-y-8">

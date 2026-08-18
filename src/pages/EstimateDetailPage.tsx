@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown } from "lucide-react";
+import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown, MessageCircle } from "lucide-react";
 import { format } from "date-fns";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -14,6 +14,10 @@ import {
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
+import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
+import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 
 const statusVariants: Record<string, "default" | "info" | "success" | "warning" | "danger" | "muted"> = {
   draft: "muted", sent: "info", viewed: "default", accepted: "success",
@@ -152,10 +156,39 @@ export default function EstimateDetailPage() {
             </>
           )}
           {estimate.status !== "converted" && estimate.status !== "declined" && (
-            <Button onClick={handleConvertToInvoice}>
+            <Button onClick={handleConvertToInvoice} className="bg-blue-600 hover:bg-blue-700 text-white">
               <ArrowRightLeft className="mr-1 h-4 w-4" /> Convert to Invoice
             </Button>
           )}
+
+          <Button variant="outline" onClick={async () => {
+              if (!org || !estimate || !client) return;
+              const token = await getOrCreatePortalToken(org.id, "estimate", estimate.id);
+              
+              const template = await getWhatsappTemplate(org.id, "estimate");
+              const txt = compileWhatsappMessage(template, {
+                client_name: client.display_name,
+                document_no: estimate.estimate_number,
+                total: fmt(Number(estimate.total)),
+                due_date: estimate.expiry_date || "",
+                subtotal: fmt(Number(estimate.subtotal)),
+                tax: fmt(Number(estimate.tax_total)),
+                discount: fmt(Number(estimate.discount_total)),
+                tds: estimate.tds_amount ? fmt(Number(estimate.tds_amount)) : "0.00",
+                adjustment: estimate.adjustment ? fmt(Number(estimate.adjustment)) : "0.00",
+                items: lines.map(l => `- ${l.items?.name || 'Item'} x${l.quantity}`).join('\n'),
+                portal_link: token ? portalUrl(token) : "",
+                org_name: org.name
+              });
+
+              await openWhatsappShare({
+                phone: client.phone,
+                message: txt,
+                orgId: org.id
+              });
+            }}>
+            <MessageCircle className="mr-1 h-4 w-4 text-emerald-600" /> Send WhatsApp Text
+          </Button>
           <Button variant="outline" onClick={() => window.print()}>
             <FileDown className="mr-1 h-4 w-4" /> Save PDF
           </Button>
@@ -181,7 +214,7 @@ export default function EstimateDetailPage() {
         </Card>
       </div>
 
-      <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center">
+      <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center" id="invoice-print-view">
         <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
           <StyledInvoiceTemplate org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
         </div>

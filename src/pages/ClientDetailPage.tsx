@@ -80,21 +80,21 @@ export default function ClientDetailPage() {
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   // Analytics
-  const totalBilled = useMemo(() => invoices.filter(i => i.status !== "void").reduce((s, i) => s + Number(i.total), 0), [invoices]);
+  const totalBilled = useMemo(() => invoices.filter(i => i.status !== "void" && i.status !== "draft").reduce((s, i) => s + Number(i.total), 0), [invoices]);
   const totalPaid = useMemo(() => payments.reduce((s, p) => s + Number(p.amount), 0), [payments]);
-  const totalDue = useMemo(() => invoices.filter(i => i.status !== "void").reduce((s, i) => s + Number(i.balance_due), 0), [invoices]);
+  const totalDue = useMemo(() => invoices.filter(i => i.status !== "void" && i.status !== "draft").reduce((s, i) => s + Number(i.balance_due), 0), [invoices]);
   const overdueAmount = useMemo(() => {
     const today = new Date();
-    return invoices.filter(i => i.status !== "void" && i.status !== "paid" && new Date(i.due_date) < today)
+    return invoices.filter(i => i.status !== "void" && i.status !== "draft" && i.status !== "paid" && new Date(i.due_date) < today)
       .reduce((s, i) => s + Number(i.balance_due), 0);
   }, [invoices]);
-  const invoiceCount = invoices.filter(i => i.status !== "void").length;
+  const invoiceCount = invoices.filter(i => i.status !== "void" && i.status !== "draft").length;
   const paidCount = invoices.filter(i => i.status === "paid").length;
 
   // Monthly revenue chart
   const monthlyData = useMemo(() => {
     const map: Record<string, { billed: number; paid: number }> = {};
-    invoices.filter(i => i.status !== "void").forEach((inv) => {
+    invoices.filter(i => i.status !== "void" && i.status !== "draft").forEach((inv) => {
       const m = (inv.issue_date || "").slice(0, 7);
       if (!map[m]) map[m] = { billed: 0, paid: 0 };
       map[m].billed += Number(inv.total);
@@ -218,6 +218,9 @@ export default function ClientDetailPage() {
         <Button variant="outline" size="sm" onClick={() => navigate(`/statements/${id}`)}>
           <FileSpreadsheet className="mr-1 h-4 w-4" /> Statement
         </Button>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/payments/new?client_id=${id}`)}>
+          <CreditCard className="mr-1 h-4 w-4" /> Record Payment
+        </Button>
         <Button size="sm" onClick={() => navigate(`/invoices/new`)}>
           <FileText className="mr-1 h-4 w-4" /> New Invoice
         </Button>
@@ -252,7 +255,7 @@ export default function ClientDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">{fmt(totalDue)}</div>
-            <p className="text-xs text-muted-foreground mt-1">{invoices.filter(i => Number(i.balance_due) > 0 && i.status !== "void").length} unpaid</p>
+            <p className="text-xs text-muted-foreground mt-1">{invoices.filter(i => Number(i.balance_due) > 0 && i.status !== "void" && i.status !== "draft").length} unpaid</p>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-red-500">
@@ -384,7 +387,7 @@ export default function ClientDetailPage() {
                   </TableHeader>
                   <TableBody>
                     {processedInvoices.map((inv) => {
-                      const isOverdue = inv.status !== "paid" && inv.status !== "void" && new Date(inv.due_date) < new Date();
+                      const isOverdue = inv.status !== "paid" && inv.status !== "void" && inv.status !== "draft" && new Date(inv.due_date) < new Date();
                       return (
                         <TableRow key={inv.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/invoices/${inv.id}`)}>
                           <TableCell className="font-medium">{inv.invoice_number}</TableCell>

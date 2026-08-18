@@ -40,6 +40,8 @@ import {
   ShoppingCart,
   Shield,
   Warehouse,
+  MessageCircle,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -71,6 +73,9 @@ const salesItems = [
   { title: "Payments Received", url: "/payments", icon: CreditCard, addUrl: "/payments/new" },
   { title: "Delivery Challans", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
+  { title: "Emails", url: "/emails", icon: Send, addUrl: null },
+  { title: "Email Templates", url: "/email-templates", icon: MessageSquare, addUrl: null },
+  { title: "WhatsApp Chats", url: "/chats", icon: MessageCircle, addUrl: null },
 ];
 
 const purchaseItems = [
@@ -114,12 +119,14 @@ const reportItems = [
 ];
 
 const crmItems = [
+  { title: "CRM Dashboard", url: "/crm-dashboard", icon: BarChart3, addUrl: null },
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
 ];
 
 const marketingItems = [
+  { title: "Festival Posters", url: "/marketing/posters", icon: ImageIcon, addUrl: null },
   { title: "Campaigns", url: "/campaigns", icon: Send, addUrl: null },
   { title: "Templates", url: "/marketing/templates", icon: MessageSquare, addUrl: null },
   { title: "Journeys", url: "/journeys", icon: Workflow, addUrl: null },
@@ -192,7 +199,7 @@ export function AppSidebar() {
   // Default groups (always visible for admins, or if explicitly given permission)
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems },
-    { key: "catalog", label: "Catalog", items: catalogVisible },
+    { key: "catalog", label: "Inventory Management", items: catalogVisible },
   ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key));
 
   // Admin controlled groups - mapped from the feature store
@@ -227,7 +234,7 @@ export function AppSidebar() {
           if (i.icon === "Calculator") itemIcon = Calculator;
           if (i.icon === "Users") itemIcon = Users;
           if (i.icon === "BarChart3") itemIcon = BarChart3;
-          
+          if (i.icon === "Image") itemIcon = ImageIcon;
           return {
             title: i.title,
             url: i.url,
@@ -325,7 +332,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
+                <SidebarMenuButton asChild isActive={isActive("/dashboard")} tooltip={t("Dashboard")}>
                   <NavLink
                     to="/dashboard"
                     className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
@@ -352,6 +359,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       onClick={() => setOpenGroups(prev => ({ ...prev, [g.key]: !isOpen }))}
                       className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
+                      tooltip={t(g.label)}
                     >
                       {/* We can use the group icon if available, else a default one */}
                       {g.key === "sales" && <FileText className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
@@ -370,15 +378,19 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
-                  {(isOpen || collapsed) && g.items.map((item) => (
-                    <SidebarMenuItem key={item.title} className="group/item pl-6 mt-1">
-                      <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                  {isOpen && g.items.map((item) => (
+                    <SidebarMenuItem key={item.title} className={`group/item mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
+                      <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
                         <NavLink
                           to={item.url}
-                          className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400"
+                          className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
                           activeClassName="bg-blue-600/10 text-blue-400 font-medium"
                         >
-                          {!collapsed && <span className="text-sm">{t(item.title)}</span>}
+                          {collapsed ? (
+                            item.icon && <item.icon className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <span className="text-sm">{t(item.title)}</span>
+                          )}
                         </NavLink>
                       </SidebarMenuButton>
                       {!collapsed && item.addUrl && (
@@ -407,6 +419,7 @@ export function AppSidebar() {
                   onClick={() => setSettingsOpen(!settingsOpen)}
                   isActive={isSettingsActive}
                   className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
+                  tooltip={t("System & Settings")}
                 >
                   <Settings className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />
                   {!collapsed && (
@@ -417,15 +430,19 @@ export function AppSidebar() {
                   )}
                 </SidebarMenuButton>
               </SidebarMenuItem>
-              {(settingsOpen || isSettingsActive || collapsed) && settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title} className="pl-6 mt-1">
-                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+              {(settingsOpen || isSettingsActive) && settingsItems.map((item) => (
+                <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
                     <NavLink
                       to={item.url}
-                      className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400"
+                      className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
                       activeClassName="bg-blue-600/10 text-blue-400 font-medium"
                     >
-                      {!collapsed && <span className="text-sm">{t(item.title)}</span>}
+                      {collapsed ? (
+                        item.icon && <item.icon className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <span className="text-sm">{t(item.title)}</span>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -434,7 +451,7 @@ export function AppSidebar() {
               {/* Admin Panel link - hidden from staff */}
               {userRole !== 'staff' && (
                 <SidebarMenuItem className="mt-2">
-                  <SidebarMenuButton asChild isActive={isActive("/admin")}>
+                  <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={t("Business Settings")}>
                     <NavLink
                       to="/admin"
                       className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
@@ -457,6 +474,7 @@ export function AppSidebar() {
             <SidebarMenuButton
               onClick={signOut}
               className="w-full flex items-center gap-3 bg-transparent hover:bg-slate-800/50 text-slate-300 hover:text-white px-3 py-5 rounded-xl border border-slate-700/50 transition-all text-left"
+              tooltip={t("Sign Out")}
             >
               <LogOut className="h-4 w-4" />
               {!collapsed && <span className="font-medium text-sm">{t("Sign Out")}</span>}

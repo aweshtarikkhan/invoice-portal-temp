@@ -113,7 +113,7 @@ export default function ClientsPage() {
     ]);
     setClients(clientData || []);
     const agg: Record<string, { billed: number; received: number; due: number; lastActivity: string | null }> = {};
-    (invData || []).filter((i: any) => i.status !== "void").forEach((inv: any) => {
+    (invData || []).filter((i: any) => i.status !== "void" && i.status !== "draft").forEach((inv: any) => {
       if (!agg[inv.client_id]) agg[inv.client_id] = { billed: 0, received: 0, due: 0, lastActivity: null };
       agg[inv.client_id].billed += Number(inv.total || 0);
       agg[inv.client_id].received += Number(inv.amount_paid || 0);

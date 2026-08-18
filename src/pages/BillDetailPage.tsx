@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus, Copy } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy, MessageCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -18,6 +18,7 @@ import { postBillPaymentJournal } from "@/lib/accounting";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
+import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 export default function BillDetailPage() {
   const org = useAppStore((s) => s.organization);
   const { id } = useParams();
@@ -145,6 +146,31 @@ export default function BillDetailPage() {
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Bills</Button>
         <div className="flex gap-2">
+            <Button variant="outline" onClick={async () => {
+              if (!org || !bill || !vendor) return;
+              
+              const template = await getWhatsappTemplate(org.id, "bill");
+              const txt = compileWhatsappMessage(template, {
+                client_name: vendor.name,
+                document_no: bill.bill_number,
+                total: fmt(Number(bill.total)),
+                due_date: bill.due_date || bill.bill_date || "",
+                subtotal: fmt(Number(bill.subtotal)),
+                tax: fmt(Number(bill.tax_total)),
+                discount: fmt(Number(bill.discount_total)),
+                tds: bill.tds_amount ? fmt(Number(bill.tds_amount)) : "0.00",
+                adjustment: bill.adjustment ? fmt(Number(bill.adjustment)) : "0.00",
+                items: lines.map(l => `- ${l.item_name || 'Item'} x${l.quantity}`).join('\n'),
+                portal_link: "",
+                org_name: org.name
+              });
+
+              await openWhatsappShare({
+                phone: vendor.phone,
+                message: txt,
+                orgId: org.id
+              });
+            }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={() => navigate(`/bills/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}

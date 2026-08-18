@@ -5,12 +5,17 @@ import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy } from "lucide-react";
+import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
+import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
+
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
+import { useToast } from "@/hooks/use-toast";
 
 export default function PurchaseOrderDetailPage() {
   const org = useAppStore((s) => s.organization);
@@ -21,6 +26,7 @@ export default function PurchaseOrderDetailPage() {
   const [grns, setGrns] = useState<any[]>([]);
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     (async () => {
@@ -119,6 +125,31 @@ export default function PurchaseOrderDetailPage() {
           <Badge variant="outline" className={statusColor[po.status] || ""}>{po.status}</Badge>
         </div>
         <div className="flex gap-2">
+            <Button variant="outline" onClick={async () => {
+              if (!org || !po || !po.vendors) return;
+              
+              const template = await getWhatsappTemplate(org.id, "purchase_order");
+              const txt = compileWhatsappMessage(template, {
+                client_name: po.vendors.name,
+                document_no: po.po_number,
+                total: fmt(Number(po.total)),
+                due_date: po.delivery_date || "",
+                subtotal: fmt(Number(po.subtotal)),
+                tax: fmt(Number(po.tax_total)),
+                discount: fmt(Number(po.discount_total)),
+                tds: "0.00",
+                adjustment: po.adjustment ? fmt(Number(po.adjustment)) : "0.00",
+                items: lines.map(l => `- ${l.item_name || 'Item'} x${l.quantity}`).join('\n'),
+                portal_link: "",
+                org_name: org.name
+              });
+
+              await openWhatsappShare({
+                phone: po.vendors.phone,
+                message: txt,
+                orgId: org.id
+              });
+            }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Print / Download PDF</Button>
           <Button variant="outline" onClick={() => navigate(`/purchase-orders/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>

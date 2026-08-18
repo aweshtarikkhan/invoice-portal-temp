@@ -28,7 +28,7 @@ export default function ProfitLossPage() {
     const fetch = async () => {
       setLoading(true);
       const [inv, pay, exp] = await Promise.all([
-        supabase.from("invoices").select("total, total_tax, total_discount, issue_date, status").eq("org_id", org.id).neq("status", "void"),
+        supabase.from("invoices").select("total, total_tax, total_discount, issue_date, status").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("amount, payment_date").eq("org_id", org.id),
         supabase.from("business_expenses").select("amount, expense_date, category").eq("org_id", org.id),
       ]);

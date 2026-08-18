@@ -38,6 +38,7 @@ export function CorporateBlueInvoiceTemplate({
   const darkNavy = "#002060";
   const lightBlueBg = "#eef4ff";
   const lightBorder = "#c7d2fe";
+  const hasGst = Boolean(org?.gst_number);
 
   const clientName = (invoice.clients as any)?.display_name || (invoice.vendors as any)?.name || (invoice.vendors as any)?.display_name || invoice.client_name || "Client Name";
   const clientGst = (invoice.clients as any)?.tax_number || (invoice.vendors as any)?.tax_number || invoice.client_gst;
@@ -388,11 +389,11 @@ export function CorporateBlueInvoiceTemplate({
                   <div key={tb.rate}>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                       <span style={{ color: "#475569" }}>CGST @ {halfRate}%</span>
-                      <span style={{ fontWeight: 700 }}>{currencySymbol} {halfTax.toFixed(2)}</span>
+                      <span style={{ fontWeight: 700 }}>{fmt(halfTax)}</span>
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                       <span style={{ color: "#475569" }}>SGST @ {halfRate}%</span>
-                      <span style={{ fontWeight: 700 }}>{currencySymbol} {halfTax.toFixed(2)}</span>
+                      <span style={{ fontWeight: 700 }}>{fmt(halfTax)}</span>
                     </div>
                   </div>
                 );
@@ -400,7 +401,7 @@ export function CorporateBlueInvoiceTemplate({
                 return (
                   <div key={tb.rate} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                     <span style={{ color: "#475569" }}>IGST @ {tb.rate}%</span>
-                    <span style={{ fontWeight: 700 }}>{currencySymbol} {tb.amount.toFixed(2)}</span>
+                    <span style={{ fontWeight: 700 }}>{fmt(tb.amount)}</span>
                   </div>
                 );
               }
@@ -409,7 +410,7 @@ export function CorporateBlueInvoiceTemplate({
             taxBreakdown.map((tb, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
                 <span style={{ color: "#475569" }}>{tb.name}</span>
-                <span style={{ fontWeight: 700 }}>{currencySymbol} {tb.amount.toFixed(2)}</span>
+                <span style={{ fontWeight: 700 }}>{fmt(tb.amount)}</span>
               </div>
             ))
           ) : null}

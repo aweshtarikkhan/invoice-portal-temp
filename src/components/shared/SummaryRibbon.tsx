@@ -5,6 +5,7 @@ interface SummaryItem {
   value: ReactNode;
   accent?: "default" | "success" | "warning" | "danger" | "info";
   hint?: string;
+  onClick?: () => void;
 }
 
 interface SummaryRibbonProps {
@@ -30,18 +31,34 @@ export function SummaryRibbon({ label, items }: SummaryRibbonProps) {
     <section className="space-y-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
       <div className={`grid grid-cols-1 ${cols} gap-4`}>
-        {items.map((it, i) => (
-          <div
-            key={i}
-            className="rounded-2xl bg-card border border-border/60 shadow-sm px-6 py-5 transition-all hover:shadow-md hover:-translate-y-0.5"
-          >
-            <p className="text-sm font-medium text-muted-foreground mb-2">{it.label}</p>
-            <p className={`text-2xl md:text-[28px] font-bold leading-tight ${accentClass[it.accent || "default"]}`}>
-              {it.value}
-            </p>
-            {it.hint && <p className="text-xs text-muted-foreground mt-1">{it.hint}</p>}
-          </div>
-        ))}
+        {items.map((it, i) => {
+          const content = (
+            <>
+              <p className="text-sm font-medium text-muted-foreground mb-2">{it.label}</p>
+              <p className={`text-2xl md:text-[28px] font-bold leading-tight ${accentClass[it.accent || "default"]}`}>
+                {it.value}
+              </p>
+              {it.hint && <p className="text-xs text-muted-foreground mt-1">{it.hint}</p>}
+            </>
+          );
+          
+          return it.onClick ? (
+            <button
+              key={i}
+              onClick={it.onClick}
+              className="rounded-2xl bg-card border border-border/60 shadow-sm px-6 py-5 transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
+              {content}
+            </button>
+          ) : (
+            <div
+              key={i}
+              className="rounded-2xl bg-card border border-border/60 shadow-sm px-6 py-5 transition-all hover:shadow-md hover:-translate-y-0.5"
+            >
+              {content}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

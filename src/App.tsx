@@ -29,6 +29,7 @@ const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
 const RecordPaymentPage = lazy(() => import("./pages/RecordPaymentPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const EmailTemplatesPage = lazy(() => import("./pages/EmailTemplatesPage"));
 const CreditNotesPage = lazy(() => import("./pages/CreditNotesPage"));
 const CreditNoteBuilderPage = lazy(() => import("./pages/CreditNoteBuilderPage"));
 const CreditNoteDetailPage = lazy(() => import("./pages/CreditNoteDetailPage"));
@@ -45,6 +46,7 @@ const RecurringInvoicesPage = lazy(() => import("./pages/RecurringInvoicesPage")
 const GstReturnsPage = lazy(() => import("./pages/GstReturnsPage"));
 const DemoAutoLoginPage = lazy(() => import("./pages/DemoAutoLoginPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
+const ChatUIPage = lazy(() => import("./pages/ChatUIPage"));
 const VendorsPage = lazy(() => import("./pages/VendorsPage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const BillBuilderPage = lazy(() => import("./pages/BillBuilderPage"));
@@ -73,15 +75,20 @@ const EmployeeDocumentsPage = lazy(() => import("./pages/EmployeeDocumentsPage")
 const PayrollPage = lazy(() => import("./pages/PayrollPage"));
 const PayrollRunDetailPage = lazy(() => import("./pages/PayrollRunDetailPage"));
 const LeadsPage = lazy(() => import("./pages/LeadsPage"));
+const LeadDetailPage = lazy(() => import("./pages/LeadDetailPage"));
 const PipelinePage = lazy(() => import("./pages/PipelinePage"));
 const ActivitiesPage = lazy(() => import("./pages/ActivitiesPage"));
 const MarketingTemplatesPage = lazy(() => import("./pages/MarketingTemplatesPage"));
+const MarketingPostersPage = lazy(() => import("./pages/MarketingPostersPage"));
 const CampaignsPage = lazy(() => import("./pages/CampaignsPage"));
 const CampaignDetailPage = lazy(() => import("./pages/CampaignDetailPage"));
 const JourneysPage = lazy(() => import("./pages/JourneysPage"));
 const MessageLogsPage = lazy(() => import("./pages/MessageLogsPage"));
+const EmailPage = lazy(() => import("./pages/EmailPage"));
 const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
 const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
+const DealDetailPage = lazy(() => import("./pages/DealDetailPage"));
+const CRMDashboardPage = lazy(() => import("./pages/CRMDashboardPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
@@ -164,6 +171,8 @@ const App = () => (
               <Route element={<FeatureGuard featureKey="sales" featureName="Sales" />}>
                 <Route path="/statements" element={<CustomerStatementPage />} />
                 <Route path="/statements/:clientId" element={<CustomerStatementPage />} />
+                <Route path="/emails" element={<EmailPage />} />
+                <Route path="/chats" element={<ChatUIPage />} />
               </Route>
               <Route element={<FeatureGuard featureKey="purchases" featureName="Purchases" />}>
                 <Route path="/vendors" element={<VendorsPage />} />
@@ -200,11 +209,15 @@ const App = () => (
 
 
               <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
+                <Route path="/crm-dashboard" element={<CRMDashboardPage />} />
                 <Route path="/leads" element={<LeadsPage />} />
+                <Route path="/leads/:id" element={<LeadDetailPage />} />
                 <Route path="/pipeline" element={<PipelinePage />} />
+                <Route path="/pipeline/:id" element={<DealDetailPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
               </Route>
               <Route element={<FeatureGuard featureKey="marketing" featureName="Marketing" />}>
+                <Route path="/marketing/posters" element={<MarketingPostersPage />} />
                 <Route path="/marketing/templates" element={<MarketingTemplatesPage />} />
                 <Route path="/campaigns" element={<CampaignsPage />} />
                 <Route path="/campaigns/:id" element={<CampaignDetailPage />} />
@@ -212,6 +225,7 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/email-templates" element={<EmailTemplatesPage />} />
             </Route>
 
             {/* Public portal */}

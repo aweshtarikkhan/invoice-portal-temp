@@ -58,7 +58,7 @@ export default function JourneysPage() {
     setSteps([...steps, {
       sort_order: steps.length,
       step_type: type,
-      channel: type === "send_message" ? "whatsapp" : null,
+      channel: type === "send_message" ? "sms" : null,
       template_id: null,
       wait_hours: type === "wait" ? 24 : 0,
       _new: true,
@@ -187,7 +187,7 @@ export default function JourneysPage() {
                           <Select value={s.channel} onValueChange={(v) => updateStep(i, { channel: v, template_id: null })}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="whatsapp">WhatsApp</SelectItem>
+
                               <SelectItem value="sms">SMS</SelectItem>
                             </SelectContent>
                           </Select>

@@ -272,7 +272,7 @@ export default function DashboardPage() {
       seedHrCrmData(org.id);
 
       const [invRes, payRes, recentRes, clientRes, linesRes, expRes] = await Promise.all([
-        supabase.from("invoices").select("balance_due, status, due_date, total, issue_date, created_at, amount_paid, client_id").eq("org_id", org.id).neq("status", "void"),
+        supabase.from("invoices").select("balance_due, status, due_date, total, issue_date, created_at, amount_paid, client_id").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("amount, payment_date, payment_mode, client_id").eq("org_id", org.id),
         supabase.from("invoices").select("*, clients(display_name)").eq("org_id", org.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("clients").select("id, display_name, created_at").eq("org_id", org.id),
@@ -1474,7 +1474,7 @@ export default function DashboardPage() {
       {(() => {
         const today = new Date();
         const overdueList = recentInvoices
-          .filter((i) => Number(i.balance_due) > 0 && i.due_date && new Date(i.due_date) < today && i.status !== "void" && i.status !== "paid")
+          .filter((i) => Number(i.balance_due) > 0 && i.due_date && new Date(i.due_date) < today && i.status !== "void" && i.status !== "draft" && i.status !== "paid")
           .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
           .slice(0, 4);
         const inventoryOn = !!(org as any)?.inventory_enabled;

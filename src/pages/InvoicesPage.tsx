@@ -49,7 +49,7 @@ const invoiceImportFields: ImportField[] = [
   { key: "amount_paid", label: "Amount Paid" },
 ];
 
-const statusTabs = ["all", "draft", "sent", "overdue", "partial", "paid", "void"] as const;
+const statusTabs = ["all", "outstanding", "dueToday", "dueIn30", "overdue", "draft", "sent", "partial", "paid", "void"] as const;
 
 export default function InvoicesPage() {
   const navigate = useNavigate();
@@ -98,18 +98,18 @@ export default function InvoicesPage() {
     
     // Outstanding = ALL invoices with balance_due > 0 (except void)
     const outstanding = invoices
-      .filter(i => i.status !== "void" && Number(i.balance_due || 0) > 0)
+      .filter(i => i.status !== "void" && i.status !== "draft" && Number(i.balance_due || 0) > 0)
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Due today
     const dueToday = invoices
-      .filter(i => i.status !== "void" && i.status !== "paid" && Number(i.balance_due || 0) > 0 && i.due_date && isToday(parseISO(i.due_date)))
+      .filter(i => i.status !== "void" && i.status !== "draft" && i.status !== "paid" && Number(i.balance_due || 0) > 0 && i.due_date && isToday(parseISO(i.due_date)))
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Due within 30 days (future, not overdue)
     const dueIn30 = invoices
       .filter(i => {
-        if (i.status === "void" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
+        if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
         const due = parseISO(i.due_date);
         return !isToday(due) && isBefore(due, addDays(today, 31)) && !isBefore(due, today);
       })
@@ -118,7 +118,7 @@ export default function InvoicesPage() {
     // Overdue = balance_due > 0 AND due_date < today (dynamic check, not just status)
     const overdue = invoices
       .filter(i => {
-        if (i.status === "void" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
+        if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
         return isBefore(parseISO(i.due_date), today) && !isToday(parseISO(i.due_date));
       })
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
@@ -129,11 +129,29 @@ export default function InvoicesPage() {
       ? Math.round(paidInvoices.reduce((sum, i) => sum + differenceInDays(parseISO(i.paid_at), parseISO(i.issue_date)), 0) / paidInvoices.length)
       : 0;
 
-    return { outstanding, dueToday, dueIn30, overdue, avgDays };
+    const paymentsReceived = invoices
+      .filter(i => i.status !== "void" && i.status !== "draft")
+      .reduce((sum, i) => sum + Number(i.amount_paid || 0), 0);
+
+    return { outstanding, dueToday, dueIn30, overdue, avgDays, paymentsReceived };
   }, [invoices]);
 
   const filtered = invoices
-    .filter((i) => tab === "all" || i.status === tab)
+    .filter((i) => {
+      if (tab === "all") return true;
+      if (tab === "outstanding") return i.status !== "void" && i.status !== "draft" && Number(i.balance_due || 0) > 0;
+      if (tab === "dueToday") return i.status !== "void" && i.status !== "draft" && i.status !== "paid" && Number(i.balance_due || 0) > 0 && i.due_date && isToday(parseISO(i.due_date));
+      if (tab === "dueIn30") {
+        if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
+        const due = parseISO(i.due_date);
+        return !isToday(due) && isBefore(due, addDays(new Date(), 31)) && !isBefore(due, new Date());
+      }
+      if (tab === "overdue") {
+        if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
+        return isBefore(parseISO(i.due_date), new Date()) && !isToday(parseISO(i.due_date));
+      }
+      return i.status === tab;
+    })
     .filter((i) =>
       [i.invoice_number, (i.clients as any)?.display_name]
         .filter(Boolean)
@@ -299,11 +317,11 @@ export default function InvoicesPage() {
       <SummaryRibbon
         label="Payment Summary"
         items={[
-          { label: "Total Outstanding", value: fmt(summary.outstanding), accent: "warning" },
-          { label: "Due Today", value: fmt(summary.dueToday), accent: "warning" },
-          { label: "Due Within 30 Days", value: fmt(summary.dueIn30), accent: "default" },
-          { label: "Overdue", value: fmt(summary.overdue), accent: "danger" },
-          { label: "Avg. Days to Get Paid", value: `${summary.avgDays} Days`, accent: "info" },
+          { label: "Total Outstanding", value: fmt(summary.outstanding), accent: "warning", onClick: () => setTab("outstanding") },
+          { label: "Due Today", value: fmt(summary.dueToday), accent: "warning", onClick: () => setTab("dueToday") },
+          { label: "Due Within 30 Days", value: fmt(summary.dueIn30), accent: "default", onClick: () => setTab("dueIn30") },
+          { label: "Overdue", value: fmt(summary.overdue), accent: "danger", onClick: () => setTab("overdue") },
+          { label: "Payments Received", value: fmt(summary.paymentsReceived), accent: "success", onClick: () => navigate("/payments") },
         ]}
       />
 
@@ -312,7 +330,9 @@ export default function InvoicesPage() {
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList>
             {statusTabs.map((s) => (
-              <TabsTrigger key={s} value={s} className="capitalize text-xs">{s}</TabsTrigger>
+              <TabsTrigger key={s} value={s} className="capitalize text-xs">
+                {s === "dueToday" ? "Due Today" : s === "dueIn30" ? "Due in 30" : s}
+              </TabsTrigger>
             ))}
           </TabsList>
         </Tabs>

@@ -24,12 +24,14 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
 import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
+import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
+
 
 export default function SettingsPage() {
   const org = useAppStore((s) => s.organization);
@@ -40,6 +42,7 @@ export default function SettingsPage() {
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get("tab") || "organization";
   const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
@@ -49,7 +52,7 @@ export default function SettingsPage() {
 
   // Org form
   const [orgForm, setOrgForm] = useState({
-    name: "", email: "", phone: "", website: "",
+    name: "", email: "", phone: "", website: "", logo_url: "",
     tax_number: "", tax_name: "", currency_code: "INR",
     invoice_prefix: "INV", payment_terms: 30,
     default_notes: "", default_terms: "",
@@ -59,6 +62,8 @@ export default function SettingsPage() {
     inventory_enabled: false, low_stock_threshold: 5,
     multi_warehouse_enabled: false,
     sub_unit_enabled: false,
+    enable_individual_week_offs: false,
+    automate_overdue_reminders: false,
   });
   const [isFetchingGst, setIsFetchingGst] = useState(false);
 
@@ -81,7 +86,7 @@ export default function SettingsPage() {
     if (!org) return;
     setOrgForm({
       name: org.name || "", email: org.email || "", phone: org.phone || "",
-      website: org.website || "", tax_number: org.tax_number || "", tax_name: org.tax_name || "",
+      website: org.website || "", logo_url: org.logo_url || "", tax_number: org.tax_number || "", tax_name: org.tax_number || "",
       currency_code: org.currency_code || "INR", invoice_prefix: org.invoice_prefix || "INV",
       payment_terms: org.payment_terms || 30, default_notes: org.default_notes || "",
       default_terms: org.default_terms || "",
@@ -93,6 +98,8 @@ export default function SettingsPage() {
       low_stock_threshold: Number((org as any).low_stock_threshold ?? 5),
       multi_warehouse_enabled: (org as any).multi_warehouse_enabled || false,
       sub_unit_enabled: (org as any).sub_unit_enabled || false,
+      enable_individual_week_offs: (org as any).enable_individual_week_offs || false,
+      automate_overdue_reminders: (org as any).automate_overdue_reminders || false,
     });
     fetchTaxRates();
   }, [org]);
@@ -121,7 +128,16 @@ export default function SettingsPage() {
 
   const saveOrg = async () => {
     if (!org?.id) return;
-    const { error } = await supabase.from("organizations").update(orgForm).eq("id", org.id);
+
+    // Strip out frontend-only fields that do not exist in the DB schema yet
+    const { 
+      sub_unit_enabled, 
+      enable_individual_week_offs, 
+      automate_overdue_reminders,
+      ...dbOrgForm 
+    } = orgForm as any;
+
+    const { error } = await supabase.from("organizations").update(dbOrgForm).eq("id", org.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
@@ -158,6 +174,32 @@ export default function SettingsPage() {
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !org?.id) return;
+    
+    setIsUploadingLogo(true);
+    toast({ title: "Uploading logo...", description: "Please wait" });
+    const fileExt = file.name.split('.').pop();
+    const fileName = `logo_${Date.now()}.${fileExt}`;
+    const path = `${org.id}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage.from("org-logos").upload(path, file, { upsert: true });
+    
+    if (uploadError) {
+      toast({ title: "Upload Failed", description: uploadError.message, variant: "destructive" });
+      setIsUploadingLogo(false);
+      return;
+    }
+
+    const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path);
+    
+    setOrgForm(prev => ({ ...prev, logo_url: publicUrl }));
+    setIsUploadingLogo(false);
+    toast({ title: "Logo uploaded!", description: "Click 'Save Changes' below to apply." });
+  };
+
+
   const saveTaxRate = async () => {
     if (!taxForm.name.trim()) return;
     const { error } = await supabase.from("tax_rates").insert({
@@ -191,9 +233,14 @@ export default function SettingsPage() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
+          <TabsTrigger value="email">Email Settings</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="email" className="space-y-6 mt-4">
+          <EmailSettingsTab />
+        </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-4">
           <Card>
@@ -295,6 +342,35 @@ export default function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">Enter GST to auto-fetch business name & address. Leave blank if not registered.</p>
+              </div>
+
+              <div className="mb-6 space-y-2 border-b pb-6">
+                <Label className="text-base font-semibold">Organization Logo</Label>
+                <div className="flex items-center gap-6 mt-2">
+                  {orgForm.logo_url ? (
+                    <div className="relative group border rounded-md p-2 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex items-center justify-center">
+                      <img src={orgForm.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                      <button 
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={() => setOrgForm({ ...orgForm, logo_url: "" })}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border border-dashed rounded-md p-4 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex flex-col items-center justify-center text-muted-foreground text-xs text-center">
+                      <Building2 className="h-8 w-8 mb-2 opacity-50" />
+                      No logo
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="org-logo-upload" className="cursor-pointer inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
+                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Upload Logo"}
+                    </Label>
+                    <input id="org-logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
+                    <p className="text-xs text-muted-foreground max-w-[200px]">This logo will appear on your Invoices, Estimates, Bills, POs, and Posters. Recommended: 400x400 PNG/JPG.</p>
+                  </div>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -520,6 +596,25 @@ export default function SettingsPage() {
                       <p className="text-xs text-muted-foreground">Allows selling products in smaller sub-units.</p>
                     </div>
                     <Switch checked={orgForm.sub_unit_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, sub_unit_enabled: v })} />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Bell className="h-5 w-5 text-purple-400" />
+                    Automations
+                  </CardTitle>
+                  <CardDescription>Automate tasks and reminders</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-base font-medium">Automate Overdue Reminders</Label>
+                      <p className="text-sm text-slate-400">Automatically send WhatsApp and Email reminders when invoices become overdue.</p>
+                    </div>
+                    <Switch checked={orgForm.automate_overdue_reminders} onCheckedChange={(v) => setOrgForm({ ...orgForm, automate_overdue_reminders: v })} />
                   </div>
                 </CardContent>
               </Card>

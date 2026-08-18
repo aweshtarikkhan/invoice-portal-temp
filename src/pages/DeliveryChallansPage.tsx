@@ -63,43 +63,7 @@ export default function DeliveryChallansPage() {
     setModalOpen(true);
   };
 
-  // Direct WhatsApp from list
-  const handleQuickWhatsApp = (challan: any) => {
-    const rawPhone = challan.driver_phone || challan.clients?.phone || "";
-    const cleanPhone = rawPhone.replace(/\D/g, "");
 
-    if (!cleanPhone) {
-      openPreview(challan);
-      return;
-    }
-
-    const formattedPhone = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
-    const itemsText = (challan.delivery_challan_lines || [])
-      .map((l: any, i: number) => `${i + 1}. *${l.description}* - Qty: ${l.quantity} ${l.unit || "units"}`)
-      .join("\n");
-
-    const totalQty = (challan.delivery_challan_lines || []).reduce((s: number, l: any) => s + (Number(l.quantity) || 0), 0);
-
-    const msg = `🚚 *DELIVERY CHALLAN DISPATCH*
-━━━━━━━━━━━━━━━━━━━━
-📄 *Challan No:* ${challan.challan_number}
-📅 *Date:* ${format(new Date(challan.challan_date), "dd MMM yyyy")}
-🏢 *From:* ${org?.name || "Sender"}
-📍 *To:* ${challan.clients?.display_name || "Consignee"} (${challan.destination || "Destination"})
-🚛 *Vehicle No:* ${challan.vehicle_number || "N/A"}
-👤 *Transporter:* ${challan.transporter || "Direct Delivery"}
-${challan.eway_bill_number ? `📋 *E-Way Bill:* ${challan.eway_bill_number}\n` : ""}
-📦 *Items Loaded:*
-${itemsText || "Goods as per challan"}
-*Total Items:* ${totalQty}
-
-⚠️ *Driver Instruction:* Please ensure count matches on delivery & collect receiver stamp/signature.
-━━━━━━━━━━━━━━━━━━━━`;
-
-    const url = `https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`;
-    window.open(url, "_blank");
-    toast({ title: "Opening WhatsApp with trip details" });
-  };
 
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
@@ -274,15 +238,7 @@ ${itemsText || "Goods as per challan"}
                       <TableCell>{getStatusBadge(r.status)}</TableCell>
                       <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                            title="WhatsApp Driver"
-                            onClick={() => handleQuickWhatsApp(r)}
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                          </Button>
+
                           <Button
                             size="icon"
                             variant="ghost"

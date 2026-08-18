@@ -28,7 +28,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ name: "", channel: "whatsapp", template_id: "", audience_type: "all" });
+  const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all" });
 
   const load = async () => {
     if (!org) return;
@@ -81,7 +81,7 @@ export default function CampaignsPage() {
 
     toast.success(`Campaign created with ${audience.length} recipients`);
     setOpen(false);
-    setForm({ name: "", channel: "whatsapp", template_id: "", audience_type: "all" });
+    setForm({ name: "", channel: "sms", template_id: "", audience_type: "all" });
     load();
   };
 
@@ -108,7 +108,7 @@ export default function CampaignsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Marketing Campaigns</h1>
-          <p className="text-sm text-muted-foreground">Bulk WhatsApp & SMS broadcasts to your contacts.</p>
+          <p className="text-sm text-muted-foreground">Bulk SMS broadcasts to your contacts.</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
@@ -163,7 +163,7 @@ export default function CampaignsPage() {
               <Select value={form.channel} onValueChange={(v) => setForm({ ...form, channel: v, template_id: "" })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+
                   <SelectItem value="sms">SMS</SelectItem>
                 </SelectContent>
               </Select>

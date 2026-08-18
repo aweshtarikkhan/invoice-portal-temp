@@ -274,11 +274,11 @@ export default function RecordPaymentPage() {
         .limit(100);
 
       let maxSeq = 0;
-      const regex = new RegExp(`^${prefix}-(\\d+)`, "i");
       for (const p of latestPayments || []) {
-        const match = p.payment_number?.match(regex);
-        if (match) {
-          const n = parseInt(match[1], 10);
+        if (!p.payment_number) continue;
+        const matches = p.payment_number.match(/\d+/g);
+        if (matches && matches.length > 0) {
+          const n = parseInt(matches[matches.length - 1], 10);
           if (!isNaN(n) && n > maxSeq) maxSeq = n;
         }
       }
@@ -343,7 +343,7 @@ export default function RecordPaymentPage() {
       }
 
       // Sync client opening_balance
-      const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId).neq("status", "void");
+      const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId).neq("status", "void").neq("status", "draft");
       const totalDue = (cInvs || []).reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
       await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
 

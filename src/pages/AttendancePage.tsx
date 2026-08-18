@@ -78,6 +78,7 @@ export default function AttendancePage() {
   const [newHoliday, setNewHoliday] = useState({ name: "", date: "", type: "company" });
   const [weeklyOffs, setWeeklyOffs] = useState<number[]>(org?.weekly_offs || [0]);
   const [dailyWagesEnabled, setDailyWagesEnabled] = useState<boolean>(!!(org as any)?.daily_wages_enabled);
+  const [enableIndividualWeekOffs, setEnableIndividualWeekOffs] = useState<boolean>(!!(org as any)?.enable_individual_week_offs);
   const [dailyDate, setDailyDate] = useState(() => format(new Date(), "yyyy-MM-dd"));
   const [dailyLogs, setDailyLogs] = useState<Record<string, any>>({});
   const [loadingDaily, setLoadingDaily] = useState(false);
@@ -137,6 +138,7 @@ export default function AttendancePage() {
     if (org) {
       if (org.weekly_offs) setWeeklyOffs(org.weekly_offs);
       setDailyWagesEnabled(!!(org as any).daily_wages_enabled);
+      setEnableIndividualWeekOffs(!!(org as any).enable_individual_week_offs);
     }
   }, [org]);
 
@@ -237,7 +239,10 @@ export default function AttendancePage() {
         const key = `${emp.id}|${ds}`;
         if (map[key]) return; // HR already set this → skip
 
-        const isOff = orgWeeklyOffs.includes(d.getDay());
+        const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
+          ? emp.weekly_offs
+          : orgWeeklyOffs;
+        const isOff = effectiveWeeklyOffs.includes(d.getDay());
         const isHoliday = holsList.some((h: any) => h.date === ds);
         if (isOff || isHoliday) { map[key] = "holiday"; return; }
 
@@ -458,7 +463,10 @@ export default function AttendancePage() {
       
       const records = rangeDays.map((d) => {
         const ds = format(d, "yyyy-MM-dd");
-        const isOff = orgWeeklyOffs.includes(d.getDay());
+        const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(selectedEmpDetail.weekly_offs) && selectedEmpDetail.weekly_offs.length > 0)
+          ? selectedEmpDetail.weekly_offs
+          : orgWeeklyOffs;
+        const isOff = effectiveWeeklyOffs.includes(d.getDay());
         const isHoliday = holidays.some(h => h.date === ds);
         const approvedLeave = approvedLeaveMap[`${selectedEmpDetail.id}|${ds}`];
         const clk = clkMap[ds];
@@ -756,12 +764,13 @@ export default function AttendancePage() {
     const { error } = await (supabase as any).from("organizations").update({
       weekly_offs: weeklyOffs,
       daily_wages_enabled: dailyWagesEnabled,
+      enable_individual_week_offs: enableIndividualWeekOffs,
     }).eq("id", org.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: "Settings Saved", description: "Attendance & Wages settings updated successfully." });
-      setOrganization({ ...org, weekly_offs: weeklyOffs, daily_wages_enabled: dailyWagesEnabled } as any);
+      setOrganization({ ...org, weekly_offs: weeklyOffs, daily_wages_enabled: dailyWagesEnabled, enable_individual_week_offs: enableIndividualWeekOffs } as any);
     }
   };
 
@@ -1006,6 +1015,7 @@ export default function AttendancePage() {
       <Tabs defaultValue="monthly" className="w-full">
         <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
+          <TabsTrigger value="roster">Roster Planner</TabsTrigger>
           <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
           <TabsTrigger value="leaves">Leave Requests</TabsTrigger>
           <TabsTrigger value="regularizations" className="flex items-center gap-1.5">
@@ -1171,6 +1181,79 @@ export default function AttendancePage() {
           </CardContent>
         </Card>
       )}
+      </TabsContent>
+
+      <TabsContent value="roster" className="space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Roster Planner (Future Dates)</CardTitle>
+            <p className="text-sm text-muted-foreground">Plan rotational week-offs by clicking a cell to toggle it as a "Week Off". Don't forget to click Save at the top!</p>
+          </CardHeader>
+          <CardContent className="p-0 overflow-auto">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground">Loading…</div>
+            ) : employees.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                No active employees.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="sticky left-0 bg-background z-10 min-w-[180px]">Employee</TableHead>
+                    {days.map((d) => (
+                      <TableHead key={d.toISOString()} className="text-center px-1">
+                        <div className="text-[10px] text-muted-foreground">{format(d, "EEE")}</div>
+                        <div className="text-xs font-medium">{format(d, "d")}</div>
+                      </TableHead>
+                    ))}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {employees.map((emp) => (
+                    <TableRow key={emp.id}>
+                      <TableCell className="sticky left-0 bg-background z-10 font-medium">{emp.name}</TableCell>
+                        {days.map((d) => {
+                        const ds = format(d, "yyyy-MM-dd");
+                        const recordedStatus = att[`${emp.id}|${ds}`];
+                        const orgWeeklyOffs = org?.weekly_offs || [0];
+                        
+                        // Effective weekly offs from profile
+                        const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
+                          ? emp.weekly_offs
+                          : orgWeeklyOffs;
+
+                        const isDefaultOff = effectiveWeeklyOffs.includes(d.getDay());
+                        const isHoliday = holidays.some((h) => h.date === ds);
+                        
+                        // Current displayed state
+                        const isRosterOff = recordedStatus === "holiday" || (!recordedStatus && (isDefaultOff || isHoliday));
+
+                        return (
+                          <TableCell key={ds} className="text-center p-1 relative">
+                            <button
+                              onClick={() => {
+                                // In Roster, we only care about setting Holiday or "Working" (present)
+                                const nextStatus = isRosterOff ? "present" : "holiday";
+                                setCell(emp.id, ds, nextStatus);
+                              }}
+                              title={ds}
+                              className={`h-6 w-8 rounded border text-[10px] font-semibold flex items-center justify-center transition-all ${
+                                isRosterOff ? "bg-slate-200 text-slate-700 border-slate-300 shadow-sm" : "bg-white text-slate-300 border-dashed hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-500"
+                              }`}
+                            >
+                              {isRosterOff ? "OFF" : "+"}
+                            </button>
+                          </TableCell>
+                        );
+                      })}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
       </TabsContent>
 
       <TabsContent value="daily" className="space-y-4">
@@ -1854,6 +1937,25 @@ export default function AttendancePage() {
                 id="daily-wages-toggle"
                 checked={dailyWagesEnabled}
                 onCheckedChange={setDailyWagesEnabled}
+              />
+            </div>
+
+            <div className="flex items-start justify-between p-4 border rounded-xl bg-slate-50/70 dark:bg-slate-900/40 gap-4 mt-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="individual-weekoffs-toggle" className="text-base font-semibold cursor-pointer">
+                    Enable Individual Employee Week-Offs
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-xl">
+                  When enabled, you can assign different week-offs (like Monday or Tuesday) to individual employees for rotational shifts.
+                  If disabled, the global company week-off (e.g., Sunday) will apply to everyone.
+                </p>
+              </div>
+              <Switch
+                id="individual-weekoffs-toggle"
+                checked={enableIndividualWeekOffs}
+                onCheckedChange={setEnableIndividualWeekOffs}
               />
             </div>
 

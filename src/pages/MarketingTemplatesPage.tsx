@@ -16,7 +16,7 @@ import { toast } from "sonner";
 type Template = {
   id: string;
   name: string;
-  channel: "whatsapp" | "sms" | "email";
+  channel: "sms" | "email";
   category: string;
   subject: string | null;
   body: string;
@@ -27,7 +27,7 @@ type Template = {
 
 const EMPTY: Partial<Template> = {
   name: "",
-  channel: "whatsapp",
+  channel: "email",
   category: "marketing",
   body: "Hi {{name}}, ...",
   wa_template_name: "",
@@ -69,7 +69,7 @@ export default function MarketingTemplatesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Message Templates</h1>
-          <p className="text-sm text-muted-foreground">Reusable templates for WhatsApp, SMS & Email. Use {`{{name}}`} or {`{{1}}`} for variables.</p>
+          <p className="text-sm text-muted-foreground">Reusable templates for SMS & Email. Use {`{{name}}`} or {`{{1}}`} for variables.</p>
         </div>
         <Button onClick={() => { setForm(EMPTY); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Template</Button>
       </div>
@@ -121,7 +121,7 @@ export default function MarketingTemplatesPage() {
                 <Select value={form.channel} onValueChange={(v) => setForm({ ...form, channel: v as any })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
+
                     <SelectItem value="sms">SMS</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
                   </SelectContent>
@@ -134,13 +134,7 @@ export default function MarketingTemplatesPage() {
                 <div><Label>Subject</Label><Input value={form.subject || ""} onChange={(e) => setForm({ ...form, subject: e.target.value })} /></div>
               )}
             </div>
-            {form.channel === "whatsapp" && (
-              <div className="grid grid-cols-2 gap-3 p-3 bg-muted/40 rounded">
-                <div><Label>WA Template Name</Label><Input value={form.wa_template_name || ""} onChange={(e) => setForm({ ...form, wa_template_name: e.target.value })} placeholder="Leave blank for free-form" /></div>
-                <div><Label>Language</Label><Input value={form.wa_language || "en"} onChange={(e) => setForm({ ...form, wa_language: e.target.value })} /></div>
-                <p className="col-span-2 text-xs text-muted-foreground">Use approved WhatsApp template name for promotional / out-of-session messages. Leave blank to send free-form text (24h customer service window only).</p>
-              </div>
-            )}
+
             <div>
               <Label>Body</Label>
               <Textarea rows={6} value={form.body || ""} onChange={(e) => setForm({ ...form, body: e.target.value })} />

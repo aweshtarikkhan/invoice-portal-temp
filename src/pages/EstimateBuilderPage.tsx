@@ -13,12 +13,17 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Trash2, Plus, GripVertical } from "lucide-react";
+import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2 } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
+import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
 } from "@dnd-kit/core";
+
 import {
   arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -200,6 +205,9 @@ export default function EstimateBuilderPage() {
   const [adjustmentName, setAdjustmentName] = useState("Adjustment");
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
   const [saving, setSaving] = useState(false);
+  const [contactPromptOpen, setContactPromptOpen] = useState(false);
+  const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
+  const [pendingAction, setPendingAction] = useState<"email" | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -308,7 +316,22 @@ export default function EstimateBuilderPage() {
   const currency = org?.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
-  const handleSave = async (status: "draft" | "sent" = "draft") => {
+  const handleActionClick = (action: "email") => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) {
+      toast({ title: "Select a client first", variant: "destructive" });
+      return;
+    }
+    if (action === "email" && !client.email) {
+      setContactPromptMissing("email");
+      setPendingAction("email");
+      setContactPromptOpen(true);
+      return;
+    }
+    handleSave("sent", action);
+  };
+
+  const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email") => {
     if (!clientId) { toast({ title: "Select a client", variant: "destructive" }); return; }
     if (!lines.some((l) => l.name.trim())) { toast({ title: "Add at least one line item", variant: "destructive" }); return; }
     setSaving(true);
@@ -346,7 +369,18 @@ export default function EstimateBuilderPage() {
       const { error: lineError } = await supabase.from("estimate_lines").insert(linePayloads);
       if (lineError) throw lineError;
 
-      toast({ title: status === "sent" ? "Estimate sent!" : "Estimate saved!" });
+      if (postAction === "email") {
+        const client = clients.find(c => c.id === clientId);
+        if (client?.email) {
+          await supabase.functions.invoke("send-document-email", {
+            body: { entityId: estimateId, entityType: "estimate", recipientEmail: client.email }
+          });
+          toast({ title: "Estimate saved and emailed!" });
+        }
+      } else {
+        toast({ title: status === "sent" ? "Estimate saved!" : "Estimate saved as draft!" });
+      }
+
       navigate("/estimates");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -356,14 +390,67 @@ export default function EstimateBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <ContactPromptDialog
+        open={contactPromptOpen}
+        onOpenChange={setContactPromptOpen}
+        entityType="client"
+        entityId={clientId || ""}
+        entityName={clients.find(c => c.id === clientId)?.display_name || ""}
+        missingField={contactPromptMissing}
+        onSuccess={(val) => {
+          setClients(prev => prev.map(c => c.id === clientId ? { ...c, [contactPromptMissing]: val } : c));
+          if (pendingAction) handleSave("sent", pendingAction);
+        }}
+      />
+      
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">{id ? "Edit Estimate" : "New Estimate"}</h1>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/estimates")}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
-            <Save className="mr-1 h-4 w-4" /> Save Draft
+            <Save className="mr-1.5 h-4 w-4" /> Save Draft
           </Button>
-          <Button onClick={() => handleSave("sent")} disabled={saving}>Save & Send</Button>
+          <div className="flex">
+            <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
+              <Save className="mr-1.5 h-4 w-4" /> Save Estimate
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2.5 shadow-sm" disabled={saving}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => handleActionClick("email")}>
+                  <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
+                  <Printer className="mr-2 h-4 w-4" /> Save and Print
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  await handleSave("sent");
+                  if (id) {
+                    const { data: existing } = await supabase.from("portal_tokens").select("token").eq("entity_type", "estimate").eq("entity_id", id).maybeSingle();
+                    let token = existing?.token;
+                    if (!token) {
+                      const { data } = await supabase.from("portal_tokens").insert({ org_id: org!.id, entity_type: "estimate", entity_id: id }).select("token").single();
+                      token = data?.token;
+                    }
+                    if (token) {
+                      await navigator.clipboard.writeText(`${window.location.origin}/portal/${token}`);
+                      toast({ title: "Estimate saved & portal link copied!" });
+                    }
+                  }
+                }}>
+                  <Share2 className="mr-2 h-4 w-4" /> Save and Share
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleSave("draft")}>
+                  <Clock className="mr-2 h-4 w-4" /> Save and Send Later
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

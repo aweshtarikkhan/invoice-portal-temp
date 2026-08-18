@@ -12,12 +12,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2, Mail, MessageCircle, ChevronDown, Clock, Printer, Share2, Eye } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
+
 
 interface Line {
   id?: string;
@@ -57,7 +60,9 @@ export default function PurchaseOrderBuilderPage() {
   const [newItemTargetLine, setNewItemTargetLine] = useState<number | null>(null);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
-
+  const [contactPromptOpen, setContactPromptOpen] = useState(false);
+  const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
+  const [pendingAction, setPendingAction] = useState<"email" | null>(null);
   // GST: determine if vendor has GSTIN and whether interstate
   const selectedVendor = useMemo(() => vendors.find(v => v.id === vendorId), [vendors, vendorId]);
   const vendorGstin = (selectedVendor?.gstin || "").trim();
@@ -184,14 +189,29 @@ export default function PurchaseOrderBuilderPage() {
     setLines(x);
   };
 
-  const save = async () => {
+  const handleActionClick = (action: "email") => {
+    const vendor = vendors.find(v => v.id === vendorId);
+    if (!vendor) {
+      toast({ title: "Select a vendor first", variant: "destructive" });
+      return;
+    }
+    if (action === "email" && !vendor.email) {
+      setContactPromptMissing("email");
+      setPendingAction("email");
+      setContactPromptOpen(true);
+      return;
+    }
+    save("sent", action);
+  };
+
+  const save = async (status: "draft" | "sent" = "draft", postAction?: "email") => {
     if (!org?.id || !vendorId) { toast({ title: "Vendor required", variant: "destructive" }); return; }
     setSaving(true);
     try {
       const payload: any = {
         org_id: org.id, vendor_id: vendorId,
         po_number: poNumber, po_date: poDate, expected_date: expectedDate || null,
-        status: "draft", subtotal: totals.sub, tax_amount: totals.totalTax, 
+        status, subtotal: totals.sub, tax_amount: totals.totalTax, 
         tds_tcs_applicable: tdsTcsApplicable, tds_tcs_type: tdsTcsType, 
         tds_tcs_rate: tdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
         total: totals.total,
@@ -222,7 +242,19 @@ export default function PurchaseOrderBuilderPage() {
       });
       const { error: lErr } = await (supabase as any).from("purchase_order_lines").insert(linePayloads);
       if (lErr) throw lErr;
-      toast({ title: id ? "PO updated" : "PO created" });
+
+      if (postAction === "email") {
+        const vendor = vendors.find(v => v.id === vendorId);
+        if (vendor?.email) {
+          await supabase.functions.invoke("send-document-email", {
+            body: { entityId: poId, entityType: "purchase_order", recipientEmail: vendor.email }
+          });
+          toast({ title: "PO saved and emailed!" });
+        }
+      } else {
+        toast({ title: id ? "PO updated" : "PO created" });
+      }
+
       navigate(`/purchase-orders/${poId}`);
     } catch (e: any) {
       toast({ title: "Save failed", description: e.message, variant: "destructive" });
@@ -233,6 +265,18 @@ export default function PurchaseOrderBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
+      <ContactPromptDialog
+        open={contactPromptOpen}
+        onOpenChange={setContactPromptOpen}
+        entityType="vendor"
+        entityId={vendorId || ""}
+        entityName={vendors.find(v => v.id === vendorId)?.name || ""}
+        missingField={contactPromptMissing}
+        onSuccess={(val) => {
+          setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, [contactPromptMissing]: val } : v));
+          if (pendingAction) save("sent", pendingAction);
+        }}
+      />
       <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
@@ -245,10 +289,33 @@ export default function PurchaseOrderBuilderPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" className="bg-white" onClick={() => navigate("/purchase-orders")}>Cancel</Button>
-          <Button onClick={save} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving…" : "Save PO"}
+          <Button variant="outline" onClick={() => save("draft")} disabled={saving}>
+            <Save className="mr-1.5 h-4 w-4" /> Save as Draft
           </Button>
+          <div className="flex">
+            <Button className="rounded-r-none font-semibold shadow-sm bg-blue-600 hover:bg-blue-700 text-white" onClick={() => save("sent")} disabled={saving}>
+              <Save className="mr-1.5 h-4 w-4" /> Save PO
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="rounded-l-none border-l border-primary-foreground/20 px-2.5 shadow-sm bg-blue-600 hover:bg-blue-700 text-white" disabled={saving}>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem onClick={() => handleActionClick("email")}>
+                  <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                </DropdownMenuItem>
+
+                <DropdownMenuItem onClick={async () => { await save("sent"); setTimeout(() => window.print(), 500); }}>
+                  <Printer className="mr-2 h-4 w-4" /> Save and Print
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => save("draft")}>
+                  <Clock className="mr-2 h-4 w-4" /> Save and Send Later
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
