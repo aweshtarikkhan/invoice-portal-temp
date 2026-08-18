@@ -81,19 +81,39 @@ export function WhatsAppTemplates() {
         fetchTemplates();
       }
     } else if (content) {
-      // Save system template as a new custom template and set as default
-      const { error } = await supabase
-        .from('whatsapp_templates')
-        .insert({
-          org_id: orgId,
-          type,
-          name: "System Template",
-          content,
-          is_default: true
-        });
-      if (!error) {
-        toast({ title: "Success", description: "Default template updated." });
-        fetchTemplates();
+      // Check if this system template is already saved as a custom template
+      const existingTemplate = templates.find(t => t.type === type && t.content.trim() === content.trim());
+      
+      if (existingTemplate) {
+        // Just set the existing one to default
+        const { error } = await supabase
+          .from('whatsapp_templates')
+          .update({ is_default: true })
+          .eq('id', existingTemplate.id);
+          
+        if (!error) {
+          toast({ title: "Success", description: "Default template updated." });
+          fetchTemplates();
+        } else {
+          toast({ title: "Error", description: error.message, variant: "destructive" });
+        }
+      } else {
+        // Save system template as a new custom template and set as default
+        const { error } = await supabase
+          .from('whatsapp_templates')
+          .insert({
+            org_id: orgId,
+            type,
+            name: "System Template",
+            content,
+            is_default: true
+          });
+        if (!error) {
+          toast({ title: "Success", description: "Default template updated." });
+          fetchTemplates();
+        } else {
+          toast({ title: "Error", description: error.message, variant: "destructive" });
+        }
       }
     }
   };
