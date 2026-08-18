@@ -106,7 +106,8 @@ export default function ChatUIPage() {
     
     const checkStatus = async () => {
       try {
-        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr`);
+        if (!organization?.id) return;
+        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr?org_id=${organization.id}`);
         if (res.ok) {
           const data = await res.json();
           setConnectionStatus(data.status);

@@ -6,7 +6,7 @@ import { Loader2, Smartphone, LogOut, CheckCircle2, AlertCircle } from "lucide-r
 
 const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
 
-export function WhatsAppSettingsTab() {
+export function WhatsAppSettingsTab({ orgId }: { orgId?: string }) {
   const { toast } = useToast();
   const [connectionStatus, setConnectionStatus] = useState<string>('connecting');
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -17,7 +17,8 @@ export function WhatsAppSettingsTab() {
     
     const checkStatus = async () => {
       try {
-        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr`);
+        if (!orgId) return; // Don't check if orgId is not yet available
+        const res = await fetch(`${WHATSAPP_SERVICE_URL}/qr?org_id=${orgId}`);
         if (res.ok) {
           const data = await res.json();
           setConnectionStatus(data.status);
@@ -36,13 +37,16 @@ export function WhatsAppSettingsTab() {
     // Poll every 5 seconds
     interval = setInterval(checkStatus, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [orgId]);
 
   const handleDisconnect = async () => {
+    if (!orgId) return;
     setLoading(true);
     try {
       const res = await fetch(`${WHATSAPP_SERVICE_URL}/logout`, {
-        method: "POST"
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ org_id: orgId })
       });
       if (res.ok) {
         toast({ title: "Disconnected", description: "WhatsApp session has been reset." });

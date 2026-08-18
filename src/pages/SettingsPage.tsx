@@ -245,7 +245,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="whatsapp" className="space-y-6 mt-4">
-          <WhatsAppSettingsTab />
+          <WhatsAppSettingsTab orgId={org?.id} />
         </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-4">
