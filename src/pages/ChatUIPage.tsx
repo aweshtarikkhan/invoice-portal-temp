@@ -42,8 +42,6 @@ export default function ChatUIPage() {
   
   const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
 
-  const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
-
   useEffect(() => {
     const fetchChats = async () => {
       const { data } = await supabase
