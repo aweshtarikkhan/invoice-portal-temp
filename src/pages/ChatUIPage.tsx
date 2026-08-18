@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -40,6 +40,16 @@ export default function ChatUIPage() {
   const [connectionStatus, setConnectionStatus] = useState<string>('connecting');
   const [qrCode, setQrCode] = useState<string | null>(null);
   
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
   const WHATSAPP_SERVICE_URL = import.meta.env.VITE_WHATSAPP_SERVICE_URL || "http://localhost:3010/api";
 
   useEffect(() => {
@@ -261,6 +271,7 @@ export default function ChatUIPage() {
                         </div>
                       );
                     })}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
 
