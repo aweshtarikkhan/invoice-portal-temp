@@ -1033,6 +1033,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      <FeatureTilesGrid />
+
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
         {[
           { label: t("Total Revenue"), value: fmt(totalSales), rawValue: totalSales, icon: FileText, color: "blue", trend: trends.revenue, trendText: "vs last month", trendColor: trends.revenueColor },
@@ -1070,8 +1072,6 @@ export default function DashboardPage() {
           );
         })}
       </div>
-
-      <FeatureTilesGrid />
 
       {/* Total Receivables with Aging */}
       <Card className="card-hover">
