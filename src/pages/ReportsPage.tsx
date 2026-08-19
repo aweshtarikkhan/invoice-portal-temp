@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -11,12 +12,13 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Download, TrendingUp, Clock, IndianRupee, FileText, Wallet } from "lucide-react";
+import { Download, TrendingUp, Clock, IndianRupee, FileText, Wallet, BarChart3 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "#94a3b8"];
 
 export default function ReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -160,6 +162,10 @@ export default function ReportsPage() {
             <SelectItem value="12">Last 12 months</SelectItem>
           </SelectContent>
         </Select>
+        <Button onClick={() => navigate("/business-report")}>
+          <BarChart3 className="w-4 h-4 mr-2" />
+          View Business Report
+        </Button>
       </div>
 
       {/* Summary Cards */}

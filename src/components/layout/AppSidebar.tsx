@@ -109,6 +109,7 @@ const peopleItems = [
 const reportItems = [
   { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
   { title: "Reports", url: "/reports", icon: BarChart3, addUrl: null },
+  { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
   { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
   { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
   { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },

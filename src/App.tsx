@@ -54,6 +54,7 @@ const ChartOfAccountsPage = lazy(() => import("./pages/ChartOfAccountsPage"));
 const JournalEntriesPage = lazy(() => import("./pages/JournalEntriesPage"));
 const BranchesPage = lazy(() => import("./pages/BranchesPage"));
 const TdsPage = lazy(() => import("./pages/TdsTcsReportsPage"));
+const BusinessReportPage = lazy(() => import("./pages/BusinessReportPage"));
 const AccountingReportsPage = lazy(() => import("./pages/AccountingReportsPage"));
 const PurchaseOrdersPage = lazy(() => import("./pages/PurchaseOrdersPage"));
 const PurchaseOrderBuilderPage = lazy(() => import("./pages/PurchaseOrderBuilderPage"));
@@ -148,6 +149,7 @@ const App = () => (
 
               <Route element={<FeatureGuard featureKey="reports" featureName="Reports" />}>
                 <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/business-report" element={<BusinessReportPage />} />
                 <Route path="/aging-details" element={<AgingDetailsPage />} />
                 <Route path="/profit-loss" element={<ProfitLossPage />} />
                 <Route path="/gst-returns" element={<GstReturnsPage />} />
