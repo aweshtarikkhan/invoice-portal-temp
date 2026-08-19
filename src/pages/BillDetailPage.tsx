@@ -219,7 +219,7 @@ export default function BillDetailPage() {
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Bills</Button>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={async () => {
+            <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
               if (!org || !bill || !vendor) return;
               
               const template = await getWhatsappTemplate(org.id, "bill");
