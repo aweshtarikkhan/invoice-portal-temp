@@ -216,10 +216,12 @@ export default function MarketingPostersPage() {
     // Load local posters from dynamic folders
     const localPosters = import.meta.glob('@/assets/posters/**/*.png', { eager: true, as: 'url' }) as Record<string, string>;
     const dynamicTemplates: PosterTemplate[] = [];
+    const festivalsWithLocalPosters = new Set<string>();
     
     Object.keys(localPosters).forEach((path, index) => {
        const parts = path.split('/');
        const festival = parts[parts.length - 2];
+       festivalsWithLocalPosters.add(festival);
        dynamicTemplates.push({
           id: `local_${festival}_${index}`,
           festival_name: festival,
@@ -228,6 +230,8 @@ export default function MarketingPostersPage() {
        });
     });
 
+    // Remove Supabase templates for festivals that now have local posters
+    processedData = processedData.filter(t => !festivalsWithLocalPosters.has(t.festival_name));
     processedData = [...processedData, ...dynamicTemplates];
 
     const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"];
