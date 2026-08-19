@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -96,6 +97,7 @@ const FONT_FAMILIES = [
 
 export default function MarketingPostersPage() {
   const org = useAppStore((s) => s.organization);
+  const { profile, user } = useAuth();
   const [templates, setTemplates] = useState<PosterTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<PosterTemplate | null>(null);
@@ -251,7 +253,7 @@ export default function MarketingPostersPage() {
 
   const buildDefaultPoster = (t: PosterTemplate) => {
     let bizName = org?.name || "Your Business Name";
-    let phone = (org as any)?.phone || "";
+    let phone = (org as any)?.phone || (profile as any)?.phone || user?.phone || (user?.user_metadata as any)?.phone || "";
     let address = "";
     const addr = (org as any)?.address;
     if (typeof addr === "string") address = addr;
