@@ -160,6 +160,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
+<div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+              <QuickAction icon={FilePlus2} label="Create Invoice" onClick={() => navigate('/invoices/new')} />
+              <QuickAction icon={CreditCard} label="Record Payment" onClick={() => navigate('/payments')} />
+              <QuickAction icon={Receipt} label="Add Expense" onClick={() => navigate('/expenses')} />
+              <QuickAction icon={UserCircle} label="Add Customer" onClick={() => navigate('/clients')} />
+              <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/leads')} />
+              <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees')} />
+              <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/attendance')} />
+              <QuickAction icon={Activity} label="More" onClick={() => {}} />
+            </div>
+
       {/* 2. Top KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
         <KPICard title="Total Revenue" value={fmtCurrency(totalRevenue)} icon={IndianRupee} trend="+12.5% vs previous" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
@@ -215,10 +226,10 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-semibold">Action Required</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <ActionAlert icon={AlertTriangle} iconColor="text-red-500" bgColor="bg-red-50" text="12 invoices are overdue" subtext={fmtCurrency(overdueAmount)} btnText="View Invoices" onClick={() => navigate('/sales/invoices')} />
-            <ActionAlert icon={Wallet} iconColor="text-orange-500" bgColor="bg-orange-50" text="4 vendor payments due this week" subtext="₹45,200" btnText="Review Payments" onClick={() => navigate('/purchases/bills')} />
-            <ActionAlert icon={Users} iconColor="text-yellow-600" bgColor="bg-yellow-50" text="3 employee attendance issues" subtext="Needs approval" btnText="Review Attendance" onClick={() => navigate('/hr/attendance')} />
-            <ActionAlert icon={Phone} iconColor="text-purple-500" bgColor="bg-purple-50" text="8 leads need follow-up" subtext="High priority" btnText="Open CRM" onClick={() => navigate('/crm/leads')} />
+            <ActionAlert icon={AlertTriangle} iconColor="text-red-500" bgColor="bg-red-50" text="12 invoices are overdue" subtext={fmtCurrency(overdueAmount)} btnText="View Invoices" onClick={() => navigate('/invoices')} />
+            <ActionAlert icon={Wallet} iconColor="text-orange-500" bgColor="bg-orange-50" text="4 vendor payments due this week" subtext="₹45,200" btnText="Review Payments" onClick={() => navigate('/bills')} />
+            <ActionAlert icon={Users} iconColor="text-yellow-600" bgColor="bg-yellow-50" text="3 employee attendance issues" subtext="Needs approval" btnText="Review Attendance" onClick={() => navigate('/attendance')} />
+            <ActionAlert icon={Phone} iconColor="text-purple-500" bgColor="bg-purple-50" text="8 leads need follow-up" subtext="High priority" btnText="Open CRM" onClick={() => navigate('/leads')} />
           </CardContent>
         </Card>
       </div>
@@ -348,23 +359,7 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-slate-200">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-3">
-              <QuickAction icon={FilePlus2} label="Create Invoice" onClick={() => navigate('/sales/invoices/new')} />
-              <QuickAction icon={CreditCard} label="Record Payment" onClick={() => navigate('/sales/payments')} />
-              <QuickAction icon={Receipt} label="Add Expense" onClick={() => navigate('/purchases/expenses')} />
-              <QuickAction icon={UserCircle} label="Add Customer" onClick={() => navigate('/sales/clients')} />
-              <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/crm/leads')} />
-              <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/hr/employees')} />
-              <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/hr/attendance')} />
-              <QuickAction icon={Activity} label="More" onClick={() => {}} />
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>
 
     </div>
