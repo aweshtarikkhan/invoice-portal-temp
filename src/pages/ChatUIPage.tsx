@@ -145,7 +145,17 @@ export default function ChatUIPage() {
     const sub = supabase
       .channel('public:whatsapp_messages')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${activeChat.id}` }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message]);
+        setMessages(prev => {
+          const newMsg = payload.new as Message;
+          // Remove optimistic message that matches this real inserted message
+          const filtered = prev.filter(m => !(m.status === 'sending' && m.message_text === newMsg.message_text));
+          // Prevent duplicates by ID just in case
+          if (filtered.some(m => m.id === newMsg.id)) return filtered;
+          return [...filtered, newMsg];
+        });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'whatsapp_messages', filter: `chat_id=eq.${activeChat.id}` }, (payload) => {
+        setMessages(prev => prev.map(m => m.id === payload.new.id ? (payload.new as Message) : m));
       })
       .subscribe();
 
