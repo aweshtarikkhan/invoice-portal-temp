@@ -29,7 +29,6 @@ const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
 const RecordPaymentPage = lazy(() => import("./pages/RecordPaymentPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const EmailTemplatesPage = lazy(() => import("./pages/EmailTemplatesPage"));
 const CreditNotesPage = lazy(() => import("./pages/CreditNotesPage"));
 const CreditNoteBuilderPage = lazy(() => import("./pages/CreditNoteBuilderPage"));
 const CreditNoteDetailPage = lazy(() => import("./pages/CreditNoteDetailPage"));
@@ -225,7 +224,6 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/email-templates" element={<EmailTemplatesPage />} />
             </Route>
 
             {/* Public portal */}

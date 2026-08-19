@@ -1104,10 +1104,10 @@ export default function InvoiceBuilderPage() {
       if (postAction === "email") {
         const client = clients.find(c => c.id === clientId);
         if (client?.email) {
-          await supabase.functions.invoke("send-document-email", {
-            body: { entityId: invoiceId, entityType: "invoice", recipientEmail: client.email }
-          });
-          toast({ title: "Invoice saved and emailed!" });
+          navigate(`/invoices/${invoiceId}?sendEmail=true`);
+          toast({ title: "Saving and generating PDF..." });
+          setSaving(false);
+          return;
         }
       } else if (postAction === "whatsapp") {
         const client = clients.find(c => c.id === clientId);

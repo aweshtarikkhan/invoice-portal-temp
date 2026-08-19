@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
+import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -21,6 +22,7 @@ export default function PurchaseOrderDetailPage() {
   const org = useAppStore((s) => s.organization);
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [po, setPo] = useState<any>(null);
   const [lines, setLines] = useState<any[]>([]);
   const [grns, setGrns] = useState<any[]>([]);
@@ -113,6 +115,69 @@ export default function PurchaseOrderDetailPage() {
   };
 
   if (!po) return <div className="p-6 text-muted-foreground">Loading…</div>;
+
+  const generatePDFBlob = useCallback(async (): Promise<Blob | null> => {
+    if (!org || !po) return null;
+    const target = invoiceRef.current?.firstElementChild as HTMLElement || invoiceRef.current;
+    if (!target) return null;
+
+    const paperSizes: Record<string, [number, number]> = {
+      a4: [210, 297], letter: [215.9, 279.4], legal: [215.9, 355.6], a5: [148, 210], a6: [105, 148], pos80: [80, 297],
+    };
+    const paperKey = (org as any).template_paper_size || "a4";
+    const [pW, pH] = paperSizes[paperKey] || paperSizes.a4;
+    const targetPxWidth = Math.round(pW * 3.779528);
+    
+    const canvas = await html2canvas(target, {
+      scale: 1.5,
+      useCORS: true,
+      logging: false,
+      backgroundColor: "#ffffff",
+      windowWidth: targetPxWidth,
+      onclone: (clonedDoc) => {
+        const el = (clonedDoc.querySelector('.print\\:m-0')?.firstElementChild as HTMLElement) || (clonedDoc.body.firstElementChild as HTMLElement);
+        if (el) {
+          el.style.width = `${targetPxWidth}px`;
+          el.style.maxWidth = `${targetPxWidth}px`;
+          el.style.minWidth = `${targetPxWidth}px`;
+          el.style.boxShadow = "none";
+          el.style.border = "none";
+          el.style.borderRadius = "0";
+          el.style.margin = "0";
+        }
+      },
+    });
+
+    const imgData = canvas.toDataURL("image/jpeg", 0.7);
+    const imgWmm = pW;
+    const imgHmm = (canvas.height * imgWmm) / canvas.width;
+
+    if (paperKey === "pos80") {
+      const pageH = imgHmm + 4;
+      const pdf = new jsPDF("p", "mm", [pW, pageH]);
+      pdf.addImage(imgData, "JPEG", 0, 2, pW, imgHmm);
+      return pdf.output('blob');
+    }
+
+    const pdf = new jsPDF("p", "mm", [pW, pH]);
+    if (imgHmm <= pH + 3) {
+      pdf.addImage(imgData, "JPEG", 0, 0, pW, Math.min(imgHmm, pH));
+    } else {
+      let heightLeft = imgHmm;
+      let position = 0;
+      pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
+      heightLeft -= pH;
+      while (heightLeft > 0) {
+        position -= pH;
+        pdf.addPage([pW, pH]);
+        pdf.addImage(imgData, "JPEG", 0, position, pW, imgHmm);
+        heightLeft -= pH;
+      }
+    }
+    return pdf.output('blob');
+  }, [po, org]);
+
+  useAutoEmailPDF({ entityType: "po", entityData: po, generatePDFBlob });
   const cur = po.currency || (org as any)?.currency || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: cur }).format(n);
 

@@ -246,10 +246,10 @@ export default function PurchaseOrderBuilderPage() {
       if (postAction === "email") {
         const vendor = vendors.find(v => v.id === vendorId);
         if (vendor?.email) {
-          await supabase.functions.invoke("send-document-email", {
-            body: { entityId: poId, entityType: "purchase_order", recipientEmail: vendor.email }
-          });
-          toast({ title: "PO saved and emailed!" });
+          navigate(`/purchase-orders/${poId}?sendEmail=true`);
+          toast({ title: "Saving and generating PDF..." });
+          setSaving(false);
+          return;
         }
       } else {
         toast({ title: id ? "PO updated" : "PO created" });

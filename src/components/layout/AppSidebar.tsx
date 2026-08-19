@@ -74,7 +74,6 @@ const salesItems = [
   { title: "Delivery Challans", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
   { title: "Emails", url: "/emails", icon: Send, addUrl: null },
-  { title: "Email Templates", url: "/email-templates", icon: MessageSquare, addUrl: null },
   { title: "WhatsApp Chats", url: "/chats", icon: MessageCircle, addUrl: null },
 ];
 
@@ -91,14 +90,11 @@ const accountingItems = [
   { title: "Journal Entries", url: "/journal", icon: Calculator, addUrl: null },
   { title: "Bank & Cash", url: "/bank-accounts", icon: Landmark, addUrl: null },
   { title: "Cash Flow", url: "/cash-flow", icon: PieChart, addUrl: null },
-  { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
-  { title: "Warehouses", url: "/warehouses", icon: Warehouse, addUrl: "/warehouses?add=1" },
-  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
-  { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
 ];
 
 const catalogItems = [
   { title: "Items", url: "/items", icon: Package, addUrl: "/items?add=1" },
+  { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
 ];
 
 const peopleItems = [
@@ -113,9 +109,12 @@ const peopleItems = [
 const reportItems = [
   { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
   { title: "Reports", url: "/reports", icon: BarChart3, addUrl: null },
+  { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
   { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
   { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },
+  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
   { title: "Inventory Valuation", url: "/inventory-valuation", icon: Boxes, addUrl: null },
+  { title: "Aging Details", url: "/aging-details", icon: ScrollText, addUrl: null },
 ];
 
 const crmItems = [

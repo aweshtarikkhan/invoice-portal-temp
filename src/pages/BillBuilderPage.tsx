@@ -909,10 +909,10 @@ export default function BillBuilderPage() {
       if (postAction === "email") {
         const vendor = vendors.find(v => v.id === vendorId);
         if (vendor?.email) {
-          await supabase.functions.invoke("send-document-email", {
-            body: { entityId: billId, entityType: "bill", recipientEmail: vendor.email }
-          });
-          toast({ title: "Bill saved and emailed!" });
+          navigate(`/bills/${billId}?sendEmail=true`);
+          toast({ title: "Saving and generating PDF..." });
+          setSaving(false);
+          return;
         }
       } else {
         toast({ title: status === "received" ? "Bill saved!" : "Bill saved as draft!" });

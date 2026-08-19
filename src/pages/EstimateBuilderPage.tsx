@@ -372,10 +372,10 @@ export default function EstimateBuilderPage() {
       if (postAction === "email") {
         const client = clients.find(c => c.id === clientId);
         if (client?.email) {
-          await supabase.functions.invoke("send-document-email", {
-            body: { entityId: estimateId, entityType: "estimate", recipientEmail: client.email }
-          });
-          toast({ title: "Estimate saved and emailed!" });
+          navigate(`/estimates/${estimateId}?sendEmail=true`);
+          toast({ title: "Saving and generating PDF..." });
+          setSaving(false);
+          return;
         }
       } else {
         toast({ title: status === "sent" ? "Estimate saved!" : "Estimate saved as draft!" });

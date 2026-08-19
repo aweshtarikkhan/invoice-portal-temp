@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
@@ -33,10 +33,12 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
+import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -293,9 +295,7 @@ export default function InvoiceDetailPage() {
     return pdf.output('blob');
   }, [invoice, org]);
 
-
-
-
+  useAutoEmailPDF({ entityType: "invoice", entityData: invoice, generatePDFBlob });
 
   if (!invoice) {
     return <div className="p-6 text-center text-muted-foreground">Loading...</div>;

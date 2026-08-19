@@ -10,6 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Plus, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -27,28 +29,40 @@ export default function CampaignsPage() {
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
+  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all" });
 
   const load = async () => {
     if (!org) return;
-    const [c, t] = await Promise.all([
+    const [c, t, cl] = await Promise.all([
       supabase.from("campaigns").select("*, template:message_templates(name)").eq("org_id", org.id).order("created_at", { ascending: false }),
       supabase.from("message_templates").select("id,name,channel").eq("org_id", org.id),
+      supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org.id),
     ]);
     setCampaigns(c.data || []);
     setTemplates(t.data || []);
+    setClients(cl.data || []);
   };
   useEffect(() => { load(); }, [org?.id]);
 
   const buildAudience = async (channel: string, audience_type: string) => {
-    const { data: clients } = await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id);
     let list: any[] = clients || [];
+    
+    if (!list.length) {
+      const { data } = await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id);
+      list = data || [];
+    }
+
     if (audience_type === "overdue") {
       const { data: ovd } = await supabase.from("invoices").select("client_id").eq("org_id", org!.id).gt("balance_due", 0).lt("due_date", new Date().toISOString().split("T")[0]);
       const ids = new Set((ovd || []).map((i: any) => i.client_id));
       list = list.filter((c) => ids.has(c.id));
+    } else if (audience_type === "custom") {
+      list = list.filter((c) => selectedClientIds.includes(c.id));
     }
+    
     const addrKey = channel === "email" ? "email" : "phone";
     return list
       .filter((c) => c[addrKey])
@@ -82,6 +96,7 @@ export default function CampaignsPage() {
     toast.success(`Campaign created with ${audience.length} recipients`);
     setOpen(false);
     setForm({ name: "", channel: "sms", template_id: "", audience_type: "all" });
+    setSelectedClientIds([]);
     load();
   };
 
@@ -179,14 +194,59 @@ export default function CampaignsPage() {
             </div>
             <div>
               <Label>Audience</Label>
-              <Select value={form.audience_type} onValueChange={(v) => setForm({ ...form, audience_type: v })}>
+              <Select value={form.audience_type} onValueChange={(v) => {
+                setForm({ ...form, audience_type: v });
+                if (v === 'custom' && selectedClientIds.length === 0) {
+                  setSelectedClientIds(clients.map(c => c.id));
+                }
+              }}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Clients</SelectItem>
                   <SelectItem value="overdue">Clients with Overdue Invoices</SelectItem>
+                  <SelectItem value="custom">Custom Selection</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+            
+            {form.audience_type === "custom" && (
+              <div className="space-y-2 border rounded-md p-3">
+                <div className="flex items-center justify-between pb-2 border-b">
+                  <Label>Select Clients</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs" 
+                    onClick={() => {
+                      if (selectedClientIds.length === clients.length) setSelectedClientIds([]);
+                      else setSelectedClientIds(clients.map(c => c.id));
+                    }}
+                  >
+                    {selectedClientIds.length === clients.length ? "Deselect All" : "Select All"}
+                  </Button>
+                </div>
+                <ScrollArea className="h-40">
+                  <div className="space-y-2 pt-2">
+                    {clients.map(c => (
+                      <div key={c.id} className="flex items-center space-x-2">
+                        <Checkbox 
+                          id={`client-${c.id}`} 
+                          checked={selectedClientIds.includes(c.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) setSelectedClientIds([...selectedClientIds, c.id]);
+                            else setSelectedClientIds(selectedClientIds.filter(id => id !== c.id));
+                          }}
+                        />
+                        <label htmlFor={`client-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                          {c.display_name} {c.phone ? `(${c.phone})` : c.email ? `(${c.email})` : ''}
+                        </label>
+                      </div>
+                    ))}
+                    {clients.length === 0 && <div className="text-sm text-muted-foreground">No clients found</div>}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>

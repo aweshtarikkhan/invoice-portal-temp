@@ -8,12 +8,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Download, Upload, MapPin, Phone, Building, Settings, Sparkles, Eraser, Trash2, Undo, Redo, Square, Type, Image as ImageIcon, ArrowUp, ArrowDown, ChevronLeft, PenTool, Calendar, ArrowRight } from "lucide-react";
+import { Download, Upload, MapPin, Phone, Building, Settings, Sparkles, Eraser, Trash2, Undo, Redo, Square, Type, Image as ImageIcon, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, PenTool, Calendar, ArrowRight, Share2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import diwaliBg from "@/assets/diwali_poster_1.png";
+import diwaliBg2 from "@/assets/diwali_poster_2.png";
+import diwaliBg3 from "@/assets/diwali_poster_3.png";
+import diwaliBg4 from "@/assets/diwali_poster_4.png";
+import diwaliBg5 from "@/assets/diwali_poster_5.png";
 import { removeBackground } from '@imgly/background-removal';
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { ShareCampaignDialog } from "@/components/marketing/ShareCampaignDialog";
 
 type PosterTemplate = {
   id: string;
@@ -47,7 +53,7 @@ type CanvasElement = {
   src?: string;
 };
 
-type ViewState = "gallery" | "preview" | "editor";
+type ViewState = "categories" | "gallery" | "preview" | "editor";
 
 const GRADIENT_MAP: Record<string, string> = {
   Diwali: "linear-gradient(135deg, #d97706, #b45309)",
@@ -79,11 +85,15 @@ export default function MarketingPostersPage() {
   const [templates, setTemplates] = useState<PosterTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTemplate, setSelectedTemplate] = useState<PosterTemplate | null>(null);
-  const [view, setView] = useState<ViewState>("gallery");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [view, setView] = useState<ViewState>("categories");
+  const [showFooterBox, setShowFooterBox] = useState(false);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [history, setHistory] = useState<CanvasElement[][]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const historyRef = useRef<CanvasElement[][]>([]);
+  const historyIndexRef = useRef<number>(-1);
 
   const [activeElementId, setActiveElementId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -96,6 +106,9 @@ export default function MarketingPostersPage() {
   const posterRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [removingBg, setRemovingBg] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [sharePosterDataUrl, setSharePosterDataUrl] = useState<string | null>(null);
+  const [preparingShare, setPreparingShare] = useState(false);
 
   useEffect(() => {
     loadTemplates();
@@ -105,39 +118,69 @@ export default function MarketingPostersPage() {
     if (view !== "editor") return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        if (e.shiftKey) redo();
+        else undo();
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        redo();
+        return;
+      }
+
       if ((e.key === "Delete" || e.key === "Backspace") && activeElementId) {
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-          return;
-        }
         removeElement(activeElementId);
       }
     };
     
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeElementId, elements, view]);
+  }, [activeElementId, view, history, historyIndex]);
 
   const updateElements = (newElements: CanvasElement[]) => {
-    const newHistory = history.slice(0, historyIndex + 1);
+    const currentIndex = historyIndexRef.current;
+    const currentHistory = historyRef.current;
+    
+    // slice up to current index + 1 to discard any redo future
+    const newHistory = currentHistory.slice(0, currentIndex + 1);
     newHistory.push(newElements);
     if (newHistory.length > 50) newHistory.shift();
+    
+    const newIndex = newHistory.length - 1;
+    
+    historyRef.current = newHistory;
+    historyIndexRef.current = newIndex;
+    
     setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+    setHistoryIndex(newIndex);
     setElements(newElements);
   };
 
   const undo = () => {
-    if (historyIndex > 0) {
-      setHistoryIndex(historyIndex - 1);
-      setElements(history[historyIndex - 1]);
+    const currentIndex = historyIndexRef.current;
+    if (currentIndex > 0) {
+      const newIndex = currentIndex - 1;
+      historyIndexRef.current = newIndex;
+      setHistoryIndex(newIndex);
+      setElements(historyRef.current[newIndex]);
       setActiveElementId(null);
     }
   };
 
   const redo = () => {
-    if (historyIndex < history.length - 1) {
-      setHistoryIndex(historyIndex + 1);
-      setElements(history[historyIndex + 1]);
+    const currentIndex = historyIndexRef.current;
+    if (currentIndex < historyRef.current.length - 1) {
+      const newIndex = currentIndex + 1;
+      historyIndexRef.current = newIndex;
+      setHistoryIndex(newIndex);
+      setElements(historyRef.current[newIndex]);
       setActiveElementId(null);
     }
   };
@@ -158,6 +201,15 @@ export default function MarketingPostersPage() {
         ...t,
         bg_image_url: localOverrides[t.festival_name] || t.bg_image_url
       }));
+
+      const baseDiwali = processedData.find((t: any) => t.festival_name === "Diwali");
+      if (baseDiwali) {
+        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_2", bg_image_url: diwaliBg2 });
+        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_3", bg_image_url: diwaliBg3 });
+        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_4", bg_image_url: diwaliBg4 });
+        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_5", bg_image_url: diwaliBg5 });
+      }
+
       setTemplates(processedData);
     }
     setLoading(false);
@@ -178,7 +230,7 @@ export default function MarketingPostersPage() {
     const initialElements: CanvasElement[] = [];
     
     // Bottom Footer Shape
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 100, bgColor: "#000000", opacity: 70, borderRadius: 0, x: 0, y: 400, zIndex: 20 });
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 100, bgColor: "#000000", opacity: 0, borderRadius: 0, x: 0, y: 400, zIndex: 20 });
 
     // Business Name
     initialElements.push({ id: "biz-name", type: "text", text: bizName, color: "#f59e0b", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 420, zIndex: 21, maxWidth: 360 });
@@ -195,6 +247,8 @@ export default function MarketingPostersPage() {
     }
 
     // Reset History and Elements
+    historyRef.current = [initialElements];
+    historyIndexRef.current = 0;
     setHistory([initialElements]);
     setHistoryIndex(0);
     setElements(initialElements);
@@ -304,7 +358,10 @@ export default function MarketingPostersPage() {
   };
 
   const commitActiveElementChange = () => {
-    updateElements(elements);
+    setElements(currentEls => {
+      setTimeout(() => updateElements([...currentEls]), 0);
+      return currentEls;
+    });
   };
 
   const removeElement = (id: string) => {
@@ -405,6 +462,39 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
     }
   };
 
+  const handleShareCampaign = async () => {
+    if (!posterRef.current) return;
+    setActiveElementId(null);
+    setPreparingShare(true);
+    console.log("Starting share campaign capture...");
+    await new Promise(r => setTimeout(r, 50));
+    try {
+      console.log("Calling html2canvas...");
+      const canvas = await Promise.race([
+        html2canvas(posterRef.current, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: false,
+          backgroundColor: null,
+        }),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error("html2canvas timeout")), 8000))
+      ]);
+      console.log("html2canvas resolved", !!canvas);
+      if (canvas) {
+        const dataUrl = canvas.toDataURL("image/png");
+        setSharePosterDataUrl(dataUrl);
+        setShareDialogOpen(true);
+        console.log("Set dialog open to true");
+      }
+    } catch (error) {
+      console.error("Failed to capture poster for sharing:", error);
+      toast.error("Failed to prepare poster for sharing.");
+    } finally {
+      console.log("Resetting preparingShare to false");
+      setPreparingShare(false);
+    }
+  };
+
   const activeBlock = elements.find(b => b.id === activeElementId);
 
   if (loading) {
@@ -418,7 +508,8 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
   // ─────────────────────────────────────────────────────────────────
   // GALLERY VIEW
   // ─────────────────────────────────────────────────────────────────
-  if (view === "gallery") {
+  if (view === "categories") {
+    const categories = Array.from(new Set(templates.map(t => t.festival_name)));
     return (
       <div className="space-y-8 max-w-[1200px] mx-auto p-4">
         <div className="text-center space-y-4 py-8">
@@ -431,34 +522,87 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-          {templates.map((t) => (
+          {categories.map((category) => {
+      const count = templates.filter(t => t.festival_name === category).length;
+            const categoryTemplate = templates.find(t => t.festival_name === category);
+            return (
+              <div
+                key={category}
+                className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+                onClick={() => {
+                  setSelectedCategory(category);
+                  setView("gallery");
+                }}
+              >
+                <div
+                  className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted"
+                >
+                  {categoryTemplate?.bg_image_url && (
+                    <img
+                      src={categoryTemplate.bg_image_url}
+                      alt={category}
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      crossOrigin="anonymous"
+                    />
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
+                  <div className="relative z-10">
+                    <h3 className="font-bold text-2xl text-white mb-2 tracking-wide drop-shadow-md">
+                      {category}
+                    </h3>
+                    <div className="flex items-center text-white/80 text-sm font-medium drop-shadow-md">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      {count} {count === 1 ? 'Template' : 'Templates'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === "gallery") {
+    const categoryTemplates = templates.filter(t => t.festival_name === selectedCategory);
+    return (
+      <div className="space-y-8 max-w-[1200px] mx-auto p-4 animate-in fade-in slide-in-from-right-8 duration-300">
+        <div className="text-center space-y-4 py-8 relative">
+          <Button variant="ghost" className="absolute left-0 top-8" onClick={() => setView("categories")}>
+            <ChevronLeft className="mr-2 h-4 w-4" /> Back to Categories
+          </Button>
+          <h1 className="text-4xl font-extrabold flex items-center justify-center gap-3">
+            {selectedCategory}
+          </h1>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Choose a poster design from the {selectedCategory} collection.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {categoryTemplates.map((t, idx) => (
             <div
               key={t.id}
               className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300"
               onClick={() => handleSelectTemplate(t)}
             >
               <div
-                className="aspect-[4/5] relative flex flex-col justify-end p-6"
-                style={{ background: getGradient(t.festival_name) }}
+                className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted"
               >
                 {t.bg_image_url && (
                   <img
                     src={t.bg_image_url}
                     alt={t.festival_name}
-                    className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-75 transition-opacity duration-300"
-                    style={{ mixBlendMode: "overlay" }}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                     crossOrigin="anonymous"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
                 <div className="relative z-10">
-                  <h3 className="font-bold text-2xl text-white mb-2 tracking-wide">
-                    {t.festival_name}
+                  <h3 className="font-bold text-xl text-white mb-2 tracking-wide drop-shadow-md">
+                    Design {idx + 1}
                   </h3>
-                  <div className="flex items-center text-white/80 text-sm font-medium">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    Upcoming
-                  </div>
                 </div>
               </div>
             </div>
@@ -558,9 +702,9 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                 top: el.y,
                 width: el.width,
                 height: el.height,
-                backgroundColor: el.bgColor ? hexToRgba(el.bgColor, el.opacity || 100) : "transparent",
+                backgroundColor: el.bgColor ? hexToRgba(el.bgColor, el.opacity ?? 100) : "transparent",
                 borderRadius: el.borderRadius,
-                backdropFilter: (el.opacity || 100) < 100 ? "blur(8px)" : "none",
+                backdropFilter: (el.opacity ?? 100) > 0 && (el.opacity ?? 100) < 100 ? "blur(8px)" : "none",
                 cursor: view === "editor" ? (draggingId === el.id ? 'grabbing' : 'grab') : 'default',
                 zIndex: el.zIndex,
                 border: borderStyle,
@@ -640,12 +784,38 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
       const phoneY = boxY + 50;
       const addressY = boxY + 50;
       setElements(prev => prev.map(e => {
-        if (e.id === "footer-box") return { ...e, y: boxY, opacity: pos === "hidden" ? 0 : 70 };
+        if (e.id === "footer-box") return { ...e, y: boxY, opacity: pos === "hidden" ? 0 : (showFooterBox ? 70 : 0) };
         if (e.id === "biz-name") return { ...e, y: nameY, opacity: pos === "hidden" ? 0 : 100 };
         if (e.id === "biz-phone") return { ...e, y: phoneY, opacity: pos === "hidden" ? 0 : 100 };
         if (e.id === "biz-address") return { ...e, y: addressY, opacity: pos === "hidden" ? 0 : 100 };
         return e;
       }));
+    };
+
+    const handleToggleFooterBox = (checked: boolean) => {
+      setShowFooterBox(checked);
+      setElements(prev => prev.map(e => {
+        if (e.id === "footer-box") {
+          // If the footer is not hidden by position, apply the new opacity
+          // We can check if it's currently at -1000 to know if it's hidden. Wait, the position dropdown state is not stored separately.
+          // Let's just update the opacity if it's not off-screen.
+          return { ...e, opacity: (e.y !== -1000 && checked) ? 70 : 0 };
+        }
+        return e;
+      }));
+    };
+
+    const categoryTemplates = templates.filter(t => t.festival_name === selectedCategory);
+    const currentIndex = categoryTemplates.findIndex(t => t.id === selectedTemplate?.id);
+    const hasNextTemplate = currentIndex !== -1 && currentIndex < categoryTemplates.length - 1;
+    const hasPrevTemplate = currentIndex > 0;
+
+    const handleNextTemplate = () => {
+      if (hasNextTemplate) handleSelectTemplate(categoryTemplates[currentIndex + 1]);
+    };
+
+    const handlePrevTemplate = () => {
+      if (hasPrevTemplate) handleSelectTemplate(categoryTemplates[currentIndex - 1]);
     };
 
     return (
@@ -654,7 +824,15 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
           <Button variant="ghost" onClick={() => setView("gallery")}>
             <ChevronLeft className="mr-2 h-4 w-4" /> Back to Gallery
           </Button>
-          <h2 className="text-xl font-bold">{selectedTemplate?.festival_name} Poster</h2>
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={handlePrevTemplate} disabled={!hasPrevTemplate}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <h2 className="text-xl font-bold">{selectedTemplate?.festival_name} Poster</h2>
+            <Button variant="outline" size="icon" onClick={handleNextTemplate} disabled={!hasNextTemplate}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
           <div className="w-[100px]" /> {/* Spacer for centering */}
         </div>
 
@@ -664,8 +842,11 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
               {renderCanvas()}
             </div>
             <div className="flex gap-4 mt-8">
-              <Button size="lg" className="h-14 px-8 text-lg font-bold bg-orange-600 hover:bg-orange-700" onClick={handleDownload} disabled={downloading}>
+              <Button size="lg" className="h-14 px-8 text-lg font-bold bg-orange-600 hover:bg-orange-700" onClick={handleDownload} disabled={downloading || preparingShare}>
                 {downloading ? "Generating..." : <><Download className="mr-2 h-5 w-5" /> Download Now</>}
+              </Button>
+              <Button size="lg" className="h-14 px-8 text-lg font-bold bg-blue-600 hover:bg-blue-700 text-white" onClick={handleShareCampaign} disabled={preparingShare || downloading}>
+                {preparingShare ? "Preparing..." : <><Share2 className="mr-2 h-5 w-5" /> Share Campaign</>}
               </Button>
               <Button size="lg" variant="outline" className="h-14 px-8 text-lg font-bold border-2" onClick={() => setView("editor")}>
                 <PenTool className="mr-2 h-5 w-5" /> Advanced Edit
@@ -711,6 +892,17 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                   </Select>
                 </div>
 
+                <div className="flex items-center justify-between pt-2 border-t mt-4">
+                  <Label htmlFor="footer-bg-switch" className="text-xs font-semibold uppercase text-muted-foreground cursor-pointer">
+                    Dark Background
+                  </Label>
+                  <Switch 
+                    id="footer-bg-switch" 
+                    checked={showFooterBox} 
+                    onCheckedChange={handleToggleFooterBox} 
+                  />
+                </div>
+
                 <div className="space-y-2 pt-4 border-t">
                   <Label className="text-xs font-semibold uppercase text-muted-foreground block mb-2">Company Logo</Label>
                   <Label
@@ -741,6 +933,12 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
             </Card>
           </div>
         </div>
+        <ShareCampaignDialog 
+          open={shareDialogOpen} 
+          onOpenChange={setShareDialogOpen} 
+          posterDataUrl={sharePosterDataUrl} 
+          festivalName={selectedTemplate?.festival_name || "Festival"} 
+        />
       </div>
     );
   }
@@ -769,7 +967,10 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
             <Redo className="h-4 w-4" />
           </Button>
           <div className="h-6 w-px bg-border mx-2"></div>
-          <Button size="sm" onClick={handleDownload} disabled={downloading || !selectedTemplate} className="bg-orange-600 hover:bg-orange-700 text-white">
+          <Button size="sm" onClick={handleShareCampaign} disabled={preparingShare || downloading || !selectedTemplate} className="bg-blue-600 hover:bg-blue-700 text-white mr-2">
+            {preparingShare ? "Preparing..." : <><Share2 className="mr-2 h-4 w-4" /> Share Campaign</>}
+          </Button>
+          <Button size="sm" onClick={handleDownload} disabled={downloading || preparingShare || !selectedTemplate} className="bg-orange-600 hover:bg-orange-700 text-white">
             {downloading ? "Generating..." : <><Download className="mr-2 h-4 w-4" /> Download Poster</>}
           </Button>
         </div>
@@ -998,6 +1199,13 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
           </div>
         </div>
       </div>
+
+      <ShareCampaignDialog 
+        open={shareDialogOpen} 
+        onOpenChange={setShareDialogOpen} 
+        posterDataUrl={sharePosterDataUrl} 
+        festivalName={selectedTemplate?.festival_name || "Festival"} 
+      />
     </div>
   );
 }

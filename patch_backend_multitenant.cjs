@@ -258,7 +258,7 @@ app.get('/api/qr', async (req, res) => {
 });
 
 app.post('/api/message/send', async (req, res) => {
-    const { phone, text, org_id } = req.body;
+    const { phone, text, mediaUrl, org_id } = req.body;
     
     if (!phone || !text || !org_id) {
         return res.status(400).json({ error: 'Phone, text, and org_id are required' });
@@ -280,7 +280,12 @@ app.post('/api/message/send', async (req, res) => {
             return res.status(400).json({ error: 'Phone number not registered on WhatsApp' });
         }
 
-        const sentMsg = await sock.sendMessage(jid, { text });
+        let sentMsg;
+        if (mediaUrl) {
+            sentMsg = await sock.sendMessage(jid, { image: { url: mediaUrl }, caption: text });
+        } else {
+            sentMsg = await sock.sendMessage(jid, { text });
+        }
         
         // Register LID mapping if available
         const { registerLidMapping } = await import('./baileys');

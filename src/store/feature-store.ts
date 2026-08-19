@@ -53,6 +53,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "items", title: "Items", description: "Products & services catalog", icon: "Package", url: "/items" },
       { key: "inventory", title: "Inventory", description: "Stock management", icon: "Boxes", url: "/inventory" },
       { key: "warehouses", title: "Warehouses", description: "Multi-warehouse locations", icon: "Warehouse", url: "/warehouses" },
+      { key: "branches", title: "Branches", description: "Multi-branch management", icon: "Building2", url: "/branches" },
     ],
   },
   {
@@ -78,10 +79,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "journal", title: "Journal Entries", description: "Record journal entries", icon: "Calculator", url: "/journal" },
       { key: "bank-accounts", title: "Bank & Cash", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
       { key: "cash-flow", title: "Cash Flow", description: "Cash flow analysis", icon: "PieChart", url: "/cash-flow" },
-      { key: "branches", title: "Branches", description: "Multi-branch management", icon: "Building2", url: "/branches" },
-      { key: "warehouses", title: "Warehouses", description: "Warehouse locations", icon: "Warehouse", url: "/warehouses" },
-      { key: "tds", title: "TDS", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
-      { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
     ],
   },
   {
@@ -130,8 +127,10 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     items: [
       { key: "statements", title: "Statements", description: "Customer statements", icon: "FileSpreadsheet", url: "/statements" },
       { key: "reports", title: "Reports", description: "All business reports", icon: "BarChart3", url: "/reports" },
+      { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
       { key: "profit-loss", title: "Profit & Loss", description: "P&L statements", icon: "PieChart", url: "/profit-loss" },
       { key: "gst-returns", title: "GST Returns", description: "GST filing reports", icon: "FileBarChart2", url: "/gst-returns" },
+      { key: "tds", title: "TDS/TCS Returns", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
       { key: "inventory-valuation", title: "Inventory Valuation", description: "Stock valuation reports", icon: "Boxes", url: "/inventory-valuation" },
     ],
   },
