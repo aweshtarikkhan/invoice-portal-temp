@@ -262,27 +262,29 @@ export default function MarketingPostersPage() {
 
     const initialElements: CanvasElement[] = [];
     
-    // Bottom Footer Shape (Beautiful gradient or semi-transparent solid box)
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 90, bgColor: "#000000", opacity: 85, borderRadius: 0, x: 0, y: 410, zIndex: 20 });
+    // Bottom Sleek Footer Shape
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 60, bgColor: "#000000", opacity: 70, borderRadius: 0, x: 0, y: 440, zIndex: 20 });
 
-    const textStartX = logoUrl ? 90 : 20;
-
-    // Business Name
-    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#f59e0b", fontSize: 16, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: textStartX, y: 425, zIndex: 21, maxWidth: 290 });
+    // Business Name (Centered, x=200 since text has translateX(-50%))
+    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 16, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 448, zIndex: 21, maxWidth: 360 });
     
-    // Phone
-    if (phone) {
-      initialElements.push({ id: "biz-phone", type: "text", text: `📞 ${phone}`, color: "#ffffff", fontSize: 12, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: textStartX, y: 445, zIndex: 21, maxWidth: 290 });
-    }
-
-    // Address
+    // Contact Info (Phone + Address in one line, Centered)
+    const contactParts = [];
+    if (phone) contactParts.push(`📞 ${phone}`);
     if (address) {
-      initialElements.push({ id: "biz-address", type: "text", text: `📍 ${address.substring(0, 45)}${address.length > 45 ? '...' : ''}`, color: "#ffffff", fontSize: 10, fontFamily: "system-ui, sans-serif", fontWeight: 400, x: textStartX, y: 465, zIndex: 21, maxWidth: 290 });
+      const shortAddr = address.length > 40 ? address.substring(0, 40) + '...' : address;
+      contactParts.push(`📍 ${shortAddr}`);
+    }
+    const contactText = contactParts.join("  |  ");
+    
+    if (contactText) {
+      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#e2e8f0", fontSize: 10, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 475, zIndex: 21, maxWidth: 380 });
     }
 
-    // Logo
+    // Logo (Top Center for best visibility)
     if (logoUrl) {
-      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 60, height: 60, x: 20, y: 425, zIndex: 30 });
+      // image does not have translateX(-50%), so center x = (400 - 70) / 2 = 165
+      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 70, height: 70, x: 165, y: 20, zIndex: 30 });
     }
 
     setElements(initialElements);
