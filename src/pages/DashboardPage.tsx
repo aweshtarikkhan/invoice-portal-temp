@@ -448,17 +448,17 @@ const KPICard = ({ title, value, icon: Icon, trend, isUp, color, bg }: any) => (
 );
 
 const ActionAlert = ({ icon: Icon, iconColor, bgColor, text, subtext, btnText, onClick }: any) => (
-  <div className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-white shadow-sm hover:shadow-md transition-shadow">
-    <div className="flex items-center gap-3">
-      <div className={`p-2 rounded-lg ${bgColor}`}>
+  <div className="group flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-100/80 hover:border-slate-200 hover:shadow-sm transition-all cursor-default">
+    <div className="flex items-center gap-3.5">
+      <div className={`p-2.5 rounded-xl ${bgColor}`}>
         <Icon className={`w-4 h-4 ${iconColor}`} />
       </div>
       <div>
-        <div className="text-sm font-semibold text-slate-800">{text}</div>
-        <div className="text-xs text-slate-500">{subtext}</div>
+        <div className="text-sm font-semibold text-slate-900 transition-colors">{text}</div>
+        <div className="text-xs text-slate-500 mt-0.5">{subtext}</div>
       </div>
     </div>
-    <Button variant="outline" size="sm" className="h-8 text-xs font-medium" onClick={onClick}>
+    <Button variant="ghost" size="sm" onClick={onClick} className="h-8 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg px-3">
       {btnText}
     </Button>
   </div>
