@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   IndianRupee, Wallet, ShoppingCart, FileText, AlertTriangle, BarChart as BarChartIcon,
-  Plus, Users, Phone, TrendingUp, TrendingDown, Clock, CheckCircle2,
+  Plus, Users, Phone, PhoneCall, TrendingUp, TrendingDown, Clock, CheckCircle2,
   FilePlus2, Receipt, CreditCard, UserPlus, UserCircle, Briefcase, Mail, Activity
 } from "lucide-react";
 import {
