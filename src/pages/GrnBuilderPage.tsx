@@ -247,7 +247,7 @@ export default function GrnBuilderPage() {
             <Label>Vendor *</Label>
             <Select value={vendorId} onValueChange={setVendorId}>
               <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
-              <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.display_name}</SelectItem>)}</SelectContent>
             </Select>
           </div>
           <div>

@@ -76,7 +76,7 @@ export default function PurchaseOrderBuilderPage() {
     if (!org?.id) return;
     (async () => {
       const o = await (supabase as any).from("organizations").select("po_prefix, po_next_number").eq("id", org.id).single();
-      const v = await (supabase as any).from("vendors").select("id, display_name, gstin").eq("org_id", org.id);
+      const v = await (supabase as any).from("vendors").select("id, display_name, gstin, email, phone").eq("org_id", org.id);
       const i = await (supabase as any).from("items").select("id, name, unit, hsn_code, purchase_price, purchase_price_type, tax_id").eq("org_id", org.id);
       const t = await (supabase as any).from("tax_rates").select("*").eq("org_id", org.id);
       setVendors(v.data || []);
@@ -338,7 +338,7 @@ export default function PurchaseOrderBuilderPage() {
               <Store className="absolute left-3 top-2.5 h-4 w-4 text-blue-600" />
               <Select value={vendorId} onValueChange={setVendorId}>
                 <SelectTrigger className="pl-9 h-10 border-slate-200 shadow-sm"><SelectValue placeholder="Select vendor" /></SelectTrigger>
-                <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.display_name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             {vendorId && (
