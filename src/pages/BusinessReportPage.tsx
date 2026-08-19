@@ -48,9 +48,16 @@ export default function BusinessReportPage() {
       const orgInvoiceIds = (orgInvoices || []).map((i: any) => i.id);
       let lines: any[] = [];
       if (orgInvoiceIds.length > 0) {
-        // Supabase has 100k limit so chunk if needed
-        const { data: linesData } = await supabase.from("invoice_lines").select("name, quantity, amount, invoice_id").in("invoice_id", orgInvoiceIds);
-        lines = linesData || [];
+        // Chunk IDs to avoid URI Too Long error
+        const chunkSize = 100;
+        for (let i = 0; i < orgInvoiceIds.length; i += chunkSize) {
+          const chunk = orgInvoiceIds.slice(i, i + chunkSize);
+          const { data: chunkData } = await supabase
+            .from("invoice_lines")
+            .select("name, quantity, amount, invoice_id")
+            .in("invoice_id", chunk);
+          if (chunkData) lines = [...lines, ...chunkData];
+        }
       }
       setInvoiceLines(lines);
     };

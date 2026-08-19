@@ -127,11 +127,13 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     items: [
       { key: "statements", title: "Statements", description: "Customer statements", icon: "FileSpreadsheet", url: "/statements" },
       { key: "reports", title: "Reports", description: "All business reports", icon: "BarChart3", url: "/reports" },
+      { key: "business-report", title: "Business Report", description: "Detailed analytics and KPIs", icon: "BarChart3", url: "/business-report" },
       { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
       { key: "profit-loss", title: "Profit & Loss", description: "P&L statements", icon: "PieChart", url: "/profit-loss" },
       { key: "gst-returns", title: "GST Returns", description: "GST filing reports", icon: "FileBarChart2", url: "/gst-returns" },
       { key: "tds", title: "TDS/TCS Returns", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
       { key: "inventory-valuation", title: "Inventory Valuation", description: "Stock valuation reports", icon: "Boxes", url: "/inventory-valuation" },
+      { key: "aging-details", title: "Aging Details", description: "Receivables & payables aging", icon: "ScrollText", url: "/aging-details" },
     ],
   },
 ];
