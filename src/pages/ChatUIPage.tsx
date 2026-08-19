@@ -228,7 +228,19 @@ export default function ChatUIPage() {
 
           {/* Main Area: Active Chat or QR Code */}
           <div className="flex-1 flex flex-col bg-[#e5ddd5]">
-            {connectionStatus === 'qr' && qrCode ? (
+            {connectionStatus === 'disconnected' || connectionStatus === 'close' ? (
+              <div className="flex-1 flex items-center justify-center flex-col text-slate-700 h-full bg-white">
+                <div className="p-4 border border-red-200 bg-red-50 rounded-xl max-w-md text-center">
+                  <h2 className="text-xl font-semibold text-red-600 mb-2">WhatsApp Disconnected</h2>
+                  <p className="text-sm text-red-700 mb-4">
+                    Your WhatsApp connection was disconnected. Please go to Settings to reconnect your phone.
+                  </p>
+                  <Button variant="outline" onClick={() => window.location.href = '/settings'}>
+                    Go to Settings
+                  </Button>
+                </div>
+              </div>
+            ) : connectionStatus === 'qr' && qrCode ? (
               <div className="flex-1 flex items-center justify-center flex-col text-slate-700 h-full bg-white">
                 <h2 className="text-2xl font-semibold mb-2">Link WhatsApp</h2>
                 <p className="text-sm text-muted-foreground mb-6 text-center max-w-sm">
