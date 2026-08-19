@@ -139,7 +139,7 @@ export default function DashboardPage() {
       {/* 1. Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Business Overview</h1>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 bg-clip-text text-transparent">Business Overview</h1>
           <p className="text-sm text-slate-500 mt-1">Here's what's happening with your business today.</p>
         </div>
         <div className="flex items-center gap-3">
@@ -183,7 +183,7 @@ export default function DashboardPage() {
 
       {/* 3. Chart & Action Required Row */}
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-sm border-slate-200">
+        <Card className="lg:col-span-2 shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <Tabs defaultValue="revenue" className="w-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-base font-semibold">Revenue vs Expenses</CardTitle>
@@ -279,7 +279,7 @@ export default function DashboardPage() {
           </Tabs>
           </Card>
 
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base font-semibold">Action Required</CardTitle>
           </CardHeader>
@@ -295,7 +295,7 @@ export default function DashboardPage() {
       {/* 4. Four Analytics Cards Row */}
       <div className="grid lg:grid-cols-4 gap-6">
         {/* Receivables */}
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-600">Outstanding Receivables</CardTitle>
           </CardHeader>
@@ -327,7 +327,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Expenses */}
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-600">Purchases & Expenses</CardTitle>
           </CardHeader>
@@ -346,7 +346,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* HR */}
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-600">HR & Attendance (Today)</CardTitle>
           </CardHeader>
@@ -380,7 +380,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* CRM */}
-        <Card className="shadow-sm border-slate-200">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-semibold text-slate-600">CRM & Marketing</CardTitle>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center">
@@ -405,7 +405,7 @@ export default function DashboardPage() {
 
       {/* 5. Bottom Row */}
       <div className="grid lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2 shadow-sm border-slate-200">
+        <Card className="lg:col-span-2 shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader>
             <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
           </CardHeader>

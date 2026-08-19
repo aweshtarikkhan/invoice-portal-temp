@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { postInvoiceJournal } from "@/lib/accounting";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -1030,6 +1031,16 @@ export default function InvoiceBuilderPage() {
         });
 
       const { error: lineError } = await supabase.from("invoice_lines").insert(linePayloads);
+
+        // Sync Journal Entry
+        try {
+          const subtotal = linePayloads.reduce((sum, line) => sum + (line.rate * line.quantity), 0);
+          const taxTotal = linePayloads.reduce((sum, line) => sum + (line.tax_amount || 0), 0);
+          await postInvoiceJournal(org!.id, invoiceId, invoicePayload.issue_date, invoicePayload.invoice_number, subtotal, taxTotal, Number(invoicePayload.total), invoicePayload.branch_id || null);
+        } catch (jErr) {
+          console.error("Journal sync failed:", jErr);
+        }
+
       if (lineError) throw lineError;
 
       // Inventory: adjust stock for product items (only when invoice opts in)
