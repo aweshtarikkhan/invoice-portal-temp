@@ -184,18 +184,17 @@ export default function DashboardPage() {
       {/* 3. Chart & Action Required Row */}
       <div className="grid lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2 shadow-sm border-slate-200">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-base font-semibold">Revenue vs Expenses</CardTitle>
-            <Tabs defaultValue="revenue" className="w-[400px]">
-              <TabsList className="grid w-full grid-cols-4">
+          <Tabs defaultValue="revenue" className="w-full">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-base font-semibold">Revenue vs Expenses</CardTitle>
+              <TabsList className="grid w-[400px] grid-cols-4">
                 <TabsTrigger value="revenue">Revenue</TabsTrigger>
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="collections">Collections</TabsTrigger>
                 <TabsTrigger value="profit">Profit</TabsTrigger>
               </TabsList>
-            </Tabs>
-          </CardHeader>
-          <CardContent>
+            </CardHeader>
+            <CardContent>
             
             <TabsContent value="revenue" className="mt-4">
               <div className="h-[300px] w-full">
@@ -276,9 +275,9 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
             </TabsContent>
-
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Tabs>
+          </Card>
 
         <Card className="shadow-sm border-slate-200">
           <CardHeader>
