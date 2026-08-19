@@ -56,19 +56,33 @@ type CanvasElement = {
 type ViewState = "categories" | "gallery" | "preview" | "editor";
 
 const GRADIENT_MAP: Record<string, string> = {
-  Diwali: "linear-gradient(135deg, #d97706, #b45309)",
-  Holi: "linear-gradient(135deg, #db2777, #9333ea, #3b82f6)",
-  Navratri: "linear-gradient(135deg, #16a34a, #047857)",
-  Eid: "linear-gradient(135deg, #059669, #065f46)",
-  Christmas: "linear-gradient(135deg, #dc2626, #991b1b)",
+  "Raksha Bandhan": "linear-gradient(135deg, #e11d48, #9f1239)",
+  "Ganesh Chaturthi": "linear-gradient(135deg, #f59e0b, #d97706)",
+  "Dussehra": "linear-gradient(135deg, #ea580c, #c2410c)",
+  "Diwali": "linear-gradient(135deg, #d97706, #b45309)",
+  "Christmas": "linear-gradient(135deg, #dc2626, #991b1b)",
+  "New Year": "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+  "Makar Sankranti": "linear-gradient(135deg, #f59e0b, #eab308)",
+  "Republic Day": "linear-gradient(135deg, #f97316, #22c55e)",
+  "Holi": "linear-gradient(135deg, #db2777, #9333ea, #3b82f6)",
+  "Eid": "linear-gradient(135deg, #059669, #065f46)",
+  "Independence Day": "linear-gradient(135deg, #f97316, #ffffff, #22c55e)",
+  "Navratri": "linear-gradient(135deg, #16a34a, #047857)",
 };
 
 const TITLE_COLOR_MAP: Record<string, string> = {
-  Diwali: "#fef3c7",
-  Holi: "#ffffff",
-  Navratri: "#f0fdf4",
-  Eid: "#ecfdf5",
-  Christmas: "#fef2f2",
+  "Raksha Bandhan": "#ffe4e6",
+  "Ganesh Chaturthi": "#fef3c7",
+  "Dussehra": "#ffedd5",
+  "Diwali": "#fef3c7",
+  "Christmas": "#fef2f2",
+  "New Year": "#eff6ff",
+  "Makar Sankranti": "#fef9c3",
+  "Republic Day": "#ffffff",
+  "Holi": "#ffffff",
+  "Eid": "#ecfdf5",
+  "Independence Day": "#0f172a",
+  "Navratri": "#f0fdf4",
 };
 
 const FONT_FAMILIES = [
@@ -209,6 +223,17 @@ export default function MarketingPostersPage() {
         processedData.push({ ...baseDiwali, id: baseDiwali.id + "_4", bg_image_url: diwaliBg4 });
         processedData.push({ ...baseDiwali, id: baseDiwali.id + "_5", bg_image_url: diwaliBg5 });
       }
+
+      const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"];
+      const missingFestivals = FESTIVAL_ORDER.filter(f => !processedData.some((p: any) => p.festival_name === f));
+      missingFestivals.forEach(f => {
+         processedData.push({
+            id: `temp_${f}`,
+            festival_name: f,
+            bg_image_url: "",
+            default_text: "Wishing you a happy " + f
+         });
+      });
 
       setTemplates(processedData);
     }
@@ -509,7 +534,7 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
   // GALLERY VIEW
   // ─────────────────────────────────────────────────────────────────
   if (view === "categories") {
-    const categories = Array.from(new Set(templates.map(t => t.festival_name)));
+    const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"]; const existingCats = Array.from(new Set(templates.map(t => t.festival_name))); const categories = Array.from(new Set([...FESTIVAL_ORDER, ...existingCats])).sort((a, b) => { const indexA = FESTIVAL_ORDER.indexOf(a); const indexB = FESTIVAL_ORDER.indexOf(b); if (indexA === -1 && indexB === -1) return a.localeCompare(b); if (indexA === -1) return 1; if (indexB === -1) return -1; return indexA - indexB; });
     return (
       <div className="space-y-8 max-w-[1200px] mx-auto p-4">
         <div className="text-center space-y-4 py-8">
