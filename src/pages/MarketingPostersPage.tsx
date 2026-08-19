@@ -103,7 +103,7 @@ export default function MarketingPostersPage() {
   const [selectedTemplate, setSelectedTemplate] = useState<PosterTemplate | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [view, setView] = useState<ViewState>("categories");
-  const [showFooterBox, setShowFooterBox] = useState(false);
+  const [showFooterBox, setShowFooterBox] = useState(true);
 
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [history, setHistory] = useState<CanvasElement[][]>([]);
@@ -826,15 +826,14 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
     };
 
     const updateFooterPosition = (pos: string) => {
-      const boxY = pos === "bottom" ? 400 : (pos === "top" ? 0 : -1000);
-      const nameY = boxY + 20;
-      const phoneY = boxY + 50;
-      const addressY = boxY + 50;
+      const boxY = pos === "bottom" ? 474 : (pos === "top" ? 0 : -1000);
+      const contactY = pos === "bottom" ? 480 : (pos === "top" ? 6 : -1000);
+      const nameY = pos === "bottom" ? 442 : (pos === "top" ? 35 : -1000);
+      
       setElements(prev => prev.map(e => {
-        if (e.id === "footer-box") return { ...e, y: boxY, opacity: pos === "hidden" ? 0 : (showFooterBox ? 70 : 0) };
+        if (e.id === "footer-box") return { ...e, y: boxY, opacity: pos === "hidden" ? 0 : (showFooterBox ? 100 : 0) };
         if (e.id === "biz-name") return { ...e, y: nameY, opacity: pos === "hidden" ? 0 : 100 };
-        if (e.id === "biz-phone") return { ...e, y: phoneY, opacity: pos === "hidden" ? 0 : 100 };
-        if (e.id === "biz-address") return { ...e, y: addressY, opacity: pos === "hidden" ? 0 : 100 };
+        if (e.id === "biz-contact") return { ...e, y: contactY, opacity: pos === "hidden" ? 0 : 100 };
         return e;
       }));
     };
@@ -843,10 +842,7 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
       setShowFooterBox(checked);
       setElements(prev => prev.map(e => {
         if (e.id === "footer-box") {
-          // If the footer is not hidden by position, apply the new opacity
-          // We can check if it's currently at -1000 to know if it's hidden. Wait, the position dropdown state is not stored separately.
-          // Let's just update the opacity if it's not off-screen.
-          return { ...e, opacity: (e.y !== -1000 && checked) ? 70 : 0 };
+          return { ...e, opacity: (e.y !== -1000 && checked) ? 100 : 0 };
         }
         return e;
       }));
