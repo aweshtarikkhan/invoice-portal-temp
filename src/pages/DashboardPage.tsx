@@ -455,11 +455,11 @@ const ActionAlert = ({ icon: Icon, iconColor, bgColor, text, subtext, btnText, o
         <Icon className={`w-4 h-4 ${iconColor}`} />
       </div>
       <div>
-        <div className="text-sm font-semibold text-slate-900 transition-colors">{text}</div>
+        <div className="text-sm font-semibold text-slate-900 group-hover:text-orange-600 transition-colors">{text}</div>
         <div className="text-xs text-slate-500 mt-0.5">{subtext}</div>
       </div>
     </div>
-    <Button variant="ghost" size="sm" onClick={onClick} className="h-8 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg px-3">
+    <Button variant="ghost" size="sm" onClick={onClick} className="h-8 text-xs font-semibold text-slate-600 hover:text-orange-600 hover:bg-orange-50 rounded-lg px-3">
       {btnText}
     </Button>
   </div>
@@ -489,8 +489,8 @@ const QuickAction = ({ icon: Icon, label, onClick }: any) => (
     onClick={onClick}
     className="group flex flex-col items-center justify-start p-2 hover:bg-slate-200/20 rounded-2xl transition-all gap-2"
   >
-    <div className="w-14 h-14 rounded-[1.25rem] bg-white shadow-sm border border-slate-100/80 flex items-center justify-center group-hover:scale-105 group-hover:shadow-md transition-all">
-      <Icon className="w-6 h-6 text-slate-700 group-hover:text-blue-600 transition-colors" />
+    <div className="w-14 h-14 rounded-[1.25rem] bg-white shadow-sm border border-slate-100/80 flex items-center justify-center group-hover:scale-105 group-hover:shadow-md group-hover:border-orange-200 transition-all">
+      <Icon className="w-6 h-6 text-slate-700 group-hover:text-[#f97316] transition-colors" />
     </div>
     <span className="text-[11px] font-medium text-slate-600 text-center leading-tight mt-1">{label}</span>
   </button>
