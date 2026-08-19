@@ -230,7 +230,7 @@ export default function EstimateDetailPage() {
             </Button>
           )}
 
-          <Button variant="outline" onClick={async () => {
+          <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
               if (!org || !estimate || !client) return;
               const token = await getOrCreatePortalToken(org.id, "estimate", estimate.id);
               

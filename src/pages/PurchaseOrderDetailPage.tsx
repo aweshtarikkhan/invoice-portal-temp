@@ -190,7 +190,7 @@ export default function PurchaseOrderDetailPage() {
           <Badge variant="outline" className={statusColor[po.status] || ""}>{po.status}</Badge>
         </div>
         <div className="flex gap-2">
-            <Button variant="outline" onClick={async () => {
+            <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
               if (!org || !po || !po.vendors) return;
               
               const template = await getWhatsappTemplate(org.id, "purchase_order");
