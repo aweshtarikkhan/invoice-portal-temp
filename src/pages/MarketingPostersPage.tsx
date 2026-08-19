@@ -86,6 +86,21 @@ const TITLE_COLOR_MAP: Record<string, string> = {
   "Navratri": "#f0fdf4",
 };
 
+const FOOTER_COLOR_MAP: Record<string, string> = {
+  "Raksha Bandhan": "#831843",
+  "Ganesh Chaturthi": "#9a3412",
+  "Dussehra": "#9a3412",
+  "Diwali": "#7f1d1d",
+  "Christmas": "#14532d",
+  "New Year": "#1e3a8a",
+  "Makar Sankranti": "#b45309",
+  "Republic Day": "#1e3a8a",
+  "Holi": "#581c87",
+  "Eid": "#064e3b",
+  "Independence Day": "#1e3a8a",
+  "Navratri": "#0f766e",
+};
+
 const FONT_FAMILIES = [
   { value: "system-ui, sans-serif", label: "Default" },
   { value: "'Inter', sans-serif", label: "Inter" },
@@ -265,7 +280,8 @@ export default function MarketingPostersPage() {
     const initialElements: CanvasElement[] = [];
     
     // Ultra-thin, elegant footer strip at the absolute bottom
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 26, bgColor: "#0f172a", opacity: 100, borderRadius: 0, x: 0, y: 474, zIndex: 20 });
+    const defaultFooterColor = FOOTER_COLOR_MAP[t.festival_name] || "#0f172a";
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 26, bgColor: defaultFooterColor, opacity: 100, borderRadius: 0, x: 0, y: 474, zIndex: 20 });
 
     // Business Name (Floating beautifully above the footer strip)
     initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 442, zIndex: 21, maxWidth: 360 });
@@ -938,6 +954,24 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                       <SelectItem value="hidden">Hidden</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t mt-4">
+                  <Label className="text-xs font-semibold uppercase text-muted-foreground">Footer Color</Label>
+                  <div className="flex items-center gap-2">
+                    <input 
+                      type="color" 
+                      value={elements.find(e => e.id === "footer-box")?.bgColor || "#0f172a"}
+                      onChange={e => {
+                        const val = e.target.value;
+                        setElements(prev => prev.map(el => el.id === "footer-box" ? { ...el, bgColor: val } : el));
+                      }}
+                      className="h-8 w-full cursor-pointer p-0 bg-transparent border rounded" 
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground leading-tight">
+                    Change the footer strip color to match the poster's theme.
+                  </p>
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t mt-4">
