@@ -12,11 +12,11 @@ import { Download, Upload, MapPin, Phone, Building, Settings, Sparkles, Eraser, 
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
-import diwaliBg from "@/assets/diwali_poster_1.png";
-import diwaliBg2 from "@/assets/diwali_poster_2.png";
-import diwaliBg3 from "@/assets/diwali_poster_3.png";
-import diwaliBg4 from "@/assets/diwali_poster_4.png";
-import diwaliBg5 from "@/assets/diwali_poster_5.png";
+
+
+
+
+
 import { removeBackground } from '@imgly/background-removal';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ShareCampaignDialog } from "@/components/marketing/ShareCampaignDialog";
@@ -205,38 +205,43 @@ export default function MarketingPostersPage() {
       .from("poster_templates")
       .select("*")
       .order("created_at", { ascending: true });
-    if (error) {
+      
+    let processedData: any[] = [];
+    if (!error && data) {
+      processedData = data.map((t: any) => ({ ...t }));
+    } else if (error) {
       toast.error("Failed to load templates");
-    } else {
-      const localOverrides: Record<string, string> = {
-        Diwali: diwaliBg,
-      };
-      const processedData = (data || []).map((t: any) => ({
-        ...t,
-        bg_image_url: localOverrides[t.festival_name] || t.bg_image_url
-      }));
-
-      const baseDiwali = processedData.find((t: any) => t.festival_name === "Diwali");
-      if (baseDiwali) {
-        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_2", bg_image_url: diwaliBg2 });
-        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_3", bg_image_url: diwaliBg3 });
-        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_4", bg_image_url: diwaliBg4 });
-        processedData.push({ ...baseDiwali, id: baseDiwali.id + "_5", bg_image_url: diwaliBg5 });
-      }
-
-      const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"];
-      const missingFestivals = FESTIVAL_ORDER.filter(f => !processedData.some((p: any) => p.festival_name === f));
-      missingFestivals.forEach(f => {
-         processedData.push({
-            id: `temp_${f}`,
-            festival_name: f,
-            bg_image_url: "",
-            default_text: "Wishing you a happy " + f
-         });
-      });
-
-      setTemplates(processedData);
     }
+
+    // Load local posters from dynamic folders
+    const localPosters = import.meta.glob('@/assets/posters/**/*.png', { eager: true, as: 'url' }) as Record<string, string>;
+    const dynamicTemplates: PosterTemplate[] = [];
+    
+    Object.keys(localPosters).forEach((path, index) => {
+       const parts = path.split('/');
+       const festival = parts[parts.length - 2];
+       dynamicTemplates.push({
+          id: `local_${festival}_${index}`,
+          festival_name: festival,
+          bg_image_url: localPosters[path],
+          default_text: "Wishing you a happy " + festival
+       });
+    });
+
+    processedData = [...processedData, ...dynamicTemplates];
+
+    const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"];
+    const missingFestivals = FESTIVAL_ORDER.filter(f => !processedData.some((p: any) => p.festival_name === f));
+    missingFestivals.forEach(f => {
+       processedData.push({
+          id: `temp_${f}`,
+          festival_name: f,
+          bg_image_url: "",
+          default_text: "Wishing you a happy " + f
+       });
+    });
+
+    setTemplates(processedData);
     setLoading(false);
   };
 
