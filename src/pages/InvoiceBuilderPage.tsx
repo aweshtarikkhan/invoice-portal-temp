@@ -806,6 +806,10 @@ export default function InvoiceBuilderPage() {
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   const handleActionClick = (action: "email" | "whatsapp") => {
+    if (action === "whatsapp" && !(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))) {
+      toast({ title: "Access Denied", description: "You don't have permission to use WhatsApp features.", variant: "destructive" });
+      return;
+    }
     const client = clients.find(c => c.id === clientId);
     if (!client) {
       toast({ title: "Select a client first", variant: "destructive" });

@@ -407,6 +407,24 @@ export default function AdminPanelPage() {
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-slate-300">Feature Permissions</label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
+                          <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={newUserPermissions.includes("settings_access")}
+                              onChange={() => togglePermission("settings_access")}
+                              className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span className="truncate">Settings Access</span>
+                          </label>
+                          <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={newUserPermissions.includes("whatsapp_access")}
+                              onChange={() => togglePermission("whatsapp_access")}
+                              className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                            />
+                            <span className="truncate">WhatsApp Access</span>
+                          </label>
                           {[...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS.filter(g => selectedOrgFeatures.includes(g.key))].map(group => (
                             <label key={group.key} className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
                               <input

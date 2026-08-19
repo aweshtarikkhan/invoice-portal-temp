@@ -352,7 +352,9 @@ export default function InvoiceDetailPage() {
             }}>
               <Share2 className="mr-2 h-4 w-4" /> Share Link
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => {
+            <DropdownMenuItem 
+              disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))}
+              onClick={async () => {
               if (!org || !invoice || !invoice.clients) return;
               const token = await getOrCreatePortalToken(org.id, "invoice", invoice.id);
               

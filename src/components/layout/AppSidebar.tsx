@@ -158,6 +158,7 @@ export function AppSidebar() {
   const org = useAppStore((s) => s.organization);
   const myOrganizations = useAppStore((s) => s.myOrganizations);
   const userRole = useAppStore((s) => s.userRole);
+  const globalPermissions = useAppStore((s) => s.userPermissions);
   const inventoryEnabled = (org as any)?.inventory_enabled;
   const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -170,7 +171,8 @@ export function AppSidebar() {
   // Find permissions for regular users in current org
   const currentOrgId = org?.id || "default";
   const currentTeamMember = !isUserAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
-  const userPermissions = currentTeamMember?.permissions || [];
+  // Combine local and global permissions
+  const userPermissions = [...(currentTeamMember?.permissions || []), ...globalPermissions];
 
   const isGroupAccessible = (groupKey: string) => {
     if (isUserAdmin) return true; // Admins see everything that is enabled
@@ -197,7 +199,7 @@ export function AppSidebar() {
 
   // Default groups (always visible for admins, or if explicitly given permission)
   const defaultGroups = [
-    { key: "sales", label: "Sales", items: salesItems },
+    { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
   ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key));
 
@@ -410,42 +412,47 @@ export function AppSidebar() {
         })}
 
         {/* Settings group - collapsible under gear icon */}
-        <SidebarGroup className="p-0 mt-2">
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setSettingsOpen(!settingsOpen)}
-                  isActive={isSettingsActive}
-                  className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
-                  tooltip={t("System & Settings")}
-                >
-                  <Settings className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />
-                  {!collapsed && (
-                    <>
-                      <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t("System & Settings")}</span>
-                      <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${settingsOpen || isSettingsActive ? 'rotate-90' : ''}`} />
-                    </>
-                  )}
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-              {(settingsOpen || isSettingsActive) && settingsItems.map((item) => (
-                <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
-                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
-                    <NavLink
-                      to={item.url}
-                      className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
-                      activeClassName="bg-blue-600/10 text-blue-400 font-medium"
-                    >
-                      {collapsed ? (
-                        item.icon && <item.icon className="h-4 w-4 shrink-0" />
-                      ) : (
-                        <span className="text-sm">{t(item.title)}</span>
-                      )}
-                    </NavLink>
+        {(userRole === 'admin' || userRole === 'owner' || userPermissions.includes('settings_access')) && (
+          <SidebarGroup className="p-0 mt-2">
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setSettingsOpen(!settingsOpen)}
+                    isActive={isSettingsActive}
+                    className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
+                    tooltip={t("System & Settings")}
+                  >
+                    <Settings className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />
+                    {!collapsed && (
+                      <>
+                        <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t("System & Settings")}</span>
+                        <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${settingsOpen || isSettingsActive ? 'rotate-90' : ''}`} />
+                      </>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
-              ))}
+                {(settingsOpen || isSettingsActive) && settingsItems.map((item) => (
+                  <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
+                      <NavLink
+                        to={item.url}
+                        className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
+                        activeClassName="bg-blue-600/10 text-blue-400 font-medium"
+                      >
+                        {collapsed ? (
+                          item.icon && <item.icon className="h-4 w-4 shrink-0" />
+                        ) : (
+                          <span className="text-sm">{t(item.title)}</span>
+                        )}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
               {/* Admin Panel link - hidden from staff */}
               {userRole !== 'staff' && (

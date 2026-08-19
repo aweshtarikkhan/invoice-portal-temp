@@ -124,6 +124,7 @@ export function AppLayout() {
   const setOrganization = useAppStore((s) => s.setOrganization);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
   const setUserRole = useAppStore((s) => s.setUserRole);
+  const setUserPermissions = useAppStore((s) => s.setUserPermissions);
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -183,6 +184,7 @@ export function AppLayout() {
         setOrganization(activeOrg as any);
         const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
         setUserRole(activeMember?.role || "staff");
+        setUserPermissions(activeMember?.permissions || []);
 
         if ((activeOrg as any).enabled_features && Array.isArray((activeOrg as any).enabled_features)) {
           useFeatureStore.getState().setOrgFeatures(activeOrgId, (activeOrg as any).enabled_features);
@@ -231,6 +233,7 @@ export function AppLayout() {
       if (fallbackOrg) {
         setOrganization(fallbackOrg as any);
         setUserRole("admin"); // Assume admin since they have org_id on profile
+        setUserPermissions(["settings_access", "whatsapp_access"]);
 
         if ((fallbackOrg as any).enabled_features && Array.isArray((fallbackOrg as any).enabled_features)) {
           useFeatureStore.getState().setOrgFeatures(profile.org_id, (fallbackOrg as any).enabled_features);

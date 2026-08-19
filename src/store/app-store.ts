@@ -56,6 +56,8 @@ interface AppState {
   setCurrentUserId: (id: string | null) => void;
   userRole: string | null;
   setUserRole: (role: string | null) => void;
+  userPermissions: string[];
+  setUserPermissions: (perms: string[]) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -91,6 +93,8 @@ export const useAppStore = create<AppState>()(
       },
       userRole: null,
       setUserRole: (role) => set({ userRole: role }),
+      userPermissions: [],
+      setUserPermissions: (perms) => set({ userPermissions: perms }),
     }),
     {
       name: "billflow-app-storage",
