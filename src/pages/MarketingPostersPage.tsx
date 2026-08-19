@@ -251,41 +251,43 @@ export default function MarketingPostersPage() {
 
   const buildDefaultPoster = (t: PosterTemplate) => {
     let bizName = org?.name || "Your Business Name";
-    let phone = (org as any)?.phone || "+91 9876543210";
+    let phone = (org as any)?.phone || "";
     let address = "";
     const addr = (org as any)?.address;
     if (typeof addr === "string") address = addr;
     else if (typeof addr === "object" && addr !== null) {
       address = [addr.street1, addr.street2, addr.city, addr.state, addr.zip].filter(Boolean).join(", ");
-    } else {
-      address = "123 Business Street, City";
     }
+    const logoUrl = (org as any)?.logo_url || "";
 
     const initialElements: CanvasElement[] = [];
     
-    // Bottom Footer Shape
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 100, bgColor: "#000000", opacity: 0, borderRadius: 0, x: 0, y: 400, zIndex: 20 });
+    // Bottom Footer Shape (Beautiful gradient or semi-transparent solid box)
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 90, bgColor: "#000000", opacity: 85, borderRadius: 0, x: 0, y: 410, zIndex: 20 });
+
+    const textStartX = logoUrl ? 90 : 20;
 
     // Business Name
-    initialElements.push({ id: "biz-name", type: "text", text: bizName, color: "#f59e0b", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 420, zIndex: 21, maxWidth: 360 });
+    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#f59e0b", fontSize: 16, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: textStartX, y: 425, zIndex: 21, maxWidth: 290 });
     
     // Phone
-    initialElements.push({ id: "biz-phone", type: "text", text: `📞 ${phone}`, color: "#ffffff", fontSize: 12, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 100, y: 450, zIndex: 21, maxWidth: 180 });
-
-    // Address
-    initialElements.push({ id: "biz-address", type: "text", text: `📍 ${address.substring(0, 30)}${address.length > 30 ? '...' : ''}`, color: "#ffffff", fontSize: 10, fontFamily: "system-ui, sans-serif", fontWeight: 400, x: 300, y: 450, zIndex: 21, maxWidth: 180 });
-
-    // Logo
-    if (org?.logo_url) {
-      initialElements.push({ id: "biz-logo", type: "image", src: org.logo_url, width: 80, height: 80, x: 20, y: 20, zIndex: 30 });
+    if (phone) {
+      initialElements.push({ id: "biz-phone", type: "text", text: `📞 ${phone}`, color: "#ffffff", fontSize: 12, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: textStartX, y: 445, zIndex: 21, maxWidth: 290 });
     }
 
-    // Reset History and Elements
-    historyRef.current = [initialElements];
-    historyIndexRef.current = 0;
+    // Address
+    if (address) {
+      initialElements.push({ id: "biz-address", type: "text", text: `📍 ${address.substring(0, 45)}${address.length > 45 ? '...' : ''}`, color: "#ffffff", fontSize: 10, fontFamily: "system-ui, sans-serif", fontWeight: 400, x: textStartX, y: 465, zIndex: 21, maxWidth: 290 });
+    }
+
+    // Logo
+    if (logoUrl) {
+      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 60, height: 60, x: 20, y: 425, zIndex: 30 });
+    }
+
+    setElements(initialElements);
     setHistory([initialElements]);
     setHistoryIndex(0);
-    setElements(initialElements);
     setActiveElementId(null);
   };
 
