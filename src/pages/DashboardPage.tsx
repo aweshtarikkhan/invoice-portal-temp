@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { seedHrCrmData } from "@/lib/seed-hr-crm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
@@ -11,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   IndianRupee, Wallet, ShoppingCart, FileText, AlertTriangle, BarChart as BarChartIcon,
   Plus, Users, Phone, PhoneCall, TrendingUp, TrendingDown, Clock, CheckCircle2,
-  FilePlus2, Receipt, CreditCard, UserPlus, UserCircle, Briefcase, Mail, Activity
+  FilePlus2, Receipt, CreditCard, UserPlus, UserCircle, Briefcase, Mail, Activity, PackagePlus, FileSpreadsheet, Building2, BookOpen
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -168,7 +169,33 @@ export default function DashboardPage() {
               <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/leads')} />
               <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees')} />
               <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/attendance')} />
-              <QuickAction icon={Activity} label="More" onClick={() => {}} />
+              
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <div>
+                      <QuickAction icon={Activity} label="More" onClick={() => {}} />
+                    </div>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
+                      <span>Create Bill</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/vendors')}>
+                      <Building2 className="w-4 h-4 mr-2 text-slate-500" />
+                      <span>Add Vendor</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/items')}>
+                      <PackagePlus className="w-4 h-4 mr-2 text-slate-500" />
+                      <span>Add Item/Product</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/journal')}>
+                      <BookOpen className="w-4 h-4 mr-2 text-slate-500" />
+                      <span>Record Journal</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+
             </div>
 
       {/* 2. Top KPI Row */}
