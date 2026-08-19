@@ -264,29 +264,30 @@ export default function MarketingPostersPage() {
 
     const initialElements: CanvasElement[] = [];
     
-    // Bottom Sleek Footer Shape
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 60, bgColor: "#000000", opacity: 70, borderRadius: 0, x: 0, y: 440, zIndex: 20 });
+    // Ultra-thin, elegant footer strip at the absolute bottom
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 26, bgColor: "#0f172a", opacity: 100, borderRadius: 0, x: 0, y: 474, zIndex: 20 });
 
-    // Business Name (Centered, x=200 since text has translateX(-50%))
-    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 16, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 448, zIndex: 21, maxWidth: 360 });
+    // Business Name (Floating beautifully above the footer strip)
+    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 442, zIndex: 21, maxWidth: 360 });
     
-    // Contact Info (Phone + Address in one line, Centered)
+    // Contact Info (Phone + Email/Address in one line, Centered perfectly INSIDE the thin footer)
     const contactParts = [];
     if (phone) contactParts.push(`📞 ${phone}`);
-    if (address) {
-      const shortAddr = address.length > 40 ? address.substring(0, 40) + '...' : address;
+    const email = (org as any)?.email || (user as any)?.email;
+    if (email) contactParts.push(`✉️ ${email}`);
+    else if (address) {
+      const shortAddr = address.length > 30 ? address.substring(0, 30) + '...' : address;
       contactParts.push(`📍 ${shortAddr}`);
     }
-    const contactText = contactParts.join("  |  ");
+    const contactText = contactParts.join("   |   ");
     
     if (contactText) {
-      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#e2e8f0", fontSize: 10, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 475, zIndex: 21, maxWidth: 380 });
+      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#ffffff", fontSize: 9, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 480, zIndex: 21, maxWidth: 390 });
     }
 
-    // Logo (Top Center for best visibility)
+    // Logo (Top Right corner - professional standard)
     if (logoUrl) {
-      // image does not have translateX(-50%), so center x = (400 - 70) / 2 = 165
-      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 70, height: 70, x: 165, y: 20, zIndex: 30 });
+      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 65, height: 65, x: 315, y: 15, zIndex: 30 });
     }
 
     setElements(initialElements);
