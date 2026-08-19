@@ -270,19 +270,25 @@ export default function MarketingPostersPage() {
     // Business Name (Floating beautifully above the footer strip)
     initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 442, zIndex: 21, maxWidth: 360 });
     
-    // Contact Info (Phone + Email/Address in one line, Centered perfectly INSIDE the thin footer)
+    // Contact Info (Phone + Email + Web + Address in one line, Centered perfectly INSIDE the thin footer)
     const contactParts = [];
     if (phone) contactParts.push(`📞 ${phone}`);
     const email = (org as any)?.email || (user as any)?.email;
     if (email) contactParts.push(`✉️ ${email}`);
-    else if (address) {
-      const shortAddr = address.length > 30 ? address.substring(0, 30) + '...' : address;
+    const website = (org as any)?.website;
+    if (website) contactParts.push(`🌐 ${website}`);
+    if (address) {
+      const shortAddr = address.length > 25 ? address.substring(0, 25) + '...' : address;
       contactParts.push(`📍 ${shortAddr}`);
     }
     const contactText = contactParts.join("   |   ");
     
     if (contactText) {
-      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#ffffff", fontSize: 9, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 480, zIndex: 21, maxWidth: 390 });
+      let fSize = 9;
+      if (contactText.length > 80) fSize = 6;
+      else if (contactText.length > 60) fSize = 7.5;
+      
+      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#ffffff", fontSize: fSize, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 480, zIndex: 21, maxWidth: 395 });
     }
 
     // Logo (Top Right corner - professional standard)
@@ -902,23 +908,28 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                   <Settings className="w-5 h-5 text-primary" /> Quick Settings
                 </h3>
                 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="text-xs font-semibold uppercase text-muted-foreground">Company Details</Label>
-                  <Input 
-                    value={bizNameEl?.text || ""} 
-                    onChange={e => handleQuickTextChange("biz-name", e.target.value)} 
-                    placeholder="Business Name"
-                  />
-                  <Input 
-                    value={bizPhoneEl?.text || ""} 
-                    onChange={e => handleQuickTextChange("biz-phone", e.target.value)} 
-                    placeholder="Phone Number"
-                  />
-                  <Input 
-                    value={bizAddressEl?.text || ""} 
-                    onChange={e => handleQuickTextChange("biz-address", e.target.value)} 
-                    placeholder="Address"
-                  />
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Business Name</Label>
+                    <Input 
+                      value={bizNameEl?.text || ""} 
+                      onChange={e => handleQuickTextChange("biz-name", e.target.value)} 
+                      placeholder="Business Name"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground mb-1 block">Footer Contact Line (Phone, Email, Web, Address)</Label>
+                    <Textarea 
+                      value={elements.find(e => e.id === "biz-contact")?.text || ""} 
+                      onChange={e => handleQuickTextChange("biz-contact", e.target.value)} 
+                      placeholder="📞 Phone  |  ✉️ Email  |  🌐 Website  |  📍 Address"
+                      className="resize-none h-20 text-xs"
+                    />
+                    <p className="text-[10px] text-muted-foreground mt-1 leading-tight">
+                      Edit this text to show exactly what you want in the bottom strip. You can remove or add details (like website). The text will auto-shrink to fit.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2 pt-2">
