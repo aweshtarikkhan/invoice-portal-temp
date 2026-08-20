@@ -7,9 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Webhook, Key, Copy, Plus, Trash2, CheckCircle2, Facebook, Phone, Link as LinkIcon, RefreshCcw } from "lucide-react";
+import { Webhook, Key, Copy, Plus, Trash2, CheckCircle2, Facebook, Phone, Link as LinkIcon, RefreshCcw, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 
@@ -23,6 +24,7 @@ export default function CrmIntegrationsPage() {
   const [imLoading, setImLoading] = useState(false);
 
   const [jdActive, setJdActive] = useState(false);
+  const [guideOpen, setGuideOpen] = useState<"indiamart" | "justdial" | "meta" | null>(null);
   
   useEffect(() => {
     if (org?.id) {
@@ -127,7 +129,12 @@ export default function CrmIntegrationsPage() {
             <Card className="border-orange-200 bg-orange-50/30 shadow-sm flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
                 <div className="space-y-1">
-                  <CardTitle className="text-base flex items-center gap-2"><Phone className="w-5 h-5 text-orange-500" /> IndiaMart Integration</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Phone className="w-5 h-5 text-orange-500" /> IndiaMart Integration
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-orange-700 hover:text-orange-800 hover:bg-orange-100 px-2 mt-1" onClick={() => setGuideOpen("indiamart")}>
+                    <BookOpen className="w-3 h-3 mr-1" /> How to integrate?
+                  </Button>
                   <CardDescription className="text-xs">Automatically fetch new leads from IndiaMart every 15 minutes.</CardDescription>
                 </div>
                 <Switch checked={imActive} onCheckedChange={setImActive} />
@@ -154,7 +161,12 @@ export default function CrmIntegrationsPage() {
             <Card className="border-blue-200 bg-blue-50/30 shadow-sm flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between pb-2 space-y-0">
                 <div className="space-y-1">
-                  <CardTitle className="text-base flex items-center gap-2"><LinkIcon className="w-5 h-5 text-blue-500" /> Justdial Webhook</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <LinkIcon className="w-5 h-5 text-blue-500" /> Justdial Webhook
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-700 hover:text-blue-800 hover:bg-blue-100 px-2 mt-1" onClick={() => setGuideOpen("justdial")}>
+                    <BookOpen className="w-3 h-3 mr-1" /> Setup Guide
+                  </Button>
                   <CardDescription className="text-xs">Provide this unique webhook URL to Justdial to receive leads in real-time.</CardDescription>
                 </div>
                 <Switch checked={jdActive} onCheckedChange={toggleJustdial} />
@@ -177,7 +189,12 @@ export default function CrmIntegrationsPage() {
             <Card className="border-indigo-200 bg-indigo-50/30 shadow-sm md:col-span-2">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <div className="space-y-1">
-                  <CardTitle className="text-base flex items-center gap-2"><Facebook className="w-5 h-5 text-indigo-600" /> Meta (Facebook) Leads</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Facebook className="w-5 h-5 text-indigo-600" /> Meta (Facebook) Leads
+                  </CardTitle>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs text-indigo-700 hover:text-indigo-800 hover:bg-indigo-100 px-2 mt-1" onClick={() => setGuideOpen("meta")}>
+                    <BookOpen className="w-3 h-3 mr-1" /> Connection Guide
+                  </Button>
                   <CardDescription className="text-xs">Connect your Facebook Page to sync Lead Ads directly into the CRM.</CardDescription>
                 </div>
                 <Badge variant="outline" className="bg-indigo-100 text-indigo-700 shrink-0 ml-2">Coming Soon</Badge>
