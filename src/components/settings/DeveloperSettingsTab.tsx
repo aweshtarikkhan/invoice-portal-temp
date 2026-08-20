@@ -6,18 +6,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Webhook, Key, Copy, Plus, Trash2, CheckCircle2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Webhook, Key, Copy, Plus, Trash2, CheckCircle2, Facebook, Phone, Link as LinkIcon, RefreshCcw } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function DeveloperSettingsTab() {
   const org = useAppStore((s) => s.organization);
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [webhooks, setWebhooks] = useState<any[]>([]);
   
+  const [imConfig, setImConfig] = useState({ mobile: "", crm_key: "" });
+  const [imActive, setImActive] = useState(false);
+  const [imLoading, setImLoading] = useState(false);
+
+  const [jdActive, setJdActive] = useState(false);
+  
   useEffect(() => {
     if (org?.id) {
       loadKeys();
       loadWebhooks();
+      loadLeadIntegrations();
     }
   }, [org?.id]);
 
@@ -31,109 +40,203 @@ export function DeveloperSettingsTab() {
     if (data) setWebhooks(data);
   };
 
+  const loadLeadIntegrations = async () => {
+    const { data } = await (supabase as any).from("lead_integrations").select("*").eq("org_id", org!.id);
+    if (data) {
+      const im = data.find((d: any) => d.provider === 'indiamart');
+      if (im) {
+        setImConfig(im.config || { mobile: "", crm_key: "" });
+        setImActive(im.is_active);
+      }
+      
+      const jd = data.find((d: any) => d.provider === 'justdial');
+      if (jd) {
+        setJdActive(jd.is_active);
+      }
+    }
+  };
+
+  const saveIndiaMart = async () => {
+    setImLoading(true);
+    const { error } = await (supabase as any).from("lead_integrations").upsert({
+      org_id: org!.id,
+      provider: "indiamart",
+      config: imConfig,
+      is_active: imActive
+    }, { onConflict: 'org_id, provider' });
+    
+    if (error) toast.error(error.message);
+    else toast.success("IndiaMart configuration saved");
+    setImLoading(false);
+  };
+
+  const toggleJustdial = async (active: boolean) => {
+    setJdActive(active);
+    await (supabase as any).from("lead_integrations").upsert({
+      org_id: org!.id,
+      provider: "justdial",
+      is_active: active
+    }, { onConflict: 'org_id, provider' });
+    if (active) toast.success("Justdial Webhook activated");
+  };
+
   const generateApiKey = async () => {
     const name = prompt("Name this API Key (e.g. 'Zapier Integration'):");
     if (!name) return;
-    
-    // In a real app, generate securely on backend. Here we simulate for Phase 3 UI.
     const rawKey = `sk_${org!.id.split("-")[0]}_${Math.random().toString(36).substring(2,15)}`;
-    
     const { error } = await (supabase as any).from("org_api_keys").insert({
-      org_id: org!.id,
-      name,
-      key_hash: "hash_hidden", 
-      preview: rawKey.substring(0, 10) + "..."
+      org_id: org!.id, name, key_hash: "hash_hidden", preview: rawKey.substring(0, 10) + "..."
     });
-    
-    if (error) {
-      toast.error(error.message);
-    } else {
-      prompt("Copy this key NOW. You will not see it again:", rawKey);
-      loadKeys();
-    }
+    if (error) toast.error(error.message);
+    else { prompt("Copy this key NOW. You will not see it again:", rawKey); loadKeys(); }
   };
 
   const addWebhook = async () => {
     const url = prompt("Enter Webhook Endpoint URL (https://...):");
     if (!url || !url.startsWith("http")) return toast.error("Invalid URL");
-    
     const { error } = await (supabase as any).from("org_webhooks").insert({
-      org_id: org!.id,
-      url,
-      events: ["*"]
+      org_id: org!.id, url, events: ["*"]
     });
-    
     if (error) toast.error(error.message);
     else { toast.success("Webhook added"); loadWebhooks(); }
   };
 
-  const removeKey = async (id: string) => {
-    await (supabase as any).from("org_api_keys").delete().eq("id", id);
-    loadKeys();
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
   };
-  const removeWebhook = async (id: string) => {
-    await (supabase as any).from("org_webhooks").delete().eq("id", id);
-    loadWebhooks();
-  };
+
+  const jdWebhookUrl = `https://ewnsxsnjcolhdehrdrhf.supabase.co/functions/v1/webhook-jd?org_id=${org?.id}`;
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2"><Key className="w-5 h-5 text-indigo-500" /> API Keys</CardTitle>
-            <CardDescription>Generate API keys to interact with your CRM data externally.</CardDescription>
-          </div>
-          <Button onClick={generateApiKey} size="sm"><Plus className="w-4 h-4 mr-2" /> Generate Key</Button>
-        </CardHeader>
-        <CardContent>
-          {apiKeys.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No API keys generated yet.</p>
-          ) : (
-            <div className="space-y-3 mt-4">
-              {apiKeys.map(k => (
-                <div key={k.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-                  <div>
-                    <p className="font-medium text-sm">{k.name}</p>
-                    <p className="text-xs text-slate-500 font-mono mt-1">{k.preview}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeKey(k.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    <Tabs defaultValue="sources" className="w-full">
+      <TabsList className="mb-4">
+        <TabsTrigger value="sources">Lead Sources</TabsTrigger>
+        <TabsTrigger value="custom">Custom API & Webhooks</TabsTrigger>
+      </TabsList>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2"><Webhook className="w-5 h-5 text-emerald-500" /> Webhooks</CardTitle>
-            <CardDescription>Receive real-time HTTP POST payloads when events happen.</CardDescription>
-          </div>
-          <Button onClick={addWebhook} size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Endpoint</Button>
-        </CardHeader>
-        <CardContent>
-          {webhooks.length === 0 ? (
-            <p className="text-sm text-slate-500 py-4 text-center">No webhooks configured.</p>
-          ) : (
-            <div className="space-y-3 mt-4">
-              {webhooks.map(w => (
-                <div key={w.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-                  <div className="overflow-hidden">
-                    <p className="font-medium text-sm truncate">{w.url}</p>
-                    <div className="flex gap-2 mt-1">
-                      <Badge variant="secondary" className="text-[10px]">All Events</Badge>
-                      {w.is_active && <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[10px]">Active</Badge>}
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => removeWebhook(w.id)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
-                </div>
-              ))}
+      <TabsContent value="sources" className="space-y-6">
+        {/* IndiaMart */}
+        <Card className="border-orange-200 bg-orange-50/30">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Phone className="w-5 h-5 text-orange-500" /> IndiaMart Integration</CardTitle>
+              <CardDescription>Automatically fetch new leads from IndiaMart every 15 minutes.</CardDescription>
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            <Switch checked={imActive} onCheckedChange={setImActive} />
+          </CardHeader>
+          <CardContent className="space-y-4 pt-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Registered Mobile Number</Label>
+                <Input placeholder="9876543210" value={imConfig.mobile} onChange={e => setImConfig({...imConfig, mobile: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label>CRM Key (from IndiaMart Dashboard)</Label>
+                <Input type="password" placeholder="Enter CRM Key" value={imConfig.crm_key} onChange={e => setImConfig({...imConfig, crm_key: e.target.value})} />
+              </div>
+            </div>
+            <Button onClick={saveIndiaMart} disabled={imLoading} className="bg-orange-600 hover:bg-orange-700">
+              {imLoading ? <RefreshCcw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              Save IndiaMart Config
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Justdial */}
+        <Card className="border-blue-200 bg-blue-50/30">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><LinkIcon className="w-5 h-5 text-blue-500" /> Justdial Webhook</CardTitle>
+              <CardDescription>Provide this unique webhook URL to Justdial to receive leads in real-time.</CardDescription>
+            </div>
+            <Switch checked={jdActive} onCheckedChange={toggleJustdial} />
+          </CardHeader>
+          <CardContent className="pt-4 space-y-4">
+            <div className="space-y-2">
+              <Label>Your Unique Webhook URL</Label>
+              <div className="flex gap-2">
+                <Input readOnly value={jdWebhookUrl} className="bg-white font-mono text-xs" />
+                <Button variant="outline" onClick={() => copyToClipboard(jdWebhookUrl)}>
+                  <Copy className="w-4 h-4" />
+                </Button>
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Paste this URL in your Justdial lead routing settings.</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Meta (Facebook) */}
+        <Card className="border-indigo-200 bg-indigo-50/30">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Facebook className="w-5 h-5 text-indigo-600" /> Meta (Facebook) Leads</CardTitle>
+              <CardDescription>Connect your Facebook Page to sync Lead Ads directly into the CRM.</CardDescription>
+            </div>
+            <Badge variant="outline" className="bg-indigo-100 text-indigo-700">Coming Soon</Badge>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <Button disabled variant="outline" className="w-full sm:w-auto border-indigo-200 text-indigo-700 bg-white">
+              <Facebook className="w-4 h-4 mr-2" /> Connect Facebook Account
+            </Button>
+            <p className="text-xs text-slate-500 mt-2">Authentication flow will be available once Facebook App Review is complete.</p>
+          </CardContent>
+        </Card>
+      </TabsContent>
+
+      <TabsContent value="custom" className="space-y-6">
+        {/* Existing Custom APIs & Webhooks Code */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Key className="w-5 h-5 text-indigo-500" /> Custom API Keys</CardTitle>
+              <CardDescription>Generate API keys to interact with your CRM data externally.</CardDescription>
+            </div>
+            <Button onClick={generateApiKey} size="sm"><Plus className="w-4 h-4 mr-2" /> Generate Key</Button>
+          </CardHeader>
+          <CardContent>
+            {apiKeys.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">No API keys generated yet.</p>
+            ) : (
+              <div className="space-y-3 mt-4">
+                {apiKeys.map(k => (
+                  <div key={k.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                    <div><p className="font-medium text-sm">{k.name}</p><p className="text-xs text-slate-500 font-mono mt-1">{k.preview}</p></div>
+                    <Button variant="ghost" size="icon" onClick={() => (supabase as any).from("org_api_keys").delete().eq("id", k.id).then(loadKeys)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2"><Webhook className="w-5 h-5 text-emerald-500" /> Outgoing Webhooks</CardTitle>
+              <CardDescription>Receive real-time HTTP POST payloads when events happen.</CardDescription>
+            </div>
+            <Button onClick={addWebhook} size="sm" variant="outline"><Plus className="w-4 h-4 mr-2" /> Add Endpoint</Button>
+          </CardHeader>
+          <CardContent>
+            {webhooks.length === 0 ? (
+              <p className="text-sm text-slate-500 py-4 text-center">No outgoing webhooks configured.</p>
+            ) : (
+              <div className="space-y-3 mt-4">
+                {webhooks.map(w => (
+                  <div key={w.id} className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+                    <div className="overflow-hidden">
+                      <p className="font-medium text-sm truncate">{w.url}</p>
+                      <div className="flex gap-2 mt-1"><Badge variant="secondary" className="text-[10px]">All Events</Badge></div>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => (supabase as any).from("org_webhooks").delete().eq("id", w.id).then(loadWebhooks)}><Trash2 className="w-4 h-4 text-red-500" /></Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </TabsContent>
+    </Tabs>
   );
 }
