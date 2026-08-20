@@ -90,6 +90,7 @@ const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
 const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
 const DealDetailPage = lazy(() => import("./pages/DealDetailPage"));
 const CRMDashboardPage = lazy(() => import("./pages/CRMDashboardPage"));
+const CRMAutomationsPage = lazy(() => import("./pages/CRMAutomationsPage"));
 const CRMCalendarPage = lazy(() => import("./pages/CRMCalendarPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
@@ -213,6 +214,7 @@ const App = () => (
 
               <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
                 <Route path="/crm-dashboard" element={<CRMDashboardPage />} />
+                  <Route path="/crm/automations" element={<CRMAutomationsPage />} />
                   <Route path="/calendar" element={<CRMCalendarPage />} />
                 <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/leads/:id" element={<LeadDetailPage />} />
