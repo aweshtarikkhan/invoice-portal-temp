@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -14,7 +14,8 @@ import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SupportTicketsPage() {
-  const { org, user } = useAuth();
+  const org = useAppStore((s) => s.organization);
+  const user = useAppStore((s) => s.user);
   const { toast } = useToast();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

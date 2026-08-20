@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Mail, Clock
 import { Button } from "@/components/ui/button";
 
 export default function CRMCalendarPage() {
-  const { org } = useAuth();
+  const org = useAppStore((s) => s.organization);
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
