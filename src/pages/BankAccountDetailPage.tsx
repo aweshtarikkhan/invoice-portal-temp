@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Upload, Plus, Link2, Trash2, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Upload, Plus, Link2, Trash2, CheckCircle2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+import { createExpenseJournalEntry } from "@/lib/expense-journal-sync";
+const EXPENSE_CATEGORIES = [
+  "Office Supplies", "Rent", "Utilities", "Software Subscriptions",
+  "Travel", "Meals & Entertainment", "Marketing", "Bank Fees",
+  "Contractors", "Other"
+];
+const INCOME_CATEGORIES = ["Sales", "Interest Income", "Refund", "Other Income"];
+
 import { format } from "date-fns";
 
 interface ParsedRow {
@@ -95,6 +103,42 @@ export default function BankAccountDetailPage() {
   const [parsed, setParsed] = useState<ParsedRow[]>([]);
   const [importing, setImporting] = useState(false);
   const [matchOpen, setMatchOpen] = useState<any>(null);
+  const [matchTab, setMatchTab] = useState("find");
+  const [createMatchForm, setCreateMatchForm] = useState({ category: "", description: "" });
+
+  const handleCreateAndMatch = async () => {
+    if (!matchOpen || !createMatchForm.category) return;
+    
+    if (matchOpen.direction === "debit") {
+      // Create Expense
+      const { data, error } = await (supabase as any).from("business_expenses").insert({
+        org_id: org!.id,
+        category: createMatchForm.category,
+        description: createMatchForm.description || matchOpen.description,
+        amount: Math.abs(Number(matchOpen.amount)),
+        expense_date: matchOpen.txn_date,
+        is_recurring: false
+      }).select("id").single();
+      
+      if (!error && data) {
+        await linkMatch(matchOpen, "expense", data.id);
+        createExpenseJournalEntry(org!.id, data.id, createMatchForm.category, Math.abs(Number(matchOpen.amount)), matchOpen.txn_date, createMatchForm.description || matchOpen.description);
+        toast({ title: "Expense created & reconciled" });
+      }
+    } else {
+      // Create Income (Mocking as a journal entry conceptually, or just marking reconciled manually)
+      await (supabase as any).from("bank_transactions").update({
+        reconciled: true, reconciled_at: new Date().toISOString(),
+        matched_type: "manual_income", matched_id: null,
+        notes: `Category: ${createMatchForm.category}`
+      }).eq("id", matchOpen.id);
+      
+      toast({ title: "Income recorded & reconciled" });
+      setMatchOpen(null);
+      load();
+    }
+  };
+
   const [manual, setManual] = useState<any>({ txn_date: format(new Date(), "yyyy-MM-dd"), amount: "", direction: "debit", description: "", reference: "" });
 
   const load = async () => {
