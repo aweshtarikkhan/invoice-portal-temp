@@ -32,6 +32,7 @@ import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
 import { WhatsAppSettingsTab } from "@/components/settings/WhatsAppSettingsTab";
+import { DeveloperSettingsTab } from "@/components/settings/DeveloperSettingsTab";
 
 
 export default function SettingsPage() {
@@ -238,6 +239,7 @@ export default function SettingsPage() {
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
+          <TabsTrigger value="developer">Developer & API</TabsTrigger>
         </TabsList>
 
         <TabsContent value="email" className="space-y-6 mt-4">
@@ -660,7 +662,10 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
+            <TabsContent value="developer" className="space-y-6 mt-4">
+            <DeveloperSettingsTab />
+          </TabsContent>
+        </Tabs>
         </TabsContent>
 
         <TabsContent value="taxes" className="space-y-6 mt-4">
