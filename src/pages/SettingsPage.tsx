@@ -786,9 +786,11 @@ export default function SettingsPage() {
             </DialogContent>
           </Dialog>
         </TabsContent>
-      </Tabs>
-
-      <AddWarehouseDialog
+        <TabsContent value="developer" className="space-y-6 mt-4">
+            <DeveloperSettingsTab />
+          </TabsContent>
+        </Tabs>
+        <AddWarehouseDialog
         open={addWarehouseOpen}
         onOpenChange={setAddWarehouseOpen}
         onWarehouseAdded={() => {
