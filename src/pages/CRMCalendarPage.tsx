@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { Layout } from "@/components/Layout";
+import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, isToday, addWeeks, subWeeks, startOfMonth, endOfMonth, isSameMonth } from "date-fns";
@@ -76,7 +76,7 @@ export default function CRMCalendarPage() {
   const days = getDays();
 
   return (
-    <Layout>
+    <AppLayout>
       <div className="flex-1 space-y-6 p-8 bg-slate-50 overflow-y-auto h-[calc(100vh-4rem)]">
         <div className="flex justify-between items-center">
           <div>
@@ -141,6 +141,6 @@ export default function CRMCalendarPage() {
           </div>
         </Card>
       </div>
-    </Layout>
+    </AppLayout>
   );
 }
