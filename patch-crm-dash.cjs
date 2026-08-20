@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from "react";
+﻿const fs = require('fs');
+
+const code = `import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -214,7 +216,7 @@ export default function CRMDashboardPage() {
     { label: "Pipeline Value", value: formatCurrency(metrics.pipelineValue, currencyCode), icon: DollarSign, color: "from-emerald-600/20 to-emerald-900/10", textColor: "text-emerald-500" },
     { label: "Weighted Rev", value: formatCurrency(metrics.weightedRevenue, currencyCode), icon: TrendingUp, color: "from-purple-600/20 to-purple-900/10", textColor: "text-purple-500" },
     { label: "Won This Month", value: metrics.wonThisMonth.toLocaleString(), icon: Trophy, color: "from-amber-600/20 to-amber-900/10", textColor: "text-amber-500" },
-    { label: "Conversion Rate", value: `${metrics.conversionRate.toFixed(1)}%`, icon: Percent, color: "from-pink-600/20 to-pink-900/10", textColor: "text-pink-500" },
+    { label: "Conversion Rate", value: \`\${metrics.conversionRate.toFixed(1)}%\`, icon: Percent, color: "from-pink-600/20 to-pink-900/10", textColor: "text-pink-500" },
   ];
 
   if (loading) {
@@ -237,10 +239,10 @@ export default function CRMDashboardPage() {
       {/* KPI Row */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {kpis.map((kpi, index) => (
-          <Card key={index} className={`bg-gradient-to-br ${kpi.color} border-slate-800`}>
+          <Card key={index} className={\`bg-gradient-to-br \${kpi.color} border-slate-800\`}>
             <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
               <CardTitle className="text-sm font-medium text-slate-300">{kpi.label}</CardTitle>
-              <kpi.icon className={`h-4 w-4 ${kpi.textColor}`} />
+              <kpi.icon className={\`h-4 w-4 \${kpi.textColor}\`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{kpi.value}</div>
@@ -280,7 +282,7 @@ export default function CRMDashboardPage() {
                         <div className="w-full bg-slate-800 rounded-full h-3">
                           <div 
                             className="h-3 rounded-full transition-all duration-500" 
-                            style={{ width: `${widthPct}%`, backgroundColor: stage.color }}
+                            style={{ width: \`\${widthPct}%\`, backgroundColor: stage.color }}
                           />
                         </div>
                       </div>
@@ -329,7 +331,7 @@ export default function CRMDashboardPage() {
                     <div className="text-sm text-slate-500 text-center py-4">No open deals.</div>
                   ) : (
                     topDeals.map(deal => (
-                      <div key={deal.id} className="flex justify-between items-center cursor-pointer hover:bg-slate-800/50 p-2 rounded-lg -mx-2 transition-colors" onClick={() => navigate(`/opportunities/${deal.id}`)}>
+                      <div key={deal.id} className="flex justify-between items-center cursor-pointer hover:bg-slate-800/50 p-2 rounded-lg -mx-2 transition-colors" onClick={() => navigate(\`/opportunities/\${deal.id}\`)}>
                         <div className="truncate">
                           <div className="font-medium text-slate-200 truncate">{deal.name}</div>
                           <div className="text-xs text-slate-400 truncate">{deal.company}</div>
@@ -365,7 +367,7 @@ export default function CRMDashboardPage() {
                           <span className="text-slate-400">{source.count} ({source.percentage.toFixed(0)}%)</span>
                         </div>
                         <div className="w-full bg-slate-800 rounded-full h-1.5">
-                          <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: `${source.percentage}%` }} />
+                          <div className="bg-purple-500 h-1.5 rounded-full" style={{ width: \`\${source.percentage}%\` }} />
                         </div>
                       </div>
                     ))
@@ -500,7 +502,7 @@ export default function CRMDashboardPage() {
                   <div className="text-sm text-slate-500 text-center py-2">No leads added recently.</div>
                 ) : (
                   recentLeads.map(lead => (
-                    <div key={lead.id} className="flex justify-between items-center cursor-pointer hover:bg-slate-800/50 p-2 -mx-2 rounded-lg transition-colors" onClick={() => navigate(`/leads/${lead.id}`)}>
+                    <div key={lead.id} className="flex justify-between items-center cursor-pointer hover:bg-slate-800/50 p-2 -mx-2 rounded-lg transition-colors" onClick={() => navigate(\`/leads/\${lead.id}\`)}>
                       <div className="overflow-hidden mr-2">
                         <div className="font-medium text-slate-200 truncate">{lead.first_name} {lead.last_name}</div>
                         <div className="text-xs text-slate-400 truncate">{lead.company || lead.email}</div>
@@ -520,3 +522,7 @@ export default function CRMDashboardPage() {
     </div>
   );
 }
+`;
+
+fs.writeFileSync('src/pages/CRMDashboardPage.tsx', code);
+console.log("CRMDashboardPage patched with forecasting and team metrics");

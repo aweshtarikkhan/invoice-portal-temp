@@ -29,6 +29,7 @@ const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
 const RecordPaymentPage = lazy(() => import("./pages/RecordPaymentPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const SupportTicketsPage = lazy(() => import("./pages/SupportTicketsPage"));
 const CreditNotesPage = lazy(() => import("./pages/CreditNotesPage"));
 const CreditNoteBuilderPage = lazy(() => import("./pages/CreditNoteBuilderPage"));
 const CreditNoteDetailPage = lazy(() => import("./pages/CreditNoteDetailPage"));
@@ -89,6 +90,7 @@ const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
 const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
 const DealDetailPage = lazy(() => import("./pages/DealDetailPage"));
 const CRMDashboardPage = lazy(() => import("./pages/CRMDashboardPage"));
+const CRMCalendarPage = lazy(() => import("./pages/CRMCalendarPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
@@ -226,6 +228,7 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/tickets" element={<SupportTicketsPage />} />
             </Route>
 
             {/* Public portal */}
