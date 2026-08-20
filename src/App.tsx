@@ -29,6 +29,7 @@ const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
 const RecordPaymentPage = lazy(() => import("./pages/RecordPaymentPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const CrmIntegrationsPage = lazy(() => import("./pages/CrmIntegrationsPage"));
 const SupportTicketsPage = lazy(() => import("./pages/SupportTicketsPage"));
 const CreditNotesPage = lazy(() => import("./pages/CreditNotesPage"));
 const CreditNoteBuilderPage = lazy(() => import("./pages/CreditNoteBuilderPage"));

@@ -107,6 +107,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "automations", title: "Automations", description: "Workflow rules", icon: "Zap", url: "/crm/automations" },
       { key: "tickets", title: "Support Tickets", description: "Manage customer helpdesk", icon: "Ticket", url: "/tickets" },
       { key: "activities", title: "Activities", description: "Track CRM activities", icon: "ClipboardList", url: "/activities" },
+        { key: "integrations", title: "Integrations & API", description: "Lead sources & webhooks", icon: "Link2", url: "/crm/integrations" },
     ],
   },
   {
