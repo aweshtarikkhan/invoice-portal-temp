@@ -1,7 +1,6 @@
 ﻿import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { AppLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,7 +104,7 @@ export default function SupportTicketsPage() {
   );
 
   return (
-    <AppLayout>
+    <>
       <div className="flex-1 space-y-6 p-8 bg-slate-50 overflow-y-auto h-[calc(100vh-4rem)]">
         <div className="flex justify-between items-center">
           <div>
@@ -227,6 +226,6 @@ export default function SupportTicketsPage() {
           </DialogContent>
         </Dialog>
       </div>
-    </AppLayout>
+    </>
   );
 }

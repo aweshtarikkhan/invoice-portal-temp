@@ -213,6 +213,7 @@ const App = () => (
 
               <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
                 <Route path="/crm-dashboard" element={<CRMDashboardPage />} />
+                  <Route path="/calendar" element={<CRMCalendarPage />} />
                 <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/leads/:id" element={<LeadDetailPage />} />
                 <Route path="/pipeline" element={<PipelinePage />} />
