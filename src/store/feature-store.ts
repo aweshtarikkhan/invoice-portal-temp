@@ -127,6 +127,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "marketing-templates", title: "Templates", description: "Marketing templates", icon: "MessageSquare", url: "/marketing/templates" },
       { key: "journeys", title: "Journeys", description: "Customer journeys", icon: "Workflow", url: "/journeys" },
       { key: "message-logs", title: "Message Logs", description: "View sent messages", icon: "ScrollText", url: "/message-logs" },
+      { key: "marketing-reports", title: "Marketing Reports", description: "Analyze your marketing campaigns", icon: "BarChart3", url: "/crm-marketing-reports" },
     ],
   },
   {
