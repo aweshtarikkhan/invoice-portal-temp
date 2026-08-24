@@ -41,24 +41,26 @@ export default function InventoryReportsPage() {
   }, [org?.id]);
 
   const stats = useMemo(() => {
-    const totalItems = items.length;
+    const safeItems = items || [];
+    const safeMovements = movements || [];
+    const totalItems = safeItems.length;
     
-    const totalValue = items.reduce((sum, item) => {
-      return sum + (item.quantity || 0) * (item.cost || item.rate || 0);
+    const totalValue = safeItems.reduce((sum, item) => {
+      return sum + (item?.quantity || 0) * (item?.cost || item?.rate || 0);
     }, 0);
     
-    const lowStockItems = items.filter(item => {
-      if (item.type === 'service') return false;
-      const reorderLevel = item.reorder_level ?? 5;
-      return (item.quantity || 0) <= reorderLevel;
+    const lowStockItems = safeItems.filter(item => {
+      if (item?.type === 'service') return false;
+      const reorderLevel = item?.reorder_level ?? 5;
+      return (item?.quantity || 0) <= reorderLevel;
     });
 
     const now = new Date();
     const monthStart = startOfMonth(now);
     const monthEnd = endOfMonth(now);
     
-    const thisMonthMovements = movements.filter(m => {
-      if (!m.movement_date) return false;
+    const thisMonthMovements = safeMovements.filter(m => {
+      if (!m?.movement_date) return false;
       return isWithinInterval(parseISO(m.movement_date), { start: monthStart, end: monthEnd });
     });
     
@@ -71,19 +73,21 @@ export default function InventoryReportsPage() {
   }, [items, movements]);
 
   const itemsByType = useMemo(() => {
-    const counts = items.reduce((acc, item) => {
-      const type = item.type || 'product';
+    const safeItems = items || [];
+    const counts = safeItems.reduce((acc, item) => {
+      const type = item?.type || 'product';
       acc[type] = (acc[type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
     return Object.entries(counts).map(([name, value]) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
+      name: name ? name.charAt(0).toUpperCase() + name.slice(1) : 'Unknown',
       value
     }));
   }, [items]);
 
   const movementsByMonth = useMemo(() => {
+    const safeMovements = movements || [];
     const data: Record<string, { in: number, out: number }> = {};
     
     // Initialize last 6 months
@@ -93,15 +97,19 @@ export default function InventoryReportsPage() {
       data[format(d, 'MMM yyyy')] = { in: 0, out: 0 };
     }
     
-    movements.forEach(m => {
-      if (!m.movement_date) return;
-      const monthStr = format(parseISO(m.movement_date), 'MMM yyyy');
-      if (data[monthStr]) {
-        if (m.type?.toUpperCase() === 'IN' || m.quantity > 0) {
-          data[monthStr].in += Math.abs(m.quantity);
-        } else {
-          data[monthStr].out += Math.abs(m.quantity);
+    safeMovements.forEach(m => {
+      if (!m?.movement_date) return;
+      try {
+        const monthStr = format(parseISO(m.movement_date), 'MMM yyyy');
+        if (data[monthStr]) {
+          if (m.type?.toUpperCase() === 'IN' || m.quantity > 0) {
+            data[monthStr].in += Math.abs(m.quantity || 0);
+          } else {
+            data[monthStr].out += Math.abs(m.quantity || 0);
+          }
         }
+      } catch (e) {
+        // Ignore parsing errors
       }
     });
     
