@@ -169,6 +169,18 @@ export function AppSidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
 
+  const toggleGroup = (key: string, isOpen: boolean) => {
+    setOpenGroups(prev => ({ ...prev, [key]: !isOpen }));
+    if (!isOpen) {
+      setTimeout(() => {
+        const el = document.getElementById(`group-${key}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 150);
+    }
+  };
+
   const currentUserEmail = session?.user?.email?.toLowerCase().trim();
   const isUserAdmin = isAdmin(currentUserEmail);
   
@@ -369,12 +381,12 @@ export function AppSidebar() {
           const isOpen = openGroups[g.key] !== undefined ? openGroups[g.key] : isActiveGroup;
 
           return (
-            <SidebarGroup key={g.key} className="p-0 mt-2">
+            <SidebarGroup key={g.key} id={`group-${g.key}`} className="p-0 mt-2">
               <SidebarGroupContent>
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => setOpenGroups(prev => ({ ...prev, [g.key]: !isOpen }))}
+                      onClick={() => toggleGroup(g.key, isOpen)}
                       className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
                       tooltip={t(g.label)}
                     >
@@ -430,10 +442,10 @@ export function AppSidebar() {
                   {isOpen && g.subGroups?.map((sub) => {
                     const isSubOpen = openGroups[sub.key] !== undefined ? openGroups[sub.key] : sub.items.some(item => isActive(item.url) || (item.addUrl && isActive(item.addUrl)));
                     return (
-                      <div key={sub.key} className="mt-1">
+                      <div key={sub.key} id={`group-${sub.key}`} className="mt-1">
                         <SidebarMenuItem className={`group/item ${collapsed ? "pl-0 flex justify-center" : "pl-4"}`}>
                           <SidebarMenuButton 
-                            onClick={() => setOpenGroups(prev => ({ ...prev, [sub.key]: !isSubOpen }))} 
+                            onClick={() => toggleGroup(sub.key, isSubOpen)} 
                             className="hover:bg-transparent h-9 text-slate-400 hover:text-white cursor-pointer"
                             tooltip={collapsed ? t(sub.label) : undefined}
                           >
@@ -492,9 +504,16 @@ export function AppSidebar() {
             <SidebarMenu>
               {(userRole === 'admin' || userRole === 'owner' || userPermissions.includes('settings_access')) && (
                 <>
-                  <SidebarMenuItem>
-                    <SidebarMenuButton
-                      onClick={() => setSettingsOpen(!settingsOpen)}
+                  <SidebarMenuItem id="group-settings">
+                      <SidebarMenuButton
+                        onClick={() => {
+                          setSettingsOpen(!settingsOpen);
+                          if (!settingsOpen) {
+                            setTimeout(() => {
+                              document.getElementById("group-settings")?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                            }, 150);
+                          }
+                        }}
                       isActive={isSettingsActive}
                       className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
                       tooltip={t("System & Settings")}
