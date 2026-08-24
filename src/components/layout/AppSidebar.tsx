@@ -384,6 +384,7 @@ export function AppSidebar() {
                       {g.key === "people" && <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                      {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
                       {!collapsed && <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t(g.label)}</span>}
                       {!collapsed && (
