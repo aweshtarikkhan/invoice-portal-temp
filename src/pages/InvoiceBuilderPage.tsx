@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { postInvoiceJournal } from "@/lib/accounting";
 import { useAppStore } from "@/store/app-store";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { logStockMovements, detectNegativeStock } from "@/lib/stock";
