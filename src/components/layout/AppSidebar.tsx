@@ -44,6 +44,8 @@ import {
   Warehouse,
   MessageCircle,
   Image as ImageIcon,
+  ClipboardCheck,
+  BrainCircuit
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -506,7 +508,43 @@ export function AppSidebar() {
             <SidebarMenu>
               {(userRole === 'admin' || userRole === 'owner' || userPermissions.includes('settings_access')) && (
                 <>
-                  <SidebarMenuItem id="group-settings">
+                                      <SidebarMenuItem className="mt-2">
+                      <SidebarMenuButton asChild isActive={isActive("/feedback-assessment")} tooltip={collapsed ? t("Feedback Assessment Form") : undefined}>
+                        <NavLink
+                          to="/feedback-assessment"
+                          className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors h-10 group/groupbtn"
+                          activeClassName="bg-blue-600/10 text-blue-400 font-medium"
+                        >
+                          <ClipboardCheck className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />
+                          {!collapsed && (
+                            <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 pr-2 flex items-center justify-between">
+                              {t("Feedback Assessment Form")}
+                              <Lock className="h-3 w-3 text-amber-500" title="Coming Soon" />
+                            </span>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem className="mt-2 mb-2">
+                      <SidebarMenuButton asChild isActive={isActive("/ai-bi-report")} tooltip={collapsed ? t("AI & BI Report") : undefined}>
+                        <NavLink
+                          to="/ai-bi-report"
+                          className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors h-10 group/groupbtn"
+                          activeClassName="bg-blue-600/10 text-blue-400 font-medium"
+                        >
+                          <BrainCircuit className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />
+                          {!collapsed && (
+                            <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 pr-2 flex items-center justify-between">
+                              {t("AI & BI Report")}
+                              <Lock className="h-3 w-3 text-amber-500" title="Coming Soon" />
+                            </span>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+
+                    <SidebarMenuItem id="group-settings">
                       <SidebarMenuButton
                         onClick={() => {
                           setSettingsOpen(!settingsOpen);

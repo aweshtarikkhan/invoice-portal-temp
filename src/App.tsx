@@ -35,6 +35,7 @@ const PaymentsPage = lazy(() => import("./pages/PaymentsPage"));
 const RecordPaymentPage = lazy(() => import("./pages/RecordPaymentPage"));
 const ReportsPage = lazy(() => import("./pages/ReportsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const ComingSoonPage = lazy(() => import("./pages/ComingSoonPage"));
 const CrmIntegrationsPage = lazy(() => import("./pages/CrmIntegrationsPage"));
 const SupportTicketsPage = lazy(() => import("./pages/SupportTicketsPage"));
 const CreditNotesPage = lazy(() => import("./pages/CreditNotesPage"));
@@ -244,6 +245,8 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />
+                <Route path="/ai-bi-report" element={<ComingSoonPage title="AI & Business Intelligence Report" />} />
                 <Route path="/tickets" element={<SupportTicketsPage />} />
             </Route>
 
