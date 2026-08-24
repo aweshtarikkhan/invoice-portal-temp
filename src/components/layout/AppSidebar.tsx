@@ -267,7 +267,7 @@ export function AppSidebar() {
   // Check if any settings item is active to auto-open settings
   const isSettingsActive = settingsItems.some(
     (item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/")
-  );
+  ) || location.pathname === "/admin" || location.pathname.startsWith("/admin/");
 
   const isActive = (path: string) =>
     location.pathname === path || location.pathname.startsWith(path + "/");
@@ -508,40 +508,45 @@ export function AppSidebar() {
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {(settingsOpen || isSettingsActive) && settingsItems.map((item) => (
-                    <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
-                      <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
-                        <NavLink
-                          to={item.url}
-                          className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
-                          activeClassName="bg-blue-600/10 text-blue-400 font-medium"
-                        >
-                          {collapsed ? (
-                            item.icon && <item.icon className="h-4 w-4 shrink-0" />
-                          ) : (
-                            <span className="text-sm">{t(item.title)}</span>
-                          )}
-                        </NavLink>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  ))}
+                  {(settingsOpen || isSettingsActive) && (
+                    <>
+                      {settingsItems.map((item) => (
+                        <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
+                          <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
+                            <NavLink
+                              to={item.url}
+                              className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
+                              activeClassName="bg-blue-600/10 text-blue-400 font-medium"
+                            >
+                              {collapsed ? (
+                                item.icon && <item.icon className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <span className="text-sm">{t(item.title)}</span>
+                              )}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      ))}
+                      {userRole !== 'staff' && (
+                        <SidebarMenuItem className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
+                          <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={collapsed ? t("Business Settings") : undefined}>
+                            <NavLink
+                              to="/admin"
+                              className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
+                              activeClassName="bg-blue-600/10 text-blue-400 font-medium"
+                            >
+                              {collapsed ? (
+                                <Shield className="h-4 w-4 shrink-0" />
+                              ) : (
+                                <span className="text-sm">{t("Business Settings")}</span>
+                              )}
+                            </NavLink>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      )}
+                    </>
+                  )}
                 </>
-              )}
-
-              {/* Admin Panel link - hidden from staff */}
-              {userRole !== 'staff' && (
-                <SidebarMenuItem className="mt-2">
-                  <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={t("Business Settings")}>
-                    <NavLink
-                      to="/admin"
-                      className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
-                      activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
-                    >
-                      <Shield className="h-5 w-5" />
-                      {!collapsed && <span className="ml-2 text-sm">{t("Business Settings")}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
