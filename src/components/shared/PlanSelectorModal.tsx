@@ -39,9 +39,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [couponLoading, setCouponLoading] = useState(false);
   const [hrmsEmployeeCount, setHrmsEmployeeCount] = useState(5);
   const [processingPlan, setProcessingPlan] = useState<boolean>(false);
-  
-  const [selectedBasePlan, setSelectedBasePlan] = useState<string | null>(null);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
   
   const { toast } = useToast();
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
@@ -82,10 +80,6 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       
       if (settingsData?.value) setYearlyDiscountPct(parseInt(settingsData.value));
 
-      // Auto-select first base plan
-      const base = finalPlans.find(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
-      if (base) setSelectedBasePlan(base.name);
-
     } catch (error) {
       console.error("Failed to load plans:", error);
     }
@@ -121,11 +115,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const getPlanPrice = (plan: Plan) => {
     let base = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
     
-    // Add extra employees for HRMS plan
     if (plan.name === "plan_4" && plan.employee_limit && plan.employee_price_extra) {
       const extra = Math.max(0, hrmsEmployeeCount - plan.employee_limit);
       const extraCost = extra * plan.employee_price_extra;
-      // If yearly, multiply extra cost by 12 and apply yearly discount
       if (billingCycle === "yearly") {
         base += (extraCost * 12) * (1 - yearlyDiscountPct / 100);
       } else {
@@ -135,7 +127,14 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     return base;
   };
 
-    const finalSelectedPlanIds = new Set<string>(selectedPlanIds);
+  const togglePlan = (planId: string) => {
+    setSelectedPlanIds(prev => 
+      prev.includes(planId) ? prev.filter(id => id !== planId) : [...prev, planId]
+    );
+  };
+
+  // Build final set of selected plan IDs (auto-include CRM & Marketing if Plan 3 selected)
+  const finalSelectedPlanIds = new Set<string>(selectedPlanIds);
   const hasPlan3 = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "plan_3");
   if (hasPlan3) {
     const p5 = plans.find(p => p.name === "plan_5");
@@ -144,6 +143,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     if (p6) finalSelectedPlanIds.add(p6.id);
   }
 
+  // Calculate total
   let totalAmount = 0;
   Array.from(finalSelectedPlanIds).forEach(id => {
     const plan = plans.find(p => p.id === id);
@@ -151,7 +151,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     if (hasPlan3 && (plan.name === "plan_5" || plan.name === "plan_6")) return;
     totalAmount += getPlanPrice(plan);
   });
-  
+
   if (validCoupon) {
     if (validCoupon.type === "percentage") {
       totalAmount = totalAmount - Math.floor((totalAmount * validCoupon.amount) / 100);
@@ -160,19 +160,32 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     }
   }
 
-  const basePlan = Array.from(finalSelectedPlanIds).map(id => plans.find(p => p.id === id)).find(p => p?.name === "free");
-  const selectedPlanIdsString = Array.from(finalSelectedPlanIds).join(',');
+  const onlyFreePlan = finalSelectedPlanIds.size === 1 && 
+    Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "free");
+  
   const planNames = Array.from(finalSelectedPlanIds).map(id => plans.find(p => p.id === id)?.name).filter(Boolean);
+  const allSelectedPlanIdsJoined = Array.from(finalSelectedPlanIds).join(',');
 
   const handleCheckout = async () => {
     if (!orgId) return;
     setProcessingPlan(true);
     try {
-      // 1. Create order via edge function
+      if (onlyFreePlan) {
+        const freePlanName = planNames[0];
+        const { error } = await supabase.rpc("start_org_trial", {
+          p_org_id: orgId,
+          p_plan_name: freePlanName
+        });
+        if (error) throw error;
+        toast({ title: "Plan Activated", description: "You are now on the Free plan." });
+        window.location.reload();
+        return;
+      }
+
       const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
         body: {
           org_id: orgId,
-          selected_plan_ids: selectedPlanIds.join(','),
+          selected_plan_ids: allSelectedPlanIdsJoined,
           billing_cycle: billingCycle,
           coupon_code: validCoupon ? promoCode : undefined,
           hrms_employee_count: hrmsEmployeeCount,
@@ -183,33 +196,15 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       if (orderError) throw new Error(orderError.message || "Failed to create order");
       if (!orderData) throw new Error("No order data returned");
 
-      if (orderData.amount === 0) {
-        // Free plan logic if applicable
-        if (basePlan && basePlan.name === 'free') {
-          const { error } = await supabase.rpc("start_org_trial", {
-            p_org_id: orgId,
-            p_plan_name: basePlan.name
-          });
-          if (error) throw error;
-          toast({ title: "Plan Activated", description: `You are now on the Free plan.` });
-          window.location.reload();
-          return;
-        } else {
-           throw new Error("Free plans should use Start Trial");
-        }
-      }
-
-      // 2. Open Razorpay Modal
       const options = {
         key: orderData.razorpay_key_id,
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Assay Biz",
-        description: `Subscription Upgrade`,
+        description: "Subscription Upgrade",
         order_id: orderData.order_id,
         handler: async function (response: any) {
           try {
-            // 3. Verify payment signature
             const verifyRes = await fetch("http://localhost:4000/api/razorpay/verify-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -218,7 +213,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 org_id: orgId,
-                selected_plan_ids: selectedPlanIds.join(','),
+                plan_names: planNames,
                 billing_cycle: billingCycle,
                 coupon_id: orderData.coupon_id,
                 discounted_price: orderData.discount_applied,
@@ -228,10 +223,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok) throw new Error(verifyData.error || "Payment verification failed");
             
-            // 4. Activate the plan in the database
-            const { data: activateData, error: activateError } = await supabase.rpc("activate_org_plan", {
+            const { error: activateError } = await supabase.rpc("activate_org_plan", {
               p_org_id: orgId,
-              p_plan_name: basePlan?.name || "premium",
+              p_plan_name: planNames[0] || "premium",
               p_billing_cycle: billingCycle,
               p_razorpay_order_id: response.razorpay_order_id,
               p_razorpay_payment_id: response.razorpay_payment_id,
@@ -243,7 +237,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               throw new Error("Payment received but plan activation failed. Please contact support with payment ID: " + response.razorpay_payment_id);
             }
             
-            toast({ title: "🎉 Payment Successful!", description: `Plans have been activated for your business.` });
+            toast({ title: "\uD83C\uDF89 Payment Successful!", description: "Plans have been activated for your business." });
             window.location.reload();
           } catch (err: any) {
             toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
@@ -264,12 +258,6 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     setProcessingPlan(false);
   };
 
-  const toggleAddon = (addonId: string) => {
-    setSelectedAddons(prev => 
-      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
-    );
-  };
-
   return (
     <Dialog open={open} onOpenChange={onClose} modal={false}>
       {open && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm pointer-events-auto" onClick={onClose} />}
@@ -282,7 +270,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">Upgrade Your Plan</DialogTitle>
           <DialogDescription className="text-center text-slate-400">
-            Choose your base plan and customize with add-ons.
+            Select one or more plans to activate for your business.
           </DialogDescription>
         </DialogHeader>
 
@@ -303,25 +291,19 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               </div>
             </div>
 
-            {/* Single Grid of All Plans */}
+            {/* All Plans Grid */}
             <div>
               <h3 className="text-xl font-semibold mb-4">Select Plans</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {plans.map((plan) => {
                   const price = getPlanPrice(plan);
-                  const hasPlan3 = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "plan_3");
                   const isIncludedInPlan3 = hasPlan3 && (plan.name === 'plan_5' || plan.name === 'plan_6');
                   const isSelected = isIncludedInPlan3 || finalSelectedPlanIds.has(plan.id);
-                  const togglePlan = () => {
-                    setSelectedPlanIds(prev => 
-                      prev.includes(plan.id) ? prev.filter(p => p !== plan.id) : [...prev, plan.id]
-                    );
-                  };
 
                   return (
                     <div 
                       key={plan.id} 
-                      onClick={() => !isIncludedInPlan3 && togglePlan()}
+                      onClick={() => !isIncludedInPlan3 && togglePlan(plan.id)}
                       className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInPlan3 ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer"} relative`}
                     >
                       {isIncludedInPlan3 && (
@@ -342,7 +324,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                           <span className="text-xl font-bold text-green-500">Free</span>
                         ) : (
                           <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
+                            <span className="text-2xl font-bold">{'\u20B9'}{(price / 100).toLocaleString('en-IN')}</span>
                             <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
                           </div>
                         )}
@@ -361,9 +343,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                             </Button>
                           </div>
                           {hrmsEmployeeCount > (plan.employee_limit || 0) && (
-                            <p className="text-xs text-slate-500 mt-2 text-center">
-                              +{hrmsEmployeeCount - (plan.employee_limit || 0)} extra employees (₹{((plan.employee_price_extra||0)/100)} each)
-                            </p>
+                            <div className="text-xs text-amber-500 mt-2">
+                              +{hrmsEmployeeCount - (plan.employee_limit || 0)} extra employees ({'\u20B9'}{((plan.employee_price_extra||0)/100)} each)
+                            </div>
                           )}
                         </div>
                       )}
@@ -405,7 +387,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 <div className="flex items-center gap-6 w-full md:w-auto">
                   <div className="text-right">
                     <div className="text-sm text-slate-400">Total Amount</div>
-                    <div className="text-2xl font-bold">₹{(totalAmount / 100).toLocaleString('en-IN')}</div>
+                    <div className="text-2xl font-bold">{'\u20B9'}{(totalAmount / 100).toLocaleString('en-IN')}</div>
                   </div>
                   
                   <Button 
@@ -417,7 +399,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     {processingPlan ? (
                       <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
                     ) : (
-                      `Pay ₹${(totalAmount / 100).toLocaleString('en-IN')} & Activate`
+                      finalSelectedPlanIds.size === 0 ? "Select at least one plan" : `Pay ${'\u20B9'}${(totalAmount / 100).toLocaleString('en-IN')} & Activate`
                     )}
                   </Button>
                 </div>
