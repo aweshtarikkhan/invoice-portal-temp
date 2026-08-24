@@ -108,7 +108,12 @@ const peopleItems = [
 
 const reportItems = [
   { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
-  { title: "Reports", url: "/reports", icon: BarChart3, addUrl: null },
+  { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
+  { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
+  { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
+  { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
+  { title: "HR Reports", url: "/hr-reports", icon: BarChart3, addUrl: null },
+  { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
   { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
   { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
   { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },

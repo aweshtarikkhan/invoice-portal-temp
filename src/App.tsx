@@ -8,6 +8,12 @@ import { AuthProvider, RequireAuth } from "@/lib/auth";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { FeatureGuard } from "@/components/layout/FeatureGuard";
 
+const SalesReportsPage = lazy(() => import("./pages/SalesReportsPage"));
+const InventoryReportsPage = lazy(() => import("./pages/InventoryReportsPage"));
+const PurchaseAccountingReportsPage = lazy(() => import("./pages/PurchaseAccountingReportsPage"));
+const HRReportsPage = lazy(() => import("./pages/HRReportsPage"));
+const CRMMarketingReportsPage = lazy(() => import("./pages/CRMMarketingReportsPage"));
+
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
 const ForgotPasswordPage = lazy(() => import("./pages/ForgotPasswordPage"));
@@ -153,6 +159,11 @@ const App = () => (
 
               <Route element={<FeatureGuard featureKey="reports" featureName="Reports" />}>
                 <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/sales-reports" element={<SalesReportsPage />} />
+                <Route path="/inventory-reports" element={<InventoryReportsPage />} />
+                <Route path="/purchase-accounting-reports" element={<PurchaseAccountingReportsPage />} />
+                <Route path="/hr-reports" element={<HRReportsPage />} />
+                <Route path="/crm-marketing-reports" element={<CRMMarketingReportsPage />} />
                 <Route path="/business-report" element={<BusinessReportPage />} />
                 <Route path="/aging-details" element={<AgingDetailsPage />} />
                 <Route path="/profit-loss" element={<ProfitLossPage />} />
