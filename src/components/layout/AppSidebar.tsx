@@ -75,6 +75,9 @@ const salesItems = [
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
   { title: "Emails", url: "/emails", icon: Send, addUrl: null },
   { title: "WhatsApp Chats", url: "/chats", icon: MessageCircle, addUrl: null },
+  { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
+  { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
+  { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
 ];
 
 const purchaseItems = [
@@ -83,6 +86,7 @@ const purchaseItems = [
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
   { title: "Bills", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
+  { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
 ];
 
 const accountingItems = [
@@ -90,11 +94,19 @@ const accountingItems = [
   { title: "Journal Entries", url: "/journal", icon: Calculator, addUrl: null },
   { title: "Bank & Cash", url: "/bank-accounts", icon: Landmark, addUrl: null },
   { title: "Cash Flow", url: "/cash-flow", icon: PieChart, addUrl: null },
+  { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
+  { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
+  { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
+  { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },
+  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
+  { title: "Aging Details", url: "/aging-details", icon: ScrollText, addUrl: null },
 ];
 
 const catalogItems = [
   { title: "Items", url: "/items", icon: Package, addUrl: "/items?add=1" },
   { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
+  { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
+  { title: "Inventory Valuation", url: "/inventory-valuation", icon: Boxes, addUrl: null },
 ];
 
 const peopleItems = [
@@ -104,23 +116,7 @@ const peopleItems = [
   { title: "Shifts", url: "/shifts", icon: CalendarCheck, addUrl: null },
   { title: "Documents", url: "/employee-documents", icon: ScrollText, addUrl: null },
   { title: "Payroll", url: "/payroll", icon: Calculator, addUrl: null },
-];
-
-const reportItems = [
-  { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
-  { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
-  { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
-  { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
-  { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
   { title: "HR Reports", url: "/hr-reports", icon: BarChart3, addUrl: null },
-  { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
-  { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
-  { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
-  { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
-  { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },
-  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
-  { title: "Inventory Valuation", url: "/inventory-valuation", icon: Boxes, addUrl: null },
-  { title: "Aging Details", url: "/aging-details", icon: ScrollText, addUrl: null },
 ];
 
 const crmItems = [
@@ -128,6 +124,7 @@ const crmItems = [
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
+  { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
 ];
 
 const marketingItems = [
@@ -152,7 +149,6 @@ const ADMIN_GROUP_ITEMS: Record<string, { label: string; items: any[] }> = {
   people: { label: "People", items: peopleItems },
   crm: { label: "CRM", items: crmItems },
   marketing: { label: "Marketing", items: marketingItems },
-  reports: { label: "Reports", items: reportItems },
 };
 
 export function AppSidebar() {
@@ -376,7 +372,6 @@ export function AppSidebar() {
                       {g.key === "people" && <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
                       <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t(g.label)}</span>
                       {!collapsed && (
