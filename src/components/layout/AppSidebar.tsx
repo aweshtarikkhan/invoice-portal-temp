@@ -9,6 +9,7 @@ import {
   Settings,
   Receipt,
   LogOut,
+  Lock,
   ClipboardList,
   BarChart3,
   FileMinus2,
@@ -204,11 +205,11 @@ export function AppSidebar() {
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
-  ].filter(g => isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key));
+  ].map(g => ({ ...g, isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key) }));
 
   // Admin controlled groups - mapped from the feature store
   const featureGroups = ADMIN_FEATURE_GROUPS
-    .filter((g) => g.key !== "sales" && g.key !== "catalog" && isGroupEnabled(g.key) && isGroupAccessible(g.key) && platformFeatures.includes(g.key))
+    .filter((g) => g.key !== "sales" && g.key !== "catalog")
     .map((g) => {
       let icon = ShoppingCart;
       if (g.icon === "Landmark") icon = Landmark;
@@ -219,6 +220,7 @@ export function AppSidebar() {
       return {
         key: g.key,
         label: g.label,
+        isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key),
         items: g.items.map(i => {
           let itemIcon = ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
@@ -386,7 +388,12 @@ export function AppSidebar() {
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
-                      {!collapsed && <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t(g.label)}</span>}
+                      {!collapsed && (
+                        <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 flex items-center justify-between pr-2">
+                          {t(g.label)}
+                          {(g as any).isLocked && <Lock className="h-3.5 w-3.5 text-amber-500" title="Upgrade to use this feature" />}
+                        </span>
+                      )}
                       {!collapsed && (
                         <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`} />
                       )}
@@ -398,7 +405,7 @@ export function AppSidebar() {
                       <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
                         <NavLink
                           to={item.url}
-                          className="hover:bg-[#1e293b] hover:text-white transition-colors h-9 rounded-lg"
+                          className={`hover:bg-[#1e293b] hover:text-white transition-colors h-9 rounded-lg ${(g as any).isLocked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`} title={(g as any).isLocked ? "Upgrade to use this feature" : undefined} onClick={(e) => { if((g as any).isLocked) e.preventDefault(); }}
                         >
                           {collapsed ? (
                             <item.icon className="h-4 w-4" />
@@ -439,7 +446,10 @@ export function AppSidebar() {
                                </>
                             ) : (
                                <>
-                                 <span className="flex-1 text-sm">{t(sub.label)}</span>
+                                 <span className="flex-1 text-sm flex items-center justify-between pr-2">
+                                     {t(sub.label)}
+                                     {(sub as any).isLocked && <Lock className="h-3 w-3 text-amber-500" title="Upgrade to use this feature" />}
+                                   </span>
                                  <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSubOpen ? "rotate-90" : ""}`} />
                                </>
                             )}

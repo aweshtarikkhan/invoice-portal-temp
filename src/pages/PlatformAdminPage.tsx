@@ -71,13 +71,11 @@ const PLAN_COLORS: Record<string, string> = {
 
 const PLAN_DISPLAY_NAMES: Record<string, string> = {
   free: "Free",
-  basic: "Starter",
-  pro: "Pro",
-  premium: "Premium",
-  bundle: "Complete Portal",
-  hrms: "HRMS",
-  crm: "CRM",
-  marketing: "Marketing"
+  plan_2: "Sales & Inventory",
+  plan_3: "Business Suite",
+  plan_4: "HRMS",
+  plan_5: "CRM",
+  plan_6: "Marketing"
 };
 
 export default function PlatformAdminPage() {
@@ -368,13 +366,11 @@ export default function PlatformAdminPage() {
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="free">🆓 Free</SelectItem>
-                            <SelectItem value="basic">💎 Starter</SelectItem>
-                            <SelectItem value="pro">🚀 Pro</SelectItem>
-                            <SelectItem value="premium">✨ Premium</SelectItem>
-                            <SelectItem value="bundle">🏢 Complete Portal</SelectItem>
-                            <SelectItem value="hrms">👥 HRMS</SelectItem>
-                            <SelectItem value="crm">🤝 CRM</SelectItem>
-                            <SelectItem value="marketing">📈 Marketing</SelectItem>
+                            <SelectItem value="plan_2">📄 Sales & Inventory</SelectItem>
+                            <SelectItem value="plan_3">🏢 Business Suite</SelectItem>
+                            <SelectItem value="plan_4">👥 HRMS</SelectItem>
+                            <SelectItem value="plan_5">🤝 CRM</SelectItem>
+                            <SelectItem value="plan_6">📈 Marketing</SelectItem>
                           </SelectContent>
                         </Select>
                         <Badge className={PLAN_COLORS[sub.plan_name] || PLAN_COLORS.free}>{sub.plan_display_name || PLAN_DISPLAY_NAMES[sub.plan_name] || "Free"} Plan</Badge>
