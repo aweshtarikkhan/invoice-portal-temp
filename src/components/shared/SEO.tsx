@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 interface SEOProps {
   title: string;
-  description: string;
+  description?: string;
   path?: string;
   image?: string;
   type?: "website" | "article";
@@ -18,7 +18,7 @@ const DEFAULT_IMAGE =
 
 export function SEO({
   title,
-  description,
+  description = "A powerful invoice and business management platform.",
   path,
   image = DEFAULT_IMAGE,
   type = "website",
