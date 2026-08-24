@@ -38,7 +38,10 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [validCoupon, setValidCoupon] = useState<{ id: string; amount: number; type: string } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [hrmsEmployeeCount, setHrmsEmployeeCount] = useState(5);
-  const [processingPlan, setProcessingPlan] = useState<string | null>(null);
+  const [processingPlan, setProcessingPlan] = useState<boolean>(false);
+  
+  const [selectedBasePlan, setSelectedBasePlan] = useState<string | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   
   const { toast } = useToast();
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
@@ -78,6 +81,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       setPlans(finalPlans);
       
       if (settingsData?.value) setYearlyDiscountPct(parseInt(settingsData.value));
+
+      // Auto-select first base plan
+      const base = finalPlans.find(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
+      if (base) setSelectedBasePlan(base.name);
+
     } catch (error) {
       console.error("Failed to load plans:", error);
     }
@@ -110,11 +118,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     setCouponLoading(false);
   };
 
-  const calculatePrice = (plan: Plan) => {
+  const getPlanPrice = (plan: Plan) => {
     let base = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
     
     // Add extra employees for HRMS plan
-    if (plan.name === "hrms" && plan.employee_limit && plan.employee_price_extra) {
+    if (plan.name === "plan_4" && plan.employee_limit && plan.employee_price_extra) {
       const extra = Math.max(0, hrmsEmployeeCount - plan.employee_limit);
       const extraCost = extra * plan.employee_price_extra;
       // If yearly, multiply extra cost by 12 and apply yearly discount
@@ -124,59 +132,79 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         base += extraCost;
       }
     }
+    return base;
+  };
 
-    let final = base;
-    if (validCoupon) {
-      if (validCoupon.type === "percentage") {
-        final = final - Math.floor((final * validCoupon.amount) / 100);
-      } else {
-        final = Math.max(0, final - validCoupon.amount);
+  const basePlans = plans.filter(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
+  const addOns = plans.filter(p => ['plan_4', 'plan_5', 'plan_6'].includes(p.name));
+
+  const basePlan = basePlans.find(p => p.name === selectedBasePlan);
+  
+  let totalAmount = 0;
+  if (basePlan) {
+    totalAmount += getPlanPrice(basePlan);
+  }
+
+  const activeAddonIds: string[] = [];
+  const selectedPlanIds: string[] = [];
+  if (basePlan) selectedPlanIds.push(basePlan.id);
+
+  addOns.forEach((addon) => {
+    const isIncludedInPlan3 = selectedBasePlan === 'plan_3' && (addon.name === 'plan_5' || addon.name === 'plan_6');
+    const isManuallySelected = selectedAddons.includes(addon.id);
+    
+    if (isIncludedInPlan3 || isManuallySelected) {
+      activeAddonIds.push(addon.id);
+      if (!selectedPlanIds.includes(addon.id)) selectedPlanIds.push(addon.id);
+      
+      if (!isIncludedInPlan3) {
+        totalAmount += getPlanPrice(addon);
       }
     }
-    return { base, final };
-  };
+  });
 
-  const handleStartTrial = async (plan: Plan) => {
-    if (!orgId) return;
-    setProcessingPlan(`trial_${plan.id}`);
-    try {
-      const { error } = await supabase.rpc("start_org_trial", {
-        p_org_id: orgId,
-        p_plan_name: plan.name
-      });
-      if (error) throw error;
-      toast({ title: "Trial Started", description: `You are now on a trial of the ${plan.display_name}.` });
-      window.location.reload(); // Reload to refresh features
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+  if (validCoupon) {
+    if (validCoupon.type === "percentage") {
+      totalAmount = totalAmount - Math.floor((totalAmount * validCoupon.amount) / 100);
+    } else {
+      totalAmount = Math.max(0, totalAmount - validCoupon.amount);
     }
-    setProcessingPlan(null);
-  };
+  }
 
-  const handlePay = async (plan: Plan) => {
+  const handleCheckout = async () => {
     if (!orgId) return;
-    setProcessingPlan(`pay_${plan.id}`);
+    setProcessingPlan(true);
     try {
-      // 1. Create order
-      const response = await fetch("http://localhost:4000/api/razorpay/create-order", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      // 1. Create order via edge function
+      const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
+        body: {
           org_id: orgId,
-          plan_name: plan.name,
+          selected_plan_ids: selectedPlanIds.join(','),
           billing_cycle: billingCycle,
           coupon_code: validCoupon ? promoCode : undefined,
-        })
+          hrms_employee_count: hrmsEmployeeCount,
+          total_amount: totalAmount
+        }
       });
-      const orderData = await response.json();
-      if (!response.ok) throw new Error(orderData.error);
+      
+      if (orderError) throw new Error(orderError.message || "Failed to create order");
+      if (!orderData) throw new Error("No order data returned");
 
       if (orderData.amount === 0) {
-        // Free plan logic if applicable (bypass razorpay)
-        throw new Error("Free plans should use Start Trial");
+        // Free plan logic if applicable
+        if (basePlan && basePlan.name === 'free') {
+          const { error } = await supabase.rpc("start_org_trial", {
+            p_org_id: orgId,
+            p_plan_name: basePlan.name
+          });
+          if (error) throw error;
+          toast({ title: "Plan Activated", description: `You are now on the Free plan.` });
+          window.location.reload();
+          return;
+        } else {
+           throw new Error("Free plans should use Start Trial");
+        }
       }
-
-
 
       // 2. Open Razorpay Modal
       const options = {
@@ -184,11 +212,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         amount: orderData.amount,
         currency: orderData.currency,
         name: "Assay Biz",
-        description: `Subscription to ${plan.display_name}`,
+        description: `Subscription Upgrade`,
         order_id: orderData.order_id,
         handler: async function (response: any) {
-          // 3. Verify payment signature with backend
           try {
+            // 3. Verify payment signature
             const verifyRes = await fetch("http://localhost:4000/api/razorpay/verify-payment", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -197,24 +225,24 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 org_id: orgId,
-                plan_name: plan.name,
+                selected_plan_ids: selectedPlanIds.join(','),
                 billing_cycle: billingCycle,
                 coupon_id: orderData.coupon_id,
                 discounted_price: orderData.discount_applied,
-                employee_count: plan.name === "hrms" ? hrmsEmployeeCount : 0
+                employee_count: hrmsEmployeeCount
               })
             });
             const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.error);
+            if (!verifyRes.ok) throw new Error(verifyData.error || "Payment verification failed");
             
-            // 4. Activate the plan in the database via Supabase RPC
+            // 4. Activate the plan in the database
             const { data: activateData, error: activateError } = await supabase.rpc("activate_org_plan", {
               p_org_id: orgId,
-              p_plan_name: plan.name,
+              p_plan_name: basePlan?.name || "premium",
               p_billing_cycle: billingCycle,
               p_razorpay_order_id: response.razorpay_order_id,
               p_razorpay_payment_id: response.razorpay_payment_id,
-              p_employee_count: plan.name === "hrms" ? hrmsEmployeeCount : 0
+              p_employee_count: hrmsEmployeeCount
             });
 
             if (activateError) {
@@ -222,7 +250,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               throw new Error("Payment received but plan activation failed. Please contact support with payment ID: " + response.razorpay_payment_id);
             }
             
-            toast({ title: "🎉 Payment Successful!", description: `${plan.display_name} plan has been activated for your business.` });
+            toast({ title: "🎉 Payment Successful!", description: `Plans have been activated for your business.` });
             window.location.reload();
           } catch (err: any) {
             toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
@@ -240,139 +268,208 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     } catch (err: any) {
       toast({ title: "Checkout Error", description: err.message, variant: "destructive" });
     }
-    setProcessingPlan(null);
+    setProcessingPlan(false);
   };
 
-  const isNewOrgPurchase = !!forceOrgId;
-  const canShowTrial = !isNewOrgPurchase && subscriptionStatus !== "active" && subscriptionStatus !== "cancelled" && myOrganizations.length <= 1;
+  const toggleAddon = (addonId: string) => {
+    setSelectedAddons(prev => 
+      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
+    );
+  };
 
   return (
     <Dialog open={open} onOpenChange={onClose} modal={false}>
-      {/* Semi-transparent backdrop for modal={false} */}
       {open && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm pointer-events-auto" onClick={onClose} />}
       <DialogContent 
-        className="max-w-4xl max-h-[90vh] overflow-y-auto z-50"
+        className="max-w-5xl max-h-[90vh] overflow-y-auto z-50 bg-slate-950 text-slate-50 border-slate-800"
         onPointerDownOutside={(e) => e.preventDefault()}
         onFocusOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">Upgrade Your Plan</DialogTitle>
-          <DialogDescription className="text-center">
-            Choose the perfect plan for your business needs.
+          <DialogDescription className="text-center text-slate-400">
+            Choose your base plan and customize with add-ons.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-8 mt-4">
+            {/* Billing Toggle */}
             <div className="flex items-center justify-center gap-4">
-              <span className={`text-sm font-medium ${billingCycle === "monthly" ? "text-primary" : "text-muted-foreground"}`}>Monthly</span>
+              <span className={`text-sm font-medium ${billingCycle === "monthly" ? "text-primary" : "text-slate-400"}`}>Monthly</span>
               <Switch 
                 checked={billingCycle === "yearly"} 
                 onCheckedChange={(c) => setBillingCycle(c ? "yearly" : "monthly")} 
               />
               <div className="flex items-center gap-2">
-                <span className={`text-sm font-medium ${billingCycle === "yearly" ? "text-primary" : "text-muted-foreground"}`}>Yearly</span>
-                <Badge variant="secondary" className="bg-green-100 text-green-700 hover:bg-green-100">Save {yearlyDiscountPct}%</Badge>
+                <span className={`text-sm font-medium ${billingCycle === "yearly" ? "text-primary" : "text-slate-400"}`}>Yearly</span>
+                <Badge variant="secondary" className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-0">Save {yearlyDiscountPct}%</Badge>
               </div>
             </div>
 
-            <div className="flex max-w-md mx-auto gap-2">
-              <Input 
-                placeholder="Enter Promo Code" 
-                value={promoCode} 
-                onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                disabled={!!validCoupon}
-              />
-              {validCoupon ? (
-                <Button variant="outline" onClick={() => { setValidCoupon(null); setPromoCode(""); }}>Remove</Button>
-              ) : (
-                <Button onClick={handleApplyPromo} disabled={!promoCode || couponLoading}>
-                  {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
-                </Button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {plans.map((plan) => {
-                const prices = calculatePrice(plan);
-                const isCurrent = currentPlanName === plan.name;
-                
-                return (
-                  <div key={plan.id} className={`border rounded-xl p-6 flex flex-col ${isCurrent ? "border-primary ring-2 ring-primary/20" : "border-slate-200 dark:border-slate-800"} relative`}>
-                    {isCurrent && (
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                        <Badge className="bg-primary">Current Plan</Badge>
+            {/* Base Plans Selection */}
+            <div>
+              <h3 className="text-xl font-semibold mb-4">Select Base Plan</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {basePlans.map((plan) => {
+                  const price = getPlanPrice(plan);
+                  const isSelected = selectedBasePlan === plan.name;
+                  
+                  return (
+                    <div 
+                      key={plan.id} 
+                      onClick={() => setSelectedBasePlan(plan.name)}
+                      className={`border rounded-xl p-6 flex flex-col cursor-pointer transition-all ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-slate-800 hover:border-slate-700 bg-slate-900"} relative`}
+                    >
+                      <h4 className="text-lg font-bold">{plan.display_name}</h4>
+                      
+                      <div className="mt-4 mb-6">
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
+                          <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                        </div>
                       </div>
-                    )}
-                    
-                    <h3 className="text-lg font-bold">{plan.display_name}</h3>
-                    
-                    <div className="mt-4 mb-6">
-                      {validCoupon && (
-                        <div className="text-sm text-muted-foreground line-through mb-1">
-                          ₹{(prices.base / 100).toLocaleString('en-IN')}
+
+                      <div className="flex-1 space-y-3">
+                        {plan.features.map((featureKey) => (
+                          <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-300">
+                            <Check className="h-4 w-4 text-primary shrink-0" />
+                            <span className="capitalize">{featureKey.replace("-", " ")}</span>
+                          </div>
+                        ))}
+                      </div>
+
+                      {isSelected && (
+                        <div className="mt-4 flex justify-end">
+                          <Check className="h-6 w-6 text-primary" />
                         </div>
                       )}
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold">₹{(prices.final / 100).toLocaleString('en-IN')}</span>
-                        <span className="text-sm text-muted-foreground">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
-                      </div>
                     </div>
+                  );
+                })}
+              </div>
+            </div>
 
-                    {plan.name === "hrms" && (
-                      <div className="mb-6 bg-slate-50 dark:bg-slate-900 p-3 rounded-lg border">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">Employees Count</label>
-                        <div className="flex items-center justify-between">
-                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                          <span className="font-bold">{hrmsEmployeeCount}</span>
-                          <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        {hrmsEmployeeCount > (plan.employee_limit || 0) && (
-                          <div className="text-xs text-amber-600 dark:text-amber-400 mt-2">
-                            +{hrmsEmployeeCount - (plan.employee_limit || 0)} extra employees (₹{((plan.employee_price_extra||0)/100)} each)
+            {/* Add-ons Selection */}
+            {addOns.length > 0 && (
+              <div>
+                <h3 className="text-xl font-semibold mb-4">Select Add-ons</h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {addOns.map((addon) => {
+                    const price = getPlanPrice(addon);
+                    const isIncludedInPlan3 = selectedBasePlan === 'plan_3' && (addon.name === 'plan_5' || addon.name === 'plan_6');
+                    const isSelected = isIncludedInPlan3 || selectedAddons.includes(addon.id);
+
+                    return (
+                      <div 
+                        key={addon.id} 
+                        onClick={() => !isIncludedInPlan3 && toggleAddon(addon.id)}
+                        className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInPlan3 ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer"} relative`}
+                      >
+                        {isIncludedInPlan3 && (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
+                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">Included in {basePlans.find(p => p.name === 'plan_3')?.display_name || 'Plan 3'}</Badge>
                           </div>
                         )}
-                      </div>
-                    )}
-
-                    <div className="flex-1 space-y-3 mb-8">
-                      {plan.features.map((featureKey) => (
-                        <div key={featureKey} className="flex items-center gap-2 text-sm">
-                          <Check className="h-4 w-4 text-green-500 shrink-0" />
-                          <span className="capitalize">{featureKey.replace("-", " ")}</span>
+                        
+                        <div className="flex items-start justify-between mt-2">
+                          <h4 className="text-lg font-bold">{addon.display_name}</h4>
+                          <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-600'}`}>
+                            {isSelected && <Check className="h-3 w-3" />}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        
+                        <div className="mt-4 mb-6">
+                          {isIncludedInPlan3 ? (
+                            <span className="text-xl font-bold text-green-500">Free</span>
+                          ) : (
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-2xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
+                              <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                            </div>
+                          )}
+                        </div>
 
-                    <div className="mt-auto flex flex-col gap-2">
-                      {canShowTrial && (
-                        <Button 
-                          variant={isCurrent ? "outline" : "secondary"}
-                          onClick={() => handleStartTrial(plan)}
-                          disabled={processingPlan !== null || isCurrent}
-                        >
-                          {processingPlan === `trial_${plan.id}` ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Start 14-Day Free Trial"}
-                        </Button>
-                      )}
-                      <Button 
-                        variant={isCurrent ? "outline" : "default"}
-                        onClick={() => handlePay(plan)}
-                        disabled={processingPlan !== null}
-                      >
-                        {processingPlan === `pay_${plan.id}` ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Pay & Activate"}
-                      </Button>
-                    </div>
+                        {addon.name === "plan_4" && isSelected && (
+                          <div className="mb-6 bg-slate-950 p-3 rounded-lg border border-slate-800" onClick={(e) => e.stopPropagation()}>
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Employees Count</label>
+                            <div className="flex items-center justify-between">
+                              <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
+                                <Minus className="h-4 w-4" />
+                              </Button>
+                              <span className="font-bold">{hrmsEmployeeCount}</span>
+                              <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            {hrmsEmployeeCount > (addon.employee_limit || 0) && (
+                              <div className="text-xs text-amber-500 mt-2">
+                                +{hrmsEmployeeCount - (addon.employee_limit || 0)} extra employees (₹{((addon.employee_price_extra||0)/100)} each)
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="flex-1 space-y-3">
+                          {addon.features.map((featureKey) => (
+                            <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-300">
+                              <Check className="h-4 w-4 text-primary shrink-0" />
+                              <span className="capitalize">{featureKey.replace("-", " ")}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Promo Code & Checkout */}
+            <div className="border-t border-slate-800 pt-8 mt-8">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="flex w-full max-w-sm gap-2">
+                  <Input 
+                    placeholder="Enter Promo Code" 
+                    value={promoCode} 
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    disabled={!!validCoupon}
+                    className="bg-slate-900 border-slate-800"
+                  />
+                  {validCoupon ? (
+                    <Button variant="outline" className="border-slate-700 hover:bg-slate-800" onClick={() => { setValidCoupon(null); setPromoCode(""); }}>Remove</Button>
+                  ) : (
+                    <Button onClick={handleApplyPromo} disabled={!promoCode || couponLoading}>
+                      {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-6 w-full md:w-auto">
+                  <div className="text-right">
+                    <div className="text-sm text-slate-400">Total Amount</div>
+                    <div className="text-2xl font-bold">₹{(totalAmount / 100).toLocaleString('en-IN')}</div>
                   </div>
-                );
-              })}
+                  
+                  <Button 
+                    size="lg" 
+                    className="w-full md:w-auto"
+                    onClick={handleCheckout}
+                    disabled={processingPlan || !basePlan}
+                  >
+                    {processingPlan ? (
+                      <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
+                    ) : (
+                      `Pay ₹${(totalAmount / 100).toLocaleString('en-IN')} & Activate`
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
+
           </div>
         )}
       </DialogContent>

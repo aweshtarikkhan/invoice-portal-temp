@@ -243,7 +243,7 @@ export default function PlatformAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {["free", "basic", "pro", "premium", "bundle", "hrms", "crm", "marketing"].map(plan => {
+                {["free", "plan_2", "plan_3", "plan_4", "plan_5", "plan_6"].map(plan => {
                   const count = dashData.organizations.filter(o =>
                     (o.subscription?.plan_name || "free") === plan
                   ).length;
