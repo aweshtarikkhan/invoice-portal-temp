@@ -40,8 +40,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [hrmsEmployeeCount, setHrmsEmployeeCount] = useState(5);
   const [processingPlan, setProcessingPlan] = useState<boolean>(false);
   
-  const [selectedBasePlan, setSelectedBasePlan] = useState<string | null>(null);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
+  const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
   
   const { toast } = useToast();
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
@@ -82,9 +81,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       
       if (settingsData?.value) setYearlyDiscountPct(parseInt(settingsData.value));
 
-      // Auto-select first base plan
-      const base = finalPlans.find(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
-      if (base) setSelectedBasePlan(base.name);
+
 
     } catch (error) {
       console.error("Failed to load plans:", error);
@@ -458,7 +455,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     size="lg" 
                     className="w-full md:w-auto"
                     onClick={handleCheckout}
-                    disabled={processingPlan || !basePlan}
+                    disabled={processingPlan || finalSelectedPlanIds.size === 0}
                   >
                     {processingPlan ? (
                       <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</>
