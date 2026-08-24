@@ -42,6 +42,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "payments", title: "Payments Received", description: "Track all payments", icon: "CreditCard", url: "/payments" },
       { key: "delivery-challans", title: "Delivery Challans", description: "Manage delivery challans", icon: "Truck", url: "/delivery-challans" },
       { key: "recurring", title: "Recurring Invoices", description: "Set up recurring billing", icon: "RefreshCw", url: "/recurring-invoices" },
+      { key: "sales-reports", title: "Sales Reports", description: "Analyze your sales", icon: "BarChart3", url: "/sales-reports" },
     ],
   },
   {
@@ -54,6 +55,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "inventory", title: "Inventory", description: "Stock management", icon: "Boxes", url: "/inventory" },
       { key: "warehouses", title: "Warehouses", description: "Multi-warehouse locations", icon: "Warehouse", url: "/warehouses" },
       { key: "branches", title: "Branches", description: "Multi-branch management", icon: "Building2", url: "/branches" },
+      { key: "inventory-reports", title: "Inventory Reports", description: "Analyze your inventory", icon: "BarChart3", url: "/inventory-reports" },
     ],
   },
   {
@@ -67,6 +69,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "grns", title: "Goods Receipt (GRN)", description: "Track received goods", icon: "PackageCheck", url: "/grns" },
       { key: "bills", title: "Bills", description: "Manage vendor bills", icon: "Receipt", url: "/bills" },
       { key: "expenses", title: "Expenses", description: "Track business expenses", icon: "Coins", url: "/expenses" },
+      { key: "purchases-reports", title: "Purchases Reports", description: "Analyze your purchases", icon: "BarChart3", url: "/purchase-accounting-reports" },
     ],
   },
   {
@@ -79,6 +82,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "journal", title: "Journal Entries", description: "Record journal entries", icon: "Calculator", url: "/journal" },
       { key: "bank-accounts", title: "Bank & Cash", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
       { key: "cash-flow", title: "Cash Flow", description: "Cash flow analysis", icon: "PieChart", url: "/cash-flow" },
+      { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
     ],
   },
   {
@@ -93,6 +97,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "shifts", title: "Shifts", description: "Shift scheduling", icon: "CalendarCheck", url: "/shifts" },
       { key: "employee-documents", title: "Documents", description: "Employee documents", icon: "ScrollText", url: "/employee-documents" },
       { key: "payroll", title: "Payroll", description: "Payroll processing", icon: "Calculator", url: "/payroll" },
+      { key: "hr-reports", title: "HR Reports", description: "Employee analytics", icon: "BarChart3", url: "/hr-reports" },
     ],
   },
   {
@@ -107,7 +112,8 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "automations", title: "Automations", description: "Workflow rules", icon: "Zap", url: "/crm/automations" },
       { key: "tickets", title: "Support Tickets", description: "Manage customer helpdesk", icon: "Ticket", url: "/tickets" },
       { key: "activities", title: "Activities", description: "Track CRM activities", icon: "ClipboardList", url: "/activities" },
-        { key: "integrations", title: "Integrations & API", description: "Lead sources & webhooks", icon: "Link2", url: "/crm/integrations" },
+      { key: "integrations", title: "Integrations & API", description: "Lead sources & webhooks", icon: "Link2", url: "/crm/integrations" },
+      { key: "crm-reports", title: "CRM Reports", description: "Analyze your leads and pipeline", icon: "BarChart3", url: "/crm-marketing-reports" },
     ],
   },
   {
