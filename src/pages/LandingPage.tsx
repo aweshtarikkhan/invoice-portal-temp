@@ -128,6 +128,7 @@ export default function LandingPage() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem("satah-lang") as Lang) || "en");
   const [allowFreePlan, setAllowFreePlan] = useState(true);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
   const L = t[lang];
 
@@ -439,67 +440,104 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-4">
           <div className="text-center mb-12">
             <Badge variant="secondary" className="mb-4 gap-1.5 py-1.5 px-3">
-              <Zap className="h-3.5 w-3.5" /> Choose Your Plan
+              <Zap className="h-3.5 w-3.5" /> Choose Your Plans
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-navy">{L.pricing_title}</h2>
             <p className="mt-3 text-muted-foreground text-lg max-w-2xl mx-auto">
-              Pick the perfect plan for your business. All plans include 14-day free trial.
+              Select one or more plans for your business. All plans include 14-day free trial.
             </p>
           </div>
 
-          {/* Main Plans (tiered) */}
           {(() => {
-            const mainPlans = dbPlans.filter(p => p.plan_type === "tiered" && (p.name !== "free" || allowFreePlan));
-            const addonPlans = dbPlans.filter(p => p.plan_type === "addon");
+            const allPlans = dbPlans.filter(p => p.name !== "free" || allowFreePlan);
 
             const planIcons: Record<string, { icon: string; color: string; gradient: string; desc: string }> = {
-              basic: { icon: "📄", color: "text-blue-600", gradient: "from-blue-500 to-blue-600", desc: "Perfect for freelancers and small shops getting started with GST invoicing." },
-              pro: { icon: "⚡", color: "text-violet-600", gradient: "from-violet-500 to-violet-600", desc: "For growing businesses that need inventory, GST returns and advanced billing." },
-              premium: { icon: "🏢", color: "text-amber-600", gradient: "from-amber-500 to-orange-500", desc: "For established businesses with accounting, multi-warehouse and HR needs." },
-              bundle: { icon: "🚀", color: "text-emerald-600", gradient: "from-emerald-500 to-teal-500", desc: "The ultimate all-in-one solution — Invoicing, HR, CRM & Marketing." },
-              hrms: { icon: "👥", color: "text-indigo-600", gradient: "from-indigo-500 to-indigo-600", desc: "Complete HR solution — attendance, leaves, payroll & employee management." },
-              crm: { icon: "🎯", color: "text-pink-600", gradient: "from-pink-500 to-rose-500", desc: "Manage leads, deals, pipeline and customer relationships in one place." },
-              marketing: { icon: "📢", color: "text-orange-600", gradient: "from-orange-500 to-red-500", desc: "SMS campaigns, email marketing, journeys and automation." },
+              free: { icon: "🆓", color: "text-slate-600", gradient: "from-slate-400 to-slate-500", desc: "Get started with basic invoicing features at no cost." },
+              plan_2: { icon: "📄", color: "text-blue-600", gradient: "from-blue-500 to-blue-600", desc: "Full sales & inventory management for growing businesses." },
+              plan_3: { icon: "🏢", color: "text-amber-600", gradient: "from-amber-500 to-orange-500", desc: "Complete business suite with purchase, accounts & reports. CRM & Marketing included free!" },
+              plan_4: { icon: "👥", color: "text-indigo-600", gradient: "from-indigo-500 to-indigo-600", desc: "Complete HR solution — attendance, leaves, payroll & employee management." },
+              plan_5: { icon: "🎯", color: "text-pink-600", gradient: "from-pink-500 to-rose-500", desc: "Manage leads, deals, pipeline and customer relationships." },
+              plan_6: { icon: "📢", color: "text-orange-600", gradient: "from-orange-500 to-red-500", desc: "SMS campaigns, email marketing, journeys and automation." },
             };
+
+            const togglePlan = (planName: string) => {
+              setSelectedPlans(prev => 
+                prev.includes(planName) ? prev.filter(n => n !== planName) : [...prev, planName]
+              );
+            };
+
+            const hasPlan3 = selectedPlans.includes("plan_3");
+            const finalSelected = new Set(selectedPlans);
+            if (hasPlan3) {
+              finalSelected.add("plan_5");
+              finalSelected.add("plan_6");
+            }
+
+            // Calculate total monthly price
+            let totalMonthly = 0;
+            finalSelected.forEach(name => {
+              const plan = allPlans.find((p: any) => p.name === name);
+              if (!plan) return;
+              if (hasPlan3 && (name === "plan_5" || name === "plan_6")) return;
+              totalMonthly += plan.price_monthly;
+            });
 
             return (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-12">
-                  {mainPlans.map((p, idx) => {
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-8">
+                  {allPlans.map((p: any) => {
                     const meta = planIcons[p.name] || { icon: "📦", color: "text-primary", gradient: "from-primary to-primary", desc: "" };
-                    const isPopular = p.name === "pro";
+                    const isIncludedFree = hasPlan3 && (p.name === "plan_5" || p.name === "plan_6");
+                    const isSelected = finalSelected.has(p.name);
+                    const isPopular = p.name === "plan_3";
+                    
                     return (
-                      <Card key={p.id} className={`relative flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 ${isPopular ? "border-2 border-primary shadow-lg ring-1 ring-primary/20" : "border hover:border-primary/30"}`}>
+                      <Card 
+                        key={p.id} 
+                        onClick={() => !isIncludedFree && togglePlan(p.name)}
+                        className={`relative flex flex-col overflow-hidden transition-all duration-300 cursor-pointer hover:shadow-xl hover:-translate-y-1 ${isSelected ? "border-2 border-primary shadow-lg ring-1 ring-primary/20" : isIncludedFree ? "border-2 border-emerald-500/50 opacity-90" : "border hover:border-primary/30"}`}
+                      >
                         {isPopular && (
                           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary via-violet-500 to-primary" />
                         )}
                         {isPopular && (
                           <Badge className="absolute -top-0.5 right-4 rounded-t-none rounded-b-lg bg-primary text-primary-foreground shadow-md">Most Popular</Badge>
                         )}
+                        {isIncludedFree && (
+                          <Badge className="absolute top-2 right-2 bg-emerald-500 text-white border-0">Free with Plan 3</Badge>
+                        )}
                         <div className="p-6 flex-1 flex flex-col">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-xl shadow-sm`}>
-                              {meta.icon}
+                          <div className="flex items-start gap-3 mb-3">
+                            {/* Checkbox */}
+                            <div className={`mt-1 h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-primary border-primary text-white" : "border-muted-foreground/30"}`}>
+                              {isSelected && <Check className="h-3 w-3" />}
                             </div>
-                            <div>
-                              <h3 className="font-bold text-lg text-navy">{p.display_name}</h3>
-                              <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">{p.plan_type}</span>
+                            <div className="flex items-center gap-3 flex-1">
+                              <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-xl shadow-sm`}>
+                                {meta.icon}
+                              </div>
+                              <div>
+                                <h3 className="font-bold text-lg text-navy">{p.display_name}</h3>
+                              </div>
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{meta.desc}</p>
                           <div className="flex items-baseline gap-1 mb-1">
-                            <span className="text-3xl font-extrabold tracking-tight">₹{(p.price_monthly / 100).toLocaleString()}</span>
-                            <span className="text-muted-foreground text-sm">/mo</span>
+                            {isIncludedFree ? (
+                              <span className="text-2xl font-extrabold text-emerald-500">Free</span>
+                            ) : (
+                              <>
+                                <span className="text-3xl font-extrabold tracking-tight">{'\u20B9'}{(p.price_monthly / 100).toLocaleString()}</span>
+                                <span className="text-muted-foreground text-sm">/mo</span>
+                              </>
+                            )}
                           </div>
-                          <div className="text-xs text-muted-foreground mb-5">
-                            ₹{(p.price_yearly / 100).toLocaleString()}/year (save {Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100)}%)
-                          </div>
-                          <Button className={`w-full font-semibold ${isPopular ? "bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-md" : ""}`} variant={isPopular ? "default" : "outline"} size="lg" asChild>
-                            <Link to={`/register?plan=${p.name}`}>
-                              Get {p.display_name} <ArrowRight className="h-4 w-4 ml-1" />
-                            </Link>
-                          </Button>
-                          <div className="mt-5 pt-5 border-t space-y-2.5">
+                          {!isIncludedFree && (
+                            <div className="text-xs text-muted-foreground mb-4">
+                              {'\u20B9'}{(p.price_yearly / 100).toLocaleString()}/year {p.price_monthly > 0 && `(save ${Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100)}%)`}
+                            </div>
+                          )}
+                          <div className="mt-auto pt-4 border-t space-y-2.5">
                             {Array.isArray(p.features) && p.features.map((f: string, i: number) => (
                               <div key={i} className="flex gap-2.5 text-sm">
                                 <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
@@ -519,55 +557,18 @@ export default function LandingPage() {
                   })}
                 </div>
 
-                {/* Add-on Plans */}
-                {addonPlans.length > 0 && (
-                  <div className="mt-8">
-                    <div className="text-center mb-8">
-                      <h3 className="text-2xl font-bold tracking-tight text-navy">Standalone Add-ons</h3>
-                      <p className="text-muted-foreground mt-2">Use these independently or add them to any plan.</p>
+                {/* Floating Checkout Bar */}
+                {finalSelected.size > 0 && (
+                  <div className="sticky bottom-4 z-30 bg-background/95 backdrop-blur-lg border-2 border-primary/20 rounded-2xl shadow-2xl p-4 md:p-6 flex flex-col md:flex-row items-center justify-between gap-4 max-w-3xl mx-auto">
+                    <div>
+                      <div className="text-sm text-muted-foreground">{finalSelected.size} plan{finalSelected.size > 1 ? "s" : ""} selected</div>
+                      <div className="text-2xl font-bold">{'\u20B9'}{(totalMonthly / 100).toLocaleString('en-IN')}<span className="text-sm font-normal text-muted-foreground">/mo</span></div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 max-w-4xl mx-auto">
-                      {addonPlans.map(p => {
-                        const meta = planIcons[p.name] || { icon: "📦", color: "text-primary", gradient: "from-primary to-primary", desc: "" };
-                        return (
-                          <Card key={p.id} className="relative flex flex-col overflow-hidden transition-all duration-300 hover:shadow-xl hover:-translate-y-1 border hover:border-primary/30">
-                            <div className={`h-1.5 bg-gradient-to-r ${meta.gradient}`} />
-                            <div className="p-6 flex-1 flex flex-col">
-                              <div className="flex items-center gap-3 mb-3">
-                                <div className={`h-11 w-11 rounded-xl bg-gradient-to-br ${meta.gradient} flex items-center justify-center text-xl shadow-sm`}>
-                                  {meta.icon}
-                                </div>
-                                <div>
-                                  <h3 className="font-bold text-lg text-navy">{p.display_name}</h3>
-                                  <Badge variant="secondary" className="text-xs">Add-on</Badge>
-                                </div>
-                              </div>
-                              <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{meta.desc}</p>
-                              <div className="flex items-baseline gap-1 mb-1">
-                                <span className="text-3xl font-extrabold tracking-tight">₹{(p.price_monthly / 100).toLocaleString()}</span>
-                                <span className="text-muted-foreground text-sm">/mo</span>
-                              </div>
-                              {p.employee_limit && (
-                                <div className="text-xs text-muted-foreground mb-4">Starting with {p.employee_limit} employees</div>
-                              )}
-                              <Button className="w-full font-semibold mt-auto" variant="outline" size="lg" asChild>
-                                <Link to={`/register?plan=${p.name}`}>
-                                  Get {p.display_name} <ArrowRight className="h-4 w-4 ml-1" />
-                                </Link>
-                              </Button>
-                              <div className="mt-5 pt-5 border-t space-y-2.5">
-                                {Array.isArray(p.features) && p.features.map((f: string, i: number) => (
-                                  <div key={i} className="flex gap-2.5 text-sm">
-                                    <Check className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
-                                    <span className="text-muted-foreground">{f}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </Card>
-                        );
-                      })}
-                    </div>
+                    <Button size="lg" className="w-full md:w-auto gap-2 text-base h-12 px-8 bg-gradient-to-r from-primary to-violet-600 hover:from-primary/90 hover:to-violet-600/90 shadow-md" asChild>
+                      <Link to={`/register?plan=${Array.from(finalSelected).join(",")}`}>
+                        Get Started <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
                   </div>
                 )}
               </>
