@@ -40,7 +40,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [hrmsEmployeeCount, setHrmsEmployeeCount] = useState(5);
   const [processingPlan, setProcessingPlan] = useState<boolean>(false);
   
-  const [selectedPlanIds, setSelectedPlanIds] = useState<string[]>([]);
+  const [selectedBasePlan, setSelectedBasePlan] = useState<string | null>(null);
+  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   
   const { toast } = useToast();
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
@@ -81,7 +82,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       
       if (settingsData?.value) setYearlyDiscountPct(parseInt(settingsData.value));
 
-
+      // Auto-select first base plan
+      const base = finalPlans.find(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
+      if (base) setSelectedBasePlan(base.name);
 
     } catch (error) {
       console.error("Failed to load plans:", error);
@@ -132,34 +135,23 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     return base;
   };
 
-  const basePlans = plans.filter(p => ['free', 'plan_2', 'plan_3'].includes(p.name));
-  const addOns = plans.filter(p => ['plan_4', 'plan_5', 'plan_6'].includes(p.name));
-
-  const basePlan = basePlans.find(p => p.name === selectedBasePlan);
-  
-  let totalAmount = 0;
-  if (basePlan) {
-    totalAmount += getPlanPrice(basePlan);
+    const finalSelectedPlanIds = new Set<string>(selectedPlanIds);
+  const hasPlan3 = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "plan_3");
+  if (hasPlan3) {
+    const p5 = plans.find(p => p.name === "plan_5");
+    const p6 = plans.find(p => p.name === "plan_6");
+    if (p5) finalSelectedPlanIds.add(p5.id);
+    if (p6) finalSelectedPlanIds.add(p6.id);
   }
 
-  const activeAddonIds: string[] = [];
-  const selectedPlanIds: string[] = [];
-  if (basePlan) selectedPlanIds.push(basePlan.id);
-
-  addOns.forEach((addon) => {
-    const isIncludedInPlan3 = selectedBasePlan === 'plan_3' && (addon.name === 'plan_5' || addon.name === 'plan_6');
-    const isManuallySelected = selectedAddons.includes(addon.id);
-    
-    if (isIncludedInPlan3 || isManuallySelected) {
-      activeAddonIds.push(addon.id);
-      if (!selectedPlanIds.includes(addon.id)) selectedPlanIds.push(addon.id);
-      
-      if (!isIncludedInPlan3) {
-        totalAmount += getPlanPrice(addon);
-      }
-    }
+  let totalAmount = 0;
+  Array.from(finalSelectedPlanIds).forEach(id => {
+    const plan = plans.find(p => p.id === id);
+    if (!plan) return;
+    if (hasPlan3 && (plan.name === "plan_5" || plan.name === "plan_6")) return;
+    totalAmount += getPlanPrice(plan);
   });
-
+  
   if (validCoupon) {
     if (validCoupon.type === "percentage") {
       totalAmount = totalAmount - Math.floor((totalAmount * validCoupon.amount) / 100);
@@ -167,6 +159,10 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       totalAmount = Math.max(0, totalAmount - validCoupon.amount);
     }
   }
+
+  const basePlan = Array.from(finalSelectedPlanIds).map(id => plans.find(p => p.id === id)).find(p => p?.name === "free");
+  const selectedPlanIdsString = Array.from(finalSelectedPlanIds).join(',');
+  const planNames = Array.from(finalSelectedPlanIds).map(id => plans.find(p => p.id === id)?.name).filter(Boolean);
 
   const handleCheckout = async () => {
     if (!orgId) return;
@@ -307,30 +303,72 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               </div>
             </div>
 
-            {/* Base Plans Selection */}
+            {/* Single Grid of All Plans */}
             <div>
-              <h3 className="text-xl font-semibold mb-4">Select Base Plan</h3>
+              <h3 className="text-xl font-semibold mb-4">Select Plans</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {basePlans.map((plan) => {
+                {plans.map((plan) => {
                   const price = getPlanPrice(plan);
-                  const isSelected = selectedBasePlan === plan.name;
-                  
+                  const hasPlan3 = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "plan_3");
+                  const isIncludedInPlan3 = hasPlan3 && (plan.name === 'plan_5' || plan.name === 'plan_6');
+                  const isSelected = isIncludedInPlan3 || finalSelectedPlanIds.has(plan.id);
+                  const togglePlan = () => {
+                    setSelectedPlanIds(prev => 
+                      prev.includes(plan.id) ? prev.filter(p => p !== plan.id) : [...prev, plan.id]
+                    );
+                  };
+
                   return (
                     <div 
                       key={plan.id} 
-                      onClick={() => setSelectedBasePlan(plan.name)}
-                      className={`border rounded-xl p-6 flex flex-col cursor-pointer transition-all ${isSelected ? "border-primary bg-primary/5 ring-2 ring-primary/20" : "border-slate-800 hover:border-slate-700 bg-slate-900"} relative`}
+                      onClick={() => !isIncludedInPlan3 && togglePlan()}
+                      className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInPlan3 ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer"} relative`}
                     >
-                      <h4 className="text-lg font-bold">{plan.display_name}</h4>
+                      {isIncludedInPlan3 && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
+                          <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">Included in {plans.find(p => p.name === 'plan_3')?.display_name || 'Plan 3'}</Badge>
+                        </div>
+                      )}
                       
-                      <div className="mt-4 mb-6">
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
-                          <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                      <div className="flex items-start justify-between mt-2">
+                        <h4 className="text-lg font-bold">{plan.display_name}</h4>
+                        <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-600'}`}>
+                          {isSelected && <Check className="h-3 w-3" />}
                         </div>
                       </div>
+                      
+                      <div className="mt-4 mb-6">
+                        {isIncludedInPlan3 ? (
+                          <span className="text-xl font-bold text-green-500">Free</span>
+                        ) : (
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
+                            <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                          </div>
+                        )}
+                      </div>
 
-                      <div className="flex-1 space-y-3">
+                      {plan.name === "plan_4" && isSelected && (
+                        <div className="mb-6 bg-slate-950 p-3 rounded-lg border border-slate-800" onClick={(e) => e.stopPropagation()}>
+                          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Employees Count</label>
+                          <div className="flex items-center justify-between">
+                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                            <span className="font-bold">{hrmsEmployeeCount}</span>
+                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
+                              <Plus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          {hrmsEmployeeCount > (plan.employee_limit || 0) && (
+                            <p className="text-xs text-slate-500 mt-2 text-center">
+                              +{hrmsEmployeeCount - (plan.employee_limit || 0)} extra employees (₹{((plan.employee_price_extra||0)/100)} each)
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex-1 space-y-3 mt-auto pt-4 border-t border-slate-800/50">
                         {plan.features.map((featureKey) => (
                           <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-300">
                             <Check className="h-4 w-4 text-primary shrink-0" />
@@ -338,92 +376,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                           </div>
                         ))}
                       </div>
-
-                      {isSelected && (
-                        <div className="mt-4 flex justify-end">
-                          <Check className="h-6 w-6 text-primary" />
-                        </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
             </div>
-
-            {/* Add-ons Selection */}
-            {addOns.length > 0 && (
-              <div>
-                <h3 className="text-xl font-semibold mb-4">Select Add-ons</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {addOns.map((addon) => {
-                    const price = getPlanPrice(addon);
-                    const isIncludedInPlan3 = selectedBasePlan === 'plan_3' && (addon.name === 'plan_5' || addon.name === 'plan_6');
-                    const isSelected = isIncludedInPlan3 || selectedAddons.includes(addon.id);
-
-                    return (
-                      <div 
-                        key={addon.id} 
-                        onClick={() => !isIncludedInPlan3 && toggleAddon(addon.id)}
-                        className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInPlan3 ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer"} relative`}
-                      >
-                        {isIncludedInPlan3 && (
-                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
-                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">Included in {basePlans.find(p => p.name === 'plan_3')?.display_name || 'Plan 3'}</Badge>
-                          </div>
-                        )}
-                        
-                        <div className="flex items-start justify-between mt-2">
-                          <h4 className="text-lg font-bold">{addon.display_name}</h4>
-                          <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-600'}`}>
-                            {isSelected && <Check className="h-3 w-3" />}
-                          </div>
-                        </div>
-                        
-                        <div className="mt-4 mb-6">
-                          {isIncludedInPlan3 ? (
-                            <span className="text-xl font-bold text-green-500">Free</span>
-                          ) : (
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-2xl font-bold">₹{(price / 100).toLocaleString('en-IN')}</span>
-                              <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {addon.name === "plan_4" && isSelected && (
-                          <div className="mb-6 bg-slate-950 p-3 rounded-lg border border-slate-800" onClick={(e) => e.stopPropagation()}>
-                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Employees Count</label>
-                            <div className="flex items-center justify-between">
-                              <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
-                                <Minus className="h-4 w-4" />
-                              </Button>
-                              <span className="font-bold">{hrmsEmployeeCount}</span>
-                              <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
-                                <Plus className="h-4 w-4" />
-                              </Button>
-                            </div>
-                            {hrmsEmployeeCount > (addon.employee_limit || 0) && (
-                              <div className="text-xs text-amber-500 mt-2">
-                                +{hrmsEmployeeCount - (addon.employee_limit || 0)} extra employees (₹{((addon.employee_price_extra||0)/100)} each)
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        <div className="flex-1 space-y-3">
-                          {addon.features.map((featureKey) => (
-                            <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-300">
-                              <Check className="h-4 w-4 text-primary shrink-0" />
-                              <span className="capitalize">{featureKey.replace("-", " ")}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Promo Code & Checkout */}
             <div className="border-t border-slate-800 pt-8 mt-8">
