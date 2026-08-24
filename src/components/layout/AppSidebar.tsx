@@ -177,7 +177,7 @@ export function AppSidebar() {
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-      }, 150);
+      }, 300);
     }
   };
 
@@ -412,7 +412,9 @@ export function AppSidebar() {
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
-                  {isOpen && g.items.map((item) => (
+                  <div className={`grid transition-all duration-300 ease-in-out ${isOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                    <div className="overflow-hidden">
+                  {g.items.map((item) => (
                     <SidebarMenuItem key={item.title} className={`group/item mt-1 ${collapsed ? "pl-0 flex justify-center" : "pl-6"}`}>
                       <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
                         <NavLink
@@ -511,7 +513,7 @@ export function AppSidebar() {
                           if (!settingsOpen) {
                             setTimeout(() => {
                               document.getElementById("group-settings")?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 150);
+                            }, 300);
                           }
                         }}
                       isActive={isSettingsActive}
@@ -527,8 +529,8 @@ export function AppSidebar() {
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
-                  {(settingsOpen || isSettingsActive) && (
-                    <>
+                  <div className={`grid transition-all duration-300 ease-in-out ${(settingsOpen || isSettingsActive) ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+                    <div className="overflow-hidden">
                       {settingsItems.map((item) => (
                         <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
                           <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
@@ -563,8 +565,8 @@ export function AppSidebar() {
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       )}
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </>
               )}
             </SidebarMenu>
