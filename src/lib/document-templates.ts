@@ -8,6 +8,14 @@ export const DOCUMENT_TEMPLATES = [
     recommendedPaperSize: "a4",
   },
   {
+    id: "professional_navy",
+    name: "Professional Navy GST",
+    description: "Classic professional navy template matching standard business format with strict table borders.",
+    preview: "bg-blue-50 border-blue-900/20",
+    features: ["Classic Navy header", "Strict tabular layout", "Amount in words", "Bank details & QR", "Separate Terms & Totals"],
+    recommendedPaperSize: "a4",
+  },
+  {
     id: "corporate_blue",
     name: "Corporate Blue GST",
     description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code.",
