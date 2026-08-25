@@ -124,7 +124,7 @@ export default function InvoiceTemplatePage() {
         Showing templates for <b>{PAPER_SIZES.find(s => s.id === paperSize)?.name}</b>. Change paper size above to see other templates.
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {visibleTemplates.map((tpl) => (
           <Card
             key={tpl.id}
