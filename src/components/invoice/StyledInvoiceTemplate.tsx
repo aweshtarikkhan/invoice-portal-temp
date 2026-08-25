@@ -1,5 +1,6 @@
 import { QRCodeSVG } from "qrcode.react";
 import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";
+import { ProfessionalNavyInvoiceTemplate } from "./ProfessionalNavyInvoiceTemplate";
 
 interface StyledInvoiceTemplateProps {
   org: any;
@@ -19,6 +20,20 @@ const getTitleText = (type: string) => {
 };
 
 export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate }: StyledInvoiceTemplateProps) {
+  if (org?.template_style === "professional_navy") {
+    return (
+      <ProfessionalNavyInvoiceTemplate
+        org={org}
+        invoice={invoice}
+        lines={lines}
+        fmt={fmt}
+        type={type}
+        taxBreakdown={taxBreakdown}
+        isInterstate={isInterstate}
+      />
+    );
+  }
+
   if (org?.template_style === "corporate_blue") {
     return (
       <CorporateBlueInvoiceTemplate
