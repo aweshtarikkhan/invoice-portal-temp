@@ -74,9 +74,10 @@ export function ProfessionalNavyInvoiceTemplate({
   }, [org?.address]);
 
   const billToAddressLines: string[] = useMemo(() => {
-    if (!invoice?.billing_address) return [];
+    const addr = invoice?.billing_address || (invoice.clients as any)?.address || (invoice.vendors as any)?.address;
+    if (!addr) return [];
     try {
-      const a = typeof invoice.billing_address === "string" ? JSON.parse(invoice.billing_address) : invoice.billing_address;
+      const a = typeof addr === "string" ? JSON.parse(addr) : addr;
       const res: string[] = [];
       if (a?.street) res.push(a.street);
       const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
@@ -169,6 +170,11 @@ export function ProfessionalNavyInvoiceTemplate({
             </div>
             
             <div style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 10, color: "#374151" }}>
+              {org?.gst_number && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, color: navy }}>
+                  <span>GSTIN: {org.gst_number}</span>
+                </div>
+              )}
               {addressLines.length > 0 && (
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
                   <MapPin style={{ width: 12, height: 12, color: navy, marginTop: 1 }} />
@@ -298,16 +304,28 @@ export function ProfessionalNavyInvoiceTemplate({
               const taxable = qty * rate;
               let taxRate = 0;
               if (hasGst) {
-                if (line.tax_rate) taxRate = Number(line.tax_rate);
-                else if (line.tax_rates && line.tax_rates.rate) taxRate = Number(line.tax_rates.rate);
+                if (line.tax_rate !== undefined && line.tax_rate !== null) taxRate = Number(line.tax_rate);
+                else if (line.tax_rates && line.tax_rates.rate !== undefined && line.tax_rates.rate !== null) taxRate = Number(line.tax_rates.rate);
+                else if (line.items?.tax_rate !== undefined && line.items?.tax_rate !== null) taxRate = Number(line.items.tax_rate);
+                else if (line.tax_amount && taxable > 0) taxRate = Math.round((Number(line.tax_amount) / taxable) * 100);
               }
-              const taxAmount = (taxable * taxRate) / 100;
+              const taxAmount = Number(line.tax_amount) || ((taxable * taxRate) / 100);
               const totalAmount = taxable + taxAmount;
+              const itemName = line.items?.name || line.name;
 
               return (
                 <tr key={idx}>
                   <td style={{ ...tdStyle, borderLeft: "none" }}>{idx + 1}</td>
-                  <td style={{ ...tdStyle, textAlign: "left" }}>{line.description}</td>
+                  <td style={{ ...tdStyle, textAlign: "left" }}>
+                    {itemName ? (
+                      <>
+                        <div style={{ fontWeight: 600, marginBottom: line.description ? 2 : 0 }}>{itemName}</div>
+                        {line.description && <div style={{ fontSize: 9, color: "#4b5563", whiteSpace: "pre-wrap" }}>{line.description}</div>}
+                      </>
+                    ) : (
+                      <div style={{ whiteSpace: "pre-wrap" }}>{line.description}</div>
+                    )}
+                  </td>
                   {hasGst && <td style={{ ...tdStyle }}>{line.hsn_sac || "-"}</td>}
                   <td style={{ ...tdStyle }}>{qty}</td>
                   <td style={{ ...tdStyle }}>{line.unit || "Pcs"}</td>
@@ -333,16 +351,19 @@ export function ProfessionalNavyInvoiceTemplate({
                 <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Total Taxable Value</td>
                 <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.subtotal ?? invoice.total) + Number(invoice.total_discount))}</td>
               </tr>
-              {hasGst && (
+              {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
+                taxBreakdown.map((t, i) => (
+                  <tr key={i}>
+                    <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>{t.name}</td>
+                    <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(t.amount)}</td>
+                  </tr>
+                ))
+              ) : hasGst ? (
                 <tr>
                   <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Total GST Amount</td>
                   <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.total_tax))}</td>
                 </tr>
-              )}
-              <tr>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Sub Total</td>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.subtotal ?? invoice.total) + Number(invoice.total_tax))}</td>
-              </tr>
+              ) : null}
               {Number(invoice.total_discount) > 0 && (
                 <tr>
                   <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Discount</td>
