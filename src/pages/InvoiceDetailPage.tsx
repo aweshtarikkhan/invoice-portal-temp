@@ -57,9 +57,17 @@ export default function InvoiceDetailPage() {
     if (!id) return;
     const { data: inv } = await supabase
       .from("invoices")
-      .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address), custom_field_values(value, custom_field_definitions(field_name))")
+      .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address)")
       .eq("id", id)
       .single();
+    
+    if (inv) {
+      const { data: cfData } = await supabase
+        .from("custom_field_values")
+        .select("value, custom_field_definitions(field_name)")
+        .eq("entity_id", id);
+      (inv as any).custom_field_values = cfData || [];
+    }
     setInvoice(inv);
     if (inv) {
       setPaymentForm((f) => ({ ...f, amount: Number(inv.balance_due) }));
