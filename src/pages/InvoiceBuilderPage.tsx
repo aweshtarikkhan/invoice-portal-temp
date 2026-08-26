@@ -1292,6 +1292,16 @@ export default function InvoiceBuilderPage() {
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2 mt-2">
+                  <Checkbox id="same_as_billing" checked={shippingSameAsBilling} onCheckedChange={(c) => setShippingSameAsBilling(!!c)} />
+                  <label htmlFor="same_as_billing" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Bill To and Ship To are same
+                  </label>
+                </div>
+                <div className="flex gap-2 relative">
+                  <div className="relative flex-1">
                     {clientDropdownOpen && (
                       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
                         {clients
