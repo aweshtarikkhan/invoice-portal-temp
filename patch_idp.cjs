@@ -1,19 +1,31 @@
 const fs = require('fs');
 let code = fs.readFileSync('src/pages/InvoiceDetailPage.tsx', 'utf8');
 
-// 1. Fetch custom fields for the invoice
-if (!code.includes('custom_field_values')) {
-  code = code.replace(
-    `.select("*, clients(display_name, email, tax_number, phone)")`,
-    `.select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address), custom_field_values(value, custom_field_definitions(field_name))")`
-  );
-}
-
-// 2. Fix GST-ENABLED string and ensure custom_fields are passed to the template
 code = code.replace(
-  `gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? "GST-ENABLED" : "") : org?.gst_number,`,
-  `gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? org?.gst_number : "") : org?.gst_number,\n    custom_fields: invoice.custom_field_values?.map((cf: any) => ({ name: cf.custom_field_definitions?.field_name, value: cf.value })) || [],`
+  `      const { data: inv } = await supabase
+        .from("invoices")
+        .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address), custom_field_values(value, custom_field_definitions(field_name))")
+        .eq("id", id)
+        .single();
+      setInvoice(inv);
+      if (inv) {`,
+  `      const { data: inv } = await supabase
+        .from("invoices")
+        .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address)")
+        .eq("id", id)
+        .single();
+      
+      if (inv) {
+        const { data: cfData } = await supabase
+          .from("custom_field_values")
+          .select("value, custom_field_definitions(field_name)")
+          .eq("entity_id", id);
+        (inv as any).custom_field_values = cfData || [];
+      }
+      setInvoice(inv);
+      
+      if (inv) {`
 );
 
 fs.writeFileSync('src/pages/InvoiceDetailPage.tsx', code, 'utf8');
-console.log('patched InvoiceDetailPage.tsx');
+console.log('patched InvoiceDetailPage to fetch custom fields separately');
