@@ -55,9 +55,9 @@ export default function InvoiceDetailPage() {
 
   const fetchInvoice = async () => {
     if (!id) return;
-    const { data: inv } = await supabase
+    const { data: inv, error: invErr } = await supabase
       .from("invoices")
-      .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address)")
+      .select("*, clients(display_name, email, tax_number, phone, billing_address, shipping_address)")
       .eq("id", id)
       .single();
     
