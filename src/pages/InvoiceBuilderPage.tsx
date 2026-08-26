@@ -410,6 +410,7 @@ export default function InvoiceBuilderPage() {
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [clientStateOverride, setClientStateOverride] = useState<string>("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(30);
@@ -545,6 +546,7 @@ export default function InvoiceBuilderPage() {
       
       if (!duplicateId) {
         setInvoiceNumber(inv.invoice_number);
+        if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
         setIssueDate(inv.issue_date);
         setDueDate(inv.due_date);
       }
@@ -888,6 +890,7 @@ export default function InvoiceBuilderPage() {
         template_font: org?.template_font,
         template_paper_size: org?.template_paper_size,
         has_gst: Boolean(org?.gst_number),
+          shipping_same_as_billing: shippingSameAsBilling,
       },
       invoice_number: invoiceNumber,
       issue_date: issueDate,

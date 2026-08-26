@@ -57,7 +57,7 @@ export default function InvoiceDetailPage() {
     if (!id) return;
     const { data: inv } = await supabase
       .from("invoices")
-      .select("*, clients(display_name, email, tax_number, phone)")
+      .select("*, clients(display_name, email, tax_number, phone, address, billing_address, shipping_address), custom_field_values(value, custom_field_definitions(field_name))")
       .eq("id", id)
       .single();
     setInvoice(inv);
@@ -308,7 +308,8 @@ export default function InvoiceDetailPage() {
     template_accent_color: snapshot.template_accent_color || org?.template_accent_color,
     template_font: snapshot.template_font || org?.template_font,
     template_paper_size: snapshot.template_paper_size || org?.template_paper_size,
-    gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? "GST-ENABLED" : "") : org?.gst_number,
+    gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? org?.gst_number : "") : org?.gst_number,
+    custom_fields: invoice.custom_field_values?.map((cf: any) => ({ name: cf.custom_field_definitions?.field_name, value: cf.value })) || [],
   };
 
   const printCSS = getPrintPageCSS(effectiveOrg.template_paper_size);
