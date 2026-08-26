@@ -550,7 +550,7 @@ export default function InvoiceBuilderPage() {
         if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
         setIssueDate(inv.issue_date);
         setDueDate(inv.due_date);
-        }
+        // removed extra brace
         if (inv.shipping_address) {
           try {
              const parsed = typeof inv.shipping_address === "string" ? JSON.parse(inv.shipping_address) : inv.shipping_address;
