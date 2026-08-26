@@ -97,14 +97,43 @@ export default function LeavesPage() {
   };
 
   const setStatus = async (id: string, status: "approved" | "rejected") => {
+    const leaveReq = rows.find(r => r.id === id);
+    const oldStatus = leaveReq?.status;
+    if (oldStatus === status) return;
+    
     const { error } = await (supabase as any).from("leaves").update({ status, approved_at: new Date().toISOString() }).eq("id", id);
-    if (error) toast({ title: "Update failed", description: error.message, variant: "destructive" });
-    else {
-      if (status === "approved") {
-        toast({ title: "Leave Approved", description: "Balance will deduct only when HR marks this day in attendance." });
+    if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
+    
+    if (leaveReq) {
+      try {
+        const { data: bData } = await (supabase as any).from('employee_leave_balances')
+          .select('used')
+          .eq('employee_id', leaveReq.employee_id)
+          .eq('leave_type', leaveReq.leave_type)
+          .maybeSingle();
+          
+        let currentUsed = bData?.used || 0;
+        
+        if (status === "approved" && oldStatus !== "approved") {
+          currentUsed += leaveReq.days;
+          toast({ title: "Leave Approved", description: `Balance deducted by ${leaveReq.days} day(s).` });
+        } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
+          currentUsed = Math.max(0, currentUsed - leaveReq.days);
+          toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s).` });
+        }
+        
+        await (supabase as any).from('employee_leave_balances').upsert({
+          org_id: org.id,
+          employee_id: leaveReq.employee_id,
+          leave_type: leaveReq.leave_type,
+          used: currentUsed
+        }, { onConflict: 'employee_id,leave_type' });
+        
+      } catch (e) {
+        console.error(e);
       }
-      load();
     }
+    load();
   };
 
   const remove = async (id: string) => {
@@ -163,7 +192,39 @@ export default function LeavesPage() {
             Manage leave requests and policies. Balance deducts only when attendance is finalized.
           </p>
         </div>
-        <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New Request</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={async () => {
+            if (!confirm("Are you sure you want to run the monthly accrual? This will add the monthly allowance to all employees' balances.")) return;
+            try {
+              toast({ title: "Processing monthly accrual..." });
+              for (const emp of employees) {
+                for (const t of ["casual", "sick", "paid"]) {
+                  const policy = policies.find(p => p.leave_type === t);
+                  if (!policy || policy.monthly_accrual <= 0) continue;
+                  
+                  const { data: bData } = await (supabase as any).from('employee_leave_balances')
+                    .select('accrued')
+                    .eq('employee_id', emp.id)
+                    .eq('leave_type', t)
+                    .maybeSingle();
+                    
+                  const currentAccrued = bData?.accrued || 0;
+                  await (supabase as any).from('employee_leave_balances').upsert({
+                    org_id: org.id,
+                    employee_id: emp.id,
+                    leave_type: t,
+                    accrued: currentAccrued + policy.monthly_accrual
+                  }, { onConflict: 'employee_id,leave_type' });
+                }
+              }
+              toast({ title: "Monthly accrual completed successfully!" });
+              load();
+            } catch (err: any) {
+              toast({ title: "Error during accrual", description: err.message, variant: "destructive" });
+            }
+          }}><CalendarDays className="h-4 w-4 mr-2" />Run Monthly Accrual</Button>
+          <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New Request</Button>
+        </div>
       </div>
 
       <Tabs defaultValue="requests">
