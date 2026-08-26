@@ -411,6 +411,7 @@ export default function InvoiceBuilderPage() {
   const [clientStateOverride, setClientStateOverride] = useState<string>("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
+  const [shippingAddress, setShippingAddress] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(30);
@@ -549,6 +550,15 @@ export default function InvoiceBuilderPage() {
         if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
         setIssueDate(inv.issue_date);
         setDueDate(inv.due_date);
+        }
+        if (inv.shipping_address) {
+          try {
+             const parsed = typeof inv.shipping_address === "string" ? JSON.parse(inv.shipping_address) : inv.shipping_address;
+             setShippingAddress(parsed?.street || String(inv.shipping_address));
+          } catch {
+             setShippingAddress(String(inv.shipping_address));
+          }
+        }
       }
       
       setNotes(inv.notes || "");
