@@ -411,7 +411,9 @@ export default function InvoiceBuilderPage() {
   const [clientStateOverride, setClientStateOverride] = useState<string>("");
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
-  const [shippingAddress, setShippingAddress] = useState("");
+  const [shippingName, setShippingName] = useState("");
+  const [shippingAddressText, setShippingAddressText] = useState("");
+  const [shippingContact, setShippingContact] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(30);

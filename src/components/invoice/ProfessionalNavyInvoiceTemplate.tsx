@@ -63,10 +63,13 @@ export function ProfessionalNavyInvoiceTemplate({
     try {
       const a = typeof org.address === "string" ? JSON.parse(org.address) : org.address;
       const res: string[] = [];
+      // Support for structured shipping fields
+      if (a?.name) res.push("Name: " + a.name);
       if (a?.street) res.push(a.street);
       const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
       if (cityLine) res.push(cityLine);
       if (a?.country) res.push(a.country);
+      if (a?.contact) res.push("Contact: " + a.contact);
       return res;
     } catch {
       return [String(org.address)];
