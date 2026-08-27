@@ -162,7 +162,7 @@ export function ModernTealInvoiceTemplate({
 
       {/* BILL TO / SHIP TO */}
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <div className={`border ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BILL TO</div>
           <div className="p-3">
             <h3 className="font-bold text-sm mb-1">{billToName}</h3>
@@ -175,7 +175,7 @@ export function ModernTealInvoiceTemplate({
           </div>
         </div>
         
-        <div className={`border ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+        <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>SHIP TO</div>
           <div className="p-3">
             <h3 className="font-bold text-sm mb-1">{shipToName}</h3>
@@ -189,7 +189,7 @@ export function ModernTealInvoiceTemplate({
       </div>
 
       {/* ITEMS TABLE */}
-      <div className={`w-full mb-4 ${headerStyle === 'tabular' ? 'border border-gray-400' : 'rounded-xl overflow-hidden border border-gray-200'}`}>
+      <div className="w-full mb-4 rounded-xl overflow-hidden border border-gray-200">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-white text-[10px]" style={{backgroundColor: primary}}>
@@ -240,7 +240,7 @@ export function ModernTealInvoiceTemplate({
         {/* LEFT COLUMN */}
         <div>
            {/* BANK DETAILS */}
-           <div className={`border mb-4 ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+           <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BANK DETAILS</div>
              <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
                <div className="font-semibold">Bank Name :</div><div>{org?.bank_name || ""}</div>
@@ -253,7 +253,7 @@ export function ModernTealInvoiceTemplate({
 
            {/* UPI DETAILS */}
            {upiId && (
-             <div className={`border mb-4 ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+             <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>UPI DETAILS</div>
                <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
                  <div className="font-semibold">UPI ID :</div><div>{upiId}</div>
@@ -262,7 +262,7 @@ export function ModernTealInvoiceTemplate({
            )}
 
            {/* TERMS */}
-           <div className={`border mb-4 ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+           <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>TERMS & CONDITIONS</div>
              <div className="p-3 text-[9px] whitespace-pre-wrap">
                {invoice?.terms_conditions || org?.default_terms || "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is delayed."}
@@ -271,7 +271,7 @@ export function ModernTealInvoiceTemplate({
            
            {/* NOTES */}
            {invoice?.notes && (
-             <div className={`border mb-4 ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+             <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>NOTES</div>
                <div className="p-3 text-[9px] whitespace-pre-wrap">
                  {invoice.notes}
@@ -283,7 +283,7 @@ export function ModernTealInvoiceTemplate({
         {/* RIGHT COLUMN */}
         <div>
            {/* TOTALS */}
-           <div className={`border mb-4 ${headerStyle === 'tabular' ? 'border-gray-400' : 'border-gray-200 rounded-xl overflow-hidden'}`}>
+           <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
              <table className="w-full text-[11px]">
                <tbody>
                  <tr className="border-b border-gray-200">
