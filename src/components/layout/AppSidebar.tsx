@@ -68,16 +68,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useLanguage } from "@/lib/i18n";
 
 
-  const reportItems = [
-    { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
-    { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
-    { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
-    { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
-    { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
-    { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
-    { title: "HR Reports", url: "/hr-reports", icon: BarChart3, addUrl: null },
-    { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
-  ];
+  
 
   const salesItems = [
   { title: "Invoices", url: "/invoices", icon: FileText, addUrl: "/invoices/new" },
@@ -87,8 +78,6 @@ import { useLanguage } from "@/lib/i18n";
   { title: "Payments Received", url: "/payments", icon: CreditCard, addUrl: "/payments/new" },
   { title: "Delivery Challans", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
-  { title: "Emails", url: "/emails", icon: Send, addUrl: null },
-  { title: "WhatsApp Chats", url: "/chats", icon: MessageCircle, addUrl: null },
   { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
 ];
 
@@ -217,9 +206,8 @@ export function AppSidebar() {
     return [it];
   });
 
-  // Default groups (always visible for admins, or if explicitly given permission)
+    // Default groups (always visible for admins, or if explicitly given permission)
   const defaultGroups = [
-    { key: "reports", label: "Reports", items: reportItems },
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
   ].map(g => ({ ...g, isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key) }));
@@ -404,6 +392,7 @@ export function AppSidebar() {
                       {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                      {g.key === "outreach" && <MessageCircle className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
                       {!collapsed && (
                         <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 flex items-center justify-between pr-2">

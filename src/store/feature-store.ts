@@ -42,7 +42,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "payments", title: "Payments Received", description: "Track all payments", icon: "CreditCard", url: "/payments" },
       { key: "delivery-challans", title: "Delivery Challans", description: "Manage delivery challans", icon: "Truck", url: "/delivery-challans" },
       { key: "recurring", title: "Recurring Invoices", description: "Set up recurring billing", icon: "RefreshCw", url: "/recurring-invoices" },
-      { key: "sales-reports", title: "Sales Reports", description: "Analyze your sales", icon: "BarChart3", url: "/sales-reports" },
     ],
   },
   {
@@ -55,7 +54,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "inventory", title: "Inventory", description: "Stock management", icon: "Boxes", url: "/inventory" },
       { key: "warehouses", title: "Warehouses", description: "Multi-warehouse locations", icon: "Warehouse", url: "/warehouses" },
       { key: "branches", title: "Branches", description: "Multi-branch management", icon: "Building2", url: "/branches" },
-      { key: "inventory-reports", title: "Inventory Reports", description: "Analyze your inventory", icon: "BarChart3", url: "/inventory-reports" },
     ],
   },
   {
@@ -69,7 +67,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "grns", title: "Goods Receipt (GRN)", description: "Track received goods", icon: "PackageCheck", url: "/grns" },
       { key: "bills", title: "Bills", description: "Manage vendor bills", icon: "Receipt", url: "/bills" },
       { key: "expenses", title: "Expenses", description: "Track business expenses", icon: "Coins", url: "/expenses" },
-      { key: "purchases-reports", title: "Purchases Reports", description: "Analyze your purchases", icon: "BarChart3", url: "/purchase-accounting-reports" },
     ],
   },
   {
@@ -82,7 +79,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "journal", title: "Journal Entries", description: "Record journal entries", icon: "Calculator", url: "/journal" },
       { key: "bank-accounts", title: "Bank & Cash", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
       { key: "cash-flow", title: "Cash Flow", description: "Cash flow analysis", icon: "PieChart", url: "/cash-flow" },
-      { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
     ],
   },
   {
@@ -91,13 +87,13 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "UserCog",
     description: "Employees, Attendance, Payroll & Leaves",
     items: [
+      { key: "hr-reports", title: "HR Reports", description: "Employee analytics", icon: "BarChart3", url: "/hr-reports" },
       { key: "employees", title: "Employees", description: "Manage employees", icon: "UserCog", url: "/employees" },
       { key: "attendance", title: "Attendance", description: "Track attendance", icon: "CalendarCheck", url: "/attendance" },
       { key: "leaves", title: "Leaves", description: "Leave management", icon: "ClipboardList", url: "/leaves" },
       { key: "shifts", title: "Shifts", description: "Shift scheduling", icon: "CalendarCheck", url: "/shifts" },
       { key: "employee-documents", title: "Documents", description: "Employee documents", icon: "ScrollText", url: "/employee-documents" },
       { key: "payroll", title: "Payroll", description: "Payroll processing", icon: "Calculator", url: "/payroll" },
-      { key: "hr-reports", title: "HR Reports", description: "Employee analytics", icon: "BarChart3", url: "/hr-reports" },
     ],
   },
   {
@@ -106,6 +102,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "Users",
     description: "Leads, Pipeline & Sales Activities",
     items: [
+      { key: "crm-reports", title: "CRM Reports", description: "Analyze your leads and pipeline", icon: "BarChart3", url: "/crm-marketing-reports" },
       { key: "leads", title: "Leads", description: "Manage sales leads", icon: "Users", url: "/leads" },
       { key: "pipeline", title: "Pipeline", description: "Sales pipeline view", icon: "BarChart3", url: "/pipeline" },
       { key: "calendar", title: "Calendar", description: "Schedule and tasks", icon: "Calendar", url: "/calendar" },
@@ -113,7 +110,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "tickets", title: "Support Tickets", description: "Manage customer helpdesk", icon: "Ticket", url: "/tickets" },
       { key: "activities", title: "Activities", description: "Track CRM activities", icon: "ClipboardList", url: "/activities" },
       { key: "integrations", title: "Integrations & API", description: "Lead sources & webhooks", icon: "Link2", url: "/crm/integrations" },
-      { key: "crm-reports", title: "CRM Reports", description: "Analyze your leads and pipeline", icon: "BarChart3", url: "/crm-marketing-reports" },
     ],
   },
   {
@@ -122,29 +118,42 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "Send",
     description: "Campaigns, Templates & Automations",
     items: [
+      { key: "marketing-reports", title: "Marketing Reports", description: "Analyze your marketing campaigns", icon: "BarChart3", url: "/crm-marketing-reports" },
       { key: "festival-posters", title: "Festival Posters", description: "Create & download festival marketing posters", icon: "Image", url: "/marketing/posters" },
       { key: "campaigns", title: "Campaigns", description: "Email & SMS campaigns", icon: "Send", url: "/campaigns" },
       { key: "marketing-templates", title: "Templates", description: "Marketing templates", icon: "MessageSquare", url: "/marketing/templates" },
       { key: "journeys", title: "Journeys", description: "Customer journeys", icon: "Workflow", url: "/journeys" },
       { key: "message-logs", title: "Message Logs", description: "View sent messages", icon: "ScrollText", url: "/message-logs" },
-      { key: "marketing-reports", title: "Marketing Reports", description: "Analyze your marketing campaigns", icon: "BarChart3", url: "/crm-marketing-reports" },
     ],
   },
   {
     key: "reports",
-    label: "Reports",
+      label: "Reports",
     icon: "BarChart3",
-    description: "Statements, P&L, GST & Inventory Reports",
-    items: [
-      { key: "statements", title: "Statements", description: "Customer statements", icon: "FileSpreadsheet", url: "/statements" },
-      { key: "reports", title: "Reports", description: "All business reports", icon: "BarChart3", url: "/reports" },
+    description: "All Business Reports",
+          items: [
+        { key: "reports", title: "General Reports", description: "All business reports", icon: "BarChart3", url: "/reports" },
+        { key: "sales-reports", title: "Sales Reports", description: "Analyze your sales", icon: "BarChart3", url: "/sales-reports" },
+        { key: "purchases-reports", title: "Purchases Reports", description: "Analyze your purchases", icon: "BarChart3", url: "/purchase-accounting-reports" },
+        { key: "inventory-reports", title: "Inventory Reports", description: "Analyze your inventory", icon: "BarChart3", url: "/inventory-reports" },
+        { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
       { key: "business-report", title: "Business Report", description: "Detailed analytics and KPIs", icon: "BarChart3", url: "/business-report" },
-      { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
       { key: "profit-loss", title: "Profit & Loss", description: "P&L statements", icon: "PieChart", url: "/profit-loss" },
       { key: "gst-returns", title: "GST Returns", description: "GST filing reports", icon: "FileBarChart2", url: "/gst-returns" },
       { key: "tds", title: "TDS/TCS Returns", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
       { key: "inventory-valuation", title: "Inventory Valuation", description: "Stock valuation reports", icon: "Boxes", url: "/inventory-valuation" },
       { key: "aging-details", title: "Aging Details", description: "Receivables & payables aging", icon: "ScrollText", url: "/aging-details" },
+      { key: "statements", title: "Statements", description: "Customer statements", icon: "FileSpreadsheet", url: "/statements" },
+    ],
+  },
+  {
+    key: "outreach",
+    label: "Customer Outreach",
+    icon: "MessageCircle",
+    description: "Emails & WhatsApp Chats",
+    items: [
+      { key: "emails", title: "Emails", description: "Send emails to customers", icon: "Send", url: "/emails" },
+      { key: "chats", title: "WhatsApp Chats", description: "Chat with customers", icon: "MessageCircle", url: "/chats" },
     ],
   },
 ];

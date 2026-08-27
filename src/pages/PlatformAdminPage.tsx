@@ -69,6 +69,7 @@ const PLAN_COLORS: Record<string, string> = {
   hrms: "bg-emerald-900/60 text-emerald-300",
   crm: "bg-cyan-900/60 text-cyan-300",
   marketing: "bg-rose-900/60 text-rose-300",
+  plan_outreach: "bg-teal-900/60 text-teal-300",
 };
 
 const PLAN_DISPLAY_NAMES: Record<string, string> = {
@@ -77,7 +78,8 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   plan_3: "Business Suite",
   plan_4: "HRMS",
   plan_5: "CRM",
-  plan_6: "Marketing"
+  plan_6: "Marketing",
+  plan_outreach: "Customer Outreach"
 };
 
 export default function PlatformAdminPage() {
@@ -171,7 +173,8 @@ export default function PlatformAdminPage() {
     { id: "plan_4", label: "👥 HRMS" },
     { id: "plan_5", label: "🤝 CRM" },
     { id: "plan_6", label: "📈 Marketing" }
-  ];
+  ,
+      { id: "plan_outreach", label: "💬 Customer Outreach" }];
 
   const handleUpdateFeatureRequest = async (reqId: string, status: string) => {
     await supabase.from("feature_requests").update({ status }).eq("id", reqId);
