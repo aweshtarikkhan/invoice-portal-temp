@@ -19,6 +19,10 @@ const TEMPLATE_STYLES = [
   { id: "standard_gst", name: "Standard GST", description: "Indian GST compliant invoice with HSN/SAC, explicit CGST/SGST/IGST breakdown, and E-Way Bill details." },
   { id: "corporate_blue", name: "Corporate Blue GST", description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code." },
     { id: "professional_navy", name: "Professional Navy GST", description: "Classic professional navy template matching standard business format with strict table borders." },
+  { id: "classic_tabular", name: "Classic Tabular (New)", description: "Detailed tabular format matching standard Indian tax invoice." },
+  { id: "modern_navy", name: "Modern Navy Yellow (New)", description: "Sleek navy and yellow themed template." },
+  { id: "modern_teal", name: "Modern Teal (New)", description: "Professional teal themed modern invoice." },
+  { id: "modern_crimson", name: "Modern Crimson (New)", description: "Professional crimson/red themed modern invoice." },
 ];
 
 const FONTS = [

@@ -2,6 +2,12 @@ import { QRCodeSVG } from "qrcode.react";
 import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";
 import { ProfessionalNavyInvoiceTemplate } from "./ProfessionalNavyInvoiceTemplate";
 
+import { ClassicTabularInvoiceTemplate } from "./ClassicTabularInvoiceTemplate";
+import { ModernNavyInvoiceTemplate } from "./ModernNavyInvoiceTemplate";
+import { ModernTealInvoiceTemplate } from "./ModernTealInvoiceTemplate";
+import { ModernCrimsonInvoiceTemplate } from "./ModernCrimsonInvoiceTemplate";
+
+
 interface StyledInvoiceTemplateProps {
   org: any;
   invoice: any;
@@ -20,6 +26,19 @@ const getTitleText = (type: string) => {
 };
 
 export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate }: StyledInvoiceTemplateProps) {
+  if (org?.template_style === "classic_tabular") {
+    return <ClassicTabularInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+  }
+  if (org?.template_style === "modern_navy") {
+    return <ModernNavyInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+  }
+  if (org?.template_style === "modern_teal") {
+    return <ModernTealInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+  }
+  if (org?.template_style === "modern_crimson") {
+    return <ModernCrimsonInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+  }
+
   if (org?.template_style === "professional_navy") {
     return (
       <ProfessionalNavyInvoiceTemplate

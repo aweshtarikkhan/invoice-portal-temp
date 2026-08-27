@@ -1,43 +1,14 @@
 const fs = require('fs');
+let code = fs.readFileSync('src/pages/TemplateCustomizationPage.tsx', 'utf8');
 
-// Patch TemplateCustomizationPage.tsx
-const pagePath = 'src/pages/TemplateCustomizationPage.tsx';
-let pageContent = fs.readFileSync(pagePath, 'utf8');
-if (!pageContent.includes('professional_navy')) {
-  pageContent = pageContent.replace(
-    /\{ id: "corporate_blue", name: "Corporate Blue GST", description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code." \},/,
-    `{ id: "corporate_blue", name: "Corporate Blue GST", description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code." },\n    { id: "professional_navy", name: "Professional Navy GST", description: "Classic professional navy template matching standard business format with strict table borders." },`
-  );
-  fs.writeFileSync(pagePath, pageContent, 'utf8');
-  console.log("TemplateCustomizationPage patched");
-}
+code = code.replace(
+  `    { id: "professional_navy", name: "Professional Navy GST", description: "Classic professional navy template matching standard business format with strict table borders." },`,
+  `    { id: "professional_navy", name: "Professional Navy GST", description: "Classic professional navy template matching standard business format with strict table borders." },
+  { id: "classic_tabular", name: "Classic Tabular (New)", description: "Detailed tabular format matching standard Indian tax invoice." },
+  { id: "modern_navy", name: "Modern Navy Yellow (New)", description: "Sleek navy and yellow themed template." },
+  { id: "modern_teal", name: "Modern Teal (New)", description: "Professional teal themed modern invoice." },
+  { id: "modern_crimson", name: "Modern Crimson (New)", description: "Professional crimson/red themed modern invoice." },`
+);
 
-// Patch StyledInvoiceTemplate.tsx
-const styledPath = 'src/components/invoice/StyledInvoiceTemplate.tsx';
-let styledContent = fs.readFileSync(styledPath, 'utf8');
-if (!styledContent.includes('ProfessionalNavyInvoiceTemplate')) {
-  styledContent = styledContent.replace(
-    'import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";',
-    'import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";\nimport { ProfessionalNavyInvoiceTemplate } from "./ProfessionalNavyInvoiceTemplate";'
-  );
-  styledContent = styledContent.replace(
-    /if \(org\?\.template_style === "corporate_blue"\) \{/,
-    `if (org?.template_style === "professional_navy") {
-    return (
-      <ProfessionalNavyInvoiceTemplate
-        org={org}
-        invoice={invoice}
-        lines={lines}
-        fmt={fmt}
-        type={type}
-        taxBreakdown={taxBreakdown}
-        isInterstate={isInterstate}
-      />
-    );
-  }
-
-  if (org?.template_style === "corporate_blue") {`
-  );
-  fs.writeFileSync(styledPath, styledContent, 'utf8');
-  console.log("StyledInvoiceTemplate patched");
-}
+fs.writeFileSync('src/pages/TemplateCustomizationPage.tsx', code, 'utf8');
+console.log('patched TemplateCustomizationPage');
