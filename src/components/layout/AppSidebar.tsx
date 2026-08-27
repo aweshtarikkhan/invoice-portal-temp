@@ -67,7 +67,19 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useLanguage } from "@/lib/i18n";
 
-const salesItems = [
+
+  const reportItems = [
+    { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
+    { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
+    { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
+    { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
+    { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
+    { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
+    { title: "HR Reports", url: "/hr-reports", icon: BarChart3, addUrl: null },
+    { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
+  ];
+
+  const salesItems = [
   { title: "Invoices", url: "/invoices", icon: FileText, addUrl: "/invoices/new" },
   { title: "Estimates", url: "/estimates", icon: ClipboardList, addUrl: "/estimates/new" },
   { title: "Clients", url: "/clients", icon: Users, addUrl: "/clients?add=1" },
@@ -78,8 +90,6 @@ const salesItems = [
   { title: "Emails", url: "/emails", icon: Send, addUrl: null },
   { title: "WhatsApp Chats", url: "/chats", icon: MessageCircle, addUrl: null },
   { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
-  { title: "General Reports", url: "/reports", icon: BarChart3, addUrl: null },
-  { title: "Sales Reports", url: "/sales-reports", icon: BarChart3, addUrl: null },
 ];
 
 const purchaseItems = [
@@ -88,7 +98,6 @@ const purchaseItems = [
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
   { title: "Bills", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
-  { title: "Purchases Reports", url: "/purchase-accounting-reports", icon: BarChart3, addUrl: null },
 ];
 
 const accountingItems = [
@@ -96,8 +105,6 @@ const accountingItems = [
   { title: "Journal Entries", url: "/journal", icon: Calculator, addUrl: null },
   { title: "Bank & Cash", url: "/bank-accounts", icon: Landmark, addUrl: null },
   { title: "Cash Flow", url: "/cash-flow", icon: PieChart, addUrl: null },
-  { title: "Accounting Reports", url: "/accounting-reports", icon: Landmark, addUrl: null },
-  { title: "Business Report", url: "/business-report", icon: BarChart3, addUrl: null },
   { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
   { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },
   { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
@@ -107,7 +114,6 @@ const accountingItems = [
 const catalogItems = [
   { title: "Items", url: "/items", icon: Package, addUrl: "/items?add=1" },
   { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
-  { title: "Inventory Reports", url: "/inventory-reports", icon: BarChart3, addUrl: null },
   { title: "Inventory Valuation", url: "/inventory-valuation", icon: Boxes, addUrl: null },
 ];
 
@@ -118,7 +124,6 @@ const peopleItems = [
   { title: "Shifts", url: "/shifts", icon: CalendarCheck, addUrl: null },
   { title: "Documents", url: "/employee-documents", icon: ScrollText, addUrl: null },
   { title: "Payroll", url: "/payroll", icon: Calculator, addUrl: null },
-  { title: "HR Reports", url: "/hr-reports", icon: BarChart3, addUrl: null },
 ];
 
 const crmItems = [
@@ -126,7 +131,6 @@ const crmItems = [
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
-  { title: "CRM Reports", url: "/crm-marketing-reports", icon: BarChart3, addUrl: null },
 ];
 
 const marketingItems = [
@@ -215,6 +219,7 @@ export function AppSidebar() {
 
   // Default groups (always visible for admins, or if explicitly given permission)
   const defaultGroups = [
+    { key: "reports", label: "Reports", items: reportItems },
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
   ].map(g => ({ ...g, isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key) }));
@@ -265,7 +270,7 @@ export function AppSidebar() {
 
     const allGroups = [...defaultGroups, ...featureGroups];
   
-  const bmKeys = ["sales", "catalog", "purchases", "accounting"];
+  const bmKeys = ["sales", "catalog", "purchases", "accounting", "reports"];
   const bmSubGroups = allGroups.filter(g => bmKeys.includes(g.key));
   const otherGroups = allGroups.filter(g => !bmKeys.includes(g.key));
   
