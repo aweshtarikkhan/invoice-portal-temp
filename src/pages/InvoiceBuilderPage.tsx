@@ -428,6 +428,10 @@ export default function InvoiceBuilderPage() {
   const [expenses, setExpenses] = useState(0);
   const [adjustment, setAdjustment] = useState(0);
   const [adjustmentName, setAdjustmentName] = useState("Adjustment");
+  const [autoRoundOff, setAutoRoundOff] = useState(true);
+  const [showBankDetails, setShowBankDetails] = useState(true);
+  const [showTerms, setShowTerms] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
   const [deductStock, setDeductStock] = useState(true);
   const [prevDeductStock, setPrevDeductStock] = useState(true);
@@ -571,6 +575,12 @@ export default function InvoiceBuilderPage() {
       setExpenses(Number((inv as any).expenses || 0));
       setAdjustment(Number(inv.adjustment));
       setAdjustmentName(inv.adjustment_name || "Adjustment");
+        if (inv.metadata) {
+          if ((inv.metadata as any).auto_round_off !== undefined) setAutoRoundOff((inv.metadata as any).auto_round_off);
+          if ((inv.metadata as any).show_bank_details !== undefined) setShowBankDetails((inv.metadata as any).show_bank_details);
+          if ((inv.metadata as any).show_terms !== undefined) setShowTerms((inv.metadata as any).show_terms);
+          if ((inv.metadata as any).show_notes !== undefined) setShowNotes((inv.metadata as any).show_notes);
+        }
       setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
       setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
       setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
@@ -799,7 +809,7 @@ export default function InvoiceBuilderPage() {
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
 
   // Gross total before TDS/TCS
-  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + (autoRoundOff ? 0 : adjustment) - expenses;
 
   // TDS is calculated BEFORE GST on Subtotal (taxable value) and DEDUCTED (-)
   // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + adjustment) and ADDED (+)
@@ -903,6 +913,10 @@ export default function InvoiceBuilderPage() {
         template_paper_size: org?.template_paper_size,
         has_gst: Boolean(org?.gst_number),
           shipping_same_as_billing: shippingSameAsBilling,
+          auto_round_off: autoRoundOff,
+          show_bank_details: showBankDetails,
+          show_terms: showTerms,
+          show_notes: showNotes,
       },
       invoice_number: invoiceNumber,
       issue_date: issueDate,
@@ -1704,9 +1718,31 @@ export default function InvoiceBuilderPage() {
             )}
           </div>
 
-          <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
-            <Checkbox
-              checked={deductStock}
+          <div className="space-y-2 rounded-md border p-3">
+              <div className="text-sm font-medium">Display Options</div>
+              <p className="text-xs text-muted-foreground mb-2">Configure what appears on the invoice PDF.</p>
+              
+              <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+                <Checkbox checked={autoRoundOff} onCheckedChange={(v) => setAutoRoundOff(!!v)} />
+                <span className="text-sm font-medium">Auto Round Off Total</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+                <Checkbox checked={showBankDetails} onCheckedChange={(v) => setShowBankDetails(!!v)} />
+                <span className="text-sm font-medium">Show Bank / UPI Details</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+                <Checkbox checked={showTerms} onCheckedChange={(v) => setShowTerms(!!v)} />
+                <span className="text-sm font-medium">Show Terms & Conditions</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+                <Checkbox checked={showNotes} onCheckedChange={(v) => setShowNotes(!!v)} />
+                <span className="text-sm font-medium">Show Notes</span>
+              </label>
+            </div>
+
+            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
+              <Checkbox
+                checked={deductStock}
               onCheckedChange={(v) => setDeductStock(!!v)}
               className="mt-0.5"
             />
@@ -1882,16 +1918,18 @@ export default function InvoiceBuilderPage() {
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
               <Input
-                className="h-7 w-24 text-xs"
-                value={adjustmentName}
-                onChange={(e) => setAdjustmentName(e.target.value)}
-              />
-              <Input
-                type="number"
-                className="h-7 w-24 text-xs text-right"
-                value={adjustment}
-                onChange={(e) => setAdjustment(parseFloat(e.target.value) || 0)}
-              />
+                  className="h-7 w-24 text-xs"
+                  value={finalAdjustmentName}
+                  onChange={(e) => setAdjustmentName(e.target.value)}
+                  disabled={autoRoundOff}
+                />
+                <Input
+                  type="number"
+                  className="h-7 w-24 text-xs text-right"
+                  value={finalAdjustment}
+                  onChange={(e) => setAdjustment(parseFloat(e.target.value) || 0)}
+                  disabled={autoRoundOff}
+                />
             </div>
             <div className="border-t pt-3 flex justify-between text-lg font-bold">
               <span>Total</span>

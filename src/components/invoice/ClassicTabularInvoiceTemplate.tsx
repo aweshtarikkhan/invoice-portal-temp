@@ -89,6 +89,10 @@ export function ClassicTabularInvoiceTemplate({
 
   const upiId = org?.upi_id || org?.upi_number || "";
   const upiName = org?.company_name || org?.business_name || "Merchant";
+  const showBankDetails = invoice?.metadata?.show_bank_details !== false;
+  const showTerms = invoice?.metadata?.show_terms !== false;
+  const showNotes = invoice?.metadata?.show_notes !== false;
+  
   const upiString = upiId ? "upi://pay?pa=" + upiId + "&pn=" + encodeURIComponent(upiName) + "&am=" + (invoice?.total || 0) + "&cu=INR" : "";
 
   return (
@@ -201,7 +205,16 @@ export function ClassicTabularInvoiceTemplate({
             {lines.map((line, idx) => (
               <tr key={idx} className="border-b border-gray-200">
                 <td className="py-2 px-2 text-center border-r border-gray-200">{idx + 1}</td>
-                <td className="py-2 px-2 border-r border-gray-200 font-semibold">{line.description}</td>
+                <td className="py-2 px-2 border-r border-gray-200">
+                  {line.name ? (
+                    <>
+                      <div className="font-semibold text-[11px]">{line.name}</div>
+                      {line.description && <div className="text-[9px] text-gray-500 mt-0.5 whitespace-pre-wrap opacity-75">{line.description}</div>}
+                    </>
+                  ) : (
+                    <div className="font-semibold text-[11px] whitespace-pre-wrap">{line.description}</div>
+                  )}
+                </td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || ""}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.quantity}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || "PCS"}</td>
@@ -232,7 +245,7 @@ export function ClassicTabularInvoiceTemplate({
         {/* LEFT COLUMN */}
         <div>
            {/* BANK DETAILS */}
-           <div className="border mb-4 border-gray-400">
+           {showBankDetails && <div className="border mb-4 border-gray-400">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BANK DETAILS</div>
              <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
                <div className="font-semibold">Bank Name :</div><div>{org?.bank_name || ""}</div>
@@ -241,7 +254,7 @@ export function ClassicTabularInvoiceTemplate({
                <div className="font-semibold">IFSC Code :</div><div>{org?.bank_ifsc || ""}</div>
                <div className="font-semibold">Branch :</div><div>{org?.bank_branch || ""}</div>
              </div>
-           </div>
+           </div>}
 
            {/* UPI DETAILS */}
            {upiId && (
@@ -254,15 +267,15 @@ export function ClassicTabularInvoiceTemplate({
            )}
 
            {/* TERMS */}
-           <div className="border mb-4 border-gray-400">
+           {showTerms && <div className="border mb-4 border-gray-400">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>TERMS & CONDITIONS</div>
              <div className="p-3 text-[9px] whitespace-pre-wrap">
                {invoice?.terms_conditions || org?.default_terms || "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is delayed."}
              </div>
-           </div>
+           </div>}
            
            {/* NOTES */}
-           {invoice?.notes && (
+           {showNotes && invoice?.notes && (
              <div className="border mb-4 border-gray-400">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>NOTES</div>
                <div className="p-3 text-[9px] whitespace-pre-wrap">
