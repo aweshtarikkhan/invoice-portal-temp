@@ -227,15 +227,15 @@ export function ModernTealInvoiceTemplate({
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.quantity}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || "PCS"}</td>
                 <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(line.rate).replace('₹', '')}</td>
-                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(line.quantity * line.rate).replace('₹', '')}</td>
+                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt((line.amount || 0) - (line.tax_amount || 0)).replace('₹', '')}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">
-                  {line.tax_rate ? `${line.tax_rate.rate}%` : "0%"}
+                  {line.tax_rate ? `${line.tax_rate.rate}%` : `${(line.amount && line.tax_amount) ? Math.round((line.tax_amount / ((line.amount || 0) - line.tax_amount)) * 100) : 0}%`}
                 </td>
                 <td className="py-2 px-2 text-right border-r border-gray-200">
                   {fmt(line.tax_amount || 0).replace('₹', '')}
                 </td>
                 <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
-                  {fmt((line.quantity * line.rate) + (line.tax_amount || 0)).replace('₹', '')}
+                  {fmt(line.amount || 0).replace('₹', '')}
                 </td>
               </tr>
             ))}
@@ -304,23 +304,19 @@ export function ModernTealInvoiceTemplate({
                    <td className="p-2 text-right border-l border-gray-200">{fmt(invoice?.subtotal || 0)}</td>
                  </tr>
                  
-                 {hasIGST ? (
-                   <tr className="border-b border-gray-200">
-                     <td className="p-2 font-bold w-1/2">IGST Total</td>
-                     <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax)}</td>
-                   </tr>
-                 ) : (
-                   <>
+                 {taxBreakdown && taxBreakdown.length > 0 ? (
+                     taxBreakdown.map((tax, i) => (
+                       <tr key={i} className="border-b border-gray-200">
+                         <td className="p-2 font-bold w-1/2">{tax.name}</td>
+                         <td className="p-2 text-right border-l border-gray-200">{fmt(tax.amount)}</td>
+                       </tr>
+                     ))
+                   ) : (
                      <tr className="border-b border-gray-200">
-                       <td className="p-2 font-bold pl-4">CGST</td>
-                       <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax / 2)}</td>
+                       <td className="p-2 font-bold w-1/2">Total Tax</td>
+                       <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax)}</td>
                      </tr>
-                     <tr className="border-b border-gray-200">
-                       <td className="p-2 font-bold pl-4">SGST</td>
-                       <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax / 2)}</td>
-                     </tr>
-                   </>
-                 )}
+                   )}
                  
                  {invoice?.discount > 0 && (
                    <tr className="border-b border-gray-200">
