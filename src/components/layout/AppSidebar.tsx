@@ -246,6 +246,8 @@ export function AppSidebar() {
           if (i.icon === "Users") itemIcon = Users;
           if (i.icon === "BarChart3") itemIcon = BarChart3;
           if (i.icon === "Image") itemIcon = ImageIcon;
+          if (i.icon === "BrainCircuit") itemIcon = BrainCircuit;
+          if (i.icon === "MessageSquareQuote") itemIcon = MessageSquareQuote;
           return {
             title: i.title,
             url: i.url,
