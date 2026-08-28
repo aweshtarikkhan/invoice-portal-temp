@@ -228,6 +228,7 @@ export function AppSidebar() {
       return {
         key: g.key,
         label: g.label,
+        isUpcoming: g.isUpcoming,
         isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key),
         items: g.items.map(i => {
           let itemIcon = ShoppingCart;
@@ -402,10 +403,20 @@ export function AppSidebar() {
                         {g.key === "ai-analysis" && <BrainCircuit className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
                       {!collapsed && (
-                        <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 flex items-center justify-between pr-2">
-                          {t(g.label)}
-                          {(g as any).isLocked && <Lock className="h-3.5 w-3.5 text-amber-500" title="Upgrade to use this feature" />}
-                        </span>
+                        <div className="flex-1 flex items-center justify-between pr-2 ml-2 min-w-0">
+                            <span className="font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm truncate">
+                              {t(g.label)}
+                            </span>
+                            {(g as any).isLocked && !(g as any).isUpcoming && <Lock className="h-3.5 w-3.5 text-amber-500 ml-2 shrink-0" title="Upgrade to use this feature" />}
+                            {(g as any).isUpcoming && (
+                              <div className="flex items-center gap-1.5 shrink-0 ml-2" title="Coming Soon">
+                                <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+                                <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 whitespace-nowrap hidden group-hover/groupbtn:block">
+                                  Coming Soon
+                                </span>
+                              </div>
+                            )}
+                          </div>
                       )}
                       {!collapsed && (
                         <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`} />
