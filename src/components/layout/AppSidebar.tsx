@@ -44,6 +44,9 @@ import {
   Warehouse,
   MessageCircle,
   Image as ImageIcon,
+  BrainCircuit,
+  MessageSquareQuote,
+  Sparkles,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
