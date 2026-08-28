@@ -93,30 +93,33 @@ export function compileWhatsappMessage(template: string, data: Record<string, an
   let result = template;
   
   const bracketMappings: Record<string, any> = {
-    '\\[Client Name\\]': data.client_name,
-    '\\[Invoice Number\\]': data.document_no,
-    '\\[Estimate Number\\]': data.document_no,
-    '\\[PO Number\\]': data.document_no,
-    '\\[Bill Number\\]': data.document_no,
-    '\\[Total Amount\\]': data.total,
-    '\\[Due Date\\]': data.due_date,
-    '\\[Portal Link\\]': data.portal_link,
-    '\\[Company Name\\]': data.org_name,
+    '[Client Name]': data.client_name,
+    '[Invoice Number]': data.document_no,
+    '[Estimate Number]': data.document_no,
+    '[PO Number]': data.document_no,
+    '[Bill Number]': data.document_no,
+    '[Total Amount]': data.total,
+    '[Due Date]': data.due_date,
+    '[Portal Link]': data.portal_link,
+    '[Company Name]': data.org_name,
   };
   
   for (const [key, value] of Object.entries(data)) {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    result = result.replace(regex, value === null || value === undefined ? '' : String(value));
+    if (value !== null && value !== undefined) {
+      result = result.split(`{{${key}}}`).join(String(value));
+    }
   }
 
   for (const [key, value] of Object.entries(bracketMappings)) {
-    const regex = new RegExp(key, 'g');
-    result = result.replace(regex, value === null || value === undefined ? '' : String(value));
+    if (value !== null && value !== undefined) {
+      result = result.split(key).join(String(value));
+    } else {
+      result = result.split(key).join('');
+    }
   }
   
   // Clean up any unreplaced placeholders
   result = result.replace(/{{[^}]+}}/g, '');
-  result = result.replace(/\[Client Name\]|\[Invoice Number\]|\[Estimate Number\]|\[PO Number\]|\[Bill Number\]|\[Total Amount\]|\[Due Date\]|\[Portal Link\]|\[Company Name\]/g, '');
   
   return result.trim();
 }
