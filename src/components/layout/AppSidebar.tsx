@@ -381,7 +381,7 @@ export function AppSidebar() {
                 <SidebarMenu>
                   <SidebarMenuItem>
                     <SidebarMenuButton
-                      onClick={() => toggleGroup(g.key, isOpen)}
+                      onClick={() => { if (!(g as any).isUpcoming) toggleGroup(g.key, isOpen); }}
                       className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
                       tooltip={t(g.label)}
                     >
@@ -395,6 +395,8 @@ export function AppSidebar() {
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "outreach" && <MessageCircle className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                        {g.key === "feedback" && <MessageSquareQuote className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                        {g.key === "ai-analysis" && <BrainCircuit className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       
                       {!collapsed && (
                         <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2 flex items-center justify-between pr-2">

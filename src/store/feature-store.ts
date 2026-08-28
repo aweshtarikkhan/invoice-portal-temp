@@ -17,6 +17,7 @@ export interface FeatureGroup {
   icon: string;
   description: string;
   items: FeatureItem[];
+  isUpcoming?: boolean;
 }
 
 export interface TeamMember {
@@ -111,7 +112,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "tickets", title: "Support Tickets", description: "Manage customer helpdesk", icon: "Ticket", url: "/tickets" },
       { key: "activities", title: "Activities", description: "Track CRM activities", icon: "ClipboardList", url: "/activities" },
       { key: "integrations", title: "Integrations & API", description: "Lead sources & webhooks", icon: "Link2", url: "/crm/integrations" },
-        { key: "feedback", title: "Customer Feedback", description: "Customer Feedback Management", icon: "MessageSquareQuote", url: "#", isUpcoming: true },
     ],
   },
   {
@@ -140,7 +140,6 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
         { key: "inventory-reports", title: "Inventory Reports", description: "Analyze your inventory", icon: "BarChart3", url: "/inventory-reports" },
         { key: "accounting-reports", title: "Accounting Reports", description: "Financial reports", icon: "Landmark", url: "/accounting-reports" },
       { key: "business-report", title: "Business Report", description: "Detailed analytics and KPIs", icon: "BarChart3", url: "/business-report" },
-        { key: "ai-analysis", title: "AI & Business Analysis", description: "AI & Business Analysis", icon: "BrainCircuit", url: "#", isUpcoming: true },
       { key: "profit-loss", title: "Profit & Loss", description: "P&L statements", icon: "PieChart", url: "/profit-loss" },
       { key: "gst-returns", title: "GST Returns", description: "GST filing reports", icon: "FileBarChart2", url: "/gst-returns" },
       { key: "tds", title: "TDS/TCS Returns", description: "Tax deducted at source", icon: "Percent", url: "/tds" },
@@ -158,6 +157,22 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "emails", title: "Emails", description: "Send emails to customers", icon: "Send", url: "/emails" },
       { key: "chats", title: "WhatsApp Chats", description: "Chat with customers", icon: "MessageCircle", url: "/chats" },
     ],
+  },
+  {
+    key: "feedback",
+    label: "Customer Feedback",
+    icon: "MessageSquareQuote",
+    description: "Manage & analyze customer feedback",
+    isUpcoming: true,
+    items: [],
+  },
+  {
+    key: "ai-analysis",
+    label: "AI & Business Analysis",
+    icon: "BrainCircuit",
+    description: "AI-powered insights & business analytics",
+    isUpcoming: true,
+    items: [],
   },
 ];
 
