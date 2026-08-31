@@ -96,19 +96,33 @@ export default function HRReportsPage() {
         })));
       }
 
-      // Attendance
-      const { data: attendance } = await supabase
-        .from("attendance")
+      // Attendance - fetch from 'attendances' table (clock-in/out records)
+      const { data: attendance, error: attErr } = await (supabase as any)
+        .from("attendances")
         .select(`
           *,
-          employees ( first_name, last_name )
+          employees ( name, designation )
         `)
         .eq("org_id", org.id)
         .order('date', { ascending: false })
-        .limit(10);
+        .limit(20);
+
+      if (attErr) console.error("Attendance fetch error:", attErr);
         
-      if (attendance) {
+      if (attendance && attendance.length > 0) {
         setRecentAttendance(attendance);
+      } else {
+        // Fallback: try the 'attendance' table (HR-set records)
+        const { data: attendance2 } = await (supabase as any)
+          .from("attendance")
+          .select(`
+            *,
+            employees ( name, designation )
+          `)
+          .eq("org_id", org.id)
+          .order('attendance_date', { ascending: false })
+          .limit(20);
+        if (attendance2) setRecentAttendance(attendance2);
       }
     };
     
@@ -245,31 +259,39 @@ export default function HRReportsPage() {
               </TableHeader>
               <TableBody>
                 {recentAttendance.length > 0 ? (
-                  recentAttendance.map((record) => (
-                    <TableRow key={record.id} className="border-gray-200 hover:bg-gray-50/50">
-                      <TableCell className="text-gray-600 font-medium">
-                        {record.date ? format(new Date(record.date), 'MMM dd, yyyy') : '-'}
-                      </TableCell>
-                      <TableCell className="text-gray-600">
-                        {record.employees?.first_name} {record.employees?.last_name}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          record.status === 'present' ? 'bg-emerald-500/10 text-emerald-500' :
-                          record.status === 'absent' ? 'bg-rose-500/10 text-rose-500' :
-                          record.status === 'late' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-slate-500/10 text-gray-500'
-                        }`}>
-                          {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'Unknown'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-gray-500">{record.check_in || '-'}</TableCell>
-                      <TableCell className="text-gray-500">{record.check_out || '-'}</TableCell>
-                    </TableRow>
-                  ))
+                  recentAttendance.map((record, idx) => {
+                    const dateVal = record.date || record.attendance_date;
+                    const employeeName = record.employees?.name || '-';
+                    const checkIn = record.check_in || record.clock_in || '-';
+                    const checkOut = record.check_out || record.clock_out || '-';
+                    const status = record.status || 'present';
+                    return (
+                      <TableRow key={record.id || idx} className="border-gray-200 hover:bg-gray-50/50">
+                        <TableCell className="text-gray-600 font-medium">
+                          {dateVal ? format(new Date(dateVal), 'MMM dd, yyyy') : '-'}
+                        </TableCell>
+                        <TableCell className="text-gray-600 font-semibold">
+                          {employeeName}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                            status === 'present' ? 'bg-emerald-100 text-emerald-700' :
+                            status === 'absent' ? 'bg-rose-100 text-rose-700' :
+                            status === 'late' ? 'bg-amber-100 text-amber-700' :
+                            status === 'half_day' ? 'bg-blue-100 text-blue-700' :
+                            'bg-gray-100 text-gray-600'
+                          }`}>
+                            {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-gray-500">{checkIn}</TableCell>
+                        <TableCell className="text-gray-500">{checkOut}</TableCell>
+                      </TableRow>
+                    );
+                  })
                 ) : (
                   <TableRow className="border-gray-200">
-                    <TableCell colSpan={5} className="h-24 text-center text-gray-9000">
+                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
                       No recent attendance records found.
                     </TableCell>
                   </TableRow>
