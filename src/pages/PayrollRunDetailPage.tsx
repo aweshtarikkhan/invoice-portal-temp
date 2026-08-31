@@ -211,11 +211,11 @@ export default function PayrollRunDetailPage() {
     doc.save(`payslip_${emp.name.replace(/\s+/g,"_")}_${format(period,"yyyy-MM")}.pdf`);
   };
 
+  const slipByEmp = useMemo(() => Object.fromEntries(slips.map((s) => [s.employee_id, s])), [slips]);
+  const totals = useMemo(() => slips.reduce((a, s) => ({ gross: a.gross + Number(s.gross_salary), ded: a.ded + Number(s.pf_employee) + Number(s.esic_employee) + Number(s.tds) + Number(s.other_deductions), net: a.net + Number(s.net_pay) }), { gross: 0, ded: 0, net: 0 }), [slips]);
+
   if (loading) return <div className="p-6">Loading…</div>;
   if (!run) return <div className="p-6">Payroll run not found.</div>;
-
-  const slipByEmp = useMemo(() => Object.fromEntries(slips.map((s) => [s.employee_id, s])), [slips]);
-  const totals = slips.reduce((a, s) => ({ gross: a.gross + Number(s.gross_salary), ded: a.ded + Number(s.pf_employee) + Number(s.esic_employee) + Number(s.tds) + Number(s.other_deductions), net: a.net + Number(s.net_pay) }), { gross: 0, ded: 0, net: 0 });
 
   return (
     <div className="space-y-4">
