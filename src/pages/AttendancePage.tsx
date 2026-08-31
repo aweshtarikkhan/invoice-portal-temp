@@ -550,56 +550,6 @@ export default function AttendancePage() {
       return;
     }
 
-    setSaving(false); toast({ title: "Nothing to save" }); return; }
-    const { error } = await (supabase as any).from("attendance").upsert(rows, { onConflict: "employee_id,attendance_date" });
-    if (error) {
-      setSaving(false);
-      toast({ title: "Save failed", description: error.message, variant: "destructive" });
-      return;
-    }
-
-    // Deduct leave balances for leave-type statuses where no clock-in exists
-    const leaveTypes: Record<string, string> = {
-      paid_leave: "paid",
-      casual: "casual",
-      sick: "sick",
-    };
-    const deductRows = rows.filter((r) => {
-      const lt = leaveTypes[r.status];
-      if (!lt) return false;
-      // If clock-in exists on that day, do NOT deduct
-      const hasClockIn = !!clockData[`${r.employee_id}|${r.attendance_date}`];
-      if (hasClockIn) return false;
-      return true;
-    });
-
-    for (const r of deductRows) {
-      const lt = leaveTypes[r.status];
-      // Fetch current balance
-      const { data: balRow } = await (supabase as any)
-        .from("employee_leave_balances")
-        .select("*")
-        .eq("employee_id", r.employee_id)
-        .eq("leave_type", lt)
-        .single();
-
-      if (balRow) {
-        await (supabase as any)
-          .from("employee_leave_balances")
-          .update({ used: Number(balRow.used) + 1, updated_at: new Date().toISOString() })
-          .eq("id", balRow.id);
-      } else {
-        // Create balance record on first deduction
-        await (supabase as any).from("employee_leave_balances").insert({
-          org_id: org.id,
-          employee_id: r.employee_id,
-          leave_type: lt,
-          used: 1,
-          accrued: 0,
-        });
-      }
-    }
-
     setSaving(false);
     toast({ title: "Attendance saved", description: `${rows.length} record(s) saved.` });
   };
