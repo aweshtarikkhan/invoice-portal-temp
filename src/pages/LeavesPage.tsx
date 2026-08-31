@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info } from "lucide-react";
+import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays } from "lucide-react";
 import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 const LEAVE_TYPES = [
