@@ -83,7 +83,7 @@ export default function ShiftsPage() {
       let totalMinutes = hours * 60 + minutes + grace;
       const newHours = Math.floor(totalMinutes / 60) % 24;
       const newMins = totalMinutes % 60;
-      const computedLateStart = ${String(newHours).padStart(2, '0')}:;
+      const computedLateStart = `${String(newHours).padStart(2, '0')}:${String(newMins).padStart(2, '0')}`;
       
       setForm(prev => {
         let nextForm = { ...prev };
