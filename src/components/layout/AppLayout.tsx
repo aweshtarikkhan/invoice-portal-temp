@@ -7,8 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
 import { CommandPalette } from "@/components/shared/CommandPalette";
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
-import { LanguageSwitcher } from "@/components/shared/LanguageSwitcher";
+
 import { TrialBanner } from "@/components/shared/TrialBanner";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
@@ -376,8 +375,6 @@ export function AppLayout() {
             <div className="flex-1" />
             <div className="flex items-center gap-4">
               <CommandPalette />
-              <LanguageSwitcher />
-              <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 pr-2 rounded-full transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">

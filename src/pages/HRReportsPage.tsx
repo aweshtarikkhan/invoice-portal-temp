@@ -121,57 +121,57 @@ export default function HRReportsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-50">HR Reports</h1>
-          <p className="text-slate-400 mt-1">Analytics and KPIs for Human Resources</p>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">HR Reports</h1>
+          <p className="text-gray-500 mt-1">Analytics and KPIs for Human Resources</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Headcount</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Headcount</CardTitle>
             <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-50">{headcount}</div>
+            <div className="text-2xl font-bold text-gray-900">{headcount}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Active Employees</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Active Employees</CardTitle>
             <UserCheck className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-50">{activeEmployees}</div>
+            <div className="text-2xl font-bold text-gray-900">{activeEmployees}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Leave Days (YTD)</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Leave Days (YTD)</CardTitle>
             <CalendarDays className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-50">{totalLeaveDays}</div>
+            <div className="text-2xl font-bold text-gray-900">{totalLeaveDays}</div>
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">Total Payroll Cost</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500">Total Payroll Cost</CardTitle>
             <DollarSign className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-50">{formatCurrency(totalPayrollCost)}</div>
+            <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPayrollCost)}</div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle className="text-lg text-slate-50">Monthly Payroll Cost</CardTitle>
+            <CardTitle className="text-lg text-gray-900">Monthly Payroll Cost</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -191,9 +191,9 @@ export default function HRReportsPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-slate-900 border-slate-800">
+        <Card className="bg-white border-gray-200">
           <CardHeader>
-            <CardTitle className="text-lg text-slate-50">Leave Types Breakdown</CardTitle>
+            <CardTitle className="text-lg text-gray-900">Leave Types Breakdown</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
@@ -218,7 +218,7 @@ export default function HRReportsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex h-full items-center justify-center text-slate-500">
+                <div className="flex h-full items-center justify-center text-gray-9000">
                   No leave data available
                 </div>
               )}
@@ -227,30 +227,30 @@ export default function HRReportsPage() {
         </Card>
       </div>
 
-      <Card className="bg-slate-900 border-slate-800">
+      <Card className="bg-white border-gray-200">
         <CardHeader>
-          <CardTitle className="text-lg text-slate-50">Recent Attendance</CardTitle>
+          <CardTitle className="text-lg text-gray-900">Recent Attendance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border border-slate-800">
+          <div className="rounded-md border border-gray-200">
             <Table>
-              <TableHeader className="bg-slate-800/50">
-                <TableRow className="border-slate-800 hover:bg-transparent">
-                  <TableHead className="text-slate-400">Date</TableHead>
-                  <TableHead className="text-slate-400">Employee</TableHead>
-                  <TableHead className="text-slate-400">Status</TableHead>
-                  <TableHead className="text-slate-400">Check In</TableHead>
-                  <TableHead className="text-slate-400">Check Out</TableHead>
+              <TableHeader className="bg-gray-50/50">
+                <TableRow className="border-gray-200 hover:bg-transparent">
+                  <TableHead className="text-gray-500">Date</TableHead>
+                  <TableHead className="text-gray-500">Employee</TableHead>
+                  <TableHead className="text-gray-500">Status</TableHead>
+                  <TableHead className="text-gray-500">Check In</TableHead>
+                  <TableHead className="text-gray-500">Check Out</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recentAttendance.length > 0 ? (
                   recentAttendance.map((record) => (
-                    <TableRow key={record.id} className="border-slate-800 hover:bg-slate-800/50">
-                      <TableCell className="text-slate-300 font-medium">
+                    <TableRow key={record.id} className="border-gray-200 hover:bg-gray-50/50">
+                      <TableCell className="text-gray-600 font-medium">
                         {record.date ? format(new Date(record.date), 'MMM dd, yyyy') : '-'}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-gray-600">
                         {record.employees?.first_name} {record.employees?.last_name}
                       </TableCell>
                       <TableCell>
@@ -258,18 +258,18 @@ export default function HRReportsPage() {
                           record.status === 'present' ? 'bg-emerald-500/10 text-emerald-500' :
                           record.status === 'absent' ? 'bg-rose-500/10 text-rose-500' :
                           record.status === 'late' ? 'bg-amber-500/10 text-amber-500' :
-                          'bg-slate-500/10 text-slate-400'
+                          'bg-slate-500/10 text-gray-500'
                         }`}>
                           {record.status ? record.status.charAt(0).toUpperCase() + record.status.slice(1) : 'Unknown'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-slate-400">{record.check_in || '-'}</TableCell>
-                      <TableCell className="text-slate-400">{record.check_out || '-'}</TableCell>
+                      <TableCell className="text-gray-500">{record.check_in || '-'}</TableCell>
+                      <TableCell className="text-gray-500">{record.check_out || '-'}</TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow className="border-slate-800">
-                    <TableCell colSpan={5} className="h-24 text-center text-slate-500">
+                  <TableRow className="border-gray-200">
+                    <TableCell colSpan={5} className="h-24 text-center text-gray-9000">
                       No recent attendance records found.
                     </TableCell>
                   </TableRow>
