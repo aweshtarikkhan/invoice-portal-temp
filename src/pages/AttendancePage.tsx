@@ -550,6 +550,14 @@ export default function AttendancePage() {
       return;
     }
 
+    setSaving(false); toast({ title: "Nothing to save" }); return; }
+    const { error } = await (supabase as any).from("attendance").upsert(rows, { onConflict: "employee_id,attendance_date" });
+    if (error) {
+      setSaving(false);
+      toast({ title: "Save failed", description: error.message, variant: "destructive" });
+      return;
+    }
+
     // Deduct leave balances for leave-type statuses where no clock-in exists
     const leaveTypes: Record<string, string> = {
       paid_leave: "paid",
@@ -593,7 +601,7 @@ export default function AttendancePage() {
     }
 
     setSaving(false);
-    toast({ title: "Attendance saved", description: `${rows.length} record(s) saved.${ deductRows.length > 0 ? ` ${deductRows.length} leave balance(s) deducted.` : "" }` });
+    toast({ title: "Attendance saved", description: `${rows.length} record(s) saved.` });
   };
 
   // Summaries

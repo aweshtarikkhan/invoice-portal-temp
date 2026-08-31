@@ -107,7 +107,7 @@ export default function LeavesPage() {
     if (leaveReq) {
       try {
         const { data: bData } = await (supabase as any).from('employee_leave_balances')
-          .select('used')
+          .select('id, used')
           .eq('employee_id', leaveReq.employee_id)
           .eq('leave_type', leaveReq.leave_type)
           .maybeSingle();
@@ -203,7 +203,7 @@ export default function LeavesPage() {
                   if (!policy || policy.monthly_accrual <= 0) continue;
                   
                   const { data: bData } = await (supabase as any).from('employee_leave_balances')
-                    .select('accrued')
+                    .select('id, accrued')
                     .eq('employee_id', emp.id)
                     .eq('leave_type', t)
                     .maybeSingle();
@@ -289,7 +289,7 @@ export default function LeavesPage() {
           <div className="flex items-start gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
             <Info className="h-4 w-4 shrink-0 mt-0.5" />
             <span>
-              Approving a leave request does <strong>not</strong> deduct balance. Balance is deducted only when HR marks the attendance day as a leave type (casual/sick/paid) in the Attendance grid and saves. If a clock-in record exists on that day, no balance is deducted.
+              Approving a leave request automatically deducts the required balance.
             </span>
           </div>
         </TabsContent>
