@@ -281,13 +281,34 @@ export default function AttendancePage() {
       if (!org?.id) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data } = await (supabase as any)
-        .from("employees")
-        .select("*")
-        .eq("org_id", org.id)
-        .eq("auth_user_id", user.id)
-        .single();
-      setHrEmployee(data || null);
+      let { data } = await (supabase as any)
+          .from("employees")
+          .select("*")
+          .eq("org_id", org.id)
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+          
+        if (!data) {
+          const { data: newEmp } = await (supabase as any)
+            .from("employees")
+            .insert({
+              org_id: org.id,
+              auth_user_id: user.id,
+              name: "HR Admin",
+              designation: "HR Admin",
+              email: user.email || "",
+              monthly_salary: 0,
+              paid_leaves_per_month: 0,
+              is_active: true,
+              basic_percent: 50,
+              hra_percent: 30
+            })
+            .select()
+            .single();
+          data = newEmp;
+        }
+        
+        setHrEmployee(data || null);
     };
     loadHrEmployee();
   }, [org?.id]);
