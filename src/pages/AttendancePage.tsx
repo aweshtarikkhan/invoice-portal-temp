@@ -580,28 +580,35 @@ export default function AttendancePage() {
     const orgWeeklyOffs = org?.weekly_offs || [0];
     const todayStr = format(new Date(), "yyyy-MM-dd");
     return employees.map((emp) => {
-      let p = 0, a = 0, h = 0, pl = 0, ho = 0;
+      let p = 0, a = 0, h = 0, pl = 0, ho = 0, late = 0;
       days.forEach((d) => {
         const ds = format(d, "yyyy-MM-dd");
         const isOff = orgWeeklyOffs.includes(d.getDay());
-        const s = att[`${emp.id}|${ds}`] || (isOff ? "holiday" : (ds <= todayStr ? "absent" : undefined));
+        const isHoliday = holidays.some((hol) => hol.date === ds);
+
+        // Priority: HR-set record > auto-computed in att map > fallback
+        const s = att[`${emp.id}|${ds}`] || (isOff || isHoliday ? "holiday" : (ds <= todayStr ? "absent" : undefined));
+
         if (s === "present") p++;
+        else if (s === "late") { late++; p++; } // late counts as present for payroll
         else if (s === "absent") a++;
         else if (s === "half_day") h++;
         else if (s === "paid_leave") pl++;
         else if (s === "holiday") ho++;
+        // approved_leave counts as paid_leave
+        else if (s === "approved_leave") pl++;
       });
       const workingDays = days.length - ho;
-      // Payable units: present=1, half=0.5, paid_leave=1 (within allowance), extra paid_leave treated as absent
+      // Payable units: present=1, late=1, half=0.5, paid_leave=1 (within allowance), extra treated as absent
       const allowedPL = emp.paid_leaves_per_month;
       const paidPL = Math.min(pl, allowedPL);
       const unpaidPL = Math.max(0, pl - allowedPL);
       const payableDays = p + h * 0.5 + paidPL; // unpaid_pl deducted (treated as absent)
       const perDay = workingDays > 0 ? emp.monthly_salary / workingDays : 0;
       const payable = perDay * payableDays;
-      return { emp, p, a: a + unpaidPL, h, pl: paidPL, ho, workingDays, payableDays, payable };
+      return { emp, p, a: a + unpaidPL, h, pl: paidPL, ho, late, workingDays, payableDays, payable };
     });
-  }, [employees, days, att]);
+  }, [employees, days, att, holidays, org]);
 
   const totalPayable = summaries.reduce((s, r) => s + r.payable, 0);
 
@@ -1128,6 +1135,7 @@ export default function AttendancePage() {
                 <TableRow>
                   <TableHead>Employee</TableHead>
                   <TableHead className="text-center">Present</TableHead>
+                  <TableHead className="text-center text-amber-600">Late</TableHead>
                   <TableHead className="text-center">Half</TableHead>
                   <TableHead className="text-center">Paid Leave</TableHead>
                   <TableHead className="text-center">Absent</TableHead>
@@ -1142,6 +1150,7 @@ export default function AttendancePage() {
                   <TableRow key={r.emp.id}>
                     <TableCell className="font-medium">{r.emp.name}</TableCell>
                     <TableCell className="text-center">{r.p}</TableCell>
+                    <TableCell className="text-center text-amber-600 font-medium">{r.late || 0}</TableCell>
                     <TableCell className="text-center">{r.h}</TableCell>
                     <TableCell className="text-center">{r.pl}</TableCell>
                     <TableCell className="text-center">{r.a}</TableCell>
@@ -1152,7 +1161,7 @@ export default function AttendancePage() {
                   </TableRow>
                 ))}
                 <TableRow>
-                  <TableCell colSpan={8} className="text-right font-semibold">Total Payable</TableCell>
+                  <TableCell colSpan={9} className="text-right font-semibold">Total Payable</TableCell>
                   <TableCell className="text-right font-bold text-primary">{formatCurrency(totalPayable, (org as any)?.currency || "INR")}</TableCell>
                 </TableRow>
               </TableBody>
