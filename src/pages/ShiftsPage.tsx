@@ -75,6 +75,29 @@ export default function ShiftsPage() {
 
   useEffect(() => { load(); }, [org?.id]);
 
+    // Auto-calculate late_start and half_day constraints
+  useEffect(() => {
+    if (form.start_time) {
+      const [hours, minutes] = form.start_time.split(':').map(Number);
+      const grace = Number(form.grace_minutes) || 0;
+      let totalMinutes = hours * 60 + minutes + grace;
+      const newHours = Math.floor(totalMinutes / 60) % 24;
+      const newMins = totalMinutes % 60;
+      const computedLateStart = ${String(newHours).padStart(2, '0')}:;
+      
+      setForm(prev => {
+        let nextForm = { ...prev };
+        if (nextForm.late_start !== computedLateStart) {
+          nextForm.late_start = computedLateStart;
+        }
+        if (nextForm.late_end && nextForm.half_day_start && nextForm.half_day_start < nextForm.late_end) {
+          nextForm.half_day_start = nextForm.late_end;
+        }
+        return nextForm;
+      });
+    }
+  }, [form.start_time, form.grace_minutes, form.late_end, form.half_day_start]);
+
   const openCreate = () => { setEditId(null); setForm(emptyShift); setOpen(true); };
   const openEdit = (s: Shift) => {
     setEditId(s.id);
@@ -303,7 +326,7 @@ export default function ShiftsPage() {
             <div>
               <Label>Late Arrival Range</Label>
               <div className="grid grid-cols-2 gap-3 mt-1">
-                <div><Label className="text-xs text-muted-foreground">From</Label><Input type="time" value={form.late_start} onChange={(e) => setForm({ ...form, late_start: e.target.value })} /></div>
+                <div><Label className="text-xs text-muted-foreground">From</Label><Input type="time" value={form.late_start} disabled className="bg-muted" /></div>
                 <div><Label className="text-xs text-muted-foreground">To</Label><Input type="time" value={form.late_end} onChange={(e) => setForm({ ...form, late_end: e.target.value })} /></div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">Clock-in within this range → marked <strong>Late</strong>.</p>
@@ -313,7 +336,7 @@ export default function ShiftsPage() {
             <div>
               <Label>Half-Day Range</Label>
               <div className="grid grid-cols-2 gap-3 mt-1">
-                <div><Label className="text-xs text-muted-foreground">From</Label><Input type="time" value={form.half_day_start} onChange={(e) => setForm({ ...form, half_day_start: e.target.value })} /></div>
+                <div><Label className="text-xs text-muted-foreground">From</Label><Input type="time" value={form.half_day_start} min={form.late_end} onChange={(e) => setForm({ ...form, half_day_start: e.target.value })} /></div>
                 <div><Label className="text-xs text-muted-foreground">To</Label><Input type="time" value={form.half_day_end} onChange={(e) => setForm({ ...form, half_day_end: e.target.value })} /></div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">Clock-in within this range → marked <strong>Half Day</strong>. After end → <strong>Absent</strong>.</p>
@@ -355,3 +378,4 @@ export default function ShiftsPage() {
     </div>
   );
 }
+
