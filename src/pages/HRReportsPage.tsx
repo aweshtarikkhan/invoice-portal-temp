@@ -194,10 +194,10 @@ export default function HRReportsPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="month" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#111827' }}
-                      formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                    />
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#111827' }}
+                    formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                  />
                   <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
