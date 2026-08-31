@@ -825,7 +825,7 @@ export default function AttendancePage() {
     
     return (
       <div className="flex flex-col text-xs space-y-0.5">
-        <span className="font-medium text-slate-700 max-w-[200px] truncate" title={addressText || "Location Captured"}>
+        <span className="font-medium text-slate-700 text-wrap leading-tight max-w-[250px]" title={addressText || "Location Captured"}>
           {addressText || "GPS Recorded"}
         </span>
         {mapUrl && (
@@ -2225,3 +2225,4 @@ export default function AttendancePage() {
     </div>
   );
 }
+
