@@ -151,7 +151,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 createRoot(document.getElementById("root")!).render(
   <HelmetProvider>
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="light" forcedTheme="light" enableSystem={false}>
       <ErrorBoundary>
         <App />
       </ErrorBoundary>
