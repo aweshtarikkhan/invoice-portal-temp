@@ -331,7 +331,16 @@ export default function LeavesPage() {
                           </TableCell>
                           <TableCell>{format(parseISO(r.start_date), "dd MMM yyyy")}</TableCell>
                           <TableCell>{format(parseISO(r.end_date), "dd MMM yyyy")}</TableCell>
-                          <TableCell>{r.days}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-bold">{r.days}</span>
+                              {["casual", "sick", "el_pl", "comp_off"].includes(r.leave_type) && (
+                                <span className={`text-[10px] ${r.days > getBalance(balancesByEmp[r.employee_id] || {}, r.leave_type).remaining ? 'text-red-500 font-bold' : 'text-gray-500'}`}>
+                                  {getBalance(balancesByEmp[r.employee_id] || {}, r.leave_type).remaining} available
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
                           <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">{r.reason || "—"}</TableCell>
                           <TableCell>{statusBadge(r.status)}</TableCell>
                           <TableCell className="text-right">
