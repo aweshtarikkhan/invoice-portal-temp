@@ -15,12 +15,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays } from "lucide-react";
 import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
-const LEAVE_TYPES = [
-  { v: "casual", l: "Casual Leave", color: "bg-blue-100 text-blue-700 border-blue-300", annual: 12 },
-  { v: "sick",   l: "Sick Leave",   color: "bg-amber-100 text-amber-700 border-amber-300", annual: 5 },
-  { v: "paid",   l: "Paid Leave",   color: "bg-green-100 text-green-700 border-green-300", annual: 8 },
-  { v: "unpaid", l: "Unpaid (LOP)", color: "bg-red-100 text-red-700 border-red-300", annual: 0 },
-  { v: "other",  l: "Other",        color: "bg-slate-100 text-slate-700 border-slate-300", annual: 0 },
+export const LEAVE_TYPES = [
+  { v: "casual",      l: "Casual Leave (CL)",          short: "CL",  color: "bg-blue-100 text-blue-700 border-blue-300", annual: 12 },
+  { v: "el_pl",       l: "Earned/Privilege (EL/PL)",   short: "PL",  color: "bg-indigo-100 text-indigo-700 border-indigo-300", annual: 15 },
+  { v: "sick",        l: "Sick/Medical (SL/ML)",       short: "SL",  color: "bg-amber-100 text-amber-700 border-amber-300", annual: 5 },
+  { v: "comp_off",    l: "Compensatory Off",           short: "CO",  color: "bg-teal-100 text-teal-700 border-teal-300", annual: 0 },
+  { v: "maternity",   l: "Maternity Leave",            short: "ML",  color: "bg-pink-100 text-pink-700 border-pink-300", annual: 0 },
+  { v: "paternity",   l: "Paternity Leave",            short: "PTL", color: "bg-cyan-100 text-cyan-700 border-cyan-300", annual: 0 },
+  { v: "bereavement", l: "Bereavement Leave",          short: "BL",  color: "bg-slate-100 text-slate-700 border-slate-300", annual: 0 },
+  { v: "marriage",    l: "Marriage Leave",             short: "MRL", color: "bg-rose-100 text-rose-700 border-rose-300", annual: 0 },
+  { v: "study",       l: "Study/Sabbatical",           short: "STL", color: "bg-violet-100 text-violet-700 border-violet-300", annual: 0 },
+  { v: "jury_duty",   l: "Jury Duty",                  short: "JD",  color: "bg-stone-100 text-stone-700 border-stone-300", annual: 0 },
+  { v: "od",          l: "On Duty (OD)",               short: "OD",  color: "bg-sky-100 text-sky-700 border-sky-300", annual: 0 },
+  { v: "wfh",         l: "Work From Home (WFH)",       short: "WFH", color: "bg-emerald-100 text-emerald-700 border-emerald-300", annual: 0 },
+  { v: "half_day",    l: "Half-Day Leave",             short: "HD",  color: "bg-orange-100 text-orange-700 border-orange-300", annual: 0 },
+  { v: "lwp",         l: "Leave Without Pay (LWP)",    short: "LWP", color: "bg-red-100 text-red-700 border-red-300", annual: 0 },
+  { v: "ncns",        l: "Absent (NCNS)",              short: "AB",  color: "bg-red-100 text-red-800 border-red-400", annual: 0 },
+  { v: "other",       l: "Other",                      short: "OTH", color: "bg-gray-100 text-gray-700 border-gray-300", annual: 0 },
 ];
 
 const statusBadge = (s: string) => {

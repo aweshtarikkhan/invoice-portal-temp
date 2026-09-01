@@ -22,15 +22,28 @@ import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock, MessageSquare, Us
 import { NavLink } from "@/components/NavLink";
 import { SalariesTab } from "@/components/payroll/SalariesTab";
 
-type Status = "present" | "late" | "absent" | "half_day" | "paid_leave" | "holiday";
+type Status = string;
 
-const STATUS_OPTIONS: { value: Status; label: string; short: string; cls: string }[] = [
-  { value: "present",    label: "Present",    short: "P",  cls: "bg-green-100 text-green-700 border-green-300" },
-  { value: "late",       label: "Late",        short: "L",  cls: "bg-amber-100 text-amber-700 border-amber-300" },
-  { value: "half_day",   label: "Half-day",    short: "H",  cls: "bg-orange-100 text-orange-700 border-orange-300" },
-  { value: "absent",     label: "Absent",      short: "A",  cls: "bg-red-100 text-red-700 border-red-300" },
-  { value: "paid_leave", label: "Paid Leave",  short: "PL", cls: "bg-blue-100 text-blue-700 border-blue-300" },
-  { value: "holiday",    label: "Holiday",     short: "HO", cls: "bg-muted text-muted-foreground border-border" },
+export const STATUS_OPTIONS = [
+  { value: "present",    label: "Present",            short: "P",   cls: "bg-green-100 text-green-700 border-green-300", baseStatus: "present" },
+  { value: "late",       label: "Late",               short: "L",   cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "late" },
+  { value: "half_day",   label: "Half-Day Leave",     short: "HD",  cls: "bg-orange-100 text-orange-700 border-orange-300", baseStatus: "half_day" },
+  { value: "absent",     label: "Absent",             short: "AB",  cls: "bg-red-100 text-red-700 border-red-300", baseStatus: "absent" },
+  { value: "ncns",       label: "Absent (NCNS)",      short: "NCNS",cls: "bg-red-100 text-red-900 border-red-500", baseStatus: "absent" },
+  { value: "lwp",        label: "Leave Without Pay",  short: "LWP", cls: "bg-red-50 text-red-700 border-red-200", baseStatus: "absent" },
+  { value: "casual",     label: "Casual Leave (CL)",  short: "CL",  cls: "bg-blue-100 text-blue-700 border-blue-300", baseStatus: "paid_leave" },
+  { value: "el_pl",      label: "Earned/Privilege",   short: "PL",  cls: "bg-indigo-100 text-indigo-700 border-indigo-300", baseStatus: "paid_leave" },
+  { value: "sick",       label: "Sick/Medical (SL)",  short: "SL",  cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "paid_leave" },
+  { value: "comp_off",   label: "Compensatory Off",   short: "CO",  cls: "bg-teal-100 text-teal-700 border-teal-300", baseStatus: "paid_leave" },
+  { value: "maternity",  label: "Maternity Leave",    short: "ML",  cls: "bg-pink-100 text-pink-700 border-pink-300", baseStatus: "paid_leave" },
+  { value: "paternity",  label: "Paternity Leave",    short: "PTL", cls: "bg-cyan-100 text-cyan-700 border-cyan-300", baseStatus: "paid_leave" },
+  { value: "bereavement",label: "Bereavement Leave",  short: "BL",  cls: "bg-slate-100 text-slate-700 border-slate-300", baseStatus: "paid_leave" },
+  { value: "marriage",   label: "Marriage Leave",     short: "MRL", cls: "bg-rose-100 text-rose-700 border-rose-300", baseStatus: "paid_leave" },
+  { value: "study",      label: "Study/Sabbatical",   short: "STL", cls: "bg-violet-100 text-violet-700 border-violet-300", baseStatus: "paid_leave" },
+  { value: "jury_duty",  label: "Jury Duty",          short: "JD",  cls: "bg-stone-100 text-stone-700 border-stone-300", baseStatus: "paid_leave" },
+  { value: "od",         label: "On Duty (OD)",       short: "OD",  cls: "bg-sky-100 text-sky-700 border-sky-300", baseStatus: "present" },
+  { value: "wfh",        label: "Work From Home",     short: "WFH", cls: "bg-emerald-100 text-emerald-700 border-emerald-300", baseStatus: "present" },
+  { value: "holiday",    label: "Holiday",            short: "HO",  cls: "bg-muted text-muted-foreground border-border", baseStatus: "holiday" },
 ];
 
 interface Employee {
@@ -203,7 +216,7 @@ export default function AttendancePage() {
 
     // HR manually set records
     const map: Record<string, Status> = {};
-    (atts.data || []).forEach((r: any) => { map[`${r.employee_id}|${r.attendance_date}`] = r.status; });
+    (atts.data || []).forEach((r: any) => { map[`${r.employee_id}|${r.attendance_date}`] = r.override_status || r.status; });
     
     const clkMap: Record<string, any> = {};
     (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
@@ -476,7 +489,7 @@ export default function AttendancePage() {
       
       const rangeDays = eachDayOfInterval({ start: parseISO(detailFrom), end: parseISO(detailTo) });
       const attMap: Record<string, string> = {};
-      (atts.data || []).forEach((r: any) => { attMap[r.attendance_date] = r.status; });
+      (atts.data || []).forEach((r: any) => { attMap[r.attendance_date] = r.override_status || r.status; });
       const clkMap: Record<string, any> = {};
       (clockins.data || []).forEach((r: any) => { clkMap[r.date] = r; });
       const shift = empShiftMap[selectedEmpDetail.id];
@@ -560,7 +573,7 @@ export default function AttendancePage() {
     Object.entries(att).forEach(([k, status]) => {
       const [employee_id, attendance_date] = k.split("|");
       if (employees.find((e) => e.id === employee_id)) {
-        rows.push({ org_id: org.id, employee_id, attendance_date, status });
+        const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; rows.push({ org_id: org.id, employee_id, attendance_date, status: opt.baseStatus, override_status: opt.value });
       }
     });
     if (rows.length === 0) { setSaving(false); toast({ title: "Nothing to save" }); return; }
@@ -1089,21 +1102,37 @@ export default function AttendancePage() {
                       const isAL = displayStatus === "approved_leave";
                       return (
                         <TableCell key={ds} className="text-center p-1 relative group">
-                          <button
-                            onClick={() => {
-                              if (isHoliday || isOff) return; // don't cycle holidays/weekoffs
-                              cycle(emp.id, ds);
-                            }}
-                            title={ds}
-                          >
-                            {isAL ? (
-                              <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold bg-purple-100 text-purple-700 border-purple-300" title={`Approved ${approvedLeaveType} leave`}>AL</span>
-                            ) : displayStatus ? (
-                              statusBadge(displayStatus as Status, autoAttKeys.has(`${emp.id}|${ds}`))
-                            ) : (
-                              <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] text-muted-foreground border-dashed">—</span>
-                            )}
-                          </button>
+                          {isHoliday || isOff ? (
+                            <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold bg-muted text-muted-foreground border-border" title={ds}>HO</span>
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button title={ds}>
+                                  {isAL ? (
+                                    <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold bg-purple-100 text-purple-700 border-purple-300" title={`Approved ${approvedLeaveType} leave`}>AL</span>
+                                  ) : displayStatus ? (
+                                    statusBadge(displayStatus as Status, autoAttKeys.has(`${emp.id}|${ds}`))
+                                  ) : (
+                                    <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] text-muted-foreground border-dashed">-</span>
+                                  )}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent className="w-56 max-h-[300px] overflow-y-auto">
+                                {STATUS_OPTIONS.map(opt => (
+                                  <DropdownMenuItem 
+                                    key={opt.value} 
+                                    onClick={() => setCell(emp.id, ds, opt.value)}
+                                    className="flex items-center gap-2 text-xs"
+                                  >
+                                    <span className={`inline-flex items-center justify-center h-5 w-6 rounded border text-[9px] font-semibold ${opt.cls}`}>
+                                      {opt.short}
+                                    </span>
+                                    {opt.label}
+                                  </DropdownMenuItem>
+                                ))}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                           {c && (
                             <button onClick={() => setSelectedClockInfo(c)} className="absolute top-0 right-0 p-0.5 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow-sm opacity-80 hover:opacity-100" title="View details">
                               <MapPin className="w-3 h-3" />
