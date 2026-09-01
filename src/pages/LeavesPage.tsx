@@ -227,10 +227,18 @@ export default function LeavesPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="requests">
-        <TabsList>
-          <TabsTrigger value="requests" className="flex items-center gap-1.5"><ClipboardList className="h-4 w-4" />Leave Requests</TabsTrigger>
-          <TabsTrigger value="balances" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Employee Balances</TabsTrigger>
+        <Tabs defaultValue="requests">
+          <TabsList>
+            <TabsTrigger value="requests" className="flex items-center gap-1.5">
+              <ClipboardList className="h-4 w-4" />
+              Leave Requests
+              {rows.filter(r => r.status === 'pending').length > 0 && (
+                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                  {rows.filter(r => r.status === 'pending').length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="balances" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Employee Balances</TabsTrigger>
           <TabsTrigger value="policies" className="flex items-center gap-1.5"><Settings className="h-4 w-4" />Leave Policies</TabsTrigger>
         </TabsList>
 

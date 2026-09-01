@@ -1003,7 +1003,14 @@ export default function AttendancePage() {
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="roster">Roster Planner</TabsTrigger>
           <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
-          <TabsTrigger value="leaves">Leave Requests</TabsTrigger>
+          <TabsTrigger value="leaves" className="flex items-center gap-1.5">
+            Leave Requests
+            {leaves.filter(l => l.status === 'pending').length > 0 && (
+              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                {leaves.filter(l => l.status === 'pending').length}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="regularizations" className="flex items-center gap-1.5">
             Regularizations
             {regularizations.filter(r => r.status === 'pending').length > 0 && (
