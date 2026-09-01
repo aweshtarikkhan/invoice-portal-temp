@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays } from "lucide-react";
+import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays, History, PlusCircle, MinusCircle, AlertTriangle } from "lucide-react";
 import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 export const LEAVE_TYPES = [
@@ -65,6 +65,8 @@ export default function LeavesPage() {
     const [adjustOpen, setAdjustOpen] = useState(false);
     const [adjustForm, setAdjustForm] = useState<any>({});
 
+  // Transactions log
+  const [transactions, setTransactions] = useState<any[]>([]);
 
   // Employee balances
   const [balances, setBalances] = useState<any[]>([]);
@@ -113,16 +115,18 @@ export default function LeavesPage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const [lv, emps, pols, bals] = await Promise.all([
+    const [lv, emps, pols, bals, txns] = await Promise.all([
       (supabase as any).from("leaves").select("*, employees(name)").eq("org_id", org.id).order("created_at", { ascending: false }),
       (supabase as any).from("employees").select("id,name").eq("org_id", org.id).eq("is_active", true).order("name"),
       (supabase as any).from("leave_policies").select("*").eq("org_id", org.id),
       (supabase as any).from("employee_leave_balances").select("*, employees(name)").eq("org_id", org.id),
+      (supabase as any).from("leave_transactions").select("*, employees(name)").eq("org_id", org.id).order("created_at", { ascending: false }),
     ]);
     setRows(lv.data || []);
     setEmployees(emps.data || []);
     setPolicies(pols.data || []);
     setBalances(bals.data || []);
+    setTransactions(txns.data || []);
 
     // Build policy form state - merge DB data with defaults
     const pf: Record<string, { annual_limit: number; monthly_accrual: number }> = {};
@@ -234,7 +238,10 @@ export default function LeavesPage() {
 
   const getBalance = (byType: Record<string, any>, type: string) => {
     const pol = policies.find((p: any) => p.leave_type === type);
-    const annual = pol?.annual_limit ?? LEAVE_TYPES.find((t) => t.v === type)?.annual ?? 0;
+    const isManualType = type === "comp_off";
+    const annual = isManualType
+      ? (byType[type]?.accrued ?? 0)
+      : (pol?.annual_limit ?? LEAVE_TYPES.find((t) => t.v === type)?.annual ?? 0);
     const used = byType[type]?.used ?? 0;
     const remaining = Math.max(0, annual - used);
     return { annual, used, remaining };
@@ -297,6 +304,7 @@ export default function LeavesPage() {
             </TabsTrigger>
             <TabsTrigger value="balances" className="flex items-center gap-1.5"><Users className="h-4 w-4" />Employee Balances</TabsTrigger>
           <TabsTrigger value="policies" className="flex items-center gap-1.5"><Settings className="h-4 w-4" />Leave Policies</TabsTrigger>
+          <TabsTrigger value="transactions" className="flex items-center gap-1.5"><History className="h-4 w-4" />Transactions Log</TabsTrigger>
         </TabsList>
 
         {/* ── Leave Requests Tab ── */}
@@ -398,6 +406,14 @@ export default function LeavesPage() {
                             </TableCell>
                           );
                         })}
+                        <TableCell className="text-right">
+                          <Button variant="outline" size="sm" onClick={() => {
+                            setAdjustForm({ employee_id: emp.id, employee_name: emp.name, leave_type: "comp_off", amount: 1, transaction_type: "credit", description: "", expiry_date: "" });
+                            setAdjustOpen(true);
+                          }}>
+                            <PlusCircle className="h-3.5 w-3.5 mr-1" />Adjust
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -466,6 +482,73 @@ export default function LeavesPage() {
               {savingPolicy ? "Saving…" : "Save Leave Policies"}
             </Button>
           </div>
+        </TabsContent>
+
+        {/* ── Transactions Log Tab ── */}
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Leave Balance Adjustments History</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {transactions.length === 0 ? <div className="p-8 text-center text-muted-foreground">No manual adjustments yet. Use the "Adjust" button in Employee Balances to credit or deduct leaves.</div>
+              : (
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-center">Action</TableHead>
+                    <TableHead className="text-center">Days</TableHead>
+                    <TableHead>Expiry</TableHead>
+                    <TableHead>Reason</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {transactions.map((tx: any) => {
+                      const meta = typeMeta(tx.leave_type);
+                      const isExpired = tx.expiry_date && new Date(tx.expiry_date) < new Date();
+                      return (
+                        <TableRow key={tx.id} className={isExpired ? "opacity-60" : ""}>
+                          <TableCell className="text-sm">{format(parseISO(tx.created_at), "dd MMM yyyy")}</TableCell>
+                          <TableCell className="font-medium">{tx.employees?.name || "—"}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={`text-xs ${meta.color}`}>{meta.short}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {tx.transaction_type === "credit" ? (
+                              <Badge className="bg-green-100 text-green-700 border-green-300" variant="outline">
+                                <PlusCircle className="h-3 w-3 mr-1" />Credit
+                              </Badge>
+                            ) : tx.transaction_type === "expiry" ? (
+                              <Badge className="bg-red-100 text-red-700 border-red-300" variant="outline">
+                                <AlertTriangle className="h-3 w-3 mr-1" />Expired
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-amber-100 text-amber-700 border-amber-300" variant="outline">
+                                <MinusCircle className="h-3 w-3 mr-1" />Deduct
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-medium">{tx.amount}</TableCell>
+                          <TableCell className="text-sm">
+                            {tx.expiry_date ? (
+                              <span className={isExpired ? "text-red-600 font-medium" : ""}>
+                                {format(parseISO(tx.expiry_date), "dd MMM yyyy")}
+                                {isExpired && " (Expired)"}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">No expiry</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="max-w-[250px] truncate text-sm text-muted-foreground">{tx.description || "—"}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
 
