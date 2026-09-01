@@ -17,7 +17,7 @@ import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 export const LEAVE_TYPES = [
   { v: "casual",      l: "Casual Leave (CL)",          short: "CL",  color: "bg-blue-100 text-blue-700 border-blue-300", annual: 12 },
-  { v: "el_pl",       l: "Earned/Privilege (EL/PL)",   short: "PL",  color: "bg-indigo-100 text-indigo-700 border-indigo-300", annual: 15 },
+  { v: "el_pl",       l: "Earned/Privilege (EL/PL)",   short: "PL",  color: "bg-indigo-100 text-indigo-700 border-indigo-300", annual: 0 },
   { v: "sick",        l: "Sick/Medical (SL/ML)",       short: "SL",  color: "bg-amber-100 text-amber-700 border-amber-300", annual: 5 },
   { v: "comp_off",    l: "Compensatory Off",           short: "CO",  color: "bg-teal-100 text-teal-700 border-teal-300", annual: 0 },
   { v: "maternity",   l: "Maternity Leave",            short: "ML",  color: "bg-pink-100 text-pink-700 border-pink-300", annual: 0 },
@@ -238,7 +238,7 @@ export default function LeavesPage() {
 
   const getBalance = (byType: Record<string, any>, type: string) => {
     const pol = policies.find((p: any) => p.leave_type === type);
-    const isManualType = type === "comp_off";
+    const isManualType = type === "comp_off" || type === "el_pl";
     const annual = isManualType
       ? (byType[type]?.accrued ?? 0)
       : (pol?.annual_limit ?? LEAVE_TYPES.find((t) => t.v === type)?.annual ?? 0);
@@ -382,7 +382,7 @@ export default function LeavesPage() {
                     <TableHead>Employee</TableHead>
                     <TableHead className="text-center">Casual (Used / Annual)</TableHead>
                     <TableHead className="text-center">Sick (Used / Annual)</TableHead>
-                    <TableHead className="text-center">Earned/PL (Used / Annual)</TableHead>
+                    <TableHead className="text-center">Earned/PL (Used / Accrued)</TableHead>
                       <TableHead className="text-center">Comp-Off (Used / Accrued)</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
@@ -429,7 +429,7 @@ export default function LeavesPage() {
             <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5, EL/PL=15, Comp-Off=0 per year.
+                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5. EL/PL and Comp-Off start at 0 and grow through monthly accrual or manual credits.
               </span>
             </div>
 
