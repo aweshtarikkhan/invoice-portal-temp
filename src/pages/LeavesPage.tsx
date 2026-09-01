@@ -60,9 +60,55 @@ export default function LeavesPage() {
   const [policies, setPolicies] = useState<any[]>([]);
   const [policyForm, setPolicyForm] = useState<Record<string, { annual_limit: number; monthly_accrual: number }>>({});
   const [savingPolicy, setSavingPolicy] = useState(false);
+    
+    // Adjust Balance Form
+    const [adjustOpen, setAdjustOpen] = useState(false);
+    const [adjustForm, setAdjustForm] = useState<any>({});
+
 
   // Employee balances
   const [balances, setBalances] = useState<any[]>([]);
+
+    const submitAdjust = async () => {
+      if (!adjustForm.employee_id || !adjustForm.amount || !adjustForm.leave_type || !adjustForm.transaction_type) {
+        toast({ title: "Fill all required fields", variant: "destructive" }); return;
+      }
+      
+      try {
+        // Log transaction
+        const { error: txError } = await (supabase as any).from("leave_transactions").insert({
+          org_id: org?.id,
+          employee_id: adjustForm.employee_id,
+          leave_type: adjustForm.leave_type,
+          amount: adjustForm.amount,
+          transaction_type: adjustForm.transaction_type,
+          description: adjustForm.description,
+          expiry_date: adjustForm.expiry_date || null
+        });
+        if (txError) throw txError;
+        
+        // Update balance
+        const empBals = balances.find(b => b.employee_id === adjustForm.employee_id && b.leave_type === adjustForm.leave_type);
+        const currentAccrued = empBals?.accrued ?? 0;
+        const newAccrued = adjustForm.transaction_type === 'credit' ? currentAccrued + Number(adjustForm.amount) : Math.max(0, currentAccrued - Number(adjustForm.amount));
+        
+        const { error: balError } = await (supabase as any).from("employee_leave_balances").upsert({
+          org_id: org?.id,
+          employee_id: adjustForm.employee_id,
+          leave_type: adjustForm.leave_type,
+          accrued: newAccrued,
+          used: empBals?.used ?? 0
+        }, { onConflict: "employee_id,leave_type" });
+        if (balError) throw balError;
+        
+        toast({ title: "Balance adjusted successfully" });
+        setAdjustOpen(false);
+        load();
+      } catch (err: any) {
+        toast({ title: "Adjustment failed", description: err.message, variant: "destructive" });
+      }
+    };
+
 
   const load = async () => {
     if (!org?.id) return;
@@ -80,7 +126,7 @@ export default function LeavesPage() {
 
     // Build policy form state - merge DB data with defaults
     const pf: Record<string, { annual_limit: number; monthly_accrual: number }> = {};
-    ["casual", "sick", "el_pl"].forEach((t) => {
+    ["casual", "sick", "el_pl", "comp_off"].forEach((t) => {
       const meta = LEAVE_TYPES.find((x) => x.v === t)!;
       const existing = (pols.data || []).find((p: any) => p.leave_type === t);
       pf[t] = {
@@ -158,7 +204,7 @@ export default function LeavesPage() {
     if (!org?.id) return;
     setSavingPolicy(true);
     try {
-      const upserts = ["casual", "sick", "el_pl"].map((t) => ({
+      const upserts = ["casual", "sick", "el_pl", "comp_off"].map((t) => ({
         org_id: org.id,
         leave_type: t,
         annual_limit: policyForm[t]?.annual_limit ?? 0,
@@ -209,7 +255,7 @@ export default function LeavesPage() {
             try {
               toast({ title: "Processing monthly accrual..." });
               for (const emp of employees) {
-                for (const t of ["casual", "sick", "el_pl"]) {
+                for (const t of ["casual", "sick", "el_pl", "comp_off"]) {
                   const policy = policies.find(p => p.leave_type === t);
                   if (!policy || policy.monthly_accrual <= 0) continue;
                   
@@ -329,12 +375,14 @@ export default function LeavesPage() {
                     <TableHead className="text-center">Casual (Used / Annual)</TableHead>
                     <TableHead className="text-center">Sick (Used / Annual)</TableHead>
                     <TableHead className="text-center">Earned/PL (Used / Annual)</TableHead>
+                      <TableHead className="text-center">Comp-Off (Used / Accrued)</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {balancesByEmp.map(({ emp, byType }) => (
                       <TableRow key={emp.id}>
                         <TableCell className="font-medium">{emp.name}</TableCell>
-                        {["casual", "sick", "el_pl"].map((type) => {
+                        {["casual", "sick", "el_pl", "comp_off"].map((type) => {
                           const { annual, used, remaining } = getBalance(byType, type);
                           const pct = annual > 0 ? Math.min(100, (used / annual) * 100) : 0;
                           return (
@@ -365,11 +413,11 @@ export default function LeavesPage() {
             <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5, EL/PL=15 per year.
+                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5, EL/PL=15, Comp-Off=0 per year.
               </span>
             </div>
 
-            {["casual", "sick", "el_pl"].map((type) => {
+            {["casual", "sick", "el_pl", "comp_off"].map((type) => {
               const meta = typeMeta(type);
               return (
                 <Card key={type}>
@@ -452,6 +500,56 @@ export default function LeavesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-  );
+        {/* === Adjust Balance Dialog === */}
+        <Dialog open={adjustOpen} onOpenChange={setAdjustOpen}>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Adjust Leave Balance - {adjustForm.employee_name}</DialogTitle></DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label>Leave Type</Label>
+                <Select value={adjustForm.leave_type} onValueChange={(v) => setAdjustForm({ ...adjustForm, leave_type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="comp_off">Compensatory Off (CO)</SelectItem>
+                    <SelectItem value="el_pl">Earned/Privilege (EL/PL)</SelectItem>
+                    <SelectItem value="casual">Casual Leave</SelectItem>
+                    <SelectItem value="sick">Sick Leave</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Action</Label>
+                  <Select value={adjustForm.transaction_type} onValueChange={(v) => setAdjustForm({ ...adjustForm, transaction_type: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="credit">Credit (Add)</SelectItem>
+                      <SelectItem value="deduction">Deduct (Remove)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Days</Label>
+                  <Input type="number" min="0.5" step="0.5" value={adjustForm.amount} onChange={(e) => setAdjustForm({ ...adjustForm, amount: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <Label>Expiry Date (Optional)</Label>
+                <Input type="date" value={adjustForm.expiry_date} onChange={(e) => setAdjustForm({ ...adjustForm, expiry_date: e.target.value })} />
+                <p className="text-xs text-muted-foreground mt-1">Leave blank if it does not expire.</p>
+              </div>
+              <div>
+                <Label>Reason / Note</Label>
+                <Textarea placeholder="e.g., Worked on Sunday (Aug 22)" value={adjustForm.description} onChange={(e) => setAdjustForm({ ...adjustForm, description: e.target.value })} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAdjustOpen(false)}>Cancel</Button>
+              <Button onClick={submitAdjust}>Save Adjustment</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
 }
+

@@ -27,7 +27,7 @@ ALTER TABLE public.attendances DROP CONSTRAINT IF EXISTS attendances_status_chec
 
 -- 4. Auto-deduct balances when HR sets leave via Attendance Grid
 CREATE OR REPLACE FUNCTION public.handle_grid_leave_status_change()
-RETURNS TRIGGER AS $ $
+RETURNS TRIGGER AS $$
 BEGIN
   -- If old was leave, refund
   IF TG_OP = 'UPDATE' AND OLD.status = 'paid_leave' AND OLD.override_status IS NOT NULL THEN
@@ -51,7 +51,7 @@ BEGIN
 
   RETURN NEW;
 END;
-$ $ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 DROP TRIGGER IF EXISTS tr_grid_leave_status_change ON public.attendance;
 CREATE TRIGGER tr_grid_leave_status_change
