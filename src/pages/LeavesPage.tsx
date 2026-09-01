@@ -80,7 +80,7 @@ export default function LeavesPage() {
 
     // Build policy form state - merge DB data with defaults
     const pf: Record<string, { annual_limit: number; monthly_accrual: number }> = {};
-    ["casual", "sick", "paid"].forEach((t) => {
+    ["casual", "sick", "el_pl"].forEach((t) => {
       const meta = LEAVE_TYPES.find((x) => x.v === t)!;
       const existing = (pols.data || []).find((p: any) => p.leave_type === t);
       pf[t] = {
@@ -158,7 +158,7 @@ export default function LeavesPage() {
     if (!org?.id) return;
     setSavingPolicy(true);
     try {
-      const upserts = ["casual", "sick", "paid"].map((t) => ({
+      const upserts = ["casual", "sick", "el_pl"].map((t) => ({
         org_id: org.id,
         leave_type: t,
         annual_limit: policyForm[t]?.annual_limit ?? 0,
@@ -209,7 +209,7 @@ export default function LeavesPage() {
             try {
               toast({ title: "Processing monthly accrual..." });
               for (const emp of employees) {
-                for (const t of ["casual", "sick", "paid"]) {
+                for (const t of ["casual", "sick", "el_pl"]) {
                   const policy = policies.find(p => p.leave_type === t);
                   if (!policy || policy.monthly_accrual <= 0) continue;
                   
@@ -328,13 +328,13 @@ export default function LeavesPage() {
                     <TableHead>Employee</TableHead>
                     <TableHead className="text-center">Casual (Used / Annual)</TableHead>
                     <TableHead className="text-center">Sick (Used / Annual)</TableHead>
-                    <TableHead className="text-center">Paid (Used / Annual)</TableHead>
+                    <TableHead className="text-center">Earned/PL (Used / Annual)</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {balancesByEmp.map(({ emp, byType }) => (
                       <TableRow key={emp.id}>
                         <TableCell className="font-medium">{emp.name}</TableCell>
-                        {["casual", "sick", "paid"].map((type) => {
+                        {["casual", "sick", "el_pl"].map((type) => {
                           const { annual, used, remaining } = getBalance(byType, type);
                           const pct = annual > 0 ? Math.min(100, (used / annual) * 100) : 0;
                           return (
@@ -365,11 +365,11 @@ export default function LeavesPage() {
             <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>
-                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5, Paid=8 per year.
+                Set annual leave limits and monthly accrual for each leave type. These apply to all employees in your organization. Default values: Casual=12, Sick=5, EL/PL=15 per year.
               </span>
             </div>
 
-            {["casual", "sick", "paid"].map((type) => {
+            {["casual", "sick", "el_pl"].map((type) => {
               const meta = typeMeta(type);
               return (
                 <Card key={type}>
