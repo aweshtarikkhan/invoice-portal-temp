@@ -48,7 +48,9 @@ const empty = {
   is_active: true, notes: "",
   pan: "", bank_account: "", bank_ifsc: "", address: "",
   basic_percent: "50", hra_percent: "20",
-  pf_applicable: false, esic_applicable: false,
+  pf_applicable: false, pf_percent: "12",
+  esic_applicable: false, esic_percent: "0.75",
+  pt_applicable: true, pt_amount: "200",
   grant_portal_access: false, portal_password: "",
   weekly_offs: [],
 };
@@ -155,7 +157,11 @@ export default function EmployeesPage() {
       basic_percent: String(e.basic_percent ?? 50),
       hra_percent: String(e.hra_percent ?? 20),
       pf_applicable: !!e.pf_applicable,
+      pf_percent: String((e.salary_structure as any)?.pf_percent ?? 12),
       esic_applicable: !!e.esic_applicable,
+      esic_percent: String((e.salary_structure as any)?.esic_percent ?? 0.75),
+      pt_applicable: (e.salary_structure as any)?.pt_applicable !== undefined ? !!(e.salary_structure as any)?.pt_applicable : true,
+      pt_amount: String((e.salary_structure as any)?.pt_amount ?? 200),
       grant_portal_access: false,
       portal_password: "",
       weekly_offs: e.weekly_offs || [],
@@ -183,6 +189,8 @@ export default function EmployeesPage() {
       await toggleDailyWages(true);
     }
 
+    const existingStructure = (rows.find(r => r.id === editId) as any)?.salary_structure || {};
+
     const payload: any = {
       org_id: org.id,
       name: form.name.trim(),
@@ -207,6 +215,18 @@ export default function EmployeesPage() {
       pf_applicable: !!form.pf_applicable,
       esic_applicable: !!form.esic_applicable,
       weekly_offs: (org as any).enable_individual_week_offs ? (form.weekly_offs || []) : null,
+      salary_structure: {
+        ...existingStructure,
+        monthly_gross: wageType === "monthly" ? (Number(form.monthly_salary) || 0) : existingStructure.monthly_gross,
+        basic_percent: Number(form.basic_percent) || 50,
+        hra_percent: Number(form.hra_percent) || 20,
+        pf_applicable: !!form.pf_applicable,
+        pf_percent: Number(form.pf_percent) || 12,
+        esic_applicable: !!form.esic_applicable,
+        esic_percent: Number(form.esic_percent) || 0.75,
+        pt_applicable: !!form.pt_applicable,
+        pt_amount: Number(form.pt_amount) || 200,
+      },
     };
 
     const q = editId
@@ -673,12 +693,60 @@ export default function EmployeesPage() {
               </>
             ) : (
               <>
-                <div><Label>Monthly Salary (CTC)</Label><Input type="number" value={form.monthly_salary} onChange={(e) => setForm({ ...form, monthly_salary: e.target.value })} /></div>
+                <div><Label>Monthly Salary (CTC)</Label><Input type="number" value={form.monthly_salary} onChange={(e) => setForm({ ...form, monthly_salary: e.target.value })} placeholder="50000" /></div>
                 <div><Label>Paid Leaves / Month</Label><Input type="number" step="0.5" value={form.paid_leaves_per_month} onChange={(e) => setForm({ ...form, paid_leaves_per_month: e.target.value })} /></div>
-                <div><Label>Basic %</Label><Input type="number" value={form.basic_percent} onChange={(e) => setForm({ ...form, basic_percent: e.target.value })} /></div>
-                <div><Label>HRA %</Label><Input type="number" value={form.hra_percent} onChange={(e) => setForm({ ...form, hra_percent: e.target.value })} /></div>
-                <div className="flex items-center gap-2 mt-4"><Switch checked={form.pf_applicable} onCheckedChange={(v) => setForm({ ...form, pf_applicable: v })} /><Label>PF Applicable (12% of Basic)</Label></div>
-                <div className="flex items-center gap-2 mt-4"><Switch checked={form.esic_applicable} onCheckedChange={(v) => setForm({ ...form, esic_applicable: v })} /><Label>ESIC Applicable (0.75% of gross)</Label></div>
+                <div><Label>Basic %</Label><Input type="number" value={form.basic_percent} onChange={(e) => setForm({ ...form, basic_percent: e.target.value })} placeholder="50" /></div>
+                <div><Label>HRA %</Label><Input type="number" value={form.hra_percent} onChange={(e) => setForm({ ...form, hra_percent: e.target.value })} placeholder="20" /></div>
+                
+                <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 col-span-2 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-xs text-foreground">Deductions & Statutory Settings</span>
+                    <span className="text-[11px] text-muted-foreground">Custom percentage & amounts</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* PF */}
+                    <div className="space-y-1.5 p-2.5 bg-white dark:bg-slate-950 rounded border">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">PF (EPF)</Label>
+                        <Switch checked={form.pf_applicable} onCheckedChange={(v) => setForm({ ...form, pf_applicable: v })} />
+                      </div>
+                      {form.pf_applicable && (
+                        <div className="relative pt-1">
+                          <Input type="number" step="0.5" value={form.pf_percent} onChange={(e) => setForm({ ...form, pf_percent: e.target.value })} placeholder="12" className="h-7 text-xs pr-6 font-medium" />
+                          <span className="absolute right-2 top-2 text-[11px] text-muted-foreground">%</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ESIC */}
+                    <div className="space-y-1.5 p-2.5 bg-white dark:bg-slate-950 rounded border">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">ESIC</Label>
+                        <Switch checked={form.esic_applicable} onCheckedChange={(v) => setForm({ ...form, esic_applicable: v })} />
+                      </div>
+                      {form.esic_applicable && (
+                        <div className="relative pt-1">
+                          <Input type="number" step="0.05" value={form.esic_percent} onChange={(e) => setForm({ ...form, esic_percent: e.target.value })} placeholder="0.75" className="h-7 text-xs pr-6 font-medium" />
+                          <span className="absolute right-2 top-2 text-[11px] text-muted-foreground">%</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* PT */}
+                    <div className="space-y-1.5 p-2.5 bg-white dark:bg-slate-950 rounded border">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold">Prof. Tax (PT)</Label>
+                        <Switch checked={form.pt_applicable} onCheckedChange={(v) => setForm({ ...form, pt_applicable: v })} />
+                      </div>
+                      {form.pt_applicable && (
+                        <div className="relative pt-1">
+                          <span className="absolute left-2 top-2 text-[11px] text-muted-foreground">₹</span>
+                          <Input type="number" value={form.pt_amount} onChange={(e) => setForm({ ...form, pt_amount: e.target.value })} placeholder="200" className="h-7 text-xs pl-5 font-medium" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </>
             )}
 

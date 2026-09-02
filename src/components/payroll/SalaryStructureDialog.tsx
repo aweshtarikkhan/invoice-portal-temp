@@ -114,14 +114,16 @@ export function SalaryStructureDialog({
   ).toFixed(2);
 
   let estPf = 0;
+  const pfRate = (Number(form.pf_percent) || 12) / 100;
   if (form.pf_applicable) {
     const pfBase = Number(form.basic || 0) + Number(form.da || 0);
-    estPf = form.pf_capped ? +(Math.min(pfBase, 15000) * 0.12).toFixed(2) : +(pfBase * 0.12).toFixed(2);
+    estPf = form.pf_capped ? +(Math.min(pfBase, 15000) * pfRate).toFixed(2) : +(pfBase * pfRate).toFixed(2);
   }
 
   let estEsic = 0;
-  if (form.esic_applicable && form.monthly_gross <= 21000) {
-    estEsic = +(totalEarnings * 0.0075).toFixed(2);
+  const esicRate = (Number(form.esic_percent) || 0.75) / 100;
+  if (form.esic_applicable && (form.esic_custom_limit ? true : form.monthly_gross <= 21000)) {
+    estEsic = +(totalEarnings * esicRate).toFixed(2);
   }
 
   const estPt = form.pt_applicable ? Number(form.pt_amount || 200) : 0;
@@ -379,20 +381,35 @@ export function SalaryStructureDialog({
                   </div>
 
                   {/* Other Allowances */}
-                  <div className="space-y-1.5 p-3 rounded-lg border bg-card col-span-1 sm:col-span-2">
+                  <div className="p-3 rounded-lg border bg-card col-span-1 sm:col-span-2 space-y-2">
                     <div className="flex justify-between items-center">
-                      <Label className="font-semibold text-xs">Other Allowances & Benefits</Label>
-                      <span className="text-[10px] text-muted-foreground">Internet, Mobile, Travel, etc.</span>
+                      <Label className="font-semibold text-xs">Other Custom Allowances & Benefits</Label>
+                      <span className="text-[10px] text-muted-foreground">Custom name & amount</span>
                     </div>
-                    <div className="relative">
-                      <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
-                      <Input
-                        type="number"
-                        className="pl-7 h-9 text-sm"
-                        value={form.other_allowances || ""}
-                        onChange={(e) => handleFieldChange("other_allowances", Number(e.target.value))}
-                        placeholder="0"
-                      />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Allowance Name / Purpose</Label>
+                        <Input
+                          type="text"
+                          className="h-9 text-sm"
+                          value={form.other_allowances_label || ""}
+                          onChange={(e) => handleFieldChange("other_allowances_label", e.target.value)}
+                          placeholder="e.g. Internet, Travel, Fuel, Phone"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-[11px] text-muted-foreground">Monthly Amount (₹)</Label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
+                          <Input
+                            type="number"
+                            className="pl-7 h-9 text-sm"
+                            value={form.other_allowances || ""}
+                            onChange={(e) => handleFieldChange("other_allowances", Number(e.target.value))}
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -466,78 +483,143 @@ export function SalaryStructureDialog({
                 <div className="space-y-3">
                   
                   {/* PF Rule */}
-                  <div className="p-3.5 rounded-lg border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <Label className="font-semibold text-sm">Provident Fund (EPF - Employee 12%)</Label>
-                        {form.pf_applicable && (
-                          <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-[10px]">
-                            12% on Basic
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Statutory Indian retirement contribution. Capped at ₹1,800/mo (12% of ₹15,000) or actual.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      {form.pf_applicable && (
-                        <div className="flex items-center gap-1.5">
-                          <Switch
-                            id="pf-cap"
-                            checked={form.pf_capped}
-                            onCheckedChange={(c) => handleFieldChange("pf_capped", c)}
-                          />
-                          <Label htmlFor="pf-cap" className="text-xs text-muted-foreground">₹15k Ceiling</Label>
+                  <div className="p-3.5 rounded-lg border bg-card space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="font-semibold text-sm">Provident Fund (EPF - Employee Contribution)</Label>
+                          {form.pf_applicable && (
+                            <Badge variant="outline" className="text-emerald-700 bg-emerald-50 border-emerald-200 text-[10px]">
+                              {form.pf_percent || 12}% on Basic
+                            </Badge>
+                          )}
                         </div>
-                      )}
-                      <Switch
-                        checked={form.pf_applicable}
-                        onCheckedChange={(c) => handleFieldChange("pf_applicable", c)}
-                      />
+                        <p className="text-xs text-muted-foreground">
+                          Statutory retirement contribution. Default 12% with optional ₹15,000 ceiling.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Switch
+                          checked={form.pf_applicable}
+                          onCheckedChange={(c) => handleFieldChange("pf_applicable", c)}
+                        />
+                      </div>
                     </div>
+
+                    {form.pf_applicable && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">PF Percentage (%)</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              max="100"
+                              className="h-8 text-xs font-semibold"
+                              value={form.pf_percent !== undefined ? form.pf_percent : 12}
+                              onChange={(e) => handleFieldChange("pf_percent", Number(e.target.value))}
+                              placeholder="12"
+                            />
+                            <span className="absolute right-2.5 top-1.5 text-xs text-muted-foreground">%</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">Default 12% on (Basic + DA)</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Statutory Wage Cap</Label>
+                          <div className="flex items-center justify-between p-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 rounded border h-8">
+                            <span className="text-xs text-muted-foreground">Cap at ₹15,000 / mo</span>
+                            <Switch
+                              id="pf-cap"
+                              checked={form.pf_capped}
+                              onCheckedChange={(c) => handleFieldChange("pf_capped", c)}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {form.pf_capped ? `Max deduction ₹${Math.round(15000 * ((form.pf_percent || 12) / 100))}/mo` : "Calculated on actual basic"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* ESIC Rule */}
-                  <div className="p-3.5 rounded-lg border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <Label className="font-semibold text-sm">Employee State Insurance (ESIC - 0.75%)</Label>
-                        {form.monthly_gross <= 21000 ? (
-                          <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200 text-[10px]">
-                            Gross ≤ ₹21k Eligible
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-muted-foreground text-[10px]">
-                            Exempt (&gt; ₹21k)
-                          </Badge>
-                        )}
+                  <div className="p-3.5 rounded-lg border bg-card space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="font-semibold text-sm">Employee State Insurance (ESIC)</Label>
+                          {form.esic_applicable && (
+                            <Badge variant="outline" className="text-blue-700 bg-blue-50 border-blue-200 text-[10px]">
+                              {form.esic_percent || 0.75}% on Gross
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Medical insurance for monthly wages up to ₹21,000 (default 0.75%).
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        Mandatory employee medical insurance for monthly wages up to ₹21,000.
-                      </p>
+                      <Switch
+                        checked={form.esic_applicable}
+                        onCheckedChange={(c) => handleFieldChange("esic_applicable", c)}
+                      />
                     </div>
-                    <Switch
-                      checked={form.esic_applicable}
-                      onCheckedChange={(c) => handleFieldChange("esic_applicable", c)}
-                    />
+
+                    {form.esic_applicable && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">ESIC Percentage (%)</Label>
+                          <div className="relative">
+                            <Input
+                              type="number"
+                              step="0.05"
+                              min="0"
+                              max="100"
+                              className="h-8 text-xs font-semibold"
+                              value={form.esic_percent !== undefined ? form.esic_percent : 0.75}
+                              onChange={(e) => handleFieldChange("esic_percent", Number(e.target.value))}
+                              placeholder="0.75"
+                            />
+                            <span className="absolute right-2.5 top-1.5 text-xs text-muted-foreground">%</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">Statutory standard: 0.75%</span>
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">Wage Limit Check</Label>
+                          <div className="flex items-center justify-between p-1.5 px-2.5 bg-slate-50 dark:bg-slate-900 rounded border h-8">
+                            <span className="text-xs text-muted-foreground">Apply to all (Ignore ₹21k limit)</span>
+                            <Switch
+                              id="esic-limit"
+                              checked={!!form.esic_custom_limit}
+                              onCheckedChange={(c) => handleFieldChange("esic_custom_limit", c)}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">
+                            {form.monthly_gross > 21000 && !form.esic_custom_limit ? "Exempt (> ₹21,000)" : "Eligible for deduction"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Professional Tax (PT) */}
                   <div className="p-3.5 rounded-lg border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="space-y-0.5">
                       <Label className="font-semibold text-sm">Professional Tax (PT)</Label>
-                      <p className="text-xs text-muted-foreground">State statutory tax (Typically ₹200/mo).</p>
+                      <p className="text-xs text-muted-foreground">State statutory tax (Typically ₹200/mo or custom state slab).</p>
                     </div>
                     <div className="flex items-center gap-3">
                       {form.pt_applicable && (
-                        <div className="relative w-24">
+                        <div className="relative w-28">
                           <span className="absolute left-2 top-1.5 text-xs text-muted-foreground">₹</span>
                           <Input
                             type="number"
                             className="pl-6 h-8 text-xs font-semibold"
                             value={form.pt_amount}
                             onChange={(e) => handleFieldChange("pt_amount", Number(e.target.value))}
+                            placeholder="200"
                           />
                         </div>
                       )}
@@ -578,17 +660,36 @@ export function SalaryStructureDialog({
                       </div>
                     </div>
 
-                    <div className="space-y-1.5 p-3 rounded-lg border bg-card col-span-1 sm:col-span-2">
-                      <Label className="font-semibold text-xs">Other Recurring Deductions (₹)</Label>
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
-                        <Input
-                          type="number"
-                          className="pl-7 h-9 text-sm"
-                          value={form.other_deductions || ""}
-                          onChange={(e) => handleFieldChange("other_deductions", Number(e.target.value))}
-                          placeholder="0"
-                        />
+                    {/* Other Custom Deductions */}
+                    <div className="p-3 rounded-lg border bg-card col-span-1 sm:col-span-2 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <Label className="font-semibold text-xs">Other Custom Recurring Deductions</Label>
+                        <span className="text-[10px] text-muted-foreground">Custom name & amount</span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Deduction Name / Purpose</Label>
+                          <Input
+                            type="text"
+                            className="h-9 text-sm"
+                            value={form.other_deductions_label || ""}
+                            onChange={(e) => handleFieldChange("other_deductions_label", e.target.value)}
+                            placeholder="e.g. Uniform, Mess, Security Deposit, Advance"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-[11px] text-muted-foreground">Monthly Deduction (₹)</Label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-2 text-xs text-muted-foreground">₹</span>
+                            <Input
+                              type="number"
+                              className="pl-7 h-9 text-sm"
+                              value={form.other_deductions || ""}
+                              onChange={(e) => handleFieldChange("other_deductions", Number(e.target.value))}
+                              placeholder="0"
+                            />
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -675,6 +776,11 @@ export function SalaryStructureDialog({
                         <span>• Bonus/Incentive:</span> <span>{formatCurrency(form.performance_bonus, currency)}</span>
                       </div>
                     )}
+                    {form.other_allowances > 0 && (
+                      <div className="flex justify-between">
+                        <span>• {form.other_allowances_label || "Other Allw"}:</span> <span>{formatCurrency(form.other_allowances, currency)}</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex justify-between py-1 border-t text-red-600 dark:text-red-400">
@@ -684,12 +790,12 @@ export function SalaryStructureDialog({
                   <div className="pl-2 space-y-1 text-[11px] text-muted-foreground">
                     {form.pf_applicable && (
                       <div className="flex justify-between">
-                        <span>• PF (12%):</span> <span>- {formatCurrency(estPf, currency)}</span>
+                        <span>• PF ({form.pf_percent || 12}%):</span> <span>- {formatCurrency(estPf, currency)}</span>
                       </div>
                     )}
                     {estEsic > 0 && (
                       <div className="flex justify-between">
-                        <span>• ESIC (0.75%):</span> <span>- {formatCurrency(estEsic, currency)}</span>
+                        <span>• ESIC ({form.esic_percent || 0.75}%):</span> <span>- {formatCurrency(estEsic, currency)}</span>
                       </div>
                     )}
                     {estPt > 0 && (
@@ -709,7 +815,7 @@ export function SalaryStructureDialog({
                     )}
                     {estOtherDed > 0 && (
                       <div className="flex justify-between">
-                        <span>• Other:</span> <span>- {formatCurrency(estOtherDed, currency)}</span>
+                        <span>• {form.other_deductions_label || "Other Ded"}:</span> <span>- {formatCurrency(estOtherDed, currency)}</span>
                       </div>
                     )}
                   </div>

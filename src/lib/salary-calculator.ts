@@ -13,6 +13,7 @@ export interface SalaryStructure {
   food_allowance: number;
   performance_bonus: number;
   other_allowances: number;
+  other_allowances_label?: string; // Custom name for other allowances (e.g. "Internet Allowance")
   
   // Overtime & Shift settings
   overtime_rate_per_hour: number; // ₹ per hour (e.g. ₹150 / ₹200)
@@ -21,13 +22,17 @@ export interface SalaryStructure {
 
   // Deductions
   pf_applicable: boolean;
+  pf_percent?: number; // default 12%
   pf_capped: boolean; // Capped at 12% of ₹15,000 = ₹1,800
   esic_applicable: boolean;
+  esic_percent?: number; // default 0.75%
+  esic_custom_limit?: boolean; // allow ESIC calculation regardless of 21k gross limit
   pt_applicable: boolean;
   pt_amount: number;
   tds_amount: number;
   loan_emi: number;
   other_deductions: number;
+  other_deductions_label?: string; // Custom name for other deductions (e.g. "Uniform Charge", "Mess Fee")
   
   payment_mode?: 'bank_transfer' | 'cheque' | 'cash' | 'upi';
 }
@@ -45,19 +50,24 @@ export const DEFAULT_SALARY_STRUCTURE: SalaryStructure = {
   food_allowance: 0,
   performance_bonus: 0,
   other_allowances: 0,
+  other_allowances_label: "Other Allowances",
   
   overtime_rate_per_hour: 0, // 0 = auto-calculated based on daily wage / 9 hrs
   standard_shift_hours: 9,
   overtime_rate_type: 'auto_calculated',
 
   pf_applicable: true,
+  pf_percent: 12,
   pf_capped: true,
   esic_applicable: false,
+  esic_percent: 0.75,
+  esic_custom_limit: false,
   pt_applicable: true,
   pt_amount: 200,
   tds_amount: 0,
   loan_emi: 0,
   other_deductions: 0,
+  other_deductions_label: "Other Deductions",
   payment_mode: 'bank_transfer'
 };
 
@@ -93,8 +103,11 @@ export function generateStandardIndianSalaryStructure(gross: number, options: Pa
   const overtime_rate_per_hour = options.overtime_rate_per_hour !== undefined ? options.overtime_rate_per_hour : autoOvertimeRate;
 
   const pf_applicable = options.pf_applicable !== undefined ? options.pf_applicable : (g >= 15000);
+  const pf_percent = options.pf_percent !== undefined ? Number(options.pf_percent) : 12;
   const pf_capped = options.pf_capped !== undefined ? options.pf_capped : true;
   const esic_applicable = options.esic_applicable !== undefined ? options.esic_applicable : (g <= 21000 && g > 0);
+  const esic_percent = options.esic_percent !== undefined ? Number(options.esic_percent) : 0.75;
+  const esic_custom_limit = options.esic_custom_limit !== undefined ? options.esic_custom_limit : false;
   const pt_applicable = options.pt_applicable !== undefined ? options.pt_applicable : (g >= 10000);
   const pt_amount = pt_applicable ? (options.pt_amount ?? 200) : 0;
 
@@ -111,17 +124,22 @@ export function generateStandardIndianSalaryStructure(gross: number, options: Pa
     food_allowance: food,
     performance_bonus: bonus,
     other_allowances: otherAllw,
+    other_allowances_label: options.other_allowances_label || "Other Allowances",
     overtime_rate_per_hour,
     standard_shift_hours,
     overtime_rate_type: options.overtime_rate_type || 'auto_calculated',
     pf_applicable,
+    pf_percent,
     pf_capped,
     esic_applicable,
+    esic_percent,
+    esic_custom_limit,
     pt_applicable,
     pt_amount,
     tds_amount: options.tds_amount || 0,
     loan_emi: options.loan_emi || 0,
     other_deductions: options.other_deductions || 0,
+    other_deductions_label: options.other_deductions_label || "Other Deductions",
     payment_mode: options.payment_mode || 'bank_transfer',
   };
 }
@@ -143,7 +161,15 @@ export function parseEmployeeSalaryStructure(emp: any): SalaryStructure {
       overtime_rate_per_hour: Number(custom.overtime_rate_per_hour !== undefined ? custom.overtime_rate_per_hour : autoOt),
       standard_shift_hours: stdHours,
       pf_applicable: custom.pf_applicable !== undefined ? !!custom.pf_applicable : !!emp.pf_applicable,
+      pf_percent: custom.pf_percent !== undefined ? Number(custom.pf_percent) : 12,
+      pf_capped: custom.pf_capped !== undefined ? !!custom.pf_capped : true,
       esic_applicable: custom.esic_applicable !== undefined ? !!custom.esic_applicable : !!emp.esic_applicable,
+      esic_percent: custom.esic_percent !== undefined ? Number(custom.esic_percent) : 0.75,
+      esic_custom_limit: !!custom.esic_custom_limit,
+      pt_applicable: custom.pt_applicable !== undefined ? !!custom.pt_applicable : true,
+      pt_amount: custom.pt_amount !== undefined ? Number(custom.pt_amount) : 200,
+      other_deductions_label: custom.other_deductions_label || "Other Deductions",
+      other_allowances_label: custom.other_allowances_label || "Other Allowances",
     };
   }
 
@@ -447,27 +473,29 @@ export function calculateEmployeeSalaryForPeriod({
       overtime_pay
     ).toFixed(2);
 
-    // Deductions Calculation (as per Indian statutory guidelines)
-    // 1. Employee PF: 12% of (Earned Basic + Earned DA)
+    // Deductions Calculation (as per configured rates / Indian statutory guidelines)
+    // 1. Employee PF: pf_percent % of (Earned Basic + Earned DA)
     let pf_employee = 0;
+    const pfRate = (Number(struct.pf_percent) || 12) / 100;
     if (struct.pf_applicable) {
       const pfWage = earned_basic + earned_da;
       if (struct.pf_capped) {
-        // Capped at 12% of ₹15,000 (prorated if LOP)
+        // Capped at pfRate of ₹15,000 (prorated if LOP)
         const cappedBase = Math.min(pfWage, 15000 * prorationRatio);
-        pf_employee = +(cappedBase * 0.12).toFixed(2);
+        pf_employee = +(cappedBase * pfRate).toFixed(2);
       } else {
-        pf_employee = +(pfWage * 0.12).toFixed(2);
+        pf_employee = +(pfWage * pfRate).toFixed(2);
       }
     }
 
-    // 2. Employee ESIC: 0.75% of Gross if monthly gross <= 21,000
+    // 2. Employee ESIC: esic_percent % of Gross
     let esic_employee = 0;
-    if (struct.esic_applicable && baseMonthlyGross <= 21000) {
-      esic_employee = +(total_earned_gross * 0.0075).toFixed(2);
+    const esicRate = (Number(struct.esic_percent) || 0.75) / 100;
+    if (struct.esic_applicable && (struct.esic_custom_limit ? true : baseMonthlyGross <= 21000)) {
+      esic_employee = +(total_earned_gross * esicRate).toFixed(2);
     }
 
-    // 3. Professional Tax (PT): standard ₹200 (if earned gross > 0)
+    // 3. Professional Tax (PT): standard amount (if earned gross > 0)
     let pt_deduction = 0;
     if (struct.pt_applicable && total_earned_gross > 0) {
       pt_deduction = struct.pt_amount || 200;
@@ -495,6 +523,10 @@ export function calculateEmployeeSalaryForPeriod({
 
     const details = {
       salary_structure: struct,
+      pf_percent: struct.pf_percent || 12,
+      esic_percent: struct.esic_percent || 0.75,
+      other_deductions_label: struct.other_deductions_label || 'Other Deductions',
+      other_allowances_label: struct.other_allowances_label || 'Other Allowances',
       attendance_breakdown: {
         total_days: totalDays,
         present_days: present,
@@ -522,16 +554,20 @@ export function calculateEmployeeSalaryForPeriod({
         special_allowance: earned_special_allowance,
         food_allowance: earned_food_allowance,
         other_allowances: earned_other_allowances,
+        other_allowances_label: struct.other_allowances_label || 'Other Allowances',
         bonus_incentive,
         overtime_pay,
       },
       deductions_breakdown: {
         pf_employee,
+        pf_percent: struct.pf_percent || 12,
         esic_employee,
+        esic_percent: struct.esic_percent || 0.75,
         professional_tax: pt_deduction,
         tds: tds_deduction,
         loan_recovery: loan_deduction,
         other_deductions,
+        other_deductions_label: struct.other_deductions_label || 'Other Deductions',
       }
     };
 

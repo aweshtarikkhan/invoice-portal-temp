@@ -90,7 +90,11 @@ export function PayslipModal({
     doc.line(14, y + 2, pageWidth - 14, y + 2);
     y += 8;
 
-    doc.setFont("helvetica", "normal");
+    const otherAllowancesName = slip.details?.other_allowances_label || "Other Allowances";
+    const otherDeductionsName = slip.details?.other_deductions_label || "Other Deductions";
+    const pfPct = slip.details?.pf_percent ?? 12;
+    const esicPct = slip.details?.esic_percent ?? 0.75;
+
     const earnings = [
       { name: "Basic Salary", amount: slip.earned_basic },
       { name: "House Rent Allowance (HRA)", amount: slip.earned_hra },
@@ -99,18 +103,18 @@ export function PayslipModal({
       ...(slip.earned_medical > 0 ? [{ name: "Medical Allowance", amount: slip.earned_medical }] : []),
       ...(slip.earned_special_allowance > 0 ? [{ name: "Special Allowance", amount: slip.earned_special_allowance }] : []),
       ...(slip.earned_food_allowance > 0 ? [{ name: "Food / Meal Allowance", amount: slip.earned_food_allowance }] : []),
-      ...(slip.earned_other_allowances > 0 ? [{ name: "Other Allowances", amount: slip.earned_other_allowances }] : []),
+      ...(slip.earned_other_allowances > 0 ? [{ name: otherAllowancesName, amount: slip.earned_other_allowances }] : []),
       ...(slip.bonus_incentive > 0 ? [{ name: "Performance Bonus / Incentive", amount: slip.bonus_incentive }] : []),
       ...(slip.overtime_pay > 0 ? [{ name: `Overtime Pay (${slip.overtime_hours || 0} hrs @ INR ${slip.overtime_hourly_rate || 0}/hr)`, amount: slip.overtime_pay }] : []),
     ];
 
     const deductions = [
-      ...(slip.pf_employee > 0 ? [{ name: "Provident Fund (EPF 12%)", amount: slip.pf_employee }] : []),
-      ...(slip.esic_employee > 0 ? [{ name: "Employee State Insurance (ESIC)", amount: slip.esic_employee }] : []),
+      ...(slip.pf_employee > 0 ? [{ name: `Provident Fund (EPF ${pfPct}%)`, amount: slip.pf_employee }] : []),
+      ...(slip.esic_employee > 0 ? [{ name: `Employee State Insurance (ESIC ${esicPct}%)`, amount: slip.esic_employee }] : []),
       ...(slip.pt_deduction > 0 ? [{ name: "Professional Tax (PT)", amount: slip.pt_deduction }] : []),
       ...(slip.tds_deduction > 0 ? [{ name: "Tax Deducted at Source (TDS)", amount: slip.tds_deduction }] : []),
       ...(slip.loan_deduction > 0 ? [{ name: "Loan / Advance Recovery", amount: slip.loan_deduction }] : []),
-      ...(slip.other_deductions > 0 ? [{ name: "Other Deductions", amount: slip.other_deductions }] : []),
+      ...(slip.other_deductions > 0 ? [{ name: otherDeductionsName, amount: slip.other_deductions }] : []),
     ];
 
     const maxRows = Math.max(earnings.length, deductions.length);
@@ -283,7 +287,7 @@ export function PayslipModal({
                 )}
                 {slip.earned_other_allowances > 0 && (
                   <div className="flex justify-between">
-                    <span>Other Allowances</span>
+                    <span>{slip.details?.other_allowances_label || "Other Allowances"}</span>
                     <span className="font-semibold">{formatCurrency(slip.earned_other_allowances, currency)}</span>
                   </div>
                 )}
@@ -315,7 +319,7 @@ export function PayslipModal({
               <div className="p-3 space-y-2 text-xs">
                 {slip.pf_employee > 0 ? (
                   <div className="flex justify-between">
-                    <span>Provident Fund (EPF 12%)</span>
+                    <span>Provident Fund (EPF {slip.details?.pf_percent ?? 12}%)</span>
                     <span className="font-semibold text-red-600">{formatCurrency(slip.pf_employee, currency)}</span>
                   </div>
                 ) : (
@@ -327,12 +331,12 @@ export function PayslipModal({
 
                 {slip.esic_employee > 0 ? (
                   <div className="flex justify-between">
-                    <span>Employee State Insurance (ESIC 0.75%)</span>
+                    <span>Employee State Insurance (ESIC {slip.details?.esic_percent ?? 0.75}%)</span>
                     <span className="font-semibold text-red-600">{formatCurrency(slip.esic_employee, currency)}</span>
                   </div>
                 ) : (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>ESIC (0.75%)</span>
+                    <span>ESIC</span>
                     <span>-</span>
                   </div>
                 )}
@@ -360,7 +364,7 @@ export function PayslipModal({
 
                 {slip.other_deductions > 0 && (
                   <div className="flex justify-between">
-                    <span>Other Deductions</span>
+                    <span>{slip.details?.other_deductions_label || "Other Deductions"}</span>
                     <span className="font-semibold text-red-600">{formatCurrency(slip.other_deductions, currency)}</span>
                   </div>
                 )}
