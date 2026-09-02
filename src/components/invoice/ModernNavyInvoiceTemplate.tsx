@@ -87,8 +87,9 @@ export function ModernNavyInvoiceTemplate({
   const ewayBill = invoice?.eway_bill_no;
   const vehicleNo = invoice?.vehicle_number || invoice?.eway_vehicle_no;
 
-  const upiId = org?.upi_id || org?.upi_number || "";
-  const upiName = org?.company_name || org?.business_name || "Merchant";
+  const invoiceBank = invoice?.bank_details || null;
+  const upiId = invoiceBank?.bank_upi_id || org?.upi_id || org?.upi_number || "";
+  const upiName = org?.name || org?.company_name || org?.business_name || "Merchant";
   const showBankDetails = invoice?.metadata?.show_bank_details !== false;
   const showTerms = invoice?.metadata?.show_terms !== false;
   const showNotes = invoice?.metadata?.show_notes !== false;
