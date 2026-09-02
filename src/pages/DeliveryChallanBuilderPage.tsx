@@ -162,7 +162,7 @@ export default function DeliveryChallanBuilderPage() {
     .filter((l) => l.description.trim())
     .map((l) => ({
       description: l.description,
-      quantity: l.quantity,
+      quantity: Number(l.quantity) || 1,
       unit: l.unit,
       batch_no: l.batch_no,
       serial_no: l.serial_no,

@@ -909,7 +909,7 @@ export default function InvoiceBuilderPage() {
         }
       }
       const warnings = await detectNegativeStock(
-        validLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity, name: l.name })),
+        validLines.map((l) => ({ item_id: l.item_id, quantity: Number(l.quantity) || 1, name: l.name })),
         { restorePrevQty: restorePrev }
       );
       if (warnings.length) {
@@ -1076,9 +1076,9 @@ export default function InvoiceBuilderPage() {
             name: l.name,
             description: l.description,
             unit: l.unit || "pcs",
-            quantity: l.quantity,
-            rate: l.rate,
-            discount: l.discount,
+            quantity: Number(l.quantity) || 1,
+            rate: Number(l.rate) || 0,
+            discount: Number(l.discount) || 0,
             discount_type: l.discount_type,
             tax_id: resolvedTaxId,
             tax_amount: l.tax_amount || 0,

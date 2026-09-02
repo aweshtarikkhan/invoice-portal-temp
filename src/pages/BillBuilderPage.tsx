@@ -786,7 +786,7 @@ export default function BillBuilderPage() {
         }
       }
       const warnings = await detectNegativeStock(
-        validLines.map((l) => ({ item_id: l.item_id, quantity: l.quantity, name: l.name })),
+        validLines.map((l) => ({ item_id: l.item_id, quantity: Number(l.quantity) || 1, name: l.name })),
         { restorePrevQty: restorePrev }
       );
       if (warnings.length) {
@@ -854,8 +854,8 @@ export default function BillBuilderPage() {
           item_id: l.item_id,
           description: l.name + (l.description ? `\n${l.description}` : ""),
           unit: l.unit || "pcs",
-          quantity: l.quantity,
-          rate: l.rate,
+          quantity: Number(l.quantity) || 1,
+          rate: Number(l.rate) || 0,
           discount: l.discount_amount || 0,
           tax_rate: l.tax_rate,
           tax_amount: l.tax_amount || 0,

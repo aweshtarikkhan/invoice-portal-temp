@@ -377,7 +377,7 @@ export default function EstimateBuilderPage() {
 
       const linePayloads = lines.filter((l) => l.name.trim()).map((l, i) => ({
         estimate_id: estimateId!, item_id: l.item_id, name: l.name, description: l.description,
-        quantity: l.quantity, rate: l.rate, discount: l.discount, discount_type: l.discount_type,
+        quantity: Number(l.quantity) || 1, rate: Number(l.rate) || 0, discount: Number(l.discount) || 0, discount_type: l.discount_type,
         tax_id: l.tax_id, tax_amount: l.tax_amount, amount: l.amount, sort_order: i,
       }));
 

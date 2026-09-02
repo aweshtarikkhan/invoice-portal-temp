@@ -291,8 +291,8 @@ export default function CreditNoteBuilderPage() {
     if (cnId) {
       const lineInserts = validLines.map((l, i) => ({
         credit_note_id: cnId!, item_id: l.item_id, name: l.name,
-        description: l.description || null, quantity: l.quantity, rate: l.rate,
-        discount: l.discount, discount_type: l.discount_type, tax_id: l.tax_id,
+        description: l.description || null, quantity: Number(l.quantity) || 1, rate: Number(l.rate) || 0,
+        discount: Number(l.discount) || 0, discount_type: l.discount_type, tax_id: l.tax_id,
         tax_amount: l.tax_amount, amount: l.amount, sort_order: i,
       }));
       await supabase.from("credit_note_lines").insert(lineInserts);
