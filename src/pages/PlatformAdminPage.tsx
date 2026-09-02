@@ -12,8 +12,10 @@ import {
   Shield, Building2, BarChart3, Settings2, TrendingUp,
   Users2, CreditCard, Mail, Phone, FileText, UserCircle,
   Calendar, Globe, ChevronDown, ChevronUp, Hash, MessageSquare,
-  CheckCircle2, IndianRupee
+  CheckCircle2, IndianRupee, Image as ImageIcon, Trash2
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
 import { PlansManager } from "@/components/admin/PlansManager";
 import { CouponsManager } from "@/components/admin/CouponsManager";
@@ -89,6 +91,75 @@ export default function PlatformAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  
+  const [adsList, setAdsList] = useState<any[]>([]);
+  const [adTitle, setAdTitle] = useState("");
+  const [adLink, setAdLink] = useState("");
+  const [adFile, setAdFile] = useState<File | null>(null);
+  const [adSlidesCount, setAdSlidesCount] = useState<number>(3);
+  const [adLoading, setAdLoading] = useState(false);
+
+  const fetchAdsData = async () => {
+    // fetch settings
+    const { data: settingsData } = await supabase.from('platform_settings').select('value').eq('key', 'portal_ad_slides').maybeSingle();
+    if (settingsData && settingsData.value) {
+      setAdSlidesCount(parseInt(settingsData.value));
+    }
+
+    // fetch ads
+    const { data: adsData } = await supabase.from('portal_ads').select('*').order('sort_order', { ascending: true });
+    if (adsData) {
+      setAdsList(adsData);
+    }
+  };
+
+  const handleUploadAd = async () => {
+    if (!adFile) return;
+    setAdLoading(true);
+    try {
+      const fileName = `${Date.now()}_${adFile.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage.from('portal-ads').upload(`ads/${fileName}`, adFile);
+      if (uploadError) throw uploadError;
+      
+      const { data: { publicUrl } } = supabase.storage.from('portal-ads').getPublicUrl(`ads/${fileName}`);
+      
+      const { error: insertError } = await supabase.from('portal_ads').insert({
+        image_url: publicUrl,
+        title: adTitle,
+        link_url: adLink,
+        is_active: true,
+        sort_order: adsList.length
+      });
+      if (insertError) throw insertError;
+      
+      setAdTitle("");
+      setAdLink("");
+      setAdFile(null);
+      await fetchAdsData();
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to upload ad: " + e.message);
+    } finally {
+      setAdLoading(false);
+    }
+  };
+
+  const handleDeleteAd = async (id: string) => {
+    if (!confirm("Delete this ad?")) return;
+    await supabase.from('portal_ads').delete().eq('id', id);
+    fetchAdsData();
+  };
+
+  const handleToggleAdActive = async (id: string, is_active: boolean) => {
+    await supabase.from('portal_ads').update({ is_active }).eq('id', id);
+    fetchAdsData();
+  };
+
+  const handleUpdateSlidesCount = async (count: number) => {
+    setAdSlidesCount(count);
+    const { error } = await supabase.from('platform_settings').upsert({ key: 'portal_ad_slides', value: count.toString() }, { onConflict: 'key' });
+    if (error) console.error(error);
+  };
 
   const fetchDashboardData = async (showSpinner = true) => {
     if (showSpinner) setLoading(true);
@@ -114,6 +185,7 @@ export default function PlatformAdminPage() {
 
   useEffect(() => {
     fetchDashboardData();
+    fetchAdsData();
   }, []);
 
   const handleToggleFeature = async (orgId: string, featureKey: string, isEnabled: boolean) => {
@@ -232,6 +304,9 @@ export default function PlatformAdminPage() {
 
           <TabsTrigger value="reviews" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <MessageSquare className="w-4 h-4 mr-2" /> Reviews
+          </TabsTrigger>
+          <TabsTrigger value="ads" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <ImageIcon className="w-4 h-4 mr-2" /> Ads
           </TabsTrigger>
           <TabsTrigger value="requests" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <MessageSquare className="w-4 h-4 mr-2" /> Requests
@@ -667,6 +742,107 @@ export default function PlatformAdminPage() {
             <h3 className="text-xl font-bold text-white mb-2">Customer Reviews</h3>
             <p className="text-slate-400 mb-6 text-sm">Manage the testimonials displayed on the landing page.</p>
             <LandingPageReviewsManager />
+          </div>
+        </TabsContent>
+
+        {/* --- Ads Manager Tab --- */}
+        <TabsContent value="ads" className="space-y-8">
+          <div>
+            <h3 className="text-xl font-bold text-white mb-2">Portal Ad Manager</h3>
+            <p className="text-slate-400 mb-6 text-sm">Manage promotional banners displayed on employee attendance portal.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+              <Card className="bg-slate-900 border-slate-800 text-white">
+                <CardHeader>
+                  <CardTitle className="text-lg">Slides Settings</CardTitle>
+                  <CardDescription className="text-slate-400">Configure how many ads are shown at once</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="slidesCount" className="text-slate-300">Slides Visible at Once</Label>
+                      <Input 
+                        id="slidesCount" 
+                        type="number" 
+                        min="1"
+                        max="10"
+                        value={adSlidesCount} 
+                        onChange={(e) => handleUpdateSlidesCount(parseInt(e.target.value) || 1)}
+                        className="bg-slate-800 border-slate-700 text-white"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-slate-900 border-slate-800 text-white">
+                <CardHeader>
+                  <CardTitle className="text-lg">Upload New Ad</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Title (Optional)</Label>
+                      <Input value={adTitle} onChange={(e) => setAdTitle(e.target.value)} className="bg-slate-800 border-slate-700 text-white" placeholder="Summer Sale" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Link URL (Optional)</Label>
+                      <Input value={adLink} onChange={(e) => setAdLink(e.target.value)} className="bg-slate-800 border-slate-700 text-white" placeholder="https://..." />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Ad Image (Max 2MB)</Label>
+                      <Input type="file" accept="image/*" onChange={(e) => setAdFile(e.target.files?.[0] || null)} className="bg-slate-800 border-slate-700 text-slate-300" />
+                    </div>
+                    <Button onClick={handleUploadAd} disabled={adLoading || !adFile} className="w-full bg-indigo-600 hover:bg-indigo-700">
+                      {adLoading ? "Uploading..." : "Upload Ad"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card className="bg-slate-900 border-slate-800 text-white">
+              <CardHeader>
+                <CardTitle className="text-lg">Active Ads</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {adsList.length === 0 ? (
+                     <p className="text-slate-400 text-sm">No ads uploaded yet.</p>
+                  ) : (
+                    adsList.map(ad => (
+                      <div key={ad.id} className="flex items-center justify-between p-4 bg-slate-800/50 border border-slate-700 rounded-lg">
+                        <div className="flex items-center gap-4">
+                          <div className="w-24 h-16 bg-slate-800 rounded overflow-hidden flex items-center justify-center shrink-0 border border-slate-700">
+                            {ad.image_url ? (
+                              <img src={ad.image_url} alt="Ad" className="w-full h-full object-cover" />
+                            ) : (
+                              <ImageIcon className="w-6 h-6 text-slate-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-medium text-white">{ad.title || 'Untitled Ad'}</h4>
+                            <p className="text-xs text-slate-400 mt-1">{ad.link_url || 'No link'}</p>
+                            <p className="text-[10px] text-slate-500 mt-1">Created: {new Date(ad.created_at).toLocaleDateString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <Switch 
+                            checked={ad.is_active} 
+                            onCheckedChange={(checked) => handleToggleAdActive(ad.id, checked)} 
+                            className="data-[state=checked]:bg-indigo-500"
+                          />
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteAd(ad.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-900/20">
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
           </div>
         </TabsContent>
 
