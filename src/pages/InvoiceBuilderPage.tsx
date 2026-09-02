@@ -784,11 +784,13 @@ export default function InvoiceBuilderPage() {
   // Aggregate Taxes
   const taxBreakdownMap: Record<string, { id: string, name: string, rate: number, amount: number }> = {};
   
+  let maxTaxRate = 0;
   calculatedLines.forEach(line => {
     if (line.tax_id && line.tax_amount > 0) {
       const tax = taxRates.find((t: any) => t.id === line.tax_id);
       if (tax) {
         const rate = Number(tax.rate);
+        if (rate > maxTaxRate) maxTaxRate = rate;
         if (isInterstate) {
           const key = `IGST_${rate}`;
           if (!taxBreakdownMap[key]) taxBreakdownMap[key] = { id: key, name: `IGST @ ${rate}%`, rate, amount: 0 };
@@ -804,6 +806,25 @@ export default function InvoiceBuilderPage() {
       }
     }
   });
+
+  if (maxTaxRate > 0 && (shippingCharge > 0 || expenses > 0)) {
+    const extraTaxBase = shippingCharge + expenses; 
+    const extraTaxAmount = extraTaxBase * (maxTaxRate / 100);
+    if (extraTaxAmount > 0) {
+      if (isInterstate) {
+        const key = `IGST_${maxTaxRate}`;
+        if (!taxBreakdownMap[key]) taxBreakdownMap[key] = { id: key, name: `IGST @ ${maxTaxRate}%`, rate: maxTaxRate, amount: 0 };
+        taxBreakdownMap[key].amount += extraTaxAmount;
+      } else {
+        const cgstKey = `CGST_${maxTaxRate/2}`;
+        const sgstKey = `SGST_${maxTaxRate/2}`;
+        if (!taxBreakdownMap[cgstKey]) taxBreakdownMap[cgstKey] = { id: cgstKey, name: `CGST @ ${maxTaxRate/2}%`, rate: maxTaxRate/2, amount: 0 };
+        if (!taxBreakdownMap[sgstKey]) taxBreakdownMap[sgstKey] = { id: sgstKey, name: `SGST @ ${maxTaxRate/2}%`, rate: maxTaxRate/2, amount: 0 };
+        taxBreakdownMap[cgstKey].amount += extraTaxAmount / 2;
+        taxBreakdownMap[sgstKey].amount += extraTaxAmount / 2;
+      }
+    }
+  }
 
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);

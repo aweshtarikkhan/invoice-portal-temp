@@ -311,7 +311,22 @@ export default function EstimateBuilderPage() {
   const subtotal = lines.reduce((s, l) => s + l.amount, 0);
   const totalDiscount = discountType === "percentage" ? subtotal * (discount / 100) : discount;
   const discountedSubtotal = subtotal - totalDiscount;
-  const totalTax = lines.reduce((s, l) => s + l.tax_amount, 0);
+  let maxTaxRate = 0;
+  lines.forEach(line => {
+    if (line.tax_id) {
+       const tax = taxRates.find((t: any) => t.id === line.tax_id);
+       if (tax) {
+         const rate = Number(tax.rate);
+         if (rate > maxTaxRate) maxTaxRate = rate;
+       }
+    }
+  });
+
+  let baseTotalTax = lines.reduce((s, l) => s + l.tax_amount, 0);
+  if (maxTaxRate > 0 && shippingCharge > 0) {
+    baseTotalTax += shippingCharge * (maxTaxRate / 100);
+  }
+  const totalTax = baseTotalTax;
   const total = discountedSubtotal + totalTax + shippingCharge + adjustment;
   const currency = org?.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
