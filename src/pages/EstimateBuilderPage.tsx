@@ -559,12 +559,12 @@ export default function EstimateBuilderPage() {
               </Select>
               <span className="text-sm font-medium w-24 text-right">-{fmt(totalDiscount)}</span>
             </div>
-            <div className="flex justify-between text-sm"><span>Tax</span><span className="font-medium">{fmt(totalTax)}</span></div>
             <div className="flex items-center gap-2">
               <span className="text-sm flex-1">Shipping</span>
               <Input type="number" className="w-24 h-8 text-xs" value={shippingCharge}
                 onChange={(e) => setShippingCharge(parseFloat(e.target.value) || 0)} />
             </div>
+            <div className="flex justify-between text-sm"><span>Tax</span><span className="font-medium">{fmt(totalTax)}</span></div>
             <div className="flex items-center gap-2">
               <Input className="text-sm h-8 flex-1" value={adjustmentName}
                 onChange={(e) => setAdjustmentName(e.target.value)} />
