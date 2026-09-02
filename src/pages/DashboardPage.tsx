@@ -122,10 +122,10 @@ export default function DashboardPage() {
 
   // HR Data
   const todayStr = format(new Date(), "yyyy-MM-dd");
-  const todayAttendance = attendance.filter(a => (a.date || "").startsWith(todayStr));
-  const presentCount = todayAttendance.filter(a => a.status === "present" || a.status === "half_day").length;
-  const absentCount = todayAttendance.filter(a => a.status === "absent").length;
-  const onLeaveCount = todayAttendance.filter(a => a.status === "leave").length;
+  const todayAttendance = attendance.filter(a => (a.date || a.attendance_date || "").startsWith(todayStr));
+  const presentCount = todayAttendance.filter(a => a.status === "present" || a.status === "half_day" || a.status === "late" || a.status === "wfh" || a.status === "od").length;
+  const absentCount = todayAttendance.filter(a => a.status === "absent" || a.status === "lwp" || a.status === "ncns").length;
+  const onLeaveCount = todayAttendance.filter(a => a.status === "leave" || a.status === "paid_leave" || a.status === "casual" || a.status === "sick" || a.status === "el_pl" || a.status === "comp_off" || a.status === "maternity" || a.status === "approved_leave").length;
   const totalEmps = employees.length || 1;
   const attendanceRate = Math.round((presentCount / totalEmps) * 100) || 0;
 

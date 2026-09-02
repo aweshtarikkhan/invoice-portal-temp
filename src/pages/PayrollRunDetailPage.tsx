@@ -56,9 +56,18 @@ export default function PayrollRunDetailPage() {
       let p = 0, h = 0, pl = 0, ho = 0;
       days.forEach((d) => {
         const s = attMap[`${emp.id}|${format(d, "yyyy-MM-dd")}`];
-        if (s === "present") p++;
-        else if (s === "half_day") h++;
-        else if (s === "paid_leave") pl++;
+        if (s === "present" || s === "wfh" || s === "od" || s === "late") p++;
+        else if (s === "half_day" || s === "half-day") h++;
+        else if (
+          s === "paid_leave" ||
+          s === "approved_leave" ||
+          s === "casual" ||
+          s === "el_pl" ||
+          s === "sick" ||
+          s === "comp_off" ||
+          s === "maternity" ||
+          s === "paternity"
+        ) pl++;
         else if (s === "holiday") ho++;
       });
       const workingDays = days.length - ho;

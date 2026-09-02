@@ -353,16 +353,21 @@ export function calculateEmployeeSalaryForPeriod({
       const log = attLogMap[`${emp.id}|${ds}`];
       const status = log?.status;
 
-      if (status === 'present') {
+      const PRESENT_STATUSES = ['present', 'wfh', 'od', 'on_duty'];
+      const PAID_LEAVE_STATUSES = ['paid_leave', 'approved_leave', 'casual', 'sick', 'el_pl', 'comp_off', 'maternity', 'paternity'];
+
+      if (status && PRESENT_STATUSES.includes(status)) {
         present++;
-      } else if (status === 'half_day' || status === 'half-day' || status === 'late') {
-        if (status === 'half_day' || status === 'half-day') {
-          halfDays++;
-        } else {
-          present++; // Late is marked as present for salary unless specified
-        }
-      } else if (status === 'paid_leave' || status === 'approved_leave') {
+      } else if (status === 'half_day' || status === 'half-day') {
+        halfDays++;
+      } else if (status === 'late') {
+        present++; // Late counts as present for salary calculation
+      } else if (status && PAID_LEAVE_STATUSES.includes(status)) {
         paidLeaves++;
+      } else if (status === 'holiday') {
+        holidaysAndOffs++;
+      } else if (status === 'absent' || status === 'lwp' || status === 'ncns') {
+        absent++;
       } else if (log && log.clock_in_time) {
         // If has clock_in_time without explicit absent status
         present++;

@@ -177,10 +177,42 @@ export default function LeavesPage() {
         
         if (status === "approved" && oldStatus !== "approved") {
           currentUsed += leaveReq.days;
-          toast({ title: "Leave Approved", description: `Balance deducted by ${leaveReq.days} day(s).` });
+          
+          // Auto-mark each leave day in attendances table with correct leave type
+          const start = new Date(leaveReq.start_date);
+          const end = new Date(leaveReq.end_date);
+          const datesToMark: string[] = [];
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            datesToMark.push(d.toISOString().split('T')[0]);
+          }
+          
+          for (const dateStr of datesToMark) {
+            await (supabase as any).from('attendance').upsert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              attendance_date: dateStr,
+              status: leaveReq.leave_type,
+            }, { onConflict: 'employee_id,attendance_date' });
+          }
+          
+          toast({ title: "Leave Approved", description: `Attendance marked as ${leaveReq.leave_type.toUpperCase()} for ${leaveReq.days} day(s).` });
         } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
           currentUsed = Math.max(0, currentUsed - leaveReq.days);
-          toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s).` });
+          
+          // Revert attendance records back to absent for those days
+          const start = new Date(leaveReq.start_date);
+          const end = new Date(leaveReq.end_date);
+          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+            const dateStr = d.toISOString().split('T')[0];
+            await (supabase as any).from('attendance').upsert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              attendance_date: dateStr,
+              status: 'absent',
+            }, { onConflict: 'employee_id,attendance_date' });
+          }
+          
+          toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s). Attendance reverted to Absent.` });
         }
         
         await (supabase as any).from('employee_leave_balances').upsert({
