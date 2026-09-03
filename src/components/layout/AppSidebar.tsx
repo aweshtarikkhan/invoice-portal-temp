@@ -81,7 +81,6 @@ import { useLanguage } from "@/lib/i18n";
   { title: "Payments Received", url: "/payments", icon: CreditCard, addUrl: "/payments/new" },
   { title: "Delivery Challans", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
-  { title: "Statements", url: "/statements", icon: FileSpreadsheet, addUrl: null },
 ];
 
 const purchaseItems = [
