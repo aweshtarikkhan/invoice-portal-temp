@@ -1,5 +1,6 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
+import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function SupportTicketsPage() {
   const org = useAppStore((s) => s.organization);
-  const user = useAppStore((s) => s.user);
+  const { user } = useAuth();
   const { toast } = useToast();
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,39 +64,52 @@ export default function SupportTicketsPage() {
     }
     
     setSubmitting(true);
-    // 1. Create Ticket
-    const { data: ticket, error: ticketErr } = await (supabase as any)
-      .from("tickets")
-      .insert({
-        org_id: org!.id,
-        client_id: newTicket.client_id,
-        subject: newTicket.subject,
-        priority: newTicket.priority,
-        created_by: user!.id,
-        status: "open"
-      }).select().single();
+    try {
+      const currentUserId = user?.id || (await supabase.auth.getUser()).data.user?.id;
+      if (!currentUserId) {
+        toast({ title: "Authentication required", description: "Please ensure you are logged in.", variant: "destructive" });
+        return;
+      }
+
+      // 1. Create Ticket
+      const { data: ticket, error: ticketErr } = await (supabase as any)
+        .from("tickets")
+        .insert({
+          org_id: org!.id,
+          client_id: newTicket.client_id,
+          subject: newTicket.subject,
+          priority: newTicket.priority,
+          created_by: currentUserId,
+          status: "open"
+        }).select().single();
+        
+      if (ticketErr) {
+        toast({ title: "Failed to create ticket", description: ticketErr.message, variant: "destructive" });
+        return;
+      }
       
-    if (ticketErr) {
-      toast({ title: "Failed to create ticket", description: ticketErr.message, variant: "destructive" });
+      // 2. Add initial message
+      if (newTicket.message && ticket?.id) {
+        await (supabase as any)
+          .from("ticket_messages")
+          .insert({
+            ticket_id: ticket.id,
+            sender_type: "agent",
+            sender_id: currentUserId,
+            message: newTicket.message
+          });
+      }
+        
+      toast({ title: "Ticket created successfully" });
+      setIsNewTicketOpen(false);
+      setNewTicket({ client_id: "", subject: "", priority: "medium", message: "" });
+      fetchTickets();
+    } catch (err: any) {
+      console.error("Error creating ticket:", err);
+      toast({ title: "Error creating ticket", description: err?.message || "An unexpected error occurred", variant: "destructive" });
+    } finally {
       setSubmitting(false);
-      return;
     }
-    
-    // 2. Add initial message
-    await (supabase as any)
-      .from("ticket_messages")
-      .insert({
-        ticket_id: ticket.id,
-        sender_type: "agent",
-        sender_id: user!.id,
-        message: newTicket.message
-      });
-      
-    toast({ title: "Ticket created successfully" });
-    setIsNewTicketOpen(false);
-    setNewTicket({ client_id: "", subject: "", priority: "medium", message: "" });
-    setSubmitting(false);
-    fetchTickets();
   };
 
   const filteredTickets = tickets.filter(t => 
