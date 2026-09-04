@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useSubscription } from "@/hooks/use-subscription";
+import { ArrowUpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   LayoutDashboard,
@@ -153,7 +155,8 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut, profile, session } = useAuth();
+    const { signOut, profile, session } = useAuth();
+  const { subscriptionPlan } = useSubscription();
   const org = useAppStore((s) => s.organization);
   const myOrganizations = useAppStore((s) => s.myOrganizations);
   const userRole = useAppStore((s) => s.userRole);
@@ -581,6 +584,18 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {(!subscriptionPlan || subscriptionPlan === 'free') && (
+          <div className="px-4 mt-2 mb-2">
+            <button
+              onClick={() => window.dispatchEvent(new Event('open-plan-modal'))}
+              className={`w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all ${collapsed ? 'p-2 rounded-lg' : 'py-2.5 px-4 rounded-xl'}`}
+              title="Upgrade to Paid Plans"
+            >
+              <ArrowUpCircle className="h-4 w-4 shrink-0" />
+              {!collapsed && <span className="font-semibold text-sm">Upgrade Plan</span>}
+            </button>
+          </div>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t border-slate-800/50 p-4 pb-6 flex flex-col gap-4">
@@ -609,3 +624,9 @@ export function AppSidebar() {
     </Sidebar>
   );
 }
+
+
+
+
+
+
