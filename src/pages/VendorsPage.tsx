@@ -118,7 +118,6 @@ export default function VendorsPage() {
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Download className="mr-2 h-4 w-4" /> Import
           </Button>
-          <Button variant="outline" onClick={() => navigate("/bills/new")}>New Bill</Button>
           <Button onClick={() => { setEditId(null); setForm(empty); setOpen(true); }}>
             <Plus className="h-4 w-4 mr-1" /> Add Vendor
           </Button>

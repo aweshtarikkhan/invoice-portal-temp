@@ -86,10 +86,10 @@ import { useLanguage } from "@/lib/i18n";
 ];
 
 const purchaseItems = [
-  { title: "Vendors", url: "/vendors", icon: Truck, addUrl: null },
+  { title: "Vendor", url: "/vendors", icon: Truck, addUrl: null },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ClipboardList, addUrl: "/purchase-orders/new" },
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
-  { title: "Bills", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
+  { title: "Purchase Invoice", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
 ];
 
