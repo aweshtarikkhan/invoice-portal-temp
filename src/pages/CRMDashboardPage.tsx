@@ -229,7 +229,7 @@ export default function CRMDashboardPage() {
     <div className="container mx-auto p-4 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-white">Sales & CRM Dashboard</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-white">Business CRM Dashboard</h1>
           <p className="text-slate-400 mt-1">Overview of your sales pipeline and activities.</p>
         </div>
       </div>

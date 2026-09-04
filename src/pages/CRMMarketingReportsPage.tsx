@@ -125,7 +125,7 @@ export default function CRMMarketingReportsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">CRM & Marketing Reports</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Business CRM & Marketing Reports</h1>
         <p className="text-muted-foreground">Analyze your sales pipeline, lead sources, and marketing campaigns.</p>
       </div>
 

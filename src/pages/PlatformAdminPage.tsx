@@ -79,7 +79,7 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   plan_2: "Sales & Inventory",
   plan_3: "Business Suite",
   plan_4: "HRMS",
-  plan_5: "CRM",
+  plan_5: "Business CRM",
   plan_6: "Marketing",
   plan_outreach: "Customer Outreach"
 };

@@ -142,7 +142,7 @@ const ADMIN_GROUP_ITEMS: Record<string, { label: string; items: any[] }> = {
   purchases: { label: "Purchases", items: purchaseItems },
   accounting: { label: "Banking", items: accountingItems },
   people: { label: "Business HR", items: peopleItems },
-  crm: { label: "CRM", items: crmItems },
+  crm: { label: "Business CRM", items: crmItems },
   marketing: { label: "Marketing", items: marketingItems },
 };
 
