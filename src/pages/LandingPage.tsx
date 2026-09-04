@@ -174,9 +174,9 @@ export default function LandingPage() {
             <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-8 w-auto object-contain" />
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-            <a href="#features" className="hover:text-foreground">{L.nav_features}</a>
-            <a href="#compare" className="hover:text-foreground">{L.nav_compare}</a>
-            <a href="#pricing" className="hover:text-foreground">{L.nav_pricing}</a>
+            <a href="#features" className="hover:text-foreground font-bold">{L.nav_features}</a>
+            <a href="#compare" className="hover:text-foreground font-bold">{L.nav_compare}</a>
+            <a href="#pricing" className="hover:text-foreground font-bold">{L.nav_pricing}</a>
           </nav>
           <div className="flex items-center gap-2">
             
@@ -591,8 +591,8 @@ export default function LandingPage() {
             <span>© {new Date().getFullYear()} Assay Biz Invoice. Made in India.</span>
           </div>
           <div className="flex items-center gap-5">
-            <a href="#features" className="hover:text-foreground">Features</a>
-            <a href="#pricing" className="hover:text-foreground">Pricing</a>
+            <a href="#features" className="hover:text-foreground font-bold">Features</a>
+            <a href="#pricing" className="hover:text-foreground font-bold">Pricing</a>
             <Link to="/login" className="hover:text-foreground">Sign in</Link>
             
           </div>
@@ -601,4 +601,5 @@ export default function LandingPage() {
     </div>
   );
 }
+
 
