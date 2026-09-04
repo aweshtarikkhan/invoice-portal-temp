@@ -25,7 +25,7 @@ export const DOCUMENT_TEMPLATES = [
   },
   {
     id: "classic_tabular",
-    name: "Classic Tabular (New)",
+    name: "Classic Tabular",
     description: "Detailed tabular format matching standard Indian tax invoice.",
     preview: "bg-slate-50 border-slate-900/20",
     features: ["Classic Tabular layout", "Amount in words", "Bank details & QR", "Custom Tax Summary"],
@@ -33,7 +33,7 @@ export const DOCUMENT_TEMPLATES = [
   },
   {
     id: "modern_navy",
-    name: "Modern Navy Yellow (New)",
+    name: "Modern Navy Yellow",
     description: "Sleek navy and yellow themed template.",
     preview: "bg-blue-50 border-blue-900/20",
     features: ["Modern Navy layout", "Yellow accents", "Amount in words", "Bank details & QR", "Custom Tax Summary"],
@@ -41,7 +41,7 @@ export const DOCUMENT_TEMPLATES = [
   },
   {
     id: "modern_teal",
-    name: "Modern Teal (New)",
+    name: "Modern Teal",
     description: "Professional teal themed modern invoice.",
     preview: "bg-teal-50 border-teal-900/20",
     features: ["Modern Teal layout", "Amount in words", "Bank details & QR", "Custom Tax Summary"],
@@ -49,7 +49,7 @@ export const DOCUMENT_TEMPLATES = [
   },
   {
     id: "modern_crimson",
-    name: "Modern Crimson (New)",
+    name: "Modern Crimson",
     description: "Professional crimson/red themed modern invoice.",
     preview: "bg-rose-50 border-rose-900/20",
     features: ["Modern Crimson layout", "Amount in words", "Bank details & QR", "Custom Tax Summary"],

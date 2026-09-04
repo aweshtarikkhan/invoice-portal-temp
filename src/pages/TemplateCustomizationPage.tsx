@@ -1,3 +1,4 @@
+import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -19,10 +20,10 @@ const TEMPLATE_STYLES = [
   { id: "standard_gst", name: "Standard GST", description: "Indian GST compliant invoice with HSN/SAC, explicit CGST/SGST/IGST breakdown, and E-Way Bill details." },
   { id: "corporate_blue", name: "Corporate Blue GST", description: "Modern professional blue GST template with detailed tax breakdown, amount in words, bank details & QR code." },
     { id: "professional_navy", name: "Professional Navy GST", description: "Classic professional navy template matching standard business format with strict table borders." },
-  { id: "classic_tabular", name: "Classic Tabular (New)", description: "Detailed tabular format matching standard Indian tax invoice." },
-  { id: "modern_navy", name: "Modern Navy Yellow (New)", description: "Sleek navy and yellow themed template." },
-  { id: "modern_teal", name: "Modern Teal (New)", description: "Professional teal themed modern invoice." },
-  { id: "modern_crimson", name: "Modern Crimson (New)", description: "Professional crimson/red themed modern invoice." },
+  { id: "classic_tabular", name: "Classic Tabular", description: "Detailed tabular format matching standard Indian tax invoice." },
+  { id: "modern_navy", name: "Modern Navy Yellow", description: "Sleek navy and yellow themed template." },
+  { id: "modern_teal", name: "Modern Teal", description: "Professional teal themed modern invoice." },
+  { id: "modern_crimson", name: "Modern Crimson", description: "Professional crimson/red themed modern invoice." },
 ];
 
 const FONTS = [
@@ -34,6 +35,83 @@ const ACCENT_COLORS = [
   "#2563eb", "#0891b2", "#059669", "#d97706", "#dc2626",
   "#7c3aed", "#db2777", "#1d4ed8", "#374151", "#0d9488",
 ];
+
+
+const SAMPLE_PREVIEW_DATA = {
+  invoice: {
+    id: "sample-preview-inv",
+    invoice_number: "INV-2026-0001",
+    issue_date: "2026-09-04",
+    due_date: "2026-09-18",
+    subtotal: 25000,
+    tax_total: 4500,
+    total_tax: 4500,
+    total: 29500,
+    balance_due: 29500,
+    amount_paid: 0,
+    total_discount: 0,
+    shipping_charge: 0,
+    adjustment: 0,
+    currency_code: "INR",
+    notes: "Thank you for your business. Please remit payment by the due date.",
+    terms: "1. Payment is due within 14 days of invoice date.\n2. Goods once sold will not be taken back.\n3. Subject to local jurisdiction.",
+    clients: {
+      display_name: "Acme Technologies Pvt Ltd",
+      company_name: "Acme Technologies Pvt Ltd",
+      tax_number: "27AABCU9603R1ZM",
+      phone: "+91 98765 43210",
+      email: "billing@acmetech.com",
+    },
+    billing_address: JSON.stringify({
+      street: "Plot 42, Tech City, Sector 5",
+      city: "Mumbai",
+      state: "Maharashtra",
+      zip: "400076",
+      country: "India",
+    }),
+    shipping_address: JSON.stringify({
+      street: "Plot 42, Tech City, Sector 5",
+      city: "Mumbai",
+      state: "Maharashtra",
+      zip: "400076",
+      country: "India",
+    }),
+    place_of_supply: "Maharashtra",
+  },
+  lines: [
+    {
+      id: "line-1",
+      item_name: "Enterprise Software License",
+      description: "Annual multi-user billing & inventory management module",
+      hsn_code: "998313",
+      quantity: 1,
+      unit: "pcs",
+      rate: 15000,
+      discount_amount: 0,
+      tax_rate: 18,
+      tax_name: "GST 18%",
+      line_total: 17700,
+    },
+    {
+      id: "line-2",
+      item_name: "Cloud Integration & Setup",
+      description: "Data migration, staff onboarding and setup assistance",
+      hsn_code: "998314",
+      quantity: 1,
+      unit: "hrs",
+      rate: 10000,
+      discount_amount: 0,
+      tax_rate: 18,
+      tax_name: "GST 18%",
+      line_total: 11800,
+    },
+  ],
+  taxBreakdown: [
+    { name: "CGST (9%)", amount: 2250, rate: 9 },
+    { name: "SGST (9%)", amount: 2250, rate: 9 },
+  ],
+  fmt: (n) => "₹" + (Number(n) || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+};
 
 export default function TemplateCustomizationPage() {
   const org = useAppStore((s) => s.organization);
@@ -230,43 +308,51 @@ export default function TemplateCustomizationPage() {
 
       {/* Live Preview */}
       <Card>
-        <CardHeader><CardTitle className="text-base">Preview</CardTitle></CardHeader>
-        <CardContent>
-          <div
-            className="border rounded-lg p-6 space-y-4"
-            style={{ fontFamily: font }}
-          >
-            <div className="flex justify-between items-start">
-              <div className="flex items-center gap-3">
-                {showLogo && logoUrl && <img src={logoUrl} alt="Logo" className="h-10 w-10 object-contain" />}
-                <div>
-                  <h3 className="font-bold" style={{ color: accentColor }}>{org?.name || "Your Company"}</h3>
-                  <p className="text-xs text-muted-foreground">{org?.email}</p>
-                </div>
-              </div>
-              <div className="text-right">
-                <h2 className="text-xl font-bold" style={{ color: accentColor }}>INVOICE</h2>
-                <p className="text-xs text-muted-foreground">INV-2026-0001</p>
-                <Badge variant="outline" className="mt-2">{PAPER_SIZES.find((size) => size.id === paperSize)?.name}</Badge>
-              </div>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base font-bold">Live Document Preview</CardTitle>
+              <p className="text-xs text-muted-foreground mt-0.5">Accurate visual representation of the generated invoice matching your chosen style, colors, logo, and paper size.</p>
             </div>
-            <div className="border-t pt-3">
-              <div className="grid grid-cols-4 text-xs font-medium pb-2" style={{ color: accentColor }}>
-                <span>Item</span><span className="text-right">Qty</span><span className="text-right">Rate</span><span className="text-right">Amount</span>
-              </div>
-              <div className="grid grid-cols-4 text-xs py-1 border-t">
-                <span>Web Design</span><span className="text-right">1</span><span className="text-right">₹5,000</span><span className="text-right">₹5,000</span>
-              </div>
-              <div className="grid grid-cols-4 text-xs py-1 border-t">
-                <span>Hosting</span><span className="text-right">12</span><span className="text-right">₹50</span><span className="text-right">₹600</span>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <div className="text-right text-sm space-y-1">
-                <div className="flex justify-between gap-8"><span className="text-muted-foreground">Subtotal</span><span>₹5,600</span></div>
-                <div className="flex justify-between gap-8 font-bold" style={{ color: accentColor }}><span>Total</span><span>₹5,600</span></div>
-              </div>
-            </div>
+            <Badge variant="outline" className="text-xs">{PAPER_SIZES.find((size) => size.id === paperSize)?.name || "A4"}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="flex justify-center bg-slate-100/70 p-4 sm:p-8 rounded-b-lg overflow-x-auto border-t">
+          <div className="w-full max-w-[794px] bg-white rounded-lg shadow-md border overflow-hidden">
+            <StyledInvoiceTemplate
+              org={{
+                ...org,
+                name: org?.name || "Acme Enterprises",
+                legal_name: org?.legal_name || org?.name || "Acme Enterprises Private Limited",
+                gst_number: org?.gst_number || "27AABCS1429B1Z",
+                email: org?.email || "billing@acme.com",
+                phone: org?.phone || "+91 98200 12345",
+                address: org?.address || JSON.stringify({
+                  street: "101 Skyline Heights, Commercial Hub",
+                  city: "Mumbai",
+                  state: "Maharashtra",
+                  zip: "400001",
+                  country: "India",
+                }),
+                bank_name: org?.bank_name || "HDFC Bank",
+                bank_account_number: org?.bank_account_number || "50200012345678",
+                bank_ifsc: org?.bank_ifsc || "HDFC0000123",
+                bank_branch: org?.bank_branch || "Fort, Mumbai",
+                upi_id: org?.upi_id || "acme@hdfcbank",
+                template_style: style,
+                template_accent_color: accentColor,
+                template_font: font,
+                template_show_logo: showLogo,
+                logo_url: logoUrl || org?.logo_url || "",
+                template_paper_size: paperSize,
+              }}
+              invoice={SAMPLE_PREVIEW_DATA.invoice}
+              lines={SAMPLE_PREVIEW_DATA.lines}
+              fmt={SAMPLE_PREVIEW_DATA.fmt}
+              type="invoice"
+              taxBreakdown={SAMPLE_PREVIEW_DATA.taxBreakdown}
+              isInterstate={false}
+            />
           </div>
         </CardContent>
       </Card>
