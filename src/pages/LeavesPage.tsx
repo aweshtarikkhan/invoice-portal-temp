@@ -186,14 +186,18 @@ export default function LeavesPage() {
             datesToMark.push(d.toISOString().split('T')[0]);
           }
           
-          for (const dateStr of datesToMark) {
-            await (supabase as any).from('attendance').upsert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              attendance_date: dateStr,
-              status: leaveReq.leave_type,
-            }, { onConflict: 'employee_id,attendance_date' });
-          }
+                      for (const dateStr of datesToMark) {
+              let attStatus = 'paid_leave';
+              if (leaveReq.leave_type === 'half_day') attStatus = 'half_day';
+              if (leaveReq.leave_type === 'unpaid') attStatus = 'absent';
+              
+              await (supabase as any).from('attendance').upsert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                attendance_date: dateStr,
+                status: attStatus,
+              }, { onConflict: 'employee_id,attendance_date' });
+            }
           
           toast({ title: "Leave Approved", description: `Attendance marked as ${leaveReq.leave_type.toUpperCase()} for ${leaveReq.days} day(s).` });
         } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
@@ -215,16 +219,23 @@ export default function LeavesPage() {
           toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s). Attendance reverted to Absent.` });
         }
         
-        await (supabase as any).from('employee_leave_balances').upsert({
-          org_id: org.id,
-          employee_id: leaveReq.employee_id,
-          leave_type: leaveReq.leave_type,
-          used: currentUsed
-        }, { onConflict: 'employee_id,leave_type' });
-        
-      } catch (e) {
-        console.error(e);
-      }
+        if (bData?.id) {
+            await (supabase as any).from('employee_leave_balances').update({
+              used: currentUsed
+            }).eq('id', bData.id);
+          } else {
+            await (supabase as any).from('employee_leave_balances').insert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              leave_type: leaveReq.leave_type,
+              used: currentUsed
+            });
+          }
+          
+        } catch (e) {
+          console.error("Error updating leave balance:", e);
+          toast({ title: "Balance update failed", description: "Failed to update leave balance.", variant: "destructive" });
+        }
     }
     load();
   };
@@ -676,4 +687,5 @@ export default function LeavesPage() {
       </div>
     );
 }
+
 
