@@ -409,7 +409,7 @@ export default function DashboardPage() {
         {/* CRM */}
         <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
           <CardHeader className="pb-2 flex flex-row items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-slate-600">CRM & Marketing</CardTitle>
+            <CardTitle className="text-sm font-semibold text-slate-600">CRM & Promotion</CardTitle>
             <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center">
               <TrendingUp className="w-3 h-3 mr-1" /> {newLeadsCount} New
             </span>
