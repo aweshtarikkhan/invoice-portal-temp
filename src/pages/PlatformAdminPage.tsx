@@ -81,7 +81,7 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   plan_4: "HRMS",
   plan_5: "Business CRM",
   plan_6: "Business Promotion",
-  plan_outreach: "Customer Outreach"
+  plan_outreach: "Business Integration"
 };
 
 export default function PlatformAdminPage() {
@@ -243,10 +243,10 @@ export default function PlatformAdminPage() {
     { id: "plan_2", label: "📄 Sales & Inventory" },
     { id: "plan_3", label: "🏢 Business Suite" },
     { id: "plan_4", label: "👥 HRMS" },
-    { id: "plan_5", label: "🤝 CRM" },
-    { id: "plan_6", label: "📈 Marketing" }
-  ,
-      { id: "plan_outreach", label: "💬 Customer Outreach" }];
+    { id: "plan_5", label: "🤝 Business CRM" },
+    { id: "plan_6", label: "📈 Business Promotion" },
+    { id: "plan_outreach", label: "💬 Business Integration" }
+  ];
 
   const handleUpdateFeatureRequest = async (reqId: string, status: string) => {
     await supabase.from("feature_requests").update({ status }).eq("id", reqId);
