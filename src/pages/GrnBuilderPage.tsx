@@ -42,6 +42,7 @@ export default function GrnBuilderPage() {
   const [items, setItems] = useState<any[]>([]);
   const [warehouses, setWarehouses] = useState<any[]>([]);
   const [branches, setBranches] = useState<any[]>([]);
+  const [taxRates, setTaxRates] = useState<any[]>([]);
   const [pos, setPos] = useState<any[]>([]);
   const [poId, setPoId] = useState<string>("");
   const [vendorId, setVendorId] = useState("");
@@ -59,23 +60,28 @@ export default function GrnBuilderPage() {
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
-      const [v, it, wh, br, p, o] = await Promise.all([
-        (supabase as any).from("vendors").select("id,name").eq("org_id", org.id).order("name"),
-        (supabase as any).from("items").select("id,name,track_batches,track_serials,purchase_price").eq("org_id", org.id).order("name"),
-        (supabase as any).from("warehouses").select("id,name").eq("org_id", org.id),
+      const [v, it, wh, br, p, o, tr] = await Promise.all([
+        (supabase as any).from("vendors").select("id,name,display_name").eq("org_id", org.id).order("name"),
+        (supabase as any).from("items").select("id,name,track_batches,track_serials,purchase_price,purchase_price_type,tax_id,sku").eq("org_id", org.id).order("name"),
+        (supabase as any).from("warehouses").select("id,name,is_default").eq("org_id", org.id),
         (supabase as any).from("branches").select("id,name,is_default").eq("org_id", org.id),
         (supabase as any).from("purchase_orders").select("id,po_number,vendor_id,warehouse_id,branch_id").eq("org_id", org.id).in("status", ["sent", "partial", "draft"]).order("po_date", { ascending: false }),
         (supabase as any).from("organizations").select("grn_next_number,grn_prefix").eq("id", org.id).maybeSingle(),
+        (supabase as any).from("tax_rates").select("*").eq("org_id", org.id),
       ]);
       setVendors(v.data || []);
       setItems(it.data || []);
       setWarehouses(wh.data || []);
       setBranches(br.data || []);
       setPos(p.data || []);
-      const def = (br.data || []).find((x: any) => x.is_default);
-      if (def) setBranchId(def.id);
+      setTaxRates(tr.data || []);
+      const defBr = (br.data || []).find((x: any) => x.is_default);
+      if (defBr) setBranchId(defBr.id);
+      const defWh = (wh.data || []).find((x: any) => x.is_default);
+      if (defWh) setWarehouseId(defWh.id);
       if (!id) {
         const prefix = o.data?.grn_prefix || "GRN-";
+        const next = o.data?.grn_next_number || 1;
         setGrnNumber(formatSequenceNumber(prefix, next, "GRN"));
         if (poFromQuery) await loadFromPo(poFromQuery);
       } else {
@@ -238,24 +244,42 @@ export default function GrnBuilderPage() {
         <CardContent className="pt-5 grid grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <Label>Purchase Order</Label>
-            <Select value={poId} onValueChange={loadFromPo}>
+            <Select value={poId || undefined} onValueChange={loadFromPo}>
               <SelectTrigger><SelectValue placeholder="Select PO (optional)" /></SelectTrigger>
-              <SelectContent>{pos.map(p => <SelectItem key={p.id} value={p.id}>{p.po_number}</SelectItem>)}</SelectContent>
+              <SelectContent className="z-50 max-h-60">
+                {pos.length === 0 ? (
+                  <SelectItem value="none" disabled>No pending POs</SelectItem>
+                ) : (
+                  pos.map(p => <SelectItem key={p.id} value={p.id}>{p.po_number}</SelectItem>)
+                )}
+              </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Vendor *</Label>
-            <Select value={vendorId} onValueChange={setVendorId}>
+            <Select value={vendorId || undefined} onValueChange={setVendorId}>
               <SelectTrigger><SelectValue placeholder="Select vendor" /></SelectTrigger>
-              <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.display_name}</SelectItem>)}</SelectContent>
+              <SelectContent className="z-50 max-h-60">
+                {vendors.length === 0 ? (
+                  <SelectItem value="none" disabled>No vendors found</SelectItem>
+                ) : (
+                  vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.display_name || v.name || "Vendor"}</SelectItem>)
+                )}
+              </SelectContent>
             </Select>
           </div>
           <div>
             <Label>Warehouse</Label>
             <div className="flex gap-2">
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger><SelectValue placeholder="Warehouse" /></SelectTrigger>
-                <SelectContent>{warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>)}</SelectContent>
+              <Select value={warehouseId || undefined} onValueChange={setWarehouseId}>
+                <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                <SelectContent className="z-50 max-h-60">
+                  {warehouses.length === 0 ? (
+                    <SelectItem value="none" disabled>No warehouses found</SelectItem>
+                  ) : (
+                    warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name} {w.is_default ? "(Default)" : ""}</SelectItem>)
+                  )}
+                </SelectContent>
               </Select>
               <Button
                 type="button"
@@ -271,9 +295,15 @@ export default function GrnBuilderPage() {
           </div>
           <div>
             <Label>Branch</Label>
-            <Select value={branchId} onValueChange={setBranchId}>
-              <SelectTrigger><SelectValue placeholder="Branch" /></SelectTrigger>
-              <SelectContent>{branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
+            <Select value={branchId || undefined} onValueChange={setBranchId}>
+              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectContent className="z-50 max-h-60">
+                {branches.length === 0 ? (
+                  <SelectItem value="none" disabled>No branches found</SelectItem>
+                ) : (
+                  branches.map(b => <SelectItem key={b.id} value={b.id}>{b.name} {b.is_default ? "(Default)" : ""}</SelectItem>)
+                )}
+              </SelectContent>
             </Select>
           </div>
           <div><Label>GRN #</Label><Input value={grnNumber} onChange={e => setGrnNumber(e.target.value)} /></div>
@@ -302,9 +332,19 @@ export default function GrnBuilderPage() {
                 return (
                   <TableRow key={i}>
                     <TableCell>
-                      <Select value={l.item_id} onValueChange={(v) => pickItem(i, v)}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Item" /></SelectTrigger>
-                        <SelectContent>{items.map(x => <SelectItem key={x.id} value={x.id}>{x.name}</SelectItem>)}</SelectContent>
+                      <Select value={l.item_id || undefined} onValueChange={(v) => pickItem(i, v)}>
+                        <SelectTrigger className="h-9"><SelectValue placeholder="Select item" /></SelectTrigger>
+                        <SelectContent className="z-50 max-h-60">
+                          {items.length === 0 ? (
+                            <SelectItem value="none" disabled>No items found</SelectItem>
+                          ) : (
+                            items.map(x => (
+                              <SelectItem key={x.id} value={x.id}>
+                                {x.name} {x.sku ? `(${x.sku})` : ""}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell><Input value={l.description} onChange={e => { const x = [...lines]; x[i].description = e.target.value; setLines(x); }} /></TableCell>
