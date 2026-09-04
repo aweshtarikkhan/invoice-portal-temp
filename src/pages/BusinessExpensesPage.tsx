@@ -31,7 +31,7 @@ import {
 const CATEGORIES = [
   "Salary", "Rent", "Electricity", "Internet", "Office Supplies",
   "Software/Subscriptions", "Transportation", "Insurance", "Maintenance",
-  "Marketing", "Legal/Accounting", "Taxes & Fees", "Miscellaneous",
+  "Marketing", "Legal/Accounting", "Taxes & Fees", "Others",
 ];
 
 const CHART_COLORS = [

@@ -24,7 +24,8 @@ const CATEGORY_ACCOUNT_MAP: Record<string, { code: string; name: string }> = {
   "Marketing":             { code: "5010", name: "Marketing Expense" },
   "Legal/Accounting":      { code: "5011", name: "Legal & Accounting Expense" },
   "Taxes & Fees":          { code: "5012", name: "Taxes & Fees" },
-  "Miscellaneous":         { code: "5099", name: "Miscellaneous Expense" },
+  "Others":                { code: "5099", name: "Other Expenses" },
+  "Miscellaneous":         { code: "5099", name: "Other Expenses" },
 };
 
 const CASH_ACCOUNT = { code: "1001", name: "Cash & Bank" };
@@ -86,7 +87,7 @@ export async function createExpenseJournalEntry(
   if (description?.startsWith("Payroll —")) return;
 
   try {
-    const categoryInfo = CATEGORY_ACCOUNT_MAP[category] || CATEGORY_ACCOUNT_MAP["Miscellaneous"];
+    const categoryInfo = CATEGORY_ACCOUNT_MAP[category] || CATEGORY_ACCOUNT_MAP["Others"] || CATEGORY_ACCOUNT_MAP["Miscellaneous"];
 
     // Ensure both accounts exist
     const [expenseAccountId, cashAccountId] = await Promise.all([
