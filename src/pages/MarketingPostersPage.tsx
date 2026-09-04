@@ -21,6 +21,7 @@ import html2canvas from "html2canvas";
 import { removeBackground } from '@imgly/background-removal';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { ShareCampaignDialog } from "@/components/marketing/ShareCampaignDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 
 type PosterTemplate = {
   id: string;
@@ -140,6 +141,14 @@ export default function MarketingPostersPage() {
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const [sharePosterDataUrl, setSharePosterDataUrl] = useState<string | null>(null);
   const [preparingShare, setPreparingShare] = useState(false);
+
+  // Upload Local Post State
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [customPostTitle, setCustomPostTitle] = useState("");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFilePreview, setSelectedFilePreview] = useState<string | null>(null);
+  const [uploadingCustom, setUploadingCustom] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadTemplates();
@@ -261,6 +270,19 @@ export default function MarketingPostersPage() {
           default_text: "Wishing you a happy " + f
        });
     });
+
+    // Load custom uploaded posters from localStorage
+    const storageKey = `custom_posters_${org?.id || 'default'}`;
+    let customList: PosterTemplate[] = [];
+    const stored = localStorage.getItem(storageKey);
+    if (stored) {
+      try {
+        customList = JSON.parse(stored);
+      } catch (e) {
+        console.error("Failed to parse custom posters", e);
+      }
+    }
+    processedData = [...customList, ...processedData];
 
     setTemplates(processedData);
     setLoading(false);
@@ -558,6 +580,170 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
     }
   };
 
+  const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedFile(file);
+    if (!customPostTitle) {
+      setCustomPostTitle(file.name.replace(/\.[^/.]+$/, ""));
+    }
+    const reader = new FileReader();
+    reader.onload = () => setSelectedFilePreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleUploadCustomPost = async () => {
+    if (!selectedFile) return;
+    setUploadingCustom(true);
+    try {
+      let imageUrl = "";
+
+      // Try uploading to Supabase storage
+      try {
+        const fileExt = selectedFile.name.split('.').pop() || 'png';
+        const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+        const filePath = `custom-posters/${org?.id || 'general'}/${fileName}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('portal-ads')
+          .upload(filePath, selectedFile, { upsert: true });
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage.from('portal-ads').getPublicUrl(filePath);
+          imageUrl = publicUrl;
+        }
+      } catch (e) {
+        console.warn("Storage upload failed, falling back to data URL:", e);
+      }
+
+      if (!imageUrl && selectedFilePreview) {
+        imageUrl = selectedFilePreview;
+      }
+
+      const postTitle = customPostTitle.trim() || selectedFile.name.replace(/\.[^/.]+$/, "") || "Custom Promotion";
+      const newTemplate: PosterTemplate = {
+        id: `custom_${Date.now()}`,
+        festival_name: "Custom Posts",
+        bg_image_url: imageUrl,
+        default_text: postTitle,
+      };
+
+      const storageKey = `custom_posters_${org?.id || 'default'}`;
+      let existing: PosterTemplate[] = [];
+      try {
+        existing = JSON.parse(localStorage.getItem(storageKey) || "[]");
+      } catch (e) {}
+      const updated = [newTemplate, ...existing];
+      localStorage.setItem(storageKey, JSON.stringify(updated));
+
+      setTemplates(prev => [newTemplate, ...prev.filter(t => t.id !== newTemplate.id)]);
+      setSelectedCategory("Custom Posts");
+      setSelectedTemplate(newTemplate);
+      buildDefaultPoster(newTemplate);
+      setView("preview");
+
+      toast.success("Post uploaded successfully!");
+      setUploadModalOpen(false);
+      setSelectedFile(null);
+      setSelectedFilePreview(null);
+      setCustomPostTitle("");
+    } catch (err: any) {
+      console.error("Failed to upload custom post:", err);
+      toast.error("Failed to upload post: " + (err.message || "Unknown error"));
+    } finally {
+      setUploadingCustom(false);
+    }
+  };
+
+  const handleDeleteCustomPost = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to remove this uploaded post?")) return;
+    const storageKey = `custom_posters_${org?.id || 'default'}`;
+    let existing: PosterTemplate[] = [];
+    try {
+      existing = JSON.parse(localStorage.getItem(storageKey) || "[]");
+    } catch (e) {}
+    const updated = existing.filter(t => t.id !== id);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    setTemplates(prev => prev.filter(t => t.id !== id));
+    toast.success("Uploaded post removed");
+  };
+
+  const renderUploadDialog = () => (
+    <Dialog open={uploadModalOpen} onOpenChange={(open) => {
+      setUploadModalOpen(open);
+      if (!open) {
+        setSelectedFile(null);
+        setSelectedFilePreview(null);
+        setCustomPostTitle("");
+      }
+    }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5 text-primary" /> Upload Local Post
+          </DialogTitle>
+          <DialogDescription>
+            Upload your own promotional flyer, banner, or festival design from your device.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div>
+            <Label className="text-sm font-medium">Post Title (Optional)</Label>
+            <Input
+              placeholder="e.g. Special Discount / Weekend Offer"
+              value={customPostTitle}
+              onChange={(e) => setCustomPostTitle(e.target.value)}
+              className="mt-1"
+            />
+          </div>
+
+          <div>
+            <Label className="text-sm font-medium">Select Image File</Label>
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="mt-1 border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-2"
+            >
+              {selectedFilePreview ? (
+                <div className="relative group max-h-52 overflow-hidden rounded-lg">
+                  <img src={selectedFilePreview} alt="Preview" className="max-h-52 object-contain rounded-lg" />
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg">
+                    <span className="text-white text-xs font-semibold bg-primary/80 px-2 py-1 rounded">Change Image</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                    <ImageIcon className="h-6 w-6" />
+                  </div>
+                  <div className="text-sm font-medium text-foreground">Click to browse from your device</div>
+                  <div className="text-xs text-muted-foreground">PNG, JPG, JPEG, WEBP (recommended 4:5 or 1:1 ratio)</div>
+                </>
+              )}
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                accept="image/*" 
+                className="hidden" 
+                onChange={handleFileSelected} 
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setUploadModalOpen(false)}>Cancel</Button>
+          <Button 
+            disabled={!selectedFile || uploadingCustom} 
+            onClick={handleUploadCustomPost}
+          >
+            {uploadingCustom ? "Uploading..." : "Upload & Customize"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const activeBlock = elements.find(b => b.id === activeElementId);
 
   if (loading) {
@@ -572,22 +758,56 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
   // GALLERY VIEW
   // ─────────────────────────────────────────────────────────────────
   if (view === "categories") {
-    const FESTIVAL_ORDER = ["Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"]; const existingCats = Array.from(new Set(templates.map(t => t.festival_name))); const categories = Array.from(new Set([...FESTIVAL_ORDER, ...existingCats])).sort((a, b) => { const indexA = FESTIVAL_ORDER.indexOf(a); const indexB = FESTIVAL_ORDER.indexOf(b); if (indexA === -1 && indexB === -1) return a.localeCompare(b); if (indexA === -1) return 1; if (indexB === -1) return -1; return indexA - indexB; });
+    const customCount = templates.filter(t => t.festival_name === "Custom Posts").length;
+    const FESTIVAL_ORDER = [
+      ...(customCount > 0 ? ["Custom Posts"] : []),
+      "Raksha Bandhan", "Ganesh Chaturthi", "Dussehra", "Navratri", "Diwali", "Christmas", "New Year", "Makar Sankranti", "Republic Day", "Holi", "Eid", "Independence Day"
+    ];
+    const existingCats = Array.from(new Set(templates.map(t => t.festival_name)));
+    const categories = Array.from(new Set([...FESTIVAL_ORDER, ...existingCats])).sort((a, b) => {
+      const indexA = FESTIVAL_ORDER.indexOf(a);
+      const indexB = FESTIVAL_ORDER.indexOf(b);
+      if (indexA === -1 && indexB === -1) return a.localeCompare(b);
+      if (indexA === -1) return 1;
+      if (indexB === -1) return -1;
+      return indexA - indexB;
+    });
+
     return (
       <div className="space-y-8 max-w-[1200px] mx-auto p-4">
-        <div className="text-center space-y-4 py-8">
-          <h1 className="text-4xl font-extrabold flex items-center justify-center gap-3">
-            <Sparkles className="h-8 w-8 text-primary" /> Marketing Posters
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Select an upcoming festival or event. We will automatically generate a beautiful, branded poster for your business.
-          </p>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-8 border-b">
+          <div className="text-left space-y-1">
+            <h1 className="text-3xl sm:text-4xl font-extrabold flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-primary" /> Festival & Promotional Posts
+            </h1>
+            <p className="text-base text-muted-foreground">
+              Select an upcoming festival or upload your own promotional poster design.
+            </p>
+          </div>
+          <Button onClick={() => setUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shrink-0">
+            <Upload className="w-4 h-4 mr-2" /> Upload Post
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {/* Direct Upload Card */}
+          <div
+            className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center aspect-[4/5]"
+            onClick={() => setUploadModalOpen(true)}
+          >
+            <div className="h-16 w-16 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <Upload className="h-8 w-8" />
+            </div>
+            <h3 className="font-bold text-xl text-foreground mb-1">Upload Post</h3>
+            <p className="text-xs text-muted-foreground max-w-[180px]">
+              Upload your own promotional or festival design from your local device
+            </p>
+          </div>
+
           {categories.map((category) => {
-      const count = templates.filter(t => t.festival_name === category).length;
+            const count = templates.filter(t => t.festival_name === category).length;
             const categoryTemplate = templates.find(t => t.festival_name === category);
+            const isCustom = category === "Custom Posts";
             return (
               <div
                 key={category}
@@ -597,9 +817,7 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                   setView("gallery");
                 }}
               >
-                <div
-                  className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted"
-                >
+                <div className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted">
                   {categoryTemplate?.bg_image_url && (
                     <img
                       src={categoryTemplate.bg_image_url}
@@ -610,8 +828,9 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                   )}
                   <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
                   <div className="relative z-10">
-                    <h3 className="font-bold text-2xl text-white mb-2 tracking-wide drop-shadow-md">
+                    <h3 className="font-bold text-2xl text-white mb-2 tracking-wide drop-shadow-md flex items-center gap-2">
                       {category}
+                      {isCustom && <span className="text-xs bg-primary px-2 py-0.5 rounded-full">My Uploads</span>}
                     </h3>
                     <div className="flex items-center text-white/80 text-sm font-medium drop-shadow-md">
                       <Calendar className="w-4 h-4 mr-2" />
@@ -623,36 +842,42 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
             );
           })}
         </div>
+
+        {renderUploadDialog()}
       </div>
     );
   }
 
   if (view === "gallery") {
     const categoryTemplates = templates.filter(t => t.festival_name === selectedCategory);
+    const isCustom = selectedCategory === "Custom Posts";
     return (
       <div className="space-y-8 max-w-[1200px] mx-auto p-4 animate-in fade-in slide-in-from-right-8 duration-300">
-        <div className="text-center space-y-4 py-8 relative">
-          <Button variant="ghost" className="absolute left-0 top-8" onClick={() => setView("categories")}>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-8 border-b">
+          <Button variant="ghost" onClick={() => setView("categories")}>
             <ChevronLeft className="mr-2 h-4 w-4" /> Back to Categories
           </Button>
-          <h1 className="text-4xl font-extrabold flex items-center justify-center gap-3">
-            {selectedCategory}
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Choose a poster design from the {selectedCategory} collection.
-          </p>
+          <div className="text-center space-y-1">
+            <h1 className="text-3xl font-extrabold flex items-center justify-center gap-2">
+              {selectedCategory}
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {isCustom ? "Select one of your uploaded posts to brand, edit, or share." : `Choose a poster design from the ${selectedCategory} collection.`}
+            </p>
+          </div>
+          <Button onClick={() => setUploadModalOpen(true)} variant="outline" className="shrink-0">
+            <Upload className="w-4 h-4 mr-2" /> Upload Post
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {categoryTemplates.map((t, idx) => (
             <div
               key={t.id}
-              className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300"
+              className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300 relative"
               onClick={() => handleSelectTemplate(t)}
             >
-              <div
-                className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted"
-              >
+              <div className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted">
                 {t.bg_image_url && (
                   <img
                     src={t.bg_image_url}
@@ -663,14 +888,28 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                 )}
                 <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-black/80 to-transparent" />
                 <div className="relative z-10">
-                  <h3 className="font-bold text-xl text-white mb-2 tracking-wide drop-shadow-md">
-                    Design {idx + 1}
+                  <h3 className="font-bold text-xl text-white mb-2 tracking-wide drop-shadow-md truncate">
+                    {t.default_text || `Design ${idx + 1}`}
                   </h3>
                 </div>
               </div>
+
+              {isCustom && (
+                <Button
+                  size="icon"
+                  variant="destructive"
+                  className="absolute top-3 right-3 h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity z-20"
+                  onClick={(e) => handleDeleteCustomPost(e, t.id)}
+                  title="Remove post"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           ))}
         </div>
+
+        {renderUploadDialog()}
       </div>
     );
   }
