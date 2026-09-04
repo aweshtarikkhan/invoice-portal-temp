@@ -214,10 +214,11 @@ export default function PortalPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground">
-          Powered by InvoiceApp • This is a secure document link
+          Powered by <img src="/logo.png" alt="AassayBiz" className="h-4 object-contain inline-block ml-1" /> • This is a secure document link
         </p>
       </div>
     </div>
     </>
   );
 }
+

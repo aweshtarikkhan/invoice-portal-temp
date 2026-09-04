@@ -357,8 +357,9 @@ export function ModernNavyInvoiceTemplate({
       </div>
 
       <div className="mt-8 text-center text-[10px] flex justify-center items-center gap-1 font-semibold border-t border-gray-200 pt-4">
-         Powered By <span className="font-extrabold text-orange-600 text-sm tracking-tighter">Aassay<sub className="text-[8px] tracking-normal">Biz</sub></span>
+         Powered by <img src="/logo.png" alt="AassayBiz" style={{ height: "16px", objectFit: "contain", display: "inline-block", marginLeft: "4px" }} />
       </div>
     </div>
   );
 }
+
