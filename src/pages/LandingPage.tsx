@@ -180,6 +180,9 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-primary transition-colors">{L.nav_features}</a>
             <a href="#compare" className="hover:text-primary transition-colors">{L.nav_compare}</a>
             <a href="#pricing" className="hover:text-primary transition-colors">{L.nav_pricing}</a>
+            <Link to="/brochure" className="hover:text-primary transition-colors flex items-center gap-1.5 text-indigo-300">
+              <FileText className="w-4 h-4 text-indigo-400" /> Brochure
+            </Link>
           </nav>
           <div className="flex items-center gap-4">
             <Button variant="ghost" className="text-slate-300 hover:text-white hover:bg-white/10 hidden sm:flex font-medium" asChild><Link to="/login">{L.nav_login}</Link></Button>
@@ -597,7 +600,10 @@ export default function LandingPage() {
             <span className="text-xs text-slate-500 font-medium hidden lg:inline">Connect with us:</span>
             <SocialMediaLinks iconSize="sm" />
           </div>
-          <div className="flex flex-wrap items-center gap-8">
+          <div className="flex flex-wrap items-center gap-6">
+            <Link to="/brochure" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1.5 text-sm">
+              <FileText className="w-4 h-4" /> Download Brochure
+            </Link>
             <a href="#features" className="text-slate-400 hover:text-white font-semibold transition-colors">Features</a>
             <a href="#pricing" className="text-slate-400 hover:text-white font-semibold transition-colors">Pricing</a>
             <Link to="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">Sign in to Dashboard</Link>

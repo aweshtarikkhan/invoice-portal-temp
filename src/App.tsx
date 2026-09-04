@@ -100,6 +100,7 @@ const DealDetailPage = lazy(() => import("./pages/DealDetailPage"));
 const CRMDashboardPage = lazy(() => import("./pages/CRMDashboardPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/CRMAutomationsPage"));
 const CRMCalendarPage = lazy(() => import("./pages/CRMCalendarPage"));
+const BrochurePage = lazy(() => import("./pages/BrochurePage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
@@ -121,6 +122,7 @@ const App = () => (
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route path="/demo" element={<DemoAutoLoginPage />} />
             <Route path="/try" element={<DemoAutoLoginPage />} />
+            <Route path="/brochure" element={<BrochurePage />} />
             <Route path="/admin" element={<AdminPanelPage />} />
 
             {/* Protected routes */}

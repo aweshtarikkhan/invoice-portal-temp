@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatformSocials, savePlatformSocials, formatSocialUrl, DEFAULT_PLATFORM_SOCIALS } from "@/hooks/use-platform-socials";
 import { YoutubeIcon, FacebookIcon, InstagramIcon, SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
-import { Loader2, Save, ExternalLink, RotateCcw, Share2, Phone, CheckCircle2 } from "lucide-react";
+import { Loader2, Save, ExternalLink, RotateCcw, Share2, Phone, CheckCircle2, FileText, Printer } from "lucide-react";
 
 export function PlatformSocialsManager() {
   const { socials: currentSocials, loading } = usePlatformSocials();
@@ -275,6 +275,58 @@ export function PlatformSocialsManager() {
                 </>
               )}
             </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Official Marketing Assets & Brochure Card */}
+      <Card className="bg-slate-900 border-slate-800 text-white shadow-xl">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-400" />
+                Official AssayBiz Product & Pricing Brochure
+              </CardTitle>
+              <CardDescription className="text-slate-400 mt-1">
+                A4 multi-page printable collateral updated with official AssayBiz logo, packages, pricing matrix, and core module names.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+              >
+                <a href="/brochure" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open Brochure
+                </a>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => window.open("/brochure", "_blank")}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-indigo-600/10 text-indigo-400 border border-indigo-500/20">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <h5 className="font-semibold text-sm text-white">AssayBiz Official Brochure 2026 Edition (A4)</h5>
+                <p className="text-xs text-slate-400">Includes Sales, Catalog, Purchases, Banking, HR, CRM, Promotion & Pricing.</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+              Active & Verified
+            </span>
           </div>
         </CardContent>
       </Card>
