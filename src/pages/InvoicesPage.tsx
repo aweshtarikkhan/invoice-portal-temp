@@ -113,7 +113,13 @@ export default function InvoicesPage() {
   }, [org?.id]);
 
   const isFreePlan = plan === 'free';
-  const invoiceLimitReached = isFreePlan && invoices.length >= FREE_PLAN_LIMITS.invoices;
+  const currentYear = new Date().getFullYear();
+  const invoicesThisYear = invoices.filter(i => {
+    if (!i.issue_date && !i.invoice_date && !i.created_at) return false;
+    const d = i.issue_date || i.invoice_date || i.created_at;
+    return new Date(d).getFullYear() === currentYear;
+  });
+  const invoiceLimitReached = isFreePlan && invoicesThisYear.length >= FREE_PLAN_LIMITS.invoices;
 
   const handleNewInvoiceClick = () => {
     if (invoiceLimitReached) {
