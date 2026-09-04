@@ -4,6 +4,9 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { hasModuleAccess, FREE_PLAN_LIMITS } from "@/lib/subscription";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { SummaryRibbon } from "@/components/shared/SummaryRibbon";
@@ -60,6 +63,25 @@ export default function InvoicesPage() {
   const [tab, setTab] = useState<string>("all");
   const [importOpen, setImportOpen] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const plan = org?.subscription_plan || 'free';
+  if (!hasModuleAccess(plan, 'accounting')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="Accounting Module Locked"
+          description="Invoices and Accounting features require the Business Accounting or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
+        />
+      </div>
+    );
+  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -90,6 +112,16 @@ export default function InvoicesPage() {
     fetch();
   }, [org?.id]);
 
+  const isFreePlan = plan === 'free';
+  const invoiceLimitReached = isFreePlan && invoices.length >= FREE_PLAN_LIMITS.invoices;
+
+  const handleNewInvoiceClick = () => {
+    if (invoiceLimitReached) {
+      setShowUpgrade(true);
+    } else {
+      navigate("/invoices/new");
+    }
+  };
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
@@ -307,7 +339,7 @@ export default function InvoicesPage() {
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="mr-1 h-4 w-4" /> Import
           </Button>
-          <Button onClick={() => navigate("/invoices/new")} size="sm">
+          <Button onClick={handleNewInvoiceClick} size="sm">
             <Plus className="mr-1 h-4 w-4" /> + New
           </Button>
         </div>
@@ -515,3 +547,4 @@ export default function InvoicesPage() {
     </div>
   );
 }
+

@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { hasModuleAccess } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -26,6 +29,26 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function CampaignsPage() {
   const org = useAppStore((s) => s.organization);
+  const plan = org?.subscription_plan || 'free';
+  const isFreePlan = plan === 'free';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (isFreePlan || !hasModuleAccess(plan, 'promotion')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="Promotions & Campaigns Locked"
+          description="Marketing Campaigns and Promotional features require the Business Promotion or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = "/settings"; }} 
+        />
+      </div>
+    );
+  }
   const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
@@ -257,3 +280,7 @@ export default function CampaignsPage() {
     </div>
   );
 }
+
+
+
+

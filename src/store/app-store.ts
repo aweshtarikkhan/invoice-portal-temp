@@ -36,6 +36,13 @@ interface Organization {
   low_stock_threshold: number;
   weekly_offs: number[];
   daily_wages_enabled?: boolean;
+  
+  // Subscription fields
+  subscription_plan?: 'free' | 'accounting' | 'hr' | 'crm' | 'promotion' | 'suite';
+  subscription_interval?: 'monthly' | 'yearly';
+  subscription_end_date?: string | null;
+  whatsapp_msg_limit?: number;
+  whatsapp_msg_used?: number;
 }
 
 interface BasicOrgInfo {

@@ -1,6 +1,9 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { hasModuleAccess } from "@/lib/subscription";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,8 +17,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 
-export default function CrmIntegrationsPage() {
+export default function CRMIntegrationsPage() {
   const org = useAppStore((s) => s.organization);
+  const plan = org?.subscription_plan || 'free';
+  const isFreePlan = plan === 'free';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (isFreePlan || !hasModuleAccess(plan, 'crm')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="API Integrations Locked"
+          description="Lead API integrations are available exclusively on the Business CRM or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = "/settings"; }} 
+        />
+      </div>
+    );
+  }
   const [apiKeys, setApiKeys] = useState<any[]>([]);
   const [webhooks, setWebhooks] = useState<any[]>([]);
   
@@ -326,3 +349,7 @@ export default function CrmIntegrationsPage() {
     </div>
   );
 }
+
+
+
+

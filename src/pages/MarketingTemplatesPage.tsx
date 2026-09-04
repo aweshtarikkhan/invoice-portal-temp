@@ -1,6 +1,9 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { hasModuleAccess } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +39,26 @@ const EMPTY: Partial<Template> = {
 
 export default function MarketingTemplatesPage() {
   const org = useAppStore((s) => s.organization);
+  const plan = org?.subscription_plan || 'free';
+  const isFreePlan = plan === 'free';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (isFreePlan || !hasModuleAccess(plan, 'promotion')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="Promotions & Campaigns Locked"
+          description="Marketing Templates and Promotional features require the Business Promotion or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = "/settings"; }} 
+        />
+      </div>
+    );
+  }
   const [items, setItems] = useState<Template[]>([]);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<Partial<Template>>(EMPTY);
@@ -150,3 +173,7 @@ export default function MarketingTemplatesPage() {
     </div>
   );
 }
+
+
+
+

@@ -8,6 +8,8 @@ import {
   DEFAULT_FEATURE_GROUPS,
 } from "@/store/feature-store";
 import { useAuth } from "@/lib/auth";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -33,6 +35,30 @@ export default function AdminPanelPage() {
 
   if (userRole === "staff") {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  const org = useAppStore((s) => s.organization);
+  const isFreePlan = org?.subscription_plan === 'free' || !org?.subscription_plan;
+  const [showUpgrade, setShowUpgrade] = useState(false);
+
+  if (isFreePlan) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="Admin Panel Locked"
+          description="The Admin Panel is available exclusively on our Premium plans. Upgrade to manage team members, advanced settings, and API integrations."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(plan, interval, price) => {
+            // Future: integrate with Razorpay
+            window.location.href = `/settings`; // Placeholder for real billing logic
+          }} 
+        />
+      </div>
+    );
   }
 
   const { session } = useAuth();
@@ -821,4 +847,5 @@ export default function AdminPanelPage() {
     </div>
   );
 }
+
 

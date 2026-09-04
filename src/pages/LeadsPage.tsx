@@ -46,6 +46,21 @@ export default function LeadsPage() {
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  const plan = org?.subscription_plan || 'free';
+  const isFreePlan = plan === 'free';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const limitReached = isFreePlan && rows.length >= FREE_PLAN_LIMITS.leads;
+
+  const handleAddLeadClick = () => {
+    if (limitReached) {
+      setShowUpgrade(true);
+    } else {
+      setForm(emptyForm);
+      setEditId(null);
+      setOpen(true);
+    }
+  };
   const [form, setForm] = useState<any>(emptyForm);
 
   const load = async () => {
@@ -168,6 +183,23 @@ export default function LeadsPage() {
     const hotLeads = rows.filter(r => (r.priority || "warm") === "hot" && r.status !== "converted" && r.status !== "lost").length;
     return { total, newThisMonth, conversionRate, pipelineValue, hotLeads };
   }, [rows]);
+
+  if (!hasModuleAccess(plan, 'crm')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="CRM Module Locked"
+          description="CRM and Lead Management features require the Business CRM or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
+        />
+      </div>
+    );
+  }
 
   const statusBadge = (s: string) => {
     const o = STATUSES.find((x) => x.v === s) || STATUSES[0];
@@ -331,3 +363,4 @@ export default function LeadsPage() {
     </div>
   );
 }
+

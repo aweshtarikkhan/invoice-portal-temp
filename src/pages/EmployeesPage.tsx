@@ -123,6 +123,10 @@ export default function EmployeesPage() {
   };
 
   const openNew = (presetType: "monthly" | "daily" | "hourly" = "monthly") => {
+    if (limitReached) {
+      setShowUpgrade(true);
+      return;
+    }
     setEditId(null);
     setForm({
       ...empty,
@@ -355,6 +359,39 @@ export default function EmployeesPage() {
   }, [rows, activeTabFilter]);
 
   const currency = (org as any)?.currency || "INR";
+
+  const plan = org?.subscription_plan || 'free';
+  const isFreePlan = plan === 'free';
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const limitReached = isFreePlan && rows.length >= FREE_PLAN_LIMITS.employees;
+
+  const handleAddEmployeeClick = () => {
+    if (limitReached) {
+      setShowUpgrade(true);
+    } else {
+      setForm(empty);
+      setEditId(null);
+      setOpen(true);
+      setPortalEmp(null);
+    }
+  };
+
+  if (!hasModuleAccess(plan, 'hr')) {
+    return (
+      <div className="flex-1 bg-slate-50 min-h-screen">
+        <LockedFeature 
+          title="HR & Attendance Locked"
+          description="HR and Employee Management features require the Business HR or Business Suite plan."
+          onUpgradeClick={() => setShowUpgrade(true)}
+        />
+        <UpgradeModal 
+          isOpen={showUpgrade} 
+          onClose={() => setShowUpgrade(false)} 
+          onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -947,3 +984,4 @@ export default function EmployeesPage() {
     </div>
   );
 }
+
