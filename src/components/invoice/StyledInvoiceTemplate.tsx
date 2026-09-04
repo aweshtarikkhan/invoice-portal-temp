@@ -21,7 +21,7 @@ interface StyledInvoiceTemplateProps {
 const getTitleText = (type: string) => {
   if (type === "estimate") return "ESTIMATE";
   if (type === "po") return "PURCHASE ORDER";
-  if (type === "bill") return "BILL";
+  if (type === "bill") return "PURCHASE INVOICE";
   return "TAX INVOICE";
 };
 

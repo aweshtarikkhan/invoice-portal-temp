@@ -55,7 +55,7 @@ export function BillSettingsSheet() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       setOrganization({ ...org, ...settings } as any);
-      toast({ title: "Bill settings saved!" });
+      toast({ title: "Purchase invoice settings saved!" });
       setOpen(false);
     }
   };
@@ -69,7 +69,7 @@ export function BillSettingsSheet() {
       </SheetTrigger>
       <SheetContent className="w-[400px] sm:w-[440px] p-0">
         <SheetHeader className="p-6 pb-0">
-          <SheetTitle>Bill Settings</SheetTitle>
+          <SheetTitle>Purchase Invoice Settings</SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-140px)] px-6">
           <div className="space-y-6 py-4">

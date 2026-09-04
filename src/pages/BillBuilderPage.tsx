@@ -936,10 +936,10 @@ export default function BillBuilderPage() {
           return;
         }
       } else {
-        toast({ title: status === "received" ? "Bill saved!" : "Bill saved as draft!" });
+        toast({ title: status === "received" ? "Purchase invoice saved!" : "Purchase invoice saved as draft!" });
       }
 
-      navigate(`/bills`);
+      navigate(`/bills/${billId}`);
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -982,7 +982,7 @@ export default function BillBuilderPage() {
         }}
       />
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{id ? "Edit Bill" : "New Bill"}</h1>
+        <h1 className="text-2xl font-bold">{id ? "Edit Purchase Invoice" : "New Purchase Invoice"}</h1>
         <div className="flex gap-2">
           <BillSettingsSheet />
           <Button variant="outline" onClick={() => navigate("/bills")}>Cancel</Button>
@@ -991,7 +991,7 @@ export default function BillBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("received")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Bill
+              <Save className="mr-1.5 h-4 w-4" /> Save Purchase Invoice
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1018,7 +1018,7 @@ export default function BillBuilderPage() {
                     }
                     if (token) {
                       await navigator.clipboard.writeText(`${window.location.origin}/portal/${token}`);
-                      toast({ title: "Bill saved & portal link copied!" });
+                      toast({ title: "Purchase invoice saved & portal link copied!" });
                     }
                   }
                 }}>
@@ -1124,12 +1124,12 @@ export default function BillBuilderPage() {
                 )}
                 
                 <div className="space-y-3">
-                  <Label className="text-muted-foreground flex items-center gap-1.5">Vendor Bill Number</Label>
+                  <Label className="text-muted-foreground flex items-center gap-1.5">Vendor Invoice Number</Label>
                   <Input 
                     value={vendorBillNumber} 
                     onChange={e => setVendorBillNumber(e.target.value)} 
                     className="h-11 bg-white border-muted font-medium text-blue-600 focus-visible:ring-blue-500 shadow-sm"
-                    placeholder="Original Bill No (e.g. VEN-101)"
+                    placeholder="Original Invoice No (e.g. VEN-101)"
                   />
                 </div>
                 
@@ -1160,7 +1160,7 @@ export default function BillBuilderPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Bill #</Label>
+                  <Label>Purchase Invoice #</Label>
                   <Input value={billNumber} onChange={(e) => setBillNumber(e.target.value)} />
                 </div>
                 <div className="space-y-2">

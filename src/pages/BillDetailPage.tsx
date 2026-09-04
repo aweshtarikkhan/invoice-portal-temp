@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus, Copy, MessageCircle } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -47,7 +47,7 @@ export default function BillDetailPage() {
     setBill(b);
     setPayAmt(String(b.balance_due));
     const [{ data: l }, { data: v }, { data: p }] = await Promise.all([
-      (supabase as any).from("bill_lines").select("*").eq("bill_id", id).order("sort_order"),
+      (supabase as any).from("bill_lines").select("*, items(name, sku, unit)").eq("bill_id", id).order("sort_order"),
       (supabase as any).from("vendors").select("*").eq("id", b.vendor_id).maybeSingle(),
       (supabase as any).from("bill_payments").select("*").eq("bill_id", id).order("payment_date", { ascending: false }),
     ]);
@@ -82,21 +82,22 @@ export default function BillDetailPage() {
   const invoiceRef = useRef<HTMLDivElement>(null);
 
   const mappedBillForTemplate = useMemo(() => {
-    if (!bill || !vendor) return null;
+    if (!bill) return null;
+    const vendorName = vendor?.display_name || vendor?.name || (bill as any)?.vendor_name || "Vendor";
     return {
       ...bill,
       invoice_number: bill.vendor_bill_number || bill.bill_number,
       issue_date: bill.bill_date,
       total_tax: bill.tax_total || 0,
       total_discount: bill.discount_total || 0,
-      adjustment: 0,
+      adjustment: Number(bill.adjustment || 0),
       shipping_charge: 0,
       clients: {
-        display_name: vendor.name,
-        tax_number: vendor.gstin,
-        billing_address: vendor.billing_address,
-        email: vendor.email,
-        phone: vendor.phone
+        display_name: vendorName,
+        tax_number: vendor?.gstin || (bill as any)?.vendor_gstin,
+        billing_address: vendor?.billing_address || (bill as any)?.vendor_address,
+        email: vendor?.email,
+        phone: vendor?.phone
       }
     };
   }, [bill, vendor]);
@@ -105,20 +106,39 @@ export default function BillDetailPage() {
     if (!bill || !org) return false;
     const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number) : null;
     let clientState = null;
-    if (vendor?.gstin) clientState = stateCodeFromGstin(vendor.gstin);
+    const vendorGstin = vendor?.gstin || (bill as any)?.vendor_gstin;
+    if (vendorGstin) clientState = stateCodeFromGstin(vendorGstin);
     return Boolean(orgState && clientState && orgState !== clientState);
   }, [bill, org, vendor]);
 
-  const taxBreakdown = useMemo(() => {
-    if (!bill || !org || !lines.length) return [];
-    
-    const enhancedLines = (lines || []).map(l => {
+  const enhancedLines = useMemo(() => {
+    return (lines || []).map((l: any) => {
+      const desc = l.description || "";
+      const splitDesc = desc.split("\n");
+      const itemName = l.items?.name || l.name || splitDesc[0] || "Item";
+      const itemDesc = l.items?.name ? desc : (splitDesc.slice(1).join("\n") || "");
       const q = Number(l.quantity) || 0;
       const r = Number(l.rate) || 0;
       const tr = Number(l.tax_rate) || 0;
-      const tax_amount = l.tax_amount || (q * r * (tr / 100));
-      return { ...l, tax_amount, tax_rate: tr };
+      const tax_amount = Number(l.tax_amount) || (q * r * (tr / 100));
+      const amount = Number(l.amount) || (q * r + tax_amount);
+      return {
+        ...l,
+        name: itemName,
+        description: itemDesc,
+        hsn_code: l.hsn || l.hsn_code || "",
+        unit: l.unit || l.items?.unit || "pcs",
+        quantity: q,
+        rate: r,
+        tax_rate: tr,
+        tax_amount,
+        amount,
+      };
     });
+  }, [lines]);
+
+  const taxBreakdown = useMemo(() => {
+    if (!bill || !org || !enhancedLines.length) return [];
     
     let breakdown = calculateTaxBreakdown(enhancedLines, [], isInterstate);
     
@@ -140,7 +160,7 @@ export default function BillDetailPage() {
     }
     
     return breakdown;
-  }, [bill, lines, org, vendor]);
+  }, [bill, enhancedLines, org, isInterstate]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: (org as any)?.currency || "INR" }).format(n);
@@ -216,34 +236,46 @@ export default function BillDetailPage() {
 
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Bills</Button>
-        <div className="flex gap-2">
-            <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
-              if (!org || !bill || !vendor) return;
-              
-              const template = await getWhatsappTemplate(org.id, "bill");
-              const txt = compileWhatsappMessage(template, {
-                client_name: vendor.name,
-                document_no: bill.bill_number,
-                total: fmt(Number(bill.total)),
-                due_date: bill.due_date || bill.bill_date || "",
-                subtotal: fmt(Number(bill.subtotal)),
-                tax: fmt(Number(bill.tax_total)),
-                discount: fmt(Number(bill.discount_total)),
-                tds: bill.tds_amount ? fmt(Number(bill.tds_amount)) : "0.00",
-                adjustment: bill.adjustment ? fmt(Number(bill.adjustment)) : "0.00",
-                items: lines.map(l => `- ${l.item_name || 'Item'} x${l.quantity}`).join('\n'),
-                portal_link: "",
-                org_name: org.name
-              });
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Purchase Invoices</Button>
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Print</Button>
+          <Button variant="outline" onClick={async () => {
+            const blob = await generatePDFBlob();
+            if (blob) {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `${bill.bill_number || "purchase-invoice"}.pdf`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }
+          }}><Download className="h-4 w-4 mr-1" /> Download PDF</Button>
+          <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
+            if (!org || !bill) return;
+            const vendorName = vendor?.display_name || vendor?.name || "Vendor";
+            const template = await getWhatsappTemplate(org.id, "bill");
+            const txt = compileWhatsappMessage(template, {
+              client_name: vendorName,
+              document_no: bill.bill_number,
+              total: fmt(Number(bill.total)),
+              due_date: bill.due_date || bill.bill_date || "",
+              subtotal: fmt(Number(bill.subtotal)),
+              tax: fmt(Number(bill.tax_total)),
+              discount: fmt(Number(bill.discount_total)),
+              tds: bill.tds_amount ? fmt(Number(bill.tds_amount)) : "0.00",
+              adjustment: bill.adjustment ? fmt(Number(bill.adjustment)) : "0.00",
+              items: enhancedLines.map(l => `- ${l.name || 'Item'} x${l.quantity}`).join('\n'),
+              portal_link: "",
+              org_name: org.name
+            });
 
-              await openWhatsappShare({
-                phone: vendor.phone,
-                message: txt,
-                orgId: org.id
-              });
-            }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
+            await openWhatsappShare({
+              phone: vendor?.phone,
+              message: txt,
+              orgId: org.id
+            });
+          }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={() => navigate(`/bills/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}
@@ -253,14 +285,14 @@ export default function BillDetailPage() {
       <div className="flex items-center gap-4">
         <Badge className={statusColor[bill.status]}>{bill.status}</Badge>
         <span className="text-sm text-muted-foreground">
-          {vendor?.name} • Bill Date {format(new Date(bill.bill_date), "dd MMM yyyy")}
+          {vendor?.display_name || vendor?.name || "Vendor"} • Purchase Invoice Date {bill.bill_date ? format(new Date(bill.bill_date), "dd MMM yyyy") : ""}
         </span>
       </div>
 
       <div ref={invoiceRef}>
           {mappedBillForTemplate && (
             <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-              <StyledInvoiceTemplate org={org} invoice={mappedBillForTemplate} lines={lines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
+              <StyledInvoiceTemplate org={org} invoice={mappedBillForTemplate} lines={enhancedLines} fmt={fmt} type="bill" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
             </div>
           )}
       </div>
@@ -316,9 +348,9 @@ export default function BillDetailPage() {
       <Dialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Duplicate Bill?</DialogTitle>
+            <DialogTitle>Duplicate Purchase Invoice?</DialogTitle>
             <DialogDescription>
-              This will create a new copy of this bill using today's date. You can review and edit it before saving.
+              This will create a new copy of this purchase invoice using today's date. You can review and edit it before saving.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

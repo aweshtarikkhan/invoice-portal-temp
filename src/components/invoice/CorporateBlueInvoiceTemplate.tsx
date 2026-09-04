@@ -107,7 +107,7 @@ export function CorporateBlueInvoiceTemplate({
   const subtotal = useMemo(() => Number(invoice.subtotal || invoice.total), [invoice.subtotal, invoice.total]);
   const grandTotal = useMemo(() => Number(invoice.total || 0), [invoice.total]);
 
-  const titleText = type === "estimate" ? "ESTIMATE" : (type === "po" ? "PURCHASE ORDER" : (type === "bill" ? "BILL" : "TAX INVOICE"));
+  const titleText = type === "estimate" ? "ESTIMATE" : (type === "po" ? "PURCHASE ORDER" : (type === "bill" ? "PURCHASE INVOICE" : "TAX INVOICE"));
 
   return (
     <div

@@ -112,21 +112,21 @@ export function ProfessionalNavyInvoiceTemplate({
   const getTitleText = (t: string) => {
     if (t === "estimate") return "ESTIMATE";
     if (t === "po") return "PURCHASE ORDER";
-    if (t === "bill") return "BILL";
+    if (t === "bill") return "PURCHASE INVOICE";
     return "TAX INVOICE";
   };
 
   const getNumberLabel = (t: string) => {
     if (t === "estimate") return "Estimate No.";
     if (t === "po") return "PO No.";
-    if (t === "bill") return "Bill No.";
+    if (t === "bill") return "Invoice No.";
     return "Invoice No.";
   };
 
   const getDateLabel = (t: string) => {
     if (t === "estimate") return "Estimate Date";
     if (t === "po") return "PO Date";
-    if (t === "bill") return "Bill Date";
+    if (t === "bill") return "Invoice Date";
     return "Invoice Date";
   };
 
