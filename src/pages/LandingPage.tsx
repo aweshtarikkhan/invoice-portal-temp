@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import {
   Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
   MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
-  Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users,
+  Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users, Layers,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
@@ -182,6 +182,9 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-primary transition-colors">{L.nav_pricing}</a>
             <Link to="/brochure" className="hover:text-primary transition-colors flex items-center gap-1.5 text-indigo-300">
               <FileText className="w-4 h-4 text-indigo-400" /> Brochure
+            </Link>
+            <Link to="/pamphlet" className="hover:text-primary transition-colors flex items-center gap-1.5 text-indigo-300">
+              <Layers className="w-4 h-4 text-indigo-400" /> Pamphlet
             </Link>
           </nav>
           <div className="flex items-center gap-4">
@@ -603,6 +606,9 @@ export default function LandingPage() {
           <div className="flex flex-wrap items-center gap-6">
             <Link to="/brochure" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1.5 text-sm">
               <FileText className="w-4 h-4" /> Download Brochure
+            </Link>
+            <Link to="/pamphlet" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1.5 text-sm">
+              <Layers className="w-4 h-4" /> Download Pamphlet
             </Link>
             <a href="#features" className="text-slate-400 hover:text-white font-semibold transition-colors">Features</a>
             <a href="#pricing" className="text-slate-400 hover:text-white font-semibold transition-colors">Pricing</a>

@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { usePlatformSocials, savePlatformSocials, formatSocialUrl, DEFAULT_PLATFORM_SOCIALS } from "@/hooks/use-platform-socials";
 import { YoutubeIcon, FacebookIcon, InstagramIcon, SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
-import { Loader2, Save, ExternalLink, RotateCcw, Share2, Phone, CheckCircle2, FileText, Printer } from "lucide-react";
+import { Loader2, Save, ExternalLink, RotateCcw, Share2, Phone, CheckCircle2, FileText, Printer, Layers, Sparkles, MessageSquare } from "lucide-react";
 
 export function PlatformSocialsManager() {
   const { socials: currentSocials, loading } = usePlatformSocials();
@@ -326,6 +326,102 @@ export function PlatformSocialsManager() {
             </div>
             <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
               Active & Verified
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Official Marketing Pamphlets Card (6.5) */}
+      <Card className="bg-slate-900 border-slate-800 text-white shadow-xl">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Layers className="w-5 h-5 text-indigo-400" />
+                AssayBiz Promotional Pamphlets & Handouts (6.5)
+              </CardTitle>
+              <CardDescription className="text-slate-400 mt-1">
+                Printable double-sided (A5/A4 front & back) and single-sheet handouts for client meetings, trade shows, and field sales.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+              >
+                <a href="/pamphlet" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open Pamphlet
+                </a>
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => window.open("/pamphlet", "_blank")}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold"
+              >
+                <Printer className="w-3.5 h-3.5 mr-1" /> Print / Save PDF
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-purple-600/10 text-purple-400 border border-purple-500/20">
+                <Layers className="w-6 h-6" />
+              </div>
+              <div>
+                <h5 className="font-semibold text-sm text-white">AssayBiz Double-Sided & Single-Sheet Pamphlets</h5>
+                <p className="text-xs text-slate-400">Includes core module highlights, ₹0 to ₹999 package pricing, 20% discount offer, and demo QR code.</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
+              Ready to Print
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Social Media Launch Kit Card (6.6) */}
+      <Card className="bg-slate-900 border-slate-800 text-white shadow-xl">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-amber-400" />
+                Social Media Launch Kit & Posts (6.6)
+              </CardTitle>
+              <CardDescription className="text-slate-400 mt-1">
+                Launch announcement posts, graphics, and broadcast templates tailored for Instagram, Facebook, LinkedIn, WhatsApp, and YouTube.
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                asChild
+                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-semibold"
+              >
+                <a href="/launch-posts" target="_blank" rel="noopener noreferrer">
+                  <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open Launch Kit
+                </a>
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-lg bg-amber-600/10 text-amber-400 border border-amber-500/20">
+                <MessageSquare className="w-6 h-6" />
+              </div>
+              <div>
+                <h5 className="font-semibold text-sm text-white">4 Visual Launch Creatives & Multi-Platform Captions</h5>
+                <p className="text-xs text-slate-400">Includes 1-click caption copying, WhatsApp broadcast trigger, and launch coupon LAUNCH20.</p>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-400 text-xs font-semibold border border-indigo-500/20">
+              5 Platforms
             </span>
           </div>
         </CardContent>
