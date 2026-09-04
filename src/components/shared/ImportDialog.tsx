@@ -165,6 +165,27 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport 
     setImporting(false);
   };
 
+  const downloadExcelSample = async () => {
+    try {
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet("Template");
+      ws.addRow(fields.map(f => f.label));
+      ws.addRow(fields.map(f => `Sample ${f.label}`));
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${entityName.toLowerCase().replace(/\s+/g, "_")}_template.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast({ title: "Failed to download template", description: e.message, variant: "destructive" });
+    }
+  };
+
   const downloadSample = () => {
     const csvHeader = fields.map(f => f.label).join(",");
     const csvRow = fields.map(f => `Sample ${f.label}`).join(",");
@@ -209,7 +230,10 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport 
               <p className="font-medium">Drop your file here or click to browse</p>
               <p className="text-sm text-muted-foreground mt-1">Supports CSV, Excel (.xlsx), and JSON</p>
             </div>
-            <div className="mt-4 flex justify-center">
+            <div className="mt-4 flex flex-wrap gap-2 justify-center">
+              <Button variant="outline" size="sm" onClick={downloadExcelSample}>
+                <FileSpreadsheet className="mr-2 h-4 w-4 text-emerald-600" /> Download Excel Template (.xlsx)
+              </Button>
               <Button variant="outline" size="sm" onClick={downloadSample}>
                 <Download className="mr-2 h-4 w-4" /> Download Sample CSV
               </Button>

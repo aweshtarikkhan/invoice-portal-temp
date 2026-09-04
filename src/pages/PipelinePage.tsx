@@ -14,7 +14,7 @@ import { Plus, Pencil, Trash2, Settings2, GripVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 
-const emptyOpp = { title: "", stage_id: "", client_id: "", amount: "0", expected_close_date: "", probability: "0", notes: "" };
+const emptyOpp = { title: "", stage_id: "", lead_id: "", amount: "0", expected_close_date: "", probability: "0", notes: "" };
 
 export default function PipelinePage() {
   const org = useAppStore((s) => s.organization);
@@ -22,7 +22,7 @@ export default function PipelinePage() {
   const currency = (org as any)?.currency || "INR";
   const [stages, setStages] = useState<any[]>([]);
   const [opps, setOpps] = useState<any[]>([]);
-  const [clients, setClients] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -38,11 +38,11 @@ export default function PipelinePage() {
       await (supabase as any).rpc("seed_default_pipeline", { p_org_id: org.id });
       ({ data: st } = await (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order"));
     }
-    const [{ data: op }, { data: cl }] = await Promise.all([
-      (supabase as any).from("opportunities").select("*, clients(display_name)").eq("org_id", org.id).order("sort_order"),
-      (supabase as any).from("clients").select("id,name").eq("org_id", org.id).order("name"),
+    const [{ data: op }, { data: ld }] = await Promise.all([
+      (supabase as any).from("opportunities").select("*, leads(name, company)").eq("org_id", org.id).order("sort_order"),
+      (supabase as any).from("leads").select("id, name, company, email, phone").eq("org_id", org.id).order("name"),
     ]);
-    setStages(st || []); setOpps(op || []); setClients(cl || []);
+    setStages(st || []); setOpps(op || []); setLeads(ld || []);
     setLoading(false);
   };
   useEffect(() => { load(); }, [org?.id]);
@@ -62,7 +62,7 @@ export default function PipelinePage() {
   const openEdit = (o: any) => {
     setEditId(o.id);
     setForm({
-      title: o.title, stage_id: o.stage_id || "", client_id: o.client_id || "",
+      title: o.title, stage_id: o.stage_id || "", lead_id: o.lead_id || "",
       amount: String(o.amount || 0), expected_close_date: o.expected_close_date || "",
       probability: String(o.probability || 0), notes: o.notes || "",
     });
@@ -77,7 +77,7 @@ export default function PipelinePage() {
       org_id: org.id,
       title: form.title.trim(),
       stage_id: form.stage_id,
-      client_id: form.client_id || null,
+      lead_id: form.lead_id || null,
       amount: Number(form.amount) || 0,
       currency,
       expected_close_date: form.expected_close_date || null,
@@ -174,7 +174,15 @@ export default function PipelinePage() {
                           <GripVertical className="h-4 w-4 text-muted-foreground mt-0.5" />
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">{o.title}</div>
-                            <div className="text-xs text-muted-foreground truncate">{o.clients?.display_name || "—"}</div>
+                            <div className="text-xs text-muted-foreground truncate">
+                              {o.leads?.name ? (
+                                <span className="font-medium text-slate-700 dark:text-slate-300">
+                                  {o.leads.name}{o.leads.company ? ` • ${o.leads.company}` : ""}
+                                </span>
+                              ) : (
+                                "—"
+                              )}
+                            </div>
                             <div className="flex items-center justify-between mt-1">
                               <span className="text-sm font-semibold">{formatCurrency(Number(o.amount || 0), currency)}</span>
                               <Badge variant="outline" className="text-[10px]">{o.probability || 0}%</Badge>
@@ -205,12 +213,27 @@ export default function PipelinePage() {
               </Select>
             </div>
             <div>
-              <Label>Client</Label>
-              <Select value={form.client_id || "none"} onValueChange={(v) => setForm({ ...form, client_id: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Lead</Label>
+              <Select
+                value={form.lead_id || "none"}
+                onValueChange={(v) => {
+                  const leadId = v === "none" ? "" : v;
+                  const selLead = leads.find((l) => l.id === leadId);
+                  setForm((prev: any) => ({
+                    ...prev,
+                    lead_id: leadId,
+                    title: prev.title?.trim() ? prev.title : (selLead ? `${selLead.name} - Opportunity` : prev.title),
+                  }));
+                }}
+              >
+                <SelectTrigger><SelectValue placeholder="Select a lead" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>)}
+                  <SelectItem value="none">— Select Lead —</SelectItem>
+                  {leads.map((l) => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name} {l.company ? `(${l.company})` : ""}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

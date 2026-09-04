@@ -12,9 +12,23 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
+import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
+
+const leadImportFields: ImportField[] = [
+  { key: "name", label: "Lead Name", required: true },
+  { key: "company", label: "Company" },
+  { key: "email", label: "Email" },
+  { key: "phone", label: "Phone" },
+  { key: "source", label: "Source" },
+  { key: "status", label: "Status" },
+  { key: "priority", label: "Priority" },
+  { key: "estimated_value", label: "Estimated Value" },
+  { key: "notes", label: "Notes" },
+  { key: "tags", label: "Tags" },
+];
 
 const STATUSES = [
   { v: "new", l: "New", cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600" },
@@ -45,6 +59,7 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
   const plan = org?.subscription_plan || 'free';
@@ -219,7 +234,14 @@ export default function LeadsPage() {
           <h1 className="text-2xl font-semibold">Leads</h1>
           <p className="text-sm text-muted-foreground">Capture prospects, qualify and convert them into clients or deals.</p>
         </div>
-        <Button onClick={openNew}><Plus className="h-4 w-4 mr-2" />New Lead</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />Import
+          </Button>
+          <Button onClick={handleAddLeadClick}>
+            <Plus className="h-4 w-4 mr-2" />New Lead
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
@@ -360,6 +382,44 @@ export default function LeadsPage() {
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>{editId ? "Save" : "Add Lead"}</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Dialog */}
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        fields={leadImportFields}
+        entityName="Leads"
+        onImport={async (rows) => {
+          let success = 0, errors = 0;
+          for (const row of rows) {
+            if (!row.name || !String(row.name).trim()) {
+              errors++;
+              continue;
+            }
+            const { error } = await (supabase as any).from("leads").insert({
+              org_id: org!.id,
+              name: String(row.name).trim(),
+              company: row.company ? String(row.company).trim() : null,
+              email: row.email ? String(row.email).trim() : null,
+              phone: row.phone ? String(row.phone).trim() : null,
+              source: row.source ? String(row.source).trim() : "Other",
+              status: row.status ? String(row.status).toLowerCase().trim() : "new",
+              priority: row.priority ? String(row.priority).toLowerCase().trim() : "warm",
+              estimated_value: parseFloat(row.estimated_value) || 0,
+              notes: row.notes ? String(row.notes).trim() : null,
+              tags: row.tags ? String(row.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [],
+            });
+            if (error) {
+              console.error("Lead import error:", error);
+              errors++;
+            } else {
+              success++;
+            }
+          }
+          load();
+          return { success, errors };
+        }}
+      />
     </div>
   );
 }

@@ -32,6 +32,7 @@ export default function DealDetailPage() {
 
   const [deal, setDeal] = useState<any>(null);
   const [stages, setStages] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   
@@ -53,11 +54,13 @@ export default function DealDetailPage() {
     const [
       { data: op },
       { data: st },
+      { data: ld },
       { data: cl },
       { data: acts }
     ] = await Promise.all([
-      (supabase as any).from("opportunities").select("*, clients(id, display_name)").eq("id", id).eq("org_id", org.id).single(),
+      (supabase as any).from("opportunities").select("*, clients(id, display_name), leads(id, name, company)").eq("id", id).eq("org_id", org.id).single(),
       (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order"),
+      (supabase as any).from("leads").select("id, name, company").eq("org_id", org.id).order("name"),
       (supabase as any).from("clients").select("id, display_name").eq("org_id", org.id).order("display_name"),
       (supabase as any).from("activities").select("*").eq("opportunity_id", id).eq("org_id", org.id).order("created_at", { ascending: false })
     ]);
@@ -67,6 +70,7 @@ export default function DealDetailPage() {
       setNotes(op.notes || "");
     }
     setStages(st || []);
+    setLeads(ld || []);
     setClients(cl || []);
     setActivities(acts || []);
     setLoading(false);
@@ -139,6 +143,7 @@ export default function DealDetailPage() {
     setEditForm({
       title: deal.title || "",
       stage_id: deal.stage_id || "",
+      lead_id: deal.lead_id || "",
       client_id: deal.client_id || "",
       amount: String(deal.amount || 0),
       probability: String(deal.probability || 0),
@@ -153,6 +158,7 @@ export default function DealDetailPage() {
     const payload = {
       title: editForm.title.trim(),
       stage_id: editForm.stage_id,
+      lead_id: editForm.lead_id || null,
       client_id: editForm.client_id || null,
       amount: Number(editForm.amount) || 0,
       probability: Number(editForm.probability) || 0,
@@ -332,6 +338,17 @@ export default function DealDetailPage() {
           <Card>
             <CardHeader><CardTitle className="text-base">Deal Info</CardTitle></CardHeader>
             <CardContent className="space-y-4">
+              {deal.leads && (
+                <div className="flex items-start gap-3">
+                  <Users className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <div>
+                    <div className="text-xs text-muted-foreground">Lead</div>
+                    <div className="text-sm font-medium hover:underline cursor-pointer" onClick={() => navigate(`/leads/${deal.lead_id}`)}>
+                      {deal.leads.name} {deal.leads.company ? `(${deal.leads.company})` : ""}
+                    </div>
+                  </div>
+                </div>
+              )}
               {deal.clients && (
                 <div className="flex items-start gap-3">
                   <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
@@ -339,17 +356,6 @@ export default function DealDetailPage() {
                     <div className="text-xs text-muted-foreground">Client</div>
                     <div className="text-sm font-medium hover:underline cursor-pointer" onClick={() => navigate(`/clients/${deal.client_id}`)}>
                       {deal.clients.display_name}
-                    </div>
-                  </div>
-                </div>
-              )}
-              {deal.lead_id && (
-                <div className="flex items-start gap-3">
-                  <Users className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <div>
-                    <div className="text-xs text-muted-foreground">Lead</div>
-                    <div className="text-sm font-medium hover:underline cursor-pointer" onClick={() => navigate(`/leads/${deal.lead_id}`)}>
-                      View Lead
                     </div>
                   </div>
                 </div>
@@ -412,12 +418,16 @@ export default function DealDetailPage() {
               </Select>
             </div>
             <div>
-              <Label>Client</Label>
-              <Select value={editForm.client_id || "none"} onValueChange={v => setEditForm({ ...editForm, client_id: v === "none" ? "" : v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Lead</Label>
+              <Select value={editForm.lead_id || "none"} onValueChange={v => setEditForm({ ...editForm, lead_id: v === "none" ? "" : v })}>
+                <SelectTrigger><SelectValue placeholder="Select Lead" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">—</SelectItem>
-                  {clients.map(c => <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>)}
+                  <SelectItem value="none">— None —</SelectItem>
+                  {leads.map(l => (
+                    <SelectItem key={l.id} value={l.id}>
+                      {l.name} {l.company ? `(${l.company})` : ""}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
