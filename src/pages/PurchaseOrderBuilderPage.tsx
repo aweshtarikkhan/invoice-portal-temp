@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
+import { AddVendorDialog } from "@/components/shared/AddVendorDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -56,6 +57,7 @@ export default function PurchaseOrderBuilderPage() {
   const [tdsTcsRate, setTdsTcsRate] = useState(0);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
+  const [addVendorOpen, setAddVendorOpen] = useState(false);
   const [createItemOpen, setCreateItemOpen] = useState(false);
   const [newItemTargetLine, setNewItemTargetLine] = useState<number | null>(null);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
@@ -75,9 +77,9 @@ export default function PurchaseOrderBuilderPage() {
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
-      const o = await (supabase as any).from("organizations").select("po_prefix, po_next_number").eq("id", org.id).single();
-      const v = await (supabase as any).from("vendors").select("id, display_name, gstin, email, phone").eq("org_id", org.id);
-      const i = await (supabase as any).from("items").select("id, name, unit, hsn_code, purchase_price, purchase_price_type, tax_id").eq("org_id", org.id);
+      const o = await (supabase as any).from("organizations").select("po_prefix, po_next_number").eq("id", org.id).maybeSingle();
+      const v = await (supabase as any).from("vendors").select("id, name, display_name, gstin, email, phone").eq("org_id", org.id).order("name");
+      const i = await (supabase as any).from("items").select("id, name, unit, hsn_code, purchase_price, purchase_price_type, tax_id, sku, unit_price").eq("org_id", org.id).order("name");
       const t = await (supabase as any).from("tax_rates").select("*").eq("org_id", org.id);
       setVendors(v.data || []);
       setItems(i.data || []);
@@ -175,7 +177,7 @@ export default function PurchaseOrderBuilderPage() {
       x[idx].description = it.name + (extraDesc ? `\n${extraDesc}` : "");
       x[idx].hsn = it.hsn_code || "";
       x[idx].unit = it.unit || "";
-            let __rate = Number(it.unit_price) || 0;
+      let __rate = Number(it.purchase_price || it.unit_price) || 0;
       const __priceType = it.purchase_price_type || "without_tax";
       if (__priceType === "with_tax" && it.tax_id) {
         const __tax = taxRates.find((t: any) => t.id === it.tax_id);
@@ -334,12 +336,47 @@ export default function PurchaseOrderBuilderPage() {
         <CardContent className="pt-5 grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="space-y-1.5 md:col-span-2">
             <Label className="text-slate-700">Vendor <span className="text-red-500">*</span></Label>
-            <div className="relative">
-              <Store className="absolute left-3 top-2.5 h-4 w-4 text-blue-600" />
-              <Select value={vendorId} onValueChange={setVendorId}>
-                <SelectTrigger className="pl-9 h-10 border-slate-200 shadow-sm"><SelectValue placeholder="Select vendor" /></SelectTrigger>
-                <SelectContent>{vendors.map(v => <SelectItem key={v.id} value={v.id}>{v.display_name}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Store className="absolute left-3 top-2.5 h-4 w-4 text-blue-600 z-10 pointer-events-none" />
+                <Select value={vendorId || undefined} onValueChange={(v) => {
+                  if (v === "new") {
+                    setAddVendorOpen(true);
+                  } else {
+                    setVendorId(v);
+                  }
+                }}>
+                  <SelectTrigger className="pl-9 h-10 border-slate-200 shadow-sm">
+                    <SelectValue placeholder="Select vendor" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50 max-h-60">
+                    {vendors.length === 0 ? (
+                      <SelectItem value="none" disabled>
+                        No vendors found
+                      </SelectItem>
+                    ) : (
+                      vendors.map(v => (
+                        <SelectItem key={v.id} value={v.id}>
+                          {v.display_name || v.name || "Vendor"} {v.gstin ? `(${v.gstin})` : ""}
+                        </SelectItem>
+                      ))
+                    )}
+                    <SelectItem value="new" className="text-primary font-medium cursor-pointer border-t mt-1 pt-1">
+                      + Add New Vendor
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0 border-slate-200"
+                onClick={() => setAddVendorOpen(true)}
+                title="Add New Vendor"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
             </div>
             {vendorId && (
               <div className="pt-2">
@@ -423,18 +460,33 @@ export default function PurchaseOrderBuilderPage() {
                     <TableCell className="text-slate-500 font-medium text-sm">{i + 1}</TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1.5">
-                        <Select value={l.item_id} onValueChange={(v) => {
-                          if (v === "new") {
-                            setNewItemTargetLine(i);
-                            setCreateItemOpen(true);
-                          } else {
-                            pickItem(i, v);
-                          }
-                        }}>
-                          <SelectTrigger className="h-9"><SelectValue placeholder="Item" /></SelectTrigger>
-                          <SelectContent>
-                            {items.map(it => <SelectItem key={it.id} value={it.id}>{it.name}</SelectItem>)}
-                            <SelectItem value="new" className="text-primary font-medium cursor-pointer">+ Create New Item</SelectItem>
+                        <Select
+                          value={l.item_id || undefined}
+                          onValueChange={(v) => {
+                            if (v === "new") {
+                              setNewItemTargetLine(i);
+                              setCreateItemOpen(true);
+                            } else {
+                              pickItem(i, v);
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-9"><SelectValue placeholder="Select item" /></SelectTrigger>
+                          <SelectContent className="z-50 max-h-60">
+                            {items.length === 0 ? (
+                              <SelectItem value="none" disabled>
+                                No items in catalog
+                              </SelectItem>
+                            ) : (
+                              items.map(it => (
+                                <SelectItem key={it.id} value={it.id}>
+                                  {it.name} {it.sku ? `(${it.sku})` : ""}
+                                </SelectItem>
+                              ))
+                            )}
+                            <SelectItem value="new" className="text-primary font-medium cursor-pointer border-t mt-1 pt-1">
+                              + Create New Item
+                            </SelectItem>
                           </SelectContent>
                         </Select>
                         <Input value={l.description} onChange={e => { const x = [...lines]; x[i].description = e.target.value; setLines(x); }} className="h-7 text-xs px-2" placeholder="Description..." />
@@ -444,9 +496,9 @@ export default function PurchaseOrderBuilderPage() {
                     <TableCell>
                       <div className="flex flex-col gap-1.5">
                         <Input type="number" placeholder="1" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} />
-                        <Select value={l.unit} onValueChange={v => { const x = [...lines]; x[i].unit = v; setLines(x); }}>
+                        <Select value={l.unit || undefined} onValueChange={v => { const x = [...lines]; x[i].unit = v; setLines(x); }}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Unit" /></SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-50 max-h-60">
                             {["pcs", "kg", "g", "ltr", "ml", "m", "cm", "ft", "inch", "box", "nos", "hrs", "days", "pair", "set", "sqft", "sqm", "ton", "dozen", "bundle", "roll", "bag", "carton"].map(u => (
                               <SelectItem key={u} value={u}>{u}</SelectItem>
                             ))}
@@ -456,13 +508,41 @@ export default function PurchaseOrderBuilderPage() {
                     </TableCell>
                     <TableCell><Input type="number" placeholder="1" value={l.rate} onChange={e => { const x = [...lines]; x[i].rate = e.target.value; setLines(x); }} /></TableCell>
                     <TableCell>
-                      <Input
-                        type="number"
-                        value={vendorHasGst ? l.tax_rate : "0"}
-                        onChange={e => { const x = [...lines]; x[i].tax_rate = e.target.value; setLines(x); }}
-                        disabled={!vendorHasGst}
-                        className={!vendorHasGst ? "opacity-50 min-w-[70px]" : "min-w-[70px]"}
-                      />
+                      {vendorHasGst ? (
+                        <Select
+                          value={l.tax_rate !== undefined && l.tax_rate !== "" ? String(l.tax_rate) : "0"}
+                          onValueChange={(val) => {
+                            const x = [...lines];
+                            x[i].tax_rate = val;
+                            setLines(x);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-xs min-w-[75px]">
+                            <SelectValue placeholder="0%" />
+                          </SelectTrigger>
+                          <SelectContent className="z-50 max-h-60">
+                            <SelectItem value="0">0%</SelectItem>
+                            <SelectItem value="5">5%</SelectItem>
+                            <SelectItem value="12">12%</SelectItem>
+                            <SelectItem value="18">18%</SelectItem>
+                            <SelectItem value="28">28%</SelectItem>
+                            {taxRates
+                              .filter((t: any) => ![0, 5, 12, 18, 28].includes(Number(t.rate)))
+                              .map((t: any) => (
+                                <SelectItem key={t.id} value={String(t.rate)}>
+                                  {t.name} ({t.rate}%)
+                                </SelectItem>
+                              ))}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          type="text"
+                          value="0%"
+                          disabled
+                          className="opacity-50 h-8 text-xs min-w-[70px] bg-slate-50"
+                        />
+                      )}
                     </TableCell>
 
                     <TableCell className="text-right font-bold text-slate-900">{formatCurrency(lineTotal, currency)}</TableCell>
@@ -586,12 +666,32 @@ export default function PurchaseOrderBuilderPage() {
         </Card>
 
         <Card className="shadow-sm border-slate-200">
-          <CardHeader className="pb-3 border-b bg-slate-50/50">
+          <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="h-7 w-7 bg-blue-100 text-blue-700 rounded-md flex items-center justify-center">
                 <CheckCircle2 className="h-3.5 w-3.5" />
               </div>
               <CardTitle className="text-sm font-semibold text-blue-700">Terms</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              <Select onValueChange={(val) => {
+                if (val === "due_on_receipt") setTerms("Due on receipt");
+                else if (val === "net15") setTerms("Net 15 days");
+                else if (val === "net30") setTerms("Net 30 days");
+                else if (val === "net45") setTerms("Net 45 days");
+                else if (val === "net60") setTerms("Net 60 days");
+              }}>
+                <SelectTrigger className="h-7 text-xs w-36 border-slate-200">
+                  <SelectValue placeholder="Payment preset" />
+                </SelectTrigger>
+                <SelectContent className="z-50">
+                  <SelectItem value="due_on_receipt">Due on Receipt</SelectItem>
+                  <SelectItem value="net15">Net 15 Days</SelectItem>
+                  <SelectItem value="net30">Net 30 Days</SelectItem>
+                  <SelectItem value="net45">Net 45 Days</SelectItem>
+                  <SelectItem value="net60">Net 60 Days</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </CardHeader>
           <CardContent className="pt-4 space-y-3">
@@ -609,6 +709,14 @@ export default function PurchaseOrderBuilderPage() {
           </CardContent>
         </Card>
       </div>
+      <AddVendorDialog
+        open={addVendorOpen}
+        onOpenChange={setAddVendorOpen}
+        onVendorAdded={(newV: any) => {
+          setVendors(prev => [...prev, newV]);
+          setVendorId(newV.id);
+        }}
+      />
       <ItemFormDialog
         open={createItemOpen}
         onOpenChange={setCreateItemOpen}
