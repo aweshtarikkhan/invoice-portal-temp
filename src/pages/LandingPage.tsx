@@ -171,7 +171,9 @@ export default function LandingPage() {
       <header className="sticky top-0 z-50 border-b border-white/10 bg-navy/95 backdrop-blur-md shadow-sm">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-6">
           <Link to="/" className="flex items-center gap-2">
-            <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-9 w-auto brightness-0 invert" />
+            <div className="bg-white/95 px-3 py-1.5 rounded-lg shadow-sm border border-white/20">
+              <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-7 w-auto object-contain" />
+            </div>
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-300">
             <a href="#features" className="hover:text-primary transition-colors">{L.nav_features}</a>
