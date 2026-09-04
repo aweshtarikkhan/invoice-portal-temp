@@ -313,7 +313,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                       )}
                       
                       <div className="flex items-start justify-between mt-2">
-                        <h4 className="text-lg font-bold">{plan.display_name}</h4>
+                        <h4 className="text-lg font-bold">{plan.name === 'plan_6' ? 'Business Promotion' : plan.name === 'plan_5' ? 'Business CRM' : plan.display_name}</h4>
                         <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-600'}`}>
                           {isSelected && <Check className="h-3 w-3" />}
                         </div>

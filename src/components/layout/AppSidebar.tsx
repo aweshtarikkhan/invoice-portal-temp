@@ -143,7 +143,7 @@ const ADMIN_GROUP_ITEMS: Record<string, { label: string; items: any[] }> = {
   accounting: { label: "Banking", items: accountingItems },
   people: { label: "Business HR", items: peopleItems },
   crm: { label: "Business CRM", items: crmItems },
-  marketing: { label: "Marketing", items: marketingItems },
+  marketing: { label: "Business Promotion", items: marketingItems },
 };
 
 export function AppSidebar() {
