@@ -246,6 +246,7 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/feedback" element={<ComingSoonPage title="Business Feedback" description="Collect, manage, and analyze customer feedback and satisfaction ratings." />} />
                 <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />
                 <Route path="/ai-bi-report" element={<ComingSoonPage title="AI & Business Intelligence Report" />} />
                 <Route path="/tickets" element={<SupportTicketsPage />} />
