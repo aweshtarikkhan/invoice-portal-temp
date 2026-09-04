@@ -26,18 +26,21 @@ import { SalariesTab } from "@/components/payroll/SalariesTab";
 type Status = string;
 
 export const STATUS_OPTIONS = [
-  { value: "present",    label: "Present",            short: "P",   cls: "bg-green-100 text-green-700 border-green-300", baseStatus: "present" },
-  { value: "late",       label: "Late",               short: "L",   cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "late" },
-  { value: "half_day",   label: "Half-Day Leave",     short: "HD",  cls: "bg-orange-100 text-orange-700 border-orange-300", baseStatus: "half_day" },
-  { value: "absent",     label: "Absent",             short: "AB",  cls: "bg-red-100 text-red-700 border-red-300", baseStatus: "absent" },
-  { value: "lwp",        label: "Leave Without Pay",  short: "LWP", cls: "bg-red-50 text-red-700 border-red-200", baseStatus: "absent" },
-  { value: "casual",     label: "Casual Leave (CL)",  short: "CL",  cls: "bg-blue-100 text-blue-700 border-blue-300", baseStatus: "paid_leave" },
-  { value: "el_pl",      label: "Earned/Privilege",   short: "PL",  cls: "bg-indigo-100 text-indigo-700 border-indigo-300", baseStatus: "paid_leave" },
-  { value: "sick",       label: "Sick/Medical (SL)",  short: "SL",  cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "paid_leave" },
-  { value: "comp_off",   label: "Compensatory Off",   short: "CO",  cls: "bg-teal-100 text-teal-700 border-teal-300", baseStatus: "paid_leave" },
-  { value: "maternity",  label: "Maternity Leave",    short: "ML",  cls: "bg-pink-100 text-pink-700 border-pink-300", baseStatus: "paid_leave" },
-  { value: "wfh",        label: "Work From Home",     short: "WFH", cls: "bg-emerald-100 text-emerald-700 border-emerald-300", baseStatus: "present" },
-  { value: "holiday",    label: "Holiday",            short: "HO",  cls: "bg-muted text-muted-foreground border-border", baseStatus: "holiday" },
+  { value: "present",        label: "Present",                   short: "P",   cls: "bg-green-100 text-green-700 border-green-300", baseStatus: "present" },
+  { value: "late",           label: "Late",                      short: "L",   cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "late" },
+  { value: "half_day",       label: "Half-Day Leave",            short: "HD",  cls: "bg-orange-100 text-orange-700 border-orange-300", baseStatus: "half_day" },
+  { value: "absent",         label: "Absent",                    short: "AB",  cls: "bg-red-100 text-red-700 border-red-300", baseStatus: "absent" },
+  { value: "lwp",            label: "Leave Without Pay",         short: "LWP", cls: "bg-red-50 text-red-700 border-red-200", baseStatus: "absent" },
+  { value: "casual",         label: "Casual Leave (CL)",         short: "CL",  cls: "bg-blue-100 text-blue-700 border-blue-300", baseStatus: "paid_leave" },
+  { value: "el_pl",          label: "Earned/Privilege",          short: "PL",  cls: "bg-indigo-100 text-indigo-700 border-indigo-300", baseStatus: "paid_leave" },
+  { value: "sick",           label: "Sick/Medical (SL)",         short: "SL",  cls: "bg-amber-100 text-amber-700 border-amber-300", baseStatus: "paid_leave" },
+  { value: "comp_off",       label: "Compensatory Off",          short: "CO",  cls: "bg-teal-100 text-teal-700 border-teal-300", baseStatus: "paid_leave" },
+  { value: "maternity",      label: "Maternity Leave",           short: "ML",  cls: "bg-pink-100 text-pink-700 border-pink-300", baseStatus: "paid_leave" },
+  { value: "approved_leave", label: "Approved Leave",            short: "AL",  cls: "bg-purple-100 text-purple-700 border-purple-300", baseStatus: "paid_leave" },
+  { value: "paid_leave",     label: "Paid Leave",                short: "PL",  cls: "bg-purple-100 text-purple-700 border-purple-300", baseStatus: "paid_leave" },
+  { value: "leave",          label: "Leave",                     short: "LV",  cls: "bg-purple-100 text-purple-700 border-purple-300", baseStatus: "paid_leave" },
+  { value: "wfh",            label: "Work From Home",            short: "WFH", cls: "bg-emerald-100 text-emerald-700 border-emerald-300", baseStatus: "present" },
+  { value: "holiday",        label: "Holiday",                   short: "HO",  cls: "bg-muted text-muted-foreground border-border", baseStatus: "holiday" },
 ];
 
 interface Employee {
@@ -220,12 +223,15 @@ export default function AttendancePage() {
     const alvMap: Record<string, string> = {};
     approvedLeaves.forEach((l: any) => {
       try {
-        const start = parseISO(l.start_date);
-        const end = parseISO(l.end_date);
+        if (!l.start_date) return;
+        const sStr = String(l.start_date).split("T")[0];
+        const eStr = String(l.end_date || l.start_date).split("T")[0];
+        const start = parseISO(sStr);
+        const end = parseISO(eStr);
         const interval = eachDayOfInterval({ start, end });
         interval.forEach((d) => {
           const ds = format(d, "yyyy-MM-dd");
-          alvMap[`${l.employee_id}|${ds}`] = l.leave_type;
+          alvMap[`${l.employee_id}|${ds}`] = l.leave_type || "paid_leave";
         });
       } catch {}
     });
@@ -234,7 +240,7 @@ export default function AttendancePage() {
     const shiftMap: Record<string, any> = {};
     (empShiftsRes?.data || []).forEach((es: any) => { shiftMap[es.employee_id] = es.shifts; });
 
-    // ── AUTO-COMPUTE: fill in attendance from clock-in data ──
+    // ── AUTO-COMPUTE: fill in attendance from clock-in data & approved leaves ──
     const orgWeeklyOffs = (org as any)?.weekly_offs || [0];
     const holsList: any[] = holsRes?.data || [];
     const newAutoKeys = new Set<string>();
@@ -244,8 +250,23 @@ export default function AttendancePage() {
       eachDayOfInterval({ start: monthStart, end: monthEnd }).forEach((d) => {
         const ds = format(d, "yyyy-MM-dd");
         const key = `${emp.id}|${ds}`;
-        if (map[key]) return; // HR already set this → skip
 
+        // 1. Approved Leave: Highest authority for scheduled leaves
+        const approvedLeaveType = alvMap[key];
+        if (approvedLeaveType) {
+          let lvStatus: Status = "approved_leave";
+          if (approvedLeaveType === "half_day") lvStatus = "half_day";
+          else if (approvedLeaveType === "wfh") lvStatus = "wfh";
+          else if (approvedLeaveType === "lwp" || approvedLeaveType === "unpaid") lvStatus = "lwp";
+          else if (STATUS_OPTIONS.some(o => o.value === approvedLeaveType)) lvStatus = approvedLeaveType as Status;
+          map[key] = lvStatus;
+          return;
+        }
+
+        // 2. If HR already manually set an explicit non-default status, keep it
+        if (map[key] && map[key] !== "present") return;
+
+        // 3. Weekly offs and holidays
         const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
           ? emp.weekly_offs
           : orgWeeklyOffs;
@@ -253,14 +274,17 @@ export default function AttendancePage() {
         const isHoliday = holsList.some((h: any) => h.date === ds);
         if (isOff || isHoliday) { map[key] = "holiday"; return; }
 
-        const approvedLeaveType = alvMap[key];
-        if (approvedLeaveType) { map[key] = "paid_leave"; return; }
-
+        // 4. Actual clock-in from attendances table (daily clock records)
         const clk = clkMap[key];
-        if (clk?.clock_in_time) {
-          const shift = shiftMap[emp.id] || orgDefaultShift;
-          map[key] = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
-          newAutoKeys.add(key);
+        if (clk) {
+          if (clk.clock_in_time) {
+            const shift = shiftMap[emp.id] || orgDefaultShift;
+            map[key] = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
+            newAutoKeys.add(key);
+          } else if (clk.status) {
+            map[key] = clk.status;
+            newAutoKeys.add(key);
+          }
         } else if (ds <= todayStr) {
           // Employee has not marked attendance for past or today -> auto mark absent
           map[key] = "absent";
@@ -537,8 +561,28 @@ export default function AttendancePage() {
     fetchEmployeeDetail();
   }, [selectedEmpDetail, detailFrom, detailTo]);
 
-  const setCell = (empId: string, dateStr: string, status: Status) => {
+  const setCell = async (empId: string, dateStr: string, status: Status) => {
     setAtt((prev) => ({ ...prev, [`${empId}|${dateStr}`]: status }));
+    if (!org?.id) return;
+    const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0];
+    try {
+      await (supabase as any).from("attendance").upsert({
+        org_id: org.id,
+        employee_id: empId,
+        attendance_date: dateStr,
+        status: opt.baseStatus,
+        override_status: opt.value,
+      }, { onConflict: "employee_id,attendance_date" });
+
+      await (supabase as any).from("attendances").upsert({
+        org_id: org.id,
+        employee_id: empId,
+        date: dateStr,
+        status: opt.value,
+      }, { onConflict: "employee_id,date" });
+    } catch (e) {
+      console.error("Auto-sync error on setCell:", e);
+    }
   };
 
   const cycle = (empId: string, dateStr: string) => {
@@ -564,10 +608,13 @@ export default function AttendancePage() {
     if (!org?.id) return;
     setSaving(true);
     const rows: any[] = [];
+    const clkRows: any[] = [];
     Object.entries(att).forEach(([k, status]) => {
       const [employee_id, attendance_date] = k.split("|");
       if (employees.find((e) => e.id === employee_id)) {
-        const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; rows.push({ org_id: org.id, employee_id, attendance_date, status: opt.baseStatus, override_status: opt.value });
+        const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; 
+        rows.push({ org_id: org.id, employee_id, attendance_date, status: opt.baseStatus, override_status: opt.value });
+        clkRows.push({ org_id: org.id, employee_id, date: attendance_date, status: opt.value });
       }
     });
     if (rows.length === 0) { setSaving(false); toast({ title: "Nothing to save" }); return; }
@@ -577,6 +624,7 @@ export default function AttendancePage() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
+    await (supabase as any).from("attendances").upsert(clkRows, { onConflict: "employee_id,date" });
 
     setSaving(false);
     toast({ title: "Attendance saved", description: `${rows.length} record(s) saved.` });
@@ -656,7 +704,15 @@ export default function AttendancePage() {
   };
 
   const statusBadge = (s: Status | undefined, isAuto?: boolean) => {
-    const opt = STATUS_OPTIONS.find((o) => o.value === s) || STATUS_OPTIONS[0];
+    if (!s) return null;
+    const norm = s.toLowerCase().replace("-", "_").trim();
+    const opt = STATUS_OPTIONS.find((o) => o.value === norm || o.value === s) || {
+      value: s,
+      label: s.charAt(0).toUpperCase() + s.slice(1).replace("_", " "),
+      short: s.slice(0, 2).toUpperCase(),
+      cls: "bg-gray-100 text-gray-700 border-gray-300",
+      baseStatus: "present"
+    };
     return (
       <span className={`inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold relative ${opt.cls}`}>
         {opt.short}
@@ -666,13 +722,76 @@ export default function AttendancePage() {
   };
 
   const updateLeaveStatus = async (id: string, newStatus: string) => {
+    const leaveReq = leaves.find(l => l.id === id);
     const { error } = await (supabase as any).from("leaves").update({ status: newStatus }).eq("id", id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Updated", description: `Leave request ${newStatus}.` });
-      load();
+      return;
     }
+
+    if (leaveReq && org?.id) {
+      try {
+        const startStr = String(leaveReq.start_date).split("T")[0];
+        const endStr = String(leaveReq.end_date || leaveReq.start_date).split("T")[0];
+        const start = parseISO(startStr);
+        const end = parseISO(endStr);
+        const dateList: string[] = [];
+        for (let cur = new Date(start); cur <= end; cur.setDate(cur.getDate() + 1)) {
+          dateList.push(format(cur, "yyyy-MM-dd"));
+        }
+
+        if (newStatus === "approved") {
+          let attStatus = "paid_leave";
+          if (leaveReq.leave_type === "half_day") attStatus = "half_day";
+          else if (leaveReq.leave_type === "wfh") attStatus = "wfh";
+          else if (leaveReq.leave_type === "lwp" || leaveReq.leave_type === "unpaid") attStatus = "absent";
+          else if (STATUS_OPTIONS.some(o => o.value === leaveReq.leave_type)) attStatus = leaveReq.leave_type;
+
+          const hrRows = dateList.map(ds => ({
+            org_id: org.id,
+            employee_id: leaveReq.employee_id,
+            attendance_date: ds,
+            status: attStatus,
+            override_status: leaveReq.leave_type || attStatus
+          }));
+          await (supabase as any).from("attendance").upsert(hrRows, { onConflict: "employee_id,attendance_date" });
+
+          const clkRows = dateList.map(ds => ({
+            org_id: org.id,
+            employee_id: leaveReq.employee_id,
+            date: ds,
+            status: attStatus === "absent" ? "absent" : "approved_leave"
+          }));
+          await (supabase as any).from("attendances").upsert(clkRows, { onConflict: "employee_id,date" });
+
+          const { data: bData } = await (supabase as any).from('employee_leave_balances')
+            .select('id, used')
+            .eq('employee_id', leaveReq.employee_id)
+            .eq('leave_type', leaveReq.leave_type)
+            .maybeSingle();
+          if (bData) {
+            await (supabase as any).from('employee_leave_balances')
+              .update({ used: (bData.used || 0) + (leaveReq.days || 1) })
+              .eq('id', bData.id);
+          }
+        } else if (newStatus === "rejected") {
+          for (const ds of dateList) {
+            await (supabase as any).from("attendance").delete()
+              .eq("employee_id", leaveReq.employee_id)
+              .eq("attendance_date", ds);
+            await (supabase as any).from("attendances").delete()
+              .eq("employee_id", leaveReq.employee_id)
+              .eq("date", ds)
+              .eq("status", "approved_leave");
+          }
+        }
+      } catch (err: any) {
+        console.error("Error syncing leave to attendance records:", err);
+      }
+    }
+
+    toast({ title: "Updated", description: `Leave request ${newStatus}.` });
+    load();
   };
 
   const updateRegularizationStatus = async (reg: any, newStatus: 'approved' | 'rejected') => {
@@ -1089,18 +1208,21 @@ export default function AttendancePage() {
                       const todayStr = format(new Date(), "yyyy-MM-dd");
 
                       // Determine display status — unrecorded days on or before today automatically show as Absent
-                      let displayStatus: Status | "approved_leave" | null = null;
-                      if (recordedStatus) {
+                      let displayStatus: Status | null = null;
+                      if (approvedLeaveType) {
+                        if (approvedLeaveType === "half_day") displayStatus = "half_day";
+                        else if (approvedLeaveType === "wfh") displayStatus = "wfh";
+                        else if (approvedLeaveType === "lwp" || approvedLeaveType === "unpaid") displayStatus = "lwp";
+                        else if (STATUS_OPTIONS.some(o => o.value === approvedLeaveType)) displayStatus = approvedLeaveType as Status;
+                        else displayStatus = "approved_leave";
+                      } else if (recordedStatus) {
                         displayStatus = recordedStatus as Status;
                       } else if (isHoliday || isOff) {
                         displayStatus = "holiday";
-                      } else if (approvedLeaveType) {
-                        displayStatus = "approved_leave" as any;
                       } else if (ds <= todayStr) {
                         displayStatus = "absent";
                       }
 
-                      const isAL = displayStatus === "approved_leave";
                       return (
                         <TableCell key={ds} className="text-center p-1 relative group">
                           {isHoliday || isOff ? (
@@ -1108,10 +1230,8 @@ export default function AttendancePage() {
                           ) : (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button title={ds}>
-                                  {isAL ? (
-                                    <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold bg-purple-100 text-purple-700 border-purple-300" title={`Approved ${approvedLeaveType} leave`}>AL</span>
-                                  ) : displayStatus ? (
+                                <button title={approvedLeaveType ? `Approved ${approvedLeaveType} leave` : ds}>
+                                  {displayStatus ? (
                                     statusBadge(displayStatus as Status, autoAttKeys.has(`${emp.id}|${ds}`))
                                   ) : (
                                     <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] text-muted-foreground border-dashed">-</span>

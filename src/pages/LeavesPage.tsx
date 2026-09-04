@@ -178,26 +178,36 @@ export default function LeavesPage() {
         if (status === "approved" && oldStatus !== "approved") {
           currentUsed += leaveReq.days;
           
-          // Auto-mark each leave day in attendances table with correct leave type
+          // Auto-mark each leave day in both attendance and attendances tables
           const start = new Date(leaveReq.start_date);
-          const end = new Date(leaveReq.end_date);
+          const end = new Date(leaveReq.end_date || leaveReq.start_date);
           const datesToMark: string[] = [];
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             datesToMark.push(d.toISOString().split('T')[0]);
           }
           
-                      for (const dateStr of datesToMark) {
-              let attStatus = 'paid_leave';
-              if (leaveReq.leave_type === 'half_day') attStatus = 'half_day';
-              if (leaveReq.leave_type === 'unpaid') attStatus = 'absent';
-              
-              await (supabase as any).from('attendance').upsert({
-                org_id: org.id,
-                employee_id: leaveReq.employee_id,
-                attendance_date: dateStr,
-                status: attStatus,
-              }, { onConflict: 'employee_id,attendance_date' });
-            }
+          for (const dateStr of datesToMark) {
+            let attStatus = 'paid_leave';
+            if (leaveReq.leave_type === 'half_day') attStatus = 'half_day';
+            else if (leaveReq.leave_type === 'wfh') attStatus = 'wfh';
+            else if (leaveReq.leave_type === 'unpaid' || leaveReq.leave_type === 'lwp') attStatus = 'absent';
+            else attStatus = leaveReq.leave_type || 'paid_leave';
+            
+            await (supabase as any).from('attendance').upsert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              attendance_date: dateStr,
+              status: attStatus,
+              override_status: leaveReq.leave_type || attStatus
+            }, { onConflict: 'employee_id,attendance_date' });
+
+            await (supabase as any).from('attendances').upsert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              date: dateStr,
+              status: attStatus === 'absent' ? 'absent' : 'approved_leave',
+            }, { onConflict: 'employee_id,date' });
+          }
           
           toast({ title: "Leave Approved", description: `Attendance marked as ${leaveReq.leave_type.toUpperCase()} for ${leaveReq.days} day(s).` });
         } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
@@ -205,7 +215,7 @@ export default function LeavesPage() {
           
           // Revert attendance records back to absent for those days
           const start = new Date(leaveReq.start_date);
-          const end = new Date(leaveReq.end_date);
+          const end = new Date(leaveReq.end_date || leaveReq.start_date);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             const dateStr = d.toISOString().split('T')[0];
             await (supabase as any).from('attendance').upsert({
@@ -213,9 +223,16 @@ export default function LeavesPage() {
               employee_id: leaveReq.employee_id,
               attendance_date: dateStr,
               status: 'absent',
+              override_status: 'absent'
             }, { onConflict: 'employee_id,attendance_date' });
+
+            await (supabase as any).from('attendances').upsert({
+              org_id: org.id,
+              employee_id: leaveReq.employee_id,
+              date: dateStr,
+              status: 'absent',
+            }, { onConflict: 'employee_id,date' });
           }
-          
           toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s). Attendance reverted to Absent.` });
         }
         
