@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, ExternalLink, Download, FileCheck, Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
 import { NavLink } from "@/components/NavLink";
 import { SalaryStructureDialog } from "@/components/payroll/SalaryStructureDialog";
@@ -76,8 +77,123 @@ export default function EmployeesPage() {
   const [structureModalOpen, setStructureModalOpen] = useState(false);
   const [activeTabFilter, setActiveTabFilter] = useState<"all" | "monthly" | "wagers">("all");
   const [dailyWagesEnabled, setDailyWagesEnabled] = useState<boolean>(true);
+  const [existingDocs, setExistingDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
+  const [viewerDoc, setViewerDoc] = useState<any | null>(null);
+  const [viewerUrl, setViewerUrl] = useState<string>("");
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [uploadingInlineDoc, setUploadingInlineDoc] = useState(false);
   const [weekOffEmp, setWeekOffEmp] = useState<any | null>(null);
   const [quickWeekOffs, setQuickWeekOffs] = useState<number[]>([]);
+
+  const isImage = (name?: string) => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name || "");
+  const isPdf = (name?: string) => /\.pdf$/i.test(name || "");
+
+  const loadEmpDocs = async (empId: string) => {
+    if (!empId) { setExistingDocs([]); return; }
+    setLoadingDocs(true);
+    const { data } = await (supabase as any)
+      .from("employee_documents")
+      .select("*")
+      .eq("employee_id", empId)
+      .order("uploaded_at", { ascending: false });
+    setExistingDocs(data || []);
+    setLoadingDocs(false);
+  };
+
+  const getDocUrl = async (filePath: string) => {
+    if (!filePath) return "";
+    if (filePath.startsWith("http://") || filePath.startsWith("https://")) return filePath;
+    try {
+      const { data } = await supabase.storage.from("employee-documents").createSignedUrl(filePath, 3600);
+      if (data?.signedUrl) return data.signedUrl;
+    } catch (e) {
+      console.warn("createSignedUrl error, falling back to public url:", e);
+    }
+    const { data: pubData } = supabase.storage.from("employee-documents").getPublicUrl(filePath);
+    return pubData?.publicUrl || "";
+  };
+
+  const viewDoc = async (d: any) => {
+    setViewerDoc(d);
+    setViewerLoading(true);
+    const url = await getDocUrl(d.file_path);
+    setViewerUrl(url);
+    setViewerLoading(false);
+  };
+
+  const openDoc = async (d: any) => {
+    const url = await getDocUrl(d.file_path);
+    if (!url) { toast({ title: "Failed to open document", variant: "destructive" }); return; }
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  const downloadDoc = async (d: any) => {
+    try {
+      const url = await getDocUrl(d.file_path);
+      if (!url) throw new Error("Could not retrieve file URL");
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = d.file_name || "document";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(blobUrl);
+        return;
+      }
+    } catch (e) {
+      console.warn("Direct blob download failed, falling back to window.open", e);
+    }
+    const fallbackUrl = await getDocUrl(d.file_path);
+    if (fallbackUrl) window.open(fallbackUrl, "_blank");
+  };
+
+  const deleteDoc = async (d: any) => {
+    if (!confirm(`Delete document "${d.file_name}"?`)) return;
+    try {
+      if (d.file_path) {
+        await supabase.storage.from("employee-documents").remove([d.file_path]);
+      }
+      await (supabase as any).from("employee_documents").delete().eq("id", d.id);
+      toast({ title: "Document deleted" });
+      if (editId) loadEmpDocs(editId);
+    } catch (e: any) {
+      toast({ title: "Delete failed", description: e.message, variant: "destructive" });
+    }
+  };
+
+  const handleUploadSingleDoc = async () => {
+    if (!org?.id || !editId || !docFile) {
+      toast({ title: "Please select a file first", variant: "destructive" });
+      return;
+    }
+    setUploadingInlineDoc(true);
+    try {
+      const safeName = docFile.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = `${org.id}/${editId}/${Date.now()}_${safeName}`;
+      const { error: upErr } = await supabase.storage.from("employee-documents").upload(path, docFile);
+      if (upErr) throw upErr;
+      const { error: insErr } = await (supabase as any).from("employee_documents").insert({
+        org_id: org.id,
+        employee_id: editId,
+        doc_type: docType,
+        file_path: path,
+        file_name: docFile.name,
+      });
+      if (insErr) throw insErr;
+      toast({ title: "Document uploaded successfully" });
+      setDocFile(null);
+      loadEmpDocs(editId);
+    } catch (err: any) {
+      toast({ title: "Upload failed", description: err.message, variant: "destructive" });
+    } finally {
+      setUploadingInlineDoc(false);
+    }
+  };
 
   const load = async () => {
     if (!org?.id) return;
@@ -135,6 +251,7 @@ export default function EmployeesPage() {
     setSelectedShiftId("none");
     setDocFile(null);
     setDocType("ID Proof");
+    setExistingDocs([]);
     setOpen(true);
   };
 
@@ -179,6 +296,7 @@ export default function EmployeesPage() {
     setSelectedShiftId(assignData?.shift_id || "none");
     setDocFile(null);
     setDocType("ID Proof");
+    loadEmpDocs(e.id);
     setOpen(true);
   };
 
@@ -787,36 +905,147 @@ export default function EmployeesPage() {
               </>
             )}
 
-            {/* Optional Portal Access Setup on New Creation */}
-            <div className="col-span-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800">
-              <div className="text-sm font-medium mb-2 text-slate-800 dark:text-slate-200">Upload Document (Optional)</div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Document Type</Label>
-                  <Select value={docType} onValueChange={setDocType}>
-                    <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {["Aadhaar", "PAN", "ID Proof", "Resume", "Other"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+            {/* Employee Documents Section */}
+            <div className="col-span-2 mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-sm font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4 text-primary" />
+                  Employee Documents
                 </div>
-                <div>
-                  <Label>File (Max 2MB)</Label>
-                  <Input type="file" className="mt-1" onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) {
-                      if (f.size > 2 * 1024 * 1024) {
-                        toast({ title: "File too large", description: "Max file size is 2MB", variant: "destructive" });
-                        e.target.value = "";
-                        setDocFile(null);
+                {editId && (
+                  <Button size="sm" variant="outline" asChild className="h-7 text-xs">
+                    <NavLink to={`/employees/${editId}/documents`}>
+                      <ExternalLink className="h-3 w-3 mr-1" /> Full Documents Manager
+                    </NavLink>
+                  </Button>
+                )}
+              </div>
+
+              {/* If editing and existing docs exist, visibly list them */}
+              {editId && (
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Uploaded Documents</Label>
+                  {loadingDocs ? (
+                    <div className="text-xs text-muted-foreground p-3 border rounded-lg bg-slate-50 dark:bg-slate-900/50 flex items-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Loading documents...
+                    </div>
+                  ) : existingDocs.length === 0 ? (
+                    <div className="text-xs text-muted-foreground p-3 border border-dashed rounded-lg bg-slate-50 dark:bg-slate-900/50 text-center">
+                      No documents uploaded yet for this employee.
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg divide-y bg-white dark:bg-slate-950 overflow-hidden">
+                      {existingDocs.map((d: any) => (
+                        <div key={d.id} className="p-2.5 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors">
+                          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                            <Badge variant="secondary" className="text-[10px] shrink-0 font-medium">
+                              {d.doc_type || "Document"}
+                            </Badge>
+                            <span className="text-xs font-medium truncate max-w-[220px]" title={d.file_name}>
+                              {d.file_name}
+                            </span>
+                            {d.uploaded_at && (
+                              <span className="text-[11px] text-muted-foreground shrink-0 hidden sm:inline">
+                                ({format(parseISO(d.uploaded_at), "dd MMM yyyy")})
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/50"
+                              onClick={() => viewDoc(d)}
+                              title="View Preview"
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1" /> View
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800"
+                              onClick={() => openDoc(d)}
+                              title="Open in new tab"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Open
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/50"
+                              onClick={() => downloadDoc(d)}
+                              title="Download File"
+                            >
+                              <Download className="h-3.5 w-3.5 mr-1" /> Download
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 px-2 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
+                              onClick={() => deleteDoc(d)}
+                              title="Delete Document"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Upload New Document */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border rounded-lg space-y-3">
+                <div className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                  {editId ? "Upload Another Document" : "Upload Document (Optional)"}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Document Type</Label>
+                    <Select value={docType} onValueChange={setDocType}>
+                      <SelectTrigger className="mt-1 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {["Aadhaar", "PAN", "Offer Letter", "Appointment Letter", "Salary Slip", "Bank Proof", "Resume", "ID Proof", "Other"].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs">File (Max 2MB)</Label>
+                    <Input type="file" className="mt-1 h-8 text-xs" onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        if (f.size > 2 * 1024 * 1024) {
+                          toast({ title: "File too large", description: "Max file size is 2MB", variant: "destructive" });
+                          e.target.value = "";
+                          setDocFile(null);
+                        } else {
+                          setDocFile(f);
+                        }
                       } else {
-                        setDocFile(f);
+                        setDocFile(null);
                       }
-                    } else {
-                      setDocFile(null);
-                    }
-                  }} />
+                    }} />
+                  </div>
                 </div>
+                {editId && docFile && (
+                  <div className="flex justify-end pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleUploadSingleDoc}
+                      disabled={uploadingInlineDoc}
+                      className="h-8 text-xs"
+                    >
+                      {uploadingInlineDoc ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
+                      Upload Now
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -981,6 +1210,56 @@ export default function EmployeesPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Document Preview Modal */}
+      <Dialog open={!!viewerDoc} onOpenChange={(isOpen) => { if (!isOpen) { setViewerDoc(null); setViewerUrl(""); } }}>
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 sm:p-6">
+          <DialogHeader className="flex flex-row items-center justify-between pb-2 border-b">
+            <div>
+              <DialogTitle className="text-base font-semibold flex items-center gap-2">
+                <Badge variant="outline">{viewerDoc?.doc_type || "Document"}</Badge>
+                <span className="truncate max-w-sm">{viewerDoc?.file_name}</span>
+              </DialogTitle>
+            </div>
+            <div className="flex items-center gap-2 pr-6">
+              <Button size="sm" variant="outline" onClick={() => openDoc(viewerDoc)}>
+                <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open in Tab
+              </Button>
+              <Button size="sm" onClick={() => downloadDoc(viewerDoc)}>
+                <Download className="w-3.5 h-3.5 mr-1" /> Download
+              </Button>
+            </div>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-auto flex items-center justify-center p-2 min-h-[350px] bg-slate-50 dark:bg-slate-900 rounded-lg my-3 border">
+            {viewerLoading ? (
+              <div className="text-center text-sm text-muted-foreground animate-pulse flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading preview...
+              </div>
+            ) : !viewerUrl ? (
+              <div className="text-center text-sm text-red-500">Unable to load document preview.</div>
+            ) : isImage(viewerDoc?.file_name) ? (
+              <img src={viewerUrl} alt={viewerDoc?.file_name} className="max-h-[70vh] max-w-full object-contain rounded shadow" />
+            ) : isPdf(viewerDoc?.file_name) ? (
+              <iframe src={viewerUrl} title={viewerDoc?.file_name} className="w-full h-[65vh] rounded border-0" />
+            ) : (
+              <div className="text-center p-6 space-y-3">
+                <FileText className="w-16 h-16 mx-auto text-blue-500 opacity-60" />
+                <p className="text-sm font-medium">{viewerDoc?.file_name}</p>
+                <p className="text-xs text-muted-foreground">Inline preview is not supported for this file format.</p>
+                <div className="flex justify-center gap-2 pt-2">
+                  <Button size="sm" variant="outline" onClick={() => openDoc(viewerDoc)}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" /> Open File
+                  </Button>
+                  <Button size="sm" onClick={() => downloadDoc(viewerDoc)}>
+                    <Download className="w-3.5 h-3.5 mr-1" /> Download File
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
