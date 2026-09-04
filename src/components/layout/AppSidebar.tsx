@@ -123,6 +123,7 @@ const crmItems = [
 ];
 
 const marketingItems = [
+  { title: "Promotion Reports", url: "/promotion-reports", icon: BarChart3, addUrl: null },
   { title: "Festival Posters", url: "/marketing/posters", icon: ImageIcon, addUrl: null },
   { title: "Campaigns", url: "/campaigns", icon: Send, addUrl: null },
   { title: "Templates", url: "/marketing/templates", icon: MessageSquare, addUrl: null },

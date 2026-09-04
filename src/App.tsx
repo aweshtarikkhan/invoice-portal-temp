@@ -165,6 +165,7 @@ const App = () => (
                 <Route path="/purchase-accounting-reports" element={<PurchaseAccountingReportsPage />} />
                 <Route path="/hr-reports" element={<HRReportsPage />} />
                 <Route path="/crm-marketing-reports" element={<CRMMarketingReportsPage />} />
+                <Route path="/promotion-reports" element={<CRMMarketingReportsPage />} />
                 <Route path="/business-report" element={<BusinessReportPage />} />
                 <Route path="/aging-details" element={<AgingDetailsPage />} />
                 <Route path="/profit-loss" element={<ProfitLossPage />} />
@@ -236,7 +237,7 @@ const App = () => (
                 <Route path="/pipeline/:id" element={<DealDetailPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
               </Route>
-              <Route element={<FeatureGuard featureKey="marketing" featureName="Marketing" />}>
+              <Route element={<FeatureGuard featureKey="marketing" featureName="Business Promotion" />}>
                 <Route path="/marketing/posters" element={<MarketingPostersPage />} />
                 <Route path="/marketing/templates" element={<MarketingTemplatesPage />} />
                 <Route path="/campaigns" element={<CampaignsPage />} />

@@ -120,7 +120,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "Send",
     description: "Campaigns, Templates & Automations",
     items: [
-      { key: "marketing-reports", title: "Marketing Reports", description: "Analyze your marketing campaigns", icon: "BarChart3", url: "/crm-marketing-reports" },
+      { key: "marketing-reports", title: "Promotion Reports", description: "Analyze your promotional campaigns", icon: "BarChart3", url: "/promotion-reports" },
       { key: "festival-posters", title: "Festival Posters", description: "Create & download festival marketing posters", icon: "Image", url: "/marketing/posters" },
       { key: "campaigns", title: "Campaigns", description: "Email & SMS campaigns", icon: "Send", url: "/campaigns" },
       { key: "marketing-templates", title: "Templates", description: "Marketing templates", icon: "MessageSquare", url: "/marketing/templates" },
