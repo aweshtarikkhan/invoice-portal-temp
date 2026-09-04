@@ -130,7 +130,12 @@ export function AppLayout() {
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
-  const [showPlanModal, setShowPlanModal] = useState(false);
+      const [showPlanModal, setShowPlanModal] = useState(false);
+  useEffect(() => {
+    const handleOpenPlanModal = () => setShowPlanModal(true);
+    window.addEventListener('open-plan-modal', handleOpenPlanModal);
+    return () => window.removeEventListener('open-plan-modal', handleOpenPlanModal);
+  }, []);
   const { subscriptionPlan } = useSubscription();
     const navigate = useNavigate();
   useEffect(() => {
@@ -452,6 +457,7 @@ export function AppLayout() {
     </SidebarProvider>
   );
 }
+
 
 
 
