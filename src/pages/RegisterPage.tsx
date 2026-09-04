@@ -21,11 +21,8 @@ export default function RegisterPage() {
     const plan = params.get("plan");
     if (plan) {
       sessionStorage.setItem("onboarding_plan", plan);
-    } else {
-      // Direct sign up without a plan is blocked. Redirect to landing page.
-      navigate("/");
     }
-  }, [navigate]);
+  }, []);
   
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -173,3 +170,4 @@ export default function RegisterPage() {
       </>
   );
 }
+

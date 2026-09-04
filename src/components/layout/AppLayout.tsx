@@ -32,7 +32,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
   const handleCreate = async () => {
     if (!name.trim() || !profile) return;
@@ -50,6 +50,9 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
     // Handle initial plan and trial
     try {
       const planName = sessionStorage.getItem("onboarding_plan") || "free";
+      if (!sessionStorage.getItem("onboarding_plan")) {
+        sessionStorage.setItem("prompt_plan_selection", "true");
+      }
       const { data: settingsData } = await supabase
         .from("platform_settings")
         .select("value")
@@ -129,7 +132,15 @@ export function AppLayout() {
   const [checking, setChecking] = useState(true);
   const [showPlanModal, setShowPlanModal] = useState(false);
   const { subscriptionPlan } = useSubscription();
-  const navigate = useNavigate();
+    const navigate = useNavigate();
+  useEffect(() => {
+    if (!needsSetup && !checking) {
+      if (sessionStorage.getItem('prompt_plan_selection') === 'true') {
+        setShowPlanModal(true);
+        sessionStorage.removeItem('prompt_plan_selection');
+      }
+    }
+  }, [needsSetup, checking]);
 
   const loadOrg = async () => {
     if (!profile) return;
@@ -441,3 +452,7 @@ export function AppLayout() {
     </SidebarProvider>
   );
 }
+
+
+
+

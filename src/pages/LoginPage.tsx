@@ -146,10 +146,10 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
-              <div className="flex items-center justify-between w-full mt-2 text-sm text-muted-foreground">
-                <p>New to Assay Biz Invoices?</p>
-                <Link to="/#pricing" className="text-primary hover:underline">See plans</Link>
-              </div>
+                              <div className="flex items-center justify-center gap-2 w-full mt-4 text-sm text-muted-foreground">
+                  <p>Don't have an account?</p>
+                  <Link to="/register" className="text-primary font-bold hover:underline">Sign Up</Link>
+                </div>
             </CardFooter>
           </form>
         </Card>
@@ -157,3 +157,4 @@ export default function LoginPage() {
     </>
   );
 }
+
