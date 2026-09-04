@@ -77,11 +77,11 @@ import { useLanguage } from "@/lib/i18n";
 
   const salesItems = [
   { title: "Invoices", url: "/invoices", icon: FileText, addUrl: "/invoices/new" },
-  { title: "Estimates", url: "/estimates", icon: ClipboardList, addUrl: "/estimates/new" },
-  { title: "Clients", url: "/clients", icon: Users, addUrl: "/clients?add=1" },
+  { title: "Quotations", url: "/estimates", icon: ClipboardList, addUrl: "/estimates/new" },
+  { title: "Client", url: "/clients", icon: Users, addUrl: "/clients?add=1" },
   { title: "Credit Notes", url: "/credit-notes", icon: FileMinus2, addUrl: "/credit-notes/new" },
   { title: "Payments Received", url: "/payments", icon: CreditCard, addUrl: "/payments/new" },
-  { title: "Delivery Challans", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
+  { title: "Delivery Challan", url: "/delivery-challans", icon: Truck, addUrl: "/delivery-challans/new" },
   { title: "Recurring", url: "/recurring-invoices", icon: RefreshCw, addUrl: null },
 ];
 

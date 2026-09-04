@@ -63,7 +63,7 @@ export default function DeliveryChallanBuilderPage() {
     if (!org?.id) return;
     (async () => {
       const [c, it, wh, o] = await Promise.all([
-        supabase.from("clients").select("id, display_name, tax_number, phone, email, billing_address, shipping_address, state, status").eq("org_id", org.id).neq("status", "inactive").order("display_name"),
+        supabase.from("clients").select("*").eq("org_id", org.id).neq("status", "inactive").order("display_name"),
         supabase.from("items").select("id, name, unit, sku, hsn_code, track_batches, track_serials").eq("org_id", org.id).order("name"),
         (supabase as any).from("warehouses").select("id, name, address, is_default").eq("org_id", org.id),
         supabase.from("organizations").select("dc_next_number, dc_prefix").eq("id", org.id).maybeSingle(),
@@ -74,10 +74,13 @@ export default function DeliveryChallanBuilderPage() {
 
       if (!id) {
         const prefix = o.data?.dc_prefix || "DC-";
+        const next = o.data?.dc_next_number || 1;
         setNumber(formatSequenceNumber(prefix, next, "DC"));
         // Default warehouse if exists
         const defWh = wh.data?.find((w: any) => w.is_default);
         if (defWh) setWarehouseId(defWh.id);
+        else if (wh.data && wh.data.length > 0) setWarehouseId(wh.data[0].id);
+        else setWarehouseId("default");
       } else {
         const { data: d } = await (supabase as any).from("delivery_challans").select("*").eq("id", id).maybeSingle();
         const { data: l } = await (supabase as any).from("delivery_challan_lines").select("*").eq("dc_id", id).order("sort_order");
@@ -109,7 +112,7 @@ export default function DeliveryChallanBuilderPage() {
     setSaving(true);
     try {
       const payload: any = {
-        org_id: org.id, client_id: clientId, warehouse_id: warehouseId || null,
+        org_id: org.id, client_id: clientId, warehouse_id: (warehouseId && warehouseId !== "default") ? warehouseId : null,
         challan_number: number, challan_date: date, status,
         vehicle_number: vehicleNumber || null, transporter: transporter || null,
         driver_name: driverName || null, driver_phone: driverPhone || null,
@@ -223,16 +226,31 @@ export default function DeliveryChallanBuilderPage() {
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Consignee / Client *</Label>
             <div className="flex gap-2">
-              <Select value={clientId} onValueChange={setClientId}>
+              <Select 
+                value={clientId || undefined} 
+                onValueChange={(val) => {
+                  setClientId(val);
+                  const c = clients.find(x => x.id === val);
+                  if (c && !destination) {
+                    setDestination(c.shipping_address || c.billing_address || "");
+                  }
+                }}
+              >
                 <SelectTrigger className="flex-1 text-xs h-9">
                   <SelectValue placeholder="Select client" />
                 </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.display_name} {c.tax_number ? `(${c.tax_number})` : ""}
+                <SelectContent className="z-50 max-h-60">
+                  {clients.length === 0 ? (
+                    <SelectItem value="none" disabled>
+                      No clients found. Click + to add
                     </SelectItem>
-                  ))}
+                  ) : (
+                    clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.display_name} {c.tax_number ? `(${c.tax_number})` : ""}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               <Button
@@ -252,6 +270,9 @@ export default function DeliveryChallanBuilderPage() {
               onClientAdded={(c) => {
                 setClients((prev) => [...prev, c]);
                 setClientId(c.id);
+                if (c && !destination) {
+                  setDestination(c.shipping_address || c.billing_address || "");
+                }
               }}
             />
           </div>
@@ -259,11 +280,12 @@ export default function DeliveryChallanBuilderPage() {
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Dispatch Warehouse / From</Label>
             <div className="flex gap-2">
-              <Select value={warehouseId} onValueChange={setWarehouseId}>
-                <SelectTrigger className="text-xs h-9">
+              <Select value={warehouseId || "default"} onValueChange={setWarehouseId}>
+                <SelectTrigger className="text-xs h-9 flex-1">
                   <SelectValue placeholder="Main Store / Location" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 max-h-60">
+                  <SelectItem value="default">Main Store / Location</SelectItem>
                   {warehouses.map((w) => (
                     <SelectItem key={w.id} value={w.id}>
                       {w.name} {w.is_default ? "(Primary)" : ""}
@@ -365,11 +387,11 @@ export default function DeliveryChallanBuilderPage() {
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Challan Status</Label>
-            <Select value={status} onValueChange={setStatus}>
+            <Select value={status || "dispatched"} onValueChange={setStatus}>
               <SelectTrigger className="text-xs h-9">
-                <SelectValue />
+                <SelectValue placeholder="Select status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-50">
                 <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="dispatched">Dispatched</SelectItem>
                 <SelectItem value="delivered">Delivered</SelectItem>
@@ -415,16 +437,22 @@ export default function DeliveryChallanBuilderPage() {
                 return (
                   <TableRow key={i} className="hover:bg-muted/20">
                     <TableCell className="p-2">
-                      <Select value={l.item_id} onValueChange={(v) => pickItem(i, v)}>
+                      <Select value={l.item_id || undefined} onValueChange={(v) => pickItem(i, v)}>
                         <SelectTrigger className="h-8 text-xs">
                           <SelectValue placeholder="Select item" />
                         </SelectTrigger>
-                        <SelectContent>
-                          {items.map((x) => (
-                            <SelectItem key={x.id} value={x.id}>
-                              {x.name} {x.sku ? `(${x.sku})` : ""}
+                        <SelectContent className="z-50 max-h-60">
+                          {items.length === 0 ? (
+                            <SelectItem value="none" disabled>
+                              No items in catalog
                             </SelectItem>
-                          ))}
+                          ) : (
+                            items.map((x) => (
+                              <SelectItem key={x.id} value={x.id}>
+                                {x.name} {x.sku ? `(${x.sku})` : ""}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
                     </TableCell>

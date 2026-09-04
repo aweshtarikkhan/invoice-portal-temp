@@ -38,12 +38,12 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     description: "Invoices, Estimates, Credit Notes & more",
     items: [
       { key: "invoices", title: "Invoices", description: "Create & manage invoices", icon: "FileText", url: "/invoices" },
-      { key: "estimates", title: "Estimates", description: "Send quotes to clients", icon: "ClipboardList", url: "/estimates" },
-      { key: "clients", title: "Clients", description: "Manage your customers", icon: "Users", url: "/clients" },
+      { key: "estimates", title: "Quotations", description: "Send quotes to clients", icon: "ClipboardList", url: "/estimates" },
+      { key: "clients", title: "Client", description: "Manage your customers", icon: "Users", url: "/clients" },
       { key: "credit-notes", title: "Credit Notes", description: "Issue credit notes", icon: "FileMinus2", url: "/credit-notes" },
       { key: "payments", title: "Payments Received", description: "Track all payments", icon: "CreditCard", url: "/payments" },
-      { key: "delivery-challans", title: "Delivery Challans", description: "Manage delivery challans", icon: "Truck", url: "/delivery-challans" },
-      { key: "recurring", title: "Recurring Invoices", description: "Set up recurring billing", icon: "RefreshCw", url: "/recurring-invoices" },
+      { key: "delivery-challans", title: "Delivery Challan", description: "Manage delivery challans", icon: "Truck", url: "/delivery-challans" },
+      { key: "recurring", title: "Recurring", description: "Set up recurring billing", icon: "RefreshCw", url: "/recurring-invoices" },
     ],
   },
   {
