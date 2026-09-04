@@ -207,7 +207,7 @@ const App = () => (
                 <Route path="/grns/:id/edit" element={<GrnBuilderPage />} />
                 <Route path="/expenses" element={<BusinessExpensesPage />} />
               </Route>
-              <Route element={<FeatureGuard featureKey="accounting" featureName="Accounting" />}>
+              <Route element={<FeatureGuard featureKey="accounting" featureName="Banking" />}>
                 <Route path="/accounts" element={<ChartOfAccountsPage />} />
                 <Route path="/journal" element={<JournalEntriesPage />} />
                 <Route path="/branches" element={<BranchesPage />} />

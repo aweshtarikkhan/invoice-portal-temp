@@ -73,13 +73,13 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "accounting",
-    label: "Accounting",
-    icon: "Calculator",
-    description: "Chart of Accounts, Journal Entries & Banking",
+    label: "Banking",
+    icon: "Landmark",
+    description: "Chart of Accounts, Journal Entries, Bank & Cash Flow",
     items: [
       { key: "accounts", title: "Chart of Accounts", description: "Manage accounts", icon: "BookOpen", url: "/accounts" },
       { key: "journal", title: "Journal Entries", description: "Record journal entries", icon: "Calculator", url: "/journal" },
-      { key: "bank-accounts", title: "Bank & Cash", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
+      { key: "bank-accounts", title: "Bank", description: "Bank account management", icon: "Landmark", url: "/bank-accounts" },
       { key: "cash-flow", title: "Cash Flow", description: "Cash flow analysis", icon: "PieChart", url: "/cash-flow" },
     ],
   },

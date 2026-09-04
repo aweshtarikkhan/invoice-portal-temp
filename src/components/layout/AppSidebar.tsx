@@ -96,12 +96,8 @@ const purchaseItems = [
 const accountingItems = [
   { title: "Chart of Accounts", url: "/accounts", icon: BookOpen, addUrl: null },
   { title: "Journal Entries", url: "/journal", icon: Calculator, addUrl: null },
-  { title: "Bank & Cash", url: "/bank-accounts", icon: Landmark, addUrl: null },
+  { title: "Bank", url: "/bank-accounts", icon: Landmark, addUrl: null },
   { title: "Cash Flow", url: "/cash-flow", icon: PieChart, addUrl: null },
-  { title: "Profit & Loss", url: "/profit-loss", icon: PieChart, addUrl: null },
-  { title: "GST Returns", url: "/gst-returns", icon: FileBarChart2, addUrl: null },
-  { title: "TDS/TCS Returns", url: "/tds", icon: Percent, addUrl: null },
-  { title: "Aging Details", url: "/aging-details", icon: ScrollText, addUrl: null },
 ];
 
 const catalogItems = [
@@ -144,7 +140,7 @@ const settingsItems = [
 // Map feature group key to sidebar items
 const ADMIN_GROUP_ITEMS: Record<string, { label: string; items: any[] }> = {
   purchases: { label: "Purchases", items: purchaseItems },
-  accounting: { label: "Accounting", items: accountingItems },
+  accounting: { label: "Banking", items: accountingItems },
   people: { label: "People", items: peopleItems },
   crm: { label: "CRM", items: crmItems },
   marketing: { label: "Marketing", items: marketingItems },
@@ -388,7 +384,7 @@ export function AppSidebar() {
                       {g.key === "sales" && <FileText className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "catalog" && <Package className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "purchases" && <ShoppingCart className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "accounting" && <Calculator className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                      {g.key === "accounting" && <Landmark className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "people" && <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
                       {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
@@ -461,7 +457,7 @@ export function AppSidebar() {
                                   {sub.key === "sales" && <FileText className="h-4 w-4" />}
                                   {sub.key === "catalog" && <Package className="h-4 w-4" />}
                                   {sub.key === "purchases" && <ShoppingCart className="h-4 w-4" />}
-                                  {sub.key === "accounting" && <Calculator className="h-4 w-4" />}
+                                  {sub.key === "accounting" && <Landmark className="h-4 w-4" />}
                                </>
                             ) : (
                                <>
