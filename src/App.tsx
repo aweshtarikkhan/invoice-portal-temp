@@ -248,7 +248,8 @@ const App = () => (
               <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/feedback" element={<ComingSoonPage title="Business Feedback" description="Collect, manage, and analyze customer feedback and satisfaction ratings." />} />
                 <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />
-                <Route path="/ai-bi-report" element={<ComingSoonPage title="AI & Business Intelligence Report" />} />
+                <Route path="/business-analysis" element={<ComingSoonPage title="Business Analysis" description="AI-powered insights, predictive financial forecasting, and comprehensive business analytics." />} />
+                <Route path="/ai-bi-report" element={<ComingSoonPage title="Business Analysis" description="AI-powered insights, predictive financial forecasting, and comprehensive business analytics." />} />
                 <Route path="/tickets" element={<SupportTicketsPage />} />
             </Route>
 

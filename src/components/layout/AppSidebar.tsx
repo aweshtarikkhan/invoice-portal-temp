@@ -380,7 +380,7 @@ export function AppSidebar() {
                       onClick={() => {
                         if ((g as any).isUpcoming) {
                           if (g.key === "feedback") navigate("/feedback");
-                          else if (g.key === "ai-analysis") navigate("/ai-bi-report");
+                          else if (g.key === "ai-analysis") navigate("/business-analysis");
                         } else {
                           toggleGroup(g.key, isOpen);
                         }
