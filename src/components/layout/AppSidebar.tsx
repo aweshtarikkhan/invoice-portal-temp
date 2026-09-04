@@ -106,8 +106,8 @@ const accountingItems = [
 
 const catalogItems = [
   { title: "Items", url: "/items", icon: Package, addUrl: "/items?add=1" },
+  { title: "Inventory", url: "/inventory", icon: Boxes, addUrl: null },
   { title: "Branches", url: "/branches", icon: Building2, addUrl: null },
-  { title: "Inventory Valuation", url: "/inventory-valuation", icon: Boxes, addUrl: null },
 ];
 
 const peopleItems = [
@@ -198,15 +198,8 @@ export function AppSidebar() {
   const multiWarehouseEnabled = (org as any)?.multi_warehouse_enabled;
 
   const catalogVisible = catalogItems.flatMap((it) => {
-    if (it.url === "/items") {
-      const extra: any[] = [];
-      if (inventoryEnabled) {
-        extra.push({ title: "Inventory", url: "/inventory", icon: Boxes, addUrl: null });
-      }
-      if (multiWarehouseEnabled) {
-        extra.push({ title: "Warehouses", url: "/warehouses", icon: Warehouse, addUrl: "/warehouses?add=1" });
-      }
-      return [it, ...extra];
+    if (it.url === "/inventory" && multiWarehouseEnabled) {
+      return [it, { title: "Warehouses", url: "/warehouses", icon: Warehouse, addUrl: "/warehouses?add=1" }];
     }
     return [it];
   });
