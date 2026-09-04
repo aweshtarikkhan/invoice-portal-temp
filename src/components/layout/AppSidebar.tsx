@@ -558,7 +558,7 @@ export function AppSidebar() {
                       ))}
                       {userRole !== 'staff' && (
                         <SidebarMenuItem className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
-                          <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={collapsed ? t("Business Settings") : undefined}>
+                          <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={collapsed ? t("Admin Panel") : undefined}>
                             <NavLink
                               to="/admin"
                               className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
@@ -567,7 +567,7 @@ export function AppSidebar() {
                               {collapsed ? (
                                 <Shield className="h-4 w-4 shrink-0" />
                               ) : (
-                                <span className="text-sm">{t("Business Settings")}</span>
+                                <span className="text-sm">{t("Admin Panel")}</span>
                               )}
                             </NavLink>
                           </SidebarMenuButton>
