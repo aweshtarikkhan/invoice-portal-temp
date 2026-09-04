@@ -18,7 +18,7 @@ const DEFAULT_IMAGE =
 
 export function SEO({
   title,
-  description = "A powerful invoice and business management platform.",
+  description = "A powerful invoice and business accounting platform.",
   path,
   image = DEFAULT_IMAGE,
   type = "website",
