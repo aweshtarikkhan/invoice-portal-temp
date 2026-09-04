@@ -57,6 +57,23 @@ export default function CampaignsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all" });
 
+  const seedDefaultTemplates = async (orgId: string) => {
+    const defaultTemplates = [
+      { org_id: orgId, name: "Special Offer / Festive Discount", channel: "sms", category: "promotional", body: "Hi {{name}}, enjoy special discounts on our services this season! Visit us or contact us today." },
+      { org_id: orgId, name: "Payment Reminder Notice", channel: "sms", category: "billing", body: "Dear {{name}}, this is a gentle reminder regarding your pending invoice. Please clear at your earliest convenience." },
+      { org_id: orgId, name: "Festival Greetings & Promotion", channel: "whatsapp", category: "festive", body: "Warm festival greetings to you and your family! We have exclusive offers waiting for you." },
+      { org_id: orgId, name: "Exclusive Client Newsletter", channel: "email", category: "marketing", body: "Dear {{name}}, thank you for being a valued client. Check out our latest updates and promotional offers." },
+      { org_id: orgId, name: "New Product / Service Launch", channel: "whatsapp", category: "announcement", body: "Hi {{name}}, we are excited to announce our new offerings. Reply to this message to know more!" },
+    ];
+    try {
+      const { data } = await supabase.from("message_templates").insert(defaultTemplates).select("id,name,channel");
+      return data || [];
+    } catch (e) {
+      console.error("Failed to seed templates", e);
+      return [];
+    }
+  };
+
   const load = async () => {
     if (!org) return;
     const [c, t, cl] = await Promise.all([
@@ -64,8 +81,15 @@ export default function CampaignsPage() {
       supabase.from("message_templates").select("id,name,channel").eq("org_id", org.id),
       supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org.id),
     ]);
+    let templateList = t.data || [];
+    if (templateList.length === 0) {
+      const seeded = await seedDefaultTemplates(org.id);
+      if (seeded && seeded.length > 0) {
+        templateList = seeded;
+      }
+    }
     setCampaigns(c.data || []);
-    setTemplates(t.data || []);
+    setTemplates(templateList);
     setClients(cl.data || []);
   };
   useEffect(() => { load(); }, [org?.id]);
@@ -139,14 +163,15 @@ export default function CampaignsPage() {
     load();
   };
 
-  const filteredTpls = templates.filter((t) => t.channel === form.channel);
+  const channelTpls = templates.filter((t) => t.channel === form.channel);
+  const displayTpls = channelTpls.length > 0 ? channelTpls : templates;
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Marketing Campaigns</h1>
-          <p className="text-sm text-muted-foreground">Bulk SMS broadcasts to your contacts.</p>
+          <p className="text-sm text-muted-foreground">Bulk promotional broadcasts via SMS, WhatsApp, and Email to your contacts.</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
@@ -192,50 +217,100 @@ export default function CampaignsPage() {
       </Card>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[500px]">
           <DialogHeader><DialogTitle>New Campaign</DialogTitle></DialogHeader>
-          <div className="grid gap-3">
-            <div><Label>Name</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
+          <div className="grid gap-4 py-2">
             <div>
-              <Label>Channel</Label>
-              <Select value={form.channel} onValueChange={(v) => setForm({ ...form, channel: v, template_id: "" })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label className="text-sm font-medium">Campaign Name</Label>
+              <Input 
+                placeholder="e.g. Diwali Special Offer 2026"
+                value={form.name} 
+                onChange={(e) => setForm({ ...form, name: e.target.value })} 
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Channel</Label>
+              <Select 
+                value={form.channel} 
+                onValueChange={(v) => {
+                  setForm({ ...form, channel: v, template_id: "" });
+                }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select Channel" /></SelectTrigger>
                 <SelectContent>
-
                   <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Template</Label>
-              <Select value={form.template_id} onValueChange={(v) => setForm({ ...form, template_id: v })}>
-                <SelectTrigger><SelectValue placeholder="Choose template" /></SelectTrigger>
+              <div className="flex justify-between items-center">
+                <Label className="text-sm font-medium">Message Template</Label>
+                <Button 
+                  type="button" 
+                  variant="link" 
+                  className="h-auto p-0 text-xs text-primary font-medium"
+                  onClick={() => {
+                    setOpen(false);
+                    navigate("/marketing/templates");
+                  }}
+                >
+                  Manage Templates →
+                </Button>
+              </div>
+              <Select 
+                value={form.template_id} 
+                onValueChange={(v) => setForm({ ...form, template_id: v })}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder={displayTpls.length > 0 ? "Choose a template..." : "No templates found"} />
+                </SelectTrigger>
                 <SelectContent>
-                  {filteredTpls.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                  {displayTpls.length > 0 ? (
+                    displayTpls.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} {t.channel && <span className="text-xs text-muted-foreground ml-1">({t.channel.toUpperCase()})</span>}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="_none" disabled>
+                      No templates found for {form.channel.toUpperCase()}
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
+              {displayTpls.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">
+                  No templates found for this channel. Click "Manage Templates" to create one.
+                </p>
+              )}
             </div>
             <div>
-              <Label>Audience</Label>
-              <Select value={form.audience_type} onValueChange={(v) => {
-                setForm({ ...form, audience_type: v });
-                if (v === 'custom' && selectedClientIds.length === 0) {
-                  setSelectedClientIds(clients.map(c => c.id));
-                }
-              }}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label className="text-sm font-medium">Audience</Label>
+              <Select 
+                value={form.audience_type} 
+                onValueChange={(v) => {
+                  setForm({ ...form, audience_type: v });
+                  if (v === 'custom' && selectedClientIds.length === 0) {
+                    setSelectedClientIds(clients.map(c => c.id));
+                  }
+                }}
+              >
+                <SelectTrigger className="mt-1"><SelectValue placeholder="Select Audience" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Clients</SelectItem>
+                  <SelectItem value="all">All Clients ({clients.length})</SelectItem>
                   <SelectItem value="overdue">Clients with Overdue Invoices</SelectItem>
-                  <SelectItem value="custom">Custom Selection</SelectItem>
+                  <SelectItem value="custom">Custom Selection ({selectedClientIds.length} selected)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             {form.audience_type === "custom" && (
-              <div className="space-y-2 border rounded-md p-3">
+              <div className="space-y-2 border rounded-md p-3 bg-muted/20">
                 <div className="flex items-center justify-between pb-2 border-b">
-                  <Label>Select Clients</Label>
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Clients</Label>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -273,7 +348,7 @@ export default function CampaignsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button onClick={create}>Create Campaign</Button>
+            <Button onClick={create} disabled={!form.name || !form.template_id}>Create Campaign</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
