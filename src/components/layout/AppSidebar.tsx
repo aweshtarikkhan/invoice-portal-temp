@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { ArrowUpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import {
   LayoutDashboard,
   Users,
@@ -608,7 +609,13 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
         {!collapsed && (
-          <div className="flex items-center justify-between px-3 mt-2">
+          <div className="px-1 pt-1 border-t border-slate-800/60 flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Official Channels</span>
+            <SocialMediaLinks iconSize="sm" />
+          </div>
+        )}
+        {!collapsed && (
+          <div className="flex items-center justify-between px-3 mt-1">
             <div className="flex flex-col">
               <span className="text-xs font-semibold text-sidebar-foreground">Assay Biz</span>
               <span className="text-[10px] text-slate-500">Version 2.0.0</span>

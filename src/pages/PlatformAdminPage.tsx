@@ -12,7 +12,7 @@ import {
   Shield, Building2, BarChart3, Settings2, TrendingUp,
   Users2, CreditCard, Mail, Phone, FileText, UserCircle,
   Calendar, Globe, ChevronDown, ChevronUp, Hash, MessageSquare,
-  CheckCircle2, IndianRupee, Image as ImageIcon, Trash2
+  CheckCircle2, IndianRupee, Image as ImageIcon, Trash2, Share2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +21,7 @@ import { PlansManager } from "@/components/admin/PlansManager";
 import { CouponsManager } from "@/components/admin/CouponsManager";
 import { PlatformSettingsManager } from "@/components/admin/PlatformSettingsManager";
 import { LandingPageReviewsManager } from "@/components/admin/LandingPageReviewsManager";
+import { PlatformSocialsManager } from "@/components/admin/PlatformSocialsManager";
 
 
 
@@ -109,7 +110,7 @@ export default function PlatformAdminPage() {
     // fetch ads
     const { data: adsData } = await supabase.from('portal_ads').select('*').order('sort_order', { ascending: true });
     if (adsData) {
-      setAdsList(adsData);
+      setAdsList(adsData.filter(a => a.title !== '__platform_socials__'));
     }
   };
 
@@ -307,6 +308,9 @@ export default function PlatformAdminPage() {
           </TabsTrigger>
           <TabsTrigger value="ads" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <ImageIcon className="w-4 h-4 mr-2" /> Ads
+          </TabsTrigger>
+          <TabsTrigger value="social" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <Share2 className="w-4 h-4 mr-2" /> Social Media
           </TabsTrigger>
           <TabsTrigger value="requests" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
             <MessageSquare className="w-4 h-4 mr-2" /> Requests
@@ -844,6 +848,11 @@ export default function PlatformAdminPage() {
             </Card>
 
           </div>
+        </TabsContent>
+
+        {/* ── Social Media & Marketing Handles ── */}
+        <TabsContent value="social" className="space-y-6">
+          <PlatformSocialsManager />
         </TabsContent>
 
       </Tabs>

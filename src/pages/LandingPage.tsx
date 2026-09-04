@@ -11,6 +11,7 @@ import {
   Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
+import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 
 type Lang = "en" | "hi";
 
@@ -591,6 +592,10 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold">A</div>
             <span className="text-slate-400 font-medium">© {new Date().getFullYear()} Assay Biz. Proudly Made in India.</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 font-medium hidden lg:inline">Connect with us:</span>
+            <SocialMediaLinks iconSize="sm" />
           </div>
           <div className="flex flex-wrap items-center gap-8">
             <a href="#features" className="text-slate-400 hover:text-white font-semibold transition-colors">Features</a>
