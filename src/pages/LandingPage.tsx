@@ -179,16 +179,7 @@ export default function LandingPage() {
             <a href="#pricing" className="hover:text-foreground">{L.nav_pricing}</a>
           </nav>
           <div className="flex items-center gap-2">
-            <div className="hidden sm:flex items-center rounded-full border bg-muted/50 p-0.5 text-xs">
-              <button
-                onClick={() => setLang("en")}
-                className={`px-2.5 py-1 rounded-full transition ${lang === "en" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-              >EN</button>
-              <button
-                onClick={() => setLang("hi")}
-                className={`px-2.5 py-1 rounded-full transition ${lang === "hi" ? "bg-background shadow-sm font-medium" : "text-muted-foreground"}`}
-              >हिंदी</button>
-            </div>
+            
             <Button variant="ghost" size="sm" asChild><Link to="/login">{L.nav_login}</Link></Button>
             <Button size="sm" asChild><a href="#pricing">View Plans</a></Button>
           </div>
@@ -603,14 +594,11 @@ export default function LandingPage() {
             <a href="#features" className="hover:text-foreground">Features</a>
             <a href="#pricing" className="hover:text-foreground">Pricing</a>
             <Link to="/login" className="hover:text-foreground">Sign in</Link>
-            <div className="flex items-center gap-1.5"><Globe className="h-3.5 w-3.5" />
-              <button onClick={() => setLang(lang === "en" ? "hi" : "en")} className="hover:text-foreground">
-                {lang === "en" ? "हिंदी" : "English"}
-              </button>
-            </div>
+            
           </div>
         </div>
       </footer>
     </div>
   );
 }
+
