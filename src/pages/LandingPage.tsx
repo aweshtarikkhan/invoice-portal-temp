@@ -1,5 +1,4 @@
-import {
-  Users, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,7 +8,7 @@ import { Card } from "@/components/ui/card";
 import {
   Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
   MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
-  Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer,
+  Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
