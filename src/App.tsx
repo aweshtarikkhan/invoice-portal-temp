@@ -175,7 +175,7 @@ const App = () => (
               <Route path="/templates/customize" element={<TemplateCustomizationPage />} />
               <Route path="/audit-logs" element={<AuditLogsPage />} />
               <Route path="/custom-fields" element={<CustomFieldsPage />} />
-              <Route element={<FeatureGuard featureKey="people" featureName="People & HR" />}>
+              <Route element={<FeatureGuard featureKey="people" featureName="Business HR" />}>
                 <Route path="/employees" element={<EmployeesPage />} />
                 <Route path="/attendance" element={<AttendancePage />} />
                 <Route path="/shifts" element={<ShiftsPage />} />
