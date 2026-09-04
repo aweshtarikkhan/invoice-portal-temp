@@ -25,7 +25,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Home, Settings, User, HelpCircle, Building2 } from "lucide-react";
+import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle } from "lucide-react";
 
 function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { profile, signOut } = useAuth();
@@ -136,7 +136,7 @@ export function AppLayout() {
     window.addEventListener('open-plan-modal', handleOpenPlanModal);
     return () => window.removeEventListener('open-plan-modal', handleOpenPlanModal);
   }, []);
-  const { subscriptionPlan } = useSubscription();
+  const { subscriptionPlan, isOnTrial } = useSubscription();
     const navigate = useNavigate();
   useEffect(() => {
     if (!needsSetup && !checking) {
@@ -419,6 +419,18 @@ export function AppLayout() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {(!subscriptionPlan || subscriptionPlan === "free" || isOnTrial) && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => setShowPlanModal(true)}
+                        className="cursor-pointer font-semibold text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 focus:bg-amber-500/20 focus:text-amber-700 dark:focus:text-amber-400 my-1 rounded-md"
+                      >
+                        <ArrowUpCircle className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-500" />
+                        Upgrade
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/settings?tab=profile")} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     My Profile
