@@ -272,7 +272,7 @@ export function AppSidebar() {
   
   const sidebarGroups = bmSubGroups.length > 0 
     ? [
-        { key: "business_management", label: "Business Management", items: [], subGroups: bmSubGroups },
+        { key: "business_management", label: "Business Accounting", items: [], subGroups: bmSubGroups },
         ...otherGroups
       ]
     : otherGroups;

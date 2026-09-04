@@ -85,7 +85,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "people",
-    label: "People & HR",
+    label: "Business HR",
     icon: "UserCog",
     description: "Employees, Attendance, Payroll & Leaves",
     items: [
@@ -100,7 +100,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "crm",
-    label: "CRM",
+    label: "Business CRM",
     icon: "Users",
     description: "Leads, Pipeline & Sales Activities",
     items: [
@@ -116,7 +116,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "marketing",
-    label: "Marketing",
+    label: "Business Promotion",
     icon: "Send",
     description: "Campaigns, Templates & Automations",
     items: [
@@ -150,7 +150,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "outreach",
-    label: "Customer Outreach",
+    label: "Business Integration",
     icon: "MessageCircle",
     description: "Emails & WhatsApp Chats",
     items: [
@@ -160,7 +160,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "feedback",
-    label: "Customer Feedback",
+    label: "Business Feedback",
     icon: "MessageSquareQuote",
     description: "Manage & analyze customer feedback",
     isUpcoming: true,
@@ -168,7 +168,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "ai-analysis",
-    label: "AI & Business Analysis",
+    label: "Business Analysis",
     icon: "BrainCircuit",
     description: "AI-powered insights & business analytics",
     isUpcoming: true,
