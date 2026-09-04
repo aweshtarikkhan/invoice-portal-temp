@@ -179,7 +179,7 @@ export default function DashboardPage() {
                   <DropdownMenuContent align="end" className="w-56">
                     <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
                       <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
-                      <span>Create Bill</span>
+                      <span>Purchase Invoice</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/vendors')}>
                       <Building2 className="w-4 h-4 mr-2 text-slate-500" />
