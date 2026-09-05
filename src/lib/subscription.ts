@@ -18,17 +18,17 @@ export function hasModuleAccess(plan: PlanType = 'free', module: ModuleType): bo
 
   switch (module) {
     case 'accounting':
-      return plan === 'free' || plan === 'accounting';
+      return true; // Accounting & Invoices is visible to all plans, limits apply on free plan
     case 'hr':
       return true; // HR is visible to all plans, limits apply instead
     case 'crm':
       return true; // CRM is visible to all plans, limits apply instead
     case 'promotion':
-      return plan === 'free' || plan === 'promotion';
+      return true; // Promotion is visible to all plans
     case 'admin':
       return plan !== 'free'; // Any paid plan has some admin access, but 'free' has none.
     default:
-      return false;
+      return true;
   }
 }
 
