@@ -12,8 +12,20 @@ import {
   Shield, Building2, BarChart3, Settings2, TrendingUp,
   Users2, CreditCard, Mail, Phone, FileText, UserCircle,
   Calendar, Globe, ChevronDown, ChevronUp, Hash, MessageSquare,
-  CheckCircle2, IndianRupee, Image as ImageIcon, Trash2, Share2
+  CheckCircle2, IndianRupee, Image as ImageIcon, Trash2, Share2,
+  Search, Filter, Check, Copy, Sparkles, PlusCircle, ArrowUpDown,
+  SlidersHorizontal, UserCheck, RefreshCw, AlertCircle, ExternalLink,
+  Layers, Lock, Unlock, HelpCircle
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -86,7 +98,19 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
 };
 
 export default function PlatformAdminPage() {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+  
+  // User Management & Plan Override States
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userPlanFilter, setUserPlanFilter] = useState("all");
+  const [userRoleFilter, setUserRoleFilter] = useState("all");
+  const [selectedUserForModal, setSelectedUserForModal] = useState<UserData | null>(null);
+  const [isManageUserModalOpen, setIsManageUserModalOpen] = useState(false);
+  const [isChangingPlan, setIsChangingPlan] = useState(false);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
+  const [selectedOrgForLink, setSelectedOrgForLink] = useState<string>("");
+  const [newOrgNameForUser, setNewOrgNameForUser] = useState<string>("");
   const [dashData, setDashData] = useState<DashboardData | null>(null);
   const [featureRequests, setFeatureRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,6 +247,154 @@ export default function PlatformAdminPage() {
       p_features: []
     });
     fetchDashboardData(false);
+  };
+
+  const copyText = (text: string, id: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedUserId(id);
+    toast({ title: "Copied to clipboard!", description: text });
+    setTimeout(() => setCopiedUserId(null), 2000);
+  };
+
+  const getUserPlans = (user: UserData): string[] => {
+    if (!user.org_id) return [];
+    const org = dashData?.organizations.find(o => o.id === user.org_id);
+    if (!org) return ['free'];
+    return (org as any).subscription_plan_names || (org.subscription?.plan_name ? [org.subscription.plan_name] : ['free']);
+  };
+
+  const getUserOrg = (user: UserData): OrgData | undefined => {
+    if (!user.org_id) return undefined;
+    return dashData?.organizations.find(o => o.id === user.org_id);
+  };
+
+  const handleUserPlanToggle = async (user: UserData, toggledPlan: string) => {
+    if (!user.org_id) {
+      await handleCreateAndAssignOrgForUser(user, [toggledPlan]);
+      return;
+    }
+    const currentPlans = getUserPlans(user);
+    let newPlans = currentPlans.includes(toggledPlan)
+      ? currentPlans.filter(p => p !== toggledPlan)
+      : [...currentPlans, toggledPlan];
+    if (newPlans.length === 0) newPlans = ['free'];
+
+    setIsChangingPlan(true);
+    const { error } = await supabase.rpc("admin_set_plans", {
+      p_org_id: user.org_id,
+      p_plan_names: newPlans,
+    });
+    setIsChangingPlan(false);
+
+    if (error) {
+      toast({ title: "Failed to update plan", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: "Plan Updated",
+        description: `Updated plan for ${user.email} to: ${newPlans.map(p => PLAN_DISPLAY_NAMES[p] || p).join(", ")}`,
+      });
+      await fetchDashboardData(false);
+    }
+  };
+
+  const handleSetUserDirectPlan = async (user: UserData, planName: string) => {
+    if (!user.org_id) {
+      await handleCreateAndAssignOrgForUser(user, [planName]);
+      return;
+    }
+    let planArray = [planName];
+    if (planName === "plan_3") {
+      planArray = ["plan_3", "plan_5", "plan_6"];
+    }
+    setIsChangingPlan(true);
+    const { error } = await supabase.rpc("admin_set_plans", {
+      p_org_id: user.org_id,
+      p_plan_names: planArray,
+    });
+    setIsChangingPlan(false);
+
+    if (error) {
+      toast({ title: "Failed to update plan", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: "Plan Changed",
+        description: `${user.email} is now assigned ${PLAN_DISPLAY_NAMES[planName] || planName}.`,
+      });
+      await fetchDashboardData(false);
+    }
+  };
+
+  const handleCreateAndAssignOrgForUser = async (user: UserData, initialPlans: string[] = ['free'], customName?: string) => {
+    setIsChangingPlan(true);
+    const orgName = customName || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
+    
+    const { data: orgData, error: orgError } = await supabase
+      .from("organizations")
+      .insert({
+        name: orgName,
+        currency_code: "INR",
+        gst_enabled: true
+      })
+      .select("id")
+      .single();
+
+    if (orgError) {
+      setIsChangingPlan(false);
+      toast({ title: "Failed to create business", description: orgError.message, variant: "destructive" });
+      return;
+    }
+
+    await supabase.from("organization_users").insert({
+      organization_id: orgData.id,
+      user_id: user.user_id,
+      role: "owner"
+    });
+
+    await supabase.rpc("admin_set_plans", {
+      p_org_id: orgData.id,
+      p_plan_names: initialPlans
+    });
+    
+    setIsChangingPlan(false);
+    toast({
+      title: "Business Created & Plan Assigned",
+      description: `Created "${orgName}" for ${user.email} and assigned ${initialPlans.map(p => PLAN_DISPLAY_NAMES[p] || p).join(", ")}.`,
+    });
+    await fetchDashboardData(false);
+  };
+
+  const handleAssignExistingOrgToUser = async (user: UserData, targetOrgId: string, role: string = "member") => {
+    if (!targetOrgId) return;
+    setIsChangingPlan(true);
+    const { error } = await supabase.from("organization_users").upsert({
+      organization_id: targetOrgId,
+      user_id: user.user_id,
+      role: role
+    }, { onConflict: "organization_id,user_id" });
+    setIsChangingPlan(false);
+
+    if (error) {
+      toast({ title: "Failed to link business", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Business Linked", description: `Linked ${user.email} to selected business.` });
+      await fetchDashboardData(false);
+    }
+  };
+
+  const handleUserRoleChange = async (user: UserData, newRole: string) => {
+    if (!user.org_id) return;
+    setIsChangingPlan(true);
+    const { error } = await supabase.from("organization_users").update({
+      role: newRole
+    }).eq("organization_id", user.org_id).eq("user_id", user.user_id);
+    setIsChangingPlan(false);
+
+    if (error) {
+      toast({ title: "Failed to update role", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Role Updated", description: `${user.email} is now ${newRole}.` });
+      await fetchDashboardData(false);
+    }
   };
 
   const handlePlansChange = async (orgId: string, currentPlans: string[], toggledPlan: string) => {
@@ -570,69 +742,409 @@ export default function PlatformAdminPage() {
           )}
         </TabsContent>
 
-        {/* ── All Users Tab ── */}
+        {/* ── All Users Tab (Full User & Subscription Plan Management) ── */}
         <TabsContent value="users" className="space-y-6">
-          <Card className="bg-slate-900 border-slate-800 text-white">
-            <CardHeader>
-              <CardTitle className="text-lg">All Registered Users ({dashData.users.length})</CardTitle>
-              <CardDescription className="text-slate-400">Every user who has signed up on the platform.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-700 text-left text-slate-400">
-                      <th className="pb-3 pr-4 font-medium">User</th>
-                      <th className="pb-3 pr-4 font-medium">Email</th>
-                      <th className="pb-3 pr-4 font-medium">Business</th>
-                      <th className="pb-3 pr-4 font-medium">Role</th>
-                      <th className="pb-3 pr-4 font-medium">Joined</th>
-                      <th className="pb-3 font-medium">Last Login</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dashData.users.map(user => (
-                      <tr key={user.user_id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="py-3 pr-4">
-                          <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                              {(user.first_name?.[0] || user.email?.[0] || "?").toUpperCase()}
-                            </div>
-                            <span className="text-white font-medium">
-                              {[user.first_name, user.last_name].filter(Boolean).join(" ") || "—"}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="py-3 pr-4 text-slate-300">{user.email}</td>
-                        <td className="py-3 pr-4">
-                          {user.org_name ? (
-                            <Badge variant="outline" className="border-slate-600 text-slate-300">{user.org_name}</Badge>
-                          ) : (
-                            <span className="text-slate-500">No business</span>
-                          )}
-                        </td>
-                        <td className="py-3 pr-4">
-                          <Badge className={
-                            user.role === "owner" ? "bg-amber-900/50 text-amber-300" :
-                            user.role === "admin" ? "bg-purple-900/50 text-purple-300" :
-                            "bg-slate-700 text-slate-300"
-                          }>
-                            {user.role || "—"}
-                          </Badge>
-                        </td>
-                        <td className="py-3 pr-4 text-slate-400 text-xs">
-                          {user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN") : "—"}
-                        </td>
-                        <td className="py-3 text-slate-400 text-xs">
-                          {user.last_sign_in ? new Date(user.last_sign_in).toLocaleDateString("en-IN", {
-                            day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
-                          }) : "Never"}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 font-medium">Total Registered</span>
+                <p className="text-xl font-black text-white mt-0.5">{dashData.users.length}</p>
               </div>
+              <Users2 className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 font-medium">Business Suite (Plan 3)</span>
+                <p className="text-xl font-black text-indigo-400 mt-0.5">
+                  {dashData.users.filter(u => getUserPlans(u).includes("plan_3")).length}
+                </p>
+              </div>
+              <Sparkles className="w-6 h-6 text-indigo-400" />
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 font-medium">Sales & Inventory</span>
+                <p className="text-xl font-black text-blue-400 mt-0.5">
+                  {dashData.users.filter(u => getUserPlans(u).includes("plan_2")).length}
+                </p>
+              </div>
+              <FileText className="w-6 h-6 text-blue-400" />
+            </div>
+            <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+              <div>
+                <span className="text-xs text-slate-400 font-medium">No Business Assigned</span>
+                <p className="text-xl font-black text-amber-400 mt-0.5">
+                  {dashData.users.filter(u => !u.org_id).length}
+                </p>
+              </div>
+              <AlertCircle className="w-6 h-6 text-amber-400" />
+            </div>
+          </div>
+
+          <Card className="bg-slate-900 border-slate-800 text-white shadow-xl">
+            <CardHeader className="pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users2 className="w-5 h-5 text-indigo-400" />
+                    All Registered Users & Plan Management
+                  </CardTitle>
+                  <CardDescription className="text-slate-400 mt-0.5">
+                    Search, inspect, and modify subscription plans directly for any registered user on the platform.
+                  </CardDescription>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fetchDashboardData(true)}
+                    className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Refresh
+                  </Button>
+                </div>
+              </div>
+
+              {/* Search & Filter Toolbar */}
+              <div className="pt-4 flex flex-col md:flex-row items-stretch md:items-center gap-3">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={userSearchQuery}
+                    onChange={(e) => setUserSearchQuery(e.target.value)}
+                    placeholder="Search by user name, email, business name, or user ID..."
+                    className="bg-slate-950 border-slate-800 pl-9 text-xs text-white placeholder:text-slate-500"
+                  />
+                  {userSearchQuery && (
+                    <button
+                      onClick={() => setUserSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-white"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter by Plan */}
+                <div className="w-full md:w-56">
+                  <Select value={userPlanFilter} onValueChange={setUserPlanFilter}>
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
+                      <SelectValue placeholder="Filter by Plan" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-white z-[9999]">
+                      <SelectItem value="all">All Plans</SelectItem>
+                      <SelectItem value="free">Free Plan</SelectItem>
+                      <SelectItem value="plan_2">Plan 2: Sales & Stock</SelectItem>
+                      <SelectItem value="plan_3">Plan 3: Business Suite</SelectItem>
+                      <SelectItem value="plan_4">Plan 4: Business HR</SelectItem>
+                      <SelectItem value="plan_5">Plan 5: Business CRM</SelectItem>
+                      <SelectItem value="plan_6">Plan 6: Business Promotion</SelectItem>
+                      <SelectItem value="no_business">No Business Assigned</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Filter by Role */}
+                <div className="w-full md:w-44">
+                  <Select value={userRoleFilter} onValueChange={setUserRoleFilter}>
+                    <SelectTrigger className="bg-slate-950 border-slate-800 text-xs text-white">
+                      <SelectValue placeholder="Filter by Role" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-white z-[9999]">
+                      <SelectItem value="all">All Roles</SelectItem>
+                      <SelectItem value="owner">Owner</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="member">Staff / Member</SelectItem>
+                      <SelectItem value="no_role">No Business / Role</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Reset Filters */}
+                {(userSearchQuery || userPlanFilter !== "all" || userRoleFilter !== "all") && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setUserSearchQuery("");
+                      setUserPlanFilter("all");
+                      setUserRoleFilter("all");
+                    }}
+                    className="text-xs text-slate-400 hover:text-white"
+                  >
+                    Reset Filters
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+
+            <CardContent>
+              {(() => {
+                const filteredUsers = (dashData?.users || []).filter(user => {
+                  const searchLower = userSearchQuery.toLowerCase().trim();
+                  const matchesSearch = !searchLower || 
+                    user.email?.toLowerCase().includes(searchLower) ||
+                    user.first_name?.toLowerCase().includes(searchLower) ||
+                    user.last_name?.toLowerCase().includes(searchLower) ||
+                    user.org_name?.toLowerCase().includes(searchLower) ||
+                    user.user_id?.toLowerCase().includes(searchLower);
+
+                  if (!matchesSearch) return false;
+
+                  if (userRoleFilter !== "all") {
+                    if (userRoleFilter === "no_role" && user.role) return false;
+                    if (userRoleFilter !== "no_role" && user.role !== userRoleFilter) return false;
+                  }
+
+                  if (userPlanFilter !== "all") {
+                    if (userPlanFilter === "no_business") {
+                      return !user.org_id;
+                    }
+                    const plans = getUserPlans(user);
+                    return plans.includes(userPlanFilter);
+                  }
+
+                  return true;
+                });
+
+                if (filteredUsers.length === 0) {
+                  return (
+                    <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl">
+                      <Users2 className="w-10 h-10 text-slate-600 mx-auto mb-2" />
+                      <p className="text-sm font-semibold text-slate-300">No matching users found</p>
+                      <p className="text-xs text-slate-500 mt-1">Try adjusting your search query or filters.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-800 text-left text-slate-400 text-xs">
+                          <th className="pb-3 pr-4 font-semibold">User Profile</th>
+                          <th className="pb-3 pr-4 font-semibold">Email & ID</th>
+                          <th className="pb-3 pr-4 font-semibold">Business</th>
+                          <th className="pb-3 pr-4 font-semibold">Role</th>
+                          <th className="pb-3 pr-4 font-semibold">Active Plan(s)</th>
+                          <th className="pb-3 pr-4 font-semibold">Registration</th>
+                          <th className="pb-3 text-right font-semibold">Manage / Change Plan</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/60">
+                        {filteredUsers.map(user => {
+                          const userPlans = getUserPlans(user);
+                          const userOrg = getUserOrg(user);
+
+                          return (
+                            <tr key={user.user_id} className="hover:bg-slate-800/30 transition-colors">
+                              {/* User Profile */}
+                              <td className="py-3.5 pr-4">
+                                <div className="flex items-center gap-2.5">
+                                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0 shadow-sm">
+                                    {(user.first_name?.[0] || user.email?.[0] || "?").toUpperCase()}
+                                  </div>
+                                  <div>
+                                    <span className="text-white font-semibold block leading-tight">
+                                      {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User"}
+                                    </span>
+                                    <span className="text-[10px] text-slate-400 font-mono">
+                                      ID: {user.user_id.slice(0, 8)}...
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Email & Copy */}
+                              <td className="py-3.5 pr-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-slate-300 text-xs">{user.email}</span>
+                                  <button
+                                    onClick={() => copyText(user.email, user.user_id)}
+                                    title="Copy Email"
+                                    className="text-slate-500 hover:text-indigo-400"
+                                  >
+                                    {copiedUserId === user.user_id ? (
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* Business */}
+                              <td className="py-3.5 pr-4">
+                                {user.org_name ? (
+                                  <Badge variant="outline" className="border-slate-700 bg-slate-800/60 text-slate-200 text-[11px] font-medium max-w-[170px] truncate block">
+                                    {user.org_name}
+                                  </Badge>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded-full font-semibold">
+                                    <AlertCircle className="w-3 h-3 text-amber-400" /> No Business
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Role */}
+                              <td className="py-3.5 pr-4">
+                                <Badge className={
+                                  user.role === "owner" ? "bg-amber-900/50 text-amber-300 border border-amber-700/50 text-[10px]" :
+                                  user.role === "admin" ? "bg-purple-900/50 text-purple-300 border border-purple-700/50 text-[10px]" :
+                                  user.role === "member" ? "bg-slate-800 text-slate-300 border border-slate-700 text-[10px]" :
+                                  "bg-slate-800 text-slate-500 text-[10px]"
+                                }>
+                                  {user.role ? user.role.toUpperCase() : "NO ROLE"}
+                                </Badge>
+                              </td>
+
+                              {/* Active Plans */}
+                              <td className="py-3.5 pr-4">
+                                <div className="flex flex-wrap gap-1 max-w-[200px]">
+                                  {userPlans.length > 0 ? (
+                                    userPlans.map(plan => (
+                                      <Badge
+                                        key={plan}
+                                        className={`${PLAN_COLORS[plan] || PLAN_COLORS.free} text-[10px] font-bold border px-1.5 py-0.5 shadow-sm`}
+                                      >
+                                        {PLAN_DISPLAY_NAMES[plan] || plan}
+                                      </Badge>
+                                    ))
+                                  ) : (
+                                    <span className="text-slate-500 text-xs italic">No Plan</span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* Registration & Last Login */}
+                              <td className="py-3.5 pr-4 text-xs text-slate-400">
+                                <span className="block font-medium text-slate-300">
+                                  {user.created_at ? new Date(user.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
+                                </span>
+                                <span className="text-[10px] text-slate-500">
+                                  Login: {user.last_sign_in ? new Date(user.last_sign_in).toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) : "Never"}
+                                </span>
+                              </td>
+
+                              {/* Actions: Change Plan & Manage */}
+                              <td className="py-3.5 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  
+                                  {/* Change Plan Popover */}
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-8 px-2.5 shadow-sm shadow-indigo-600/30"
+                                      >
+                                        Change Plan <ChevronDown className="w-3.5 h-3.5 ml-1" />
+                                      </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72 p-4 bg-slate-900 border-slate-700 text-white shadow-2xl rounded-xl z-[9999]" align="end">
+                                      <div>
+                                        <div className="border-b border-slate-800 pb-2.5 mb-3">
+                                          <h4 className="text-xs font-bold text-white leading-snug">Change Plan for User</h4>
+                                          <p className="text-[11px] text-slate-400 truncate mt-0.5">{user.email}</p>
+                                          {user.org_name && (
+                                            <p className="text-[10px] text-indigo-400 font-semibold mt-0.5">Org: {user.org_name}</p>
+                                          )}
+                                        </div>
+
+                                        {/* Fast 1-Click Presets */}
+                                        <div className="space-y-1.5 mb-3">
+                                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">
+                                            Quick Switch:
+                                          </span>
+                                          <div className="grid grid-cols-2 gap-1.5">
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => handleSetUserDirectPlan(user, "free")}
+                                              className="border-slate-700 hover:bg-slate-800 text-slate-300 text-[10px] h-7 px-1.5"
+                                            >
+                                              🆓 Set Free
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              variant="outline"
+                                              onClick={() => handleSetUserDirectPlan(user, "plan_2")}
+                                              className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-[10px] h-7 px-1.5 font-bold"
+                                            >
+                                              📄 Sales & Stock
+                                            </Button>
+                                            <Button
+                                              size="sm"
+                                              onClick={() => handleSetUserDirectPlan(user, "plan_3")}
+                                              className="col-span-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-[10px] h-7 font-black shadow-sm"
+                                            >
+                                              ✨ Flagship: Business Suite
+                                            </Button>
+                                          </div>
+                                        </div>
+
+                                        {/* Individual Multi-Plan Toggles */}
+                                        <div className="border-t border-slate-800 pt-2.5">
+                                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block mb-2">
+                                            Modular Plans & Add-ons:
+                                          </span>
+                                          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                                            {availablePlans.map(p => {
+                                              const isChecked = userPlans.includes(p.id);
+                                              return (
+                                                <div key={p.id} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-800/60">
+                                                  <label
+                                                    htmlFor={`user-plan-${user.user_id}-${p.id}`}
+                                                    className="text-xs text-slate-200 font-medium cursor-pointer flex-1 pr-2"
+                                                  >
+                                                    {p.label}
+                                                  </label>
+                                                  <Checkbox
+                                                    id={`user-plan-${user.user_id}-${p.id}`}
+                                                    checked={isChecked}
+                                                    onCheckedChange={() => handleUserPlanToggle(user, p.id)}
+                                                    className="border-slate-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                                                  />
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+
+                                        {/* If No Business: Helper Prompt */}
+                                        {!user.org_id && (
+                                          <div className="mt-3 p-2 bg-amber-950/40 border border-amber-800/40 rounded-lg text-[10px] text-amber-300">
+                                            Toggling a plan will automatically create a business for this user.
+                                          </div>
+                                        )}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+
+                                  {/* Manage User Modal Opener */}
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setSelectedUserForModal(user);
+                                      setIsManageUserModalOpen(true);
+                                    }}
+                                    className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs h-8 px-2.5"
+                                  >
+                                    <SlidersHorizontal className="w-3.5 h-3.5 mr-1 text-slate-400" /> Manage
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -856,6 +1368,270 @@ export default function PlatformAdminPage() {
         </TabsContent>
 
       </Tabs>
+
+      {/* ── Manage User Details & Plan Override Modal ── */}
+      {selectedUserForModal && (
+        <Dialog open={isManageUserModalOpen} onOpenChange={setIsManageUserModalOpen}>
+          <DialogContent className="max-w-2xl bg-slate-900 border-slate-800 text-white shadow-2xl p-6 z-[9999] max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="border-b border-slate-800 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-base font-black shrink-0 shadow-md">
+                    {(selectedUserForModal.first_name?.[0] || selectedUserForModal.email?.[0] || "?").toUpperCase()}
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-bold text-white flex items-center gap-2">
+                      {[selectedUserForModal.first_name, selectedUserForModal.last_name].filter(Boolean).join(" ") || "Registered User"}
+                      <Badge className="bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[10px]">
+                        {selectedUserForModal.role ? selectedUserForModal.role.toUpperCase() : "NO ROLE"}
+                      </Badge>
+                    </DialogTitle>
+                    <DialogDescription className="text-slate-400 text-xs mt-0.5">
+                      {selectedUserForModal.email}
+                    </DialogDescription>
+                  </div>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-6 pt-4">
+              {/* Profile Credentials Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">User ID</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="font-mono text-slate-300 truncate max-w-[90px]">{selectedUserForModal.user_id}</span>
+                    <button onClick={() => copyText(selectedUserForModal.user_id, 'uid')} className="text-slate-500 hover:text-white">
+                      <Copy className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Registered On</span>
+                  <span className="font-medium text-slate-300 mt-0.5 block">
+                    {selectedUserForModal.created_at ? new Date(selectedUserForModal.created_at).toLocaleDateString("en-IN") : "—"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Last Sign-In</span>
+                  <span className="font-medium text-slate-300 mt-0.5 block">
+                    {selectedUserForModal.last_sign_in ? new Date(selectedUserForModal.last_sign_in).toLocaleDateString("en-IN") : "Never"}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Current Business</span>
+                  <span className="font-medium text-indigo-400 mt-0.5 block truncate">
+                    {selectedUserForModal.org_name || "None"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Plan Management Section */}
+              <div className="space-y-3 p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-indigo-400" /> Subscription Plan Allocation
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">Select and assign the subscription tier for this user's business.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {getUserPlans(selectedUserForModal).map(p => (
+                      <Badge key={p} className={`${PLAN_COLORS[p] || PLAN_COLORS.free} text-[10px]`}>
+                        {PLAN_DISPLAY_NAMES[p] || p}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Fast Presets */}
+                <div className="grid grid-cols-3 gap-2 pt-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "free")}
+                    className="border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-semibold py-2"
+                  >
+                    🆓 Set Free Plan (₹0)
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "plan_2")}
+                    className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-xs font-bold py-2"
+                  >
+                    📄 Sales & Stock (₹499)
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "plan_3")}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md py-2"
+                  >
+                    🏢 Business Suite (₹999)
+                  </Button>
+                </div>
+
+                {/* Modular Add-on Checkboxes */}
+                <div className="pt-3 border-t border-slate-700/60">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300 block mb-2">
+                    Toggle Specific Modular Plans:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {availablePlans.map(p => {
+                      const isChecked = getUserPlans(selectedUserForModal).includes(p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          className={`flex items-center justify-between p-2.5 rounded-lg border transition-colors ${
+                            isChecked ? "bg-indigo-950/40 border-indigo-500/40" : "bg-slate-900/60 border-slate-800"
+                          }`}
+                        >
+                          <div>
+                            <span className="text-xs font-bold text-white block">{p.label}</span>
+                            <span className="text-[10px] text-slate-400">
+                              {PLAN_DISPLAY_NAMES[p.id] || p.id}
+                            </span>
+                          </div>
+                          <Checkbox
+                            checked={isChecked}
+                            onCheckedChange={() => handleUserPlanToggle(selectedUserForModal, p.id)}
+                            className="border-slate-500 data-[state=checked]:bg-indigo-600 data-[state=checked]:border-indigo-600"
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Association Section */}
+              <div className="space-y-3 p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-400" /> Business Association & Role
+                </h4>
+
+                {selectedUserForModal.org_id ? (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-900 rounded-lg border border-slate-800">
+                    <div>
+                      <span className="text-xs font-bold text-white block">{selectedUserForModal.org_name}</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Org ID: {selectedUserForModal.org_id}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-slate-400">Change Role:</span>
+                      <Select
+                        value={selectedUserForModal.role || "member"}
+                        onValueChange={(val) => handleUserRoleChange(selectedUserForModal, val)}
+                      >
+                        <SelectTrigger className="w-32 bg-slate-950 border-slate-700 text-xs text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-slate-800 text-white z-[9999]">
+                          <SelectItem value="owner">Owner</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="member">Staff / Member</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <p className="text-xs text-amber-300 bg-amber-950/30 border border-amber-800/30 p-2.5 rounded-lg">
+                      This user has registered but has not yet created or joined any business.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => handleCreateAndAssignOrgForUser(selectedUserForModal, ['plan_3'])}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
+                      >
+                        <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> Create Business & Assign Business Suite
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleCreateAndAssignOrgForUser(selectedUserForModal, ['free'])}
+                        className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs"
+                      >
+                        Create Business with Free Plan
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Granular Module Feature Toggles for linked Business */}
+              {selectedUserForModal.org_id && (() => {
+                const org = getUserOrg(selectedUserForModal);
+                if (!org) return null;
+                const sub = org.subscription || { plan_name: "free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
+                const currentFeatures = Array.isArray(sub.enabled_features) ? sub.enabled_features : ADMIN_FEATURE_GROUPS.map(g => g.key);
+
+                return (
+                  <div className="space-y-3 p-4 rounded-xl bg-slate-800/40 border border-slate-700/60">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                          <Settings2 className="w-4 h-4 text-purple-400" /> Module Access Control
+                        </h4>
+                        <p className="text-xs text-slate-400 mt-0.5">Toggle specific feature modules on or off for this user's organization.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEnableAll(org.id)}
+                          className="border-slate-700 text-slate-300 hover:bg-slate-800 text-[10px] h-7 px-2"
+                        >
+                          Enable All
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleDisableAll(org.id)}
+                          className="border-slate-700 text-slate-300 hover:bg-slate-800 text-[10px] h-7 px-2"
+                        >
+                          Disable All
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                      {ADMIN_FEATURE_GROUPS.map(group => {
+                        const isEnabled = currentFeatures.includes(group.key);
+                        return (
+                          <div
+                            key={group.key}
+                            className={`flex items-center justify-between p-2 rounded-lg border text-xs ${
+                              isEnabled ? "bg-indigo-950/30 border-indigo-500/30 text-white" : "bg-slate-900/60 border-slate-800 text-slate-400"
+                            }`}
+                          >
+                            <span className="font-medium truncate pr-2">{group.label}</span>
+                            <Switch
+                              checked={isEnabled}
+                              onCheckedChange={(checked) => handleToggleFeature(org.id, group.key, checked)}
+                              className="data-[state=checked]:bg-indigo-600 shrink-0"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <DialogFooter className="border-t border-slate-800 pt-4 flex items-center justify-between">
+              <span className="text-[11px] text-slate-500">Changes are saved directly to the database.</span>
+              <Button
+                onClick={() => setIsManageUserModalOpen(false)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5"
+              >
+                Done
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
     </div>
   );
