@@ -334,15 +334,15 @@ export default function PamphletPage() {
                     </div>
                   </div>
 
-                  {/* Plan 2: Sales & Inventory */}
+                  {/* Business Accounting */}
                   <div className="border-2 border-slate-300 rounded-lg p-3.5 bg-white shadow-sm flex flex-col justify-between">
                     <div>
                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">Core Billing</span>
-                      <h3 className="text-sm font-black text-slate-900 mt-0.5">Sales & Inventory</h3>
+                      <h3 className="text-sm font-black text-slate-900 mt-0.5">Business Accounting</h3>
                       <div className="mt-2 mb-3">
-                        <span className="text-2xl font-black text-slate-900">₹499</span>
+                        <span className="text-2xl font-black text-slate-900">₹599</span>
                         <span className="text-[10px] text-slate-500"> / mo</span>
-                        <p className="text-[10px] font-bold text-emerald-600">₹4,790/yr (Save ₹1,198)</p>
+                        <p className="text-[10px] font-bold text-emerald-600">₹5,999/yr (Save ₹1,189)</p>
                       </div>
                       <ul className="space-y-1.5 text-[11px] text-slate-700">
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Unlimited GST Invoices</li>
@@ -356,7 +356,7 @@ export default function PamphletPage() {
                     </div>
                   </div>
 
-                  {/* Plan 3: Business Suite */}
+                  {/* Business Suite */}
                   <div className="border-2 border-indigo-600 rounded-lg p-3.5 bg-gradient-to-b from-indigo-50/80 to-white shadow-md flex flex-col justify-between relative">
                     <div className="absolute -top-2.5 right-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
                       Flagship
@@ -365,9 +365,9 @@ export default function PamphletPage() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">All-In-One</span>
                       <h3 className="text-sm font-black text-slate-900 mt-0.5">Business Suite</h3>
                       <div className="mt-2 mb-3">
-                        <span className="text-2xl font-black text-indigo-600">₹999</span>
+                        <span className="text-2xl font-black text-indigo-600">₹1,499</span>
                         <span className="text-[10px] text-slate-500"> / mo</span>
-                        <p className="text-[10px] font-bold text-emerald-600">₹9,590/yr (Save ₹2,398)</p>
+                        <p className="text-[10px] font-bold text-emerald-600">₹14,999/yr (Save ₹2,989)</p>
                       </div>
                       <ul className="space-y-1.5 text-[11px] text-slate-800 font-medium">
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Full Sales & Multi-Warehouse</li>
@@ -389,18 +389,18 @@ export default function PamphletPage() {
                   </span>
                   <div className="grid grid-cols-3 gap-2 text-[11px]">
                     <div className="bg-white border border-slate-200 rounded p-2 text-center">
-                      <span className="font-bold text-slate-800 block">Plan 4: Business HR</span>
-                      <span className="text-indigo-600 font-extrabold text-xs">₹499/mo</span>
+                      <span className="font-bold text-slate-800 block">Business HR</span>
+                      <span className="text-indigo-600 font-extrabold text-xs">₹599/mo</span>
                       <span className="text-[10px] text-slate-500 block">5 Staff included (+₹29/extra)</span>
                     </div>
                     <div className="bg-white border border-slate-200 rounded p-2 text-center">
-                      <span className="font-bold text-slate-800 block">Plan 5: Business CRM</span>
-                      <span className="text-indigo-600 font-extrabold text-xs">₹299/mo</span>
+                      <span className="font-bold text-slate-800 block">Business CRM</span>
+                      <span className="text-indigo-600 font-extrabold text-xs">₹349/mo</span>
                       <span className="text-[10px] text-slate-500 block">Leads, pipelines & follow-ups</span>
                     </div>
                     <div className="bg-white border border-slate-200 rounded p-2 text-center">
-                      <span className="font-bold text-slate-800 block">Plan 6: Promotion</span>
-                      <span className="text-indigo-600 font-extrabold text-xs">₹299/mo</span>
+                      <span className="font-bold text-slate-800 block">Business Promotion</span>
+                      <span className="text-indigo-600 font-extrabold text-xs">₹349/mo</span>
                       <span className="text-[10px] text-slate-500 block">Festival studio & WhatsApp</span>
                     </div>
                   </div>
@@ -565,22 +565,22 @@ export default function PamphletPage() {
                   </div>
                   <div className="p-2.5 flex items-center justify-between hover:bg-slate-50 bg-indigo-50/30">
                     <div>
-                      <span className="font-bold text-slate-900">Plan 2: Sales & Inventory</span>
+                      <span className="font-bold text-slate-900">Business Accounting</span>
                       <span className="text-slate-500 text-[10px] ml-2">Unlimited Invoices, Challans, Multi-Warehouse, Barcode</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-black text-slate-900">₹499 / mo</span>
-                      <span className="text-[9px] text-emerald-600 block font-bold">₹4,790/yr</span>
+                      <span className="font-black text-slate-900">₹599 / mo</span>
+                      <span className="text-[9px] text-emerald-600 block font-bold">₹5,999/yr</span>
                     </div>
                   </div>
                   <div className="p-2.5 flex items-center justify-between bg-indigo-50/70 border-l-4 border-indigo-600">
                     <div>
-                      <span className="font-black text-indigo-900">Plan 3: Business Suite (Flagship)</span>
+                      <span className="font-black text-indigo-900">Business Suite (Flagship)</span>
                       <span className="text-slate-600 text-[10px] ml-2">Sales + Inventory + Banking + Purchases + Free CRM & Promotion</span>
                     </div>
                     <div className="text-right">
-                      <span className="font-black text-indigo-700 text-xs">₹999 / mo</span>
-                      <span className="text-[9px] text-emerald-600 block font-bold">₹9,590/yr</span>
+                      <span className="font-black text-indigo-700 text-xs">₹1,499 / mo</span>
+                      <span className="text-[9px] text-emerald-600 block font-bold">₹14,999/yr</span>
                     </div>
                   </div>
                 </div>
@@ -589,11 +589,11 @@ export default function PamphletPage() {
               {/* Add-ons mini strip */}
               <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 mb-4 flex items-center justify-between text-[10px]">
                 <span className="font-bold text-slate-700">Modular Add-ons:</span>
-                <span className="text-slate-600"><strong>Business HR:</strong> ₹499/mo (5 staff)</span>
+                <span className="text-slate-600"><strong>Business HR:</strong> ₹599/mo (5 staff)</span>
                 <span>•</span>
-                <span className="text-slate-600"><strong>Business CRM:</strong> ₹299/mo</span>
+                <span className="text-slate-600"><strong>Business CRM:</strong> ₹349/mo</span>
                 <span>•</span>
-                <span className="text-slate-600"><strong>Business Promotion:</strong> ₹299/mo</span>
+                <span className="text-slate-600"><strong>Business Promotion:</strong> ₹349/mo</span>
               </div>
             </div>
 
