@@ -243,20 +243,58 @@ export default function AdminPanelPage() {
   const [orgToDelete, setOrgToDelete] = useState<{id: string; name: string; plan: string} | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingOrg, setIsDeletingOrg] = useState(false);
-  const [allOrgsWithPlans, setAllOrgsWithPlans] = useState<Array<{id: string; name: string; plan: string; planDisplay?: string; status?: string; isActive: boolean}>>([]);
+  const [allOrgsWithPlans, setAllOrgsWithPlans] = useState<Array<{
+    id: string; 
+    name: string; 
+    plans: Array<{plan: string; planDisplay: string; status: string; isPaid: boolean; planColor: string}>; 
+    isActive: boolean
+  }>>([]);
 
   const loadAllOrgsWithPlans = async () => {
     if (!session?.user?.id) return;
     const { data, error } = await supabase.rpc("get_my_orgs_with_plans");
     if (data) {
-      const list = (data as any[]).map(row => ({
-        id: row.org_id,
-        name: row.org_name,
-        plan: row.plan_name || "free",
-        planDisplay: row.plan_display || "Free Plan",
-        status: row.sub_status || "free",
-        isActive: row.org_id === currentOrg?.id
-      }));
+      const orgMap = new Map();
+      (data as any[]).forEach(row => {
+        if (!orgMap.has(row.org_id)) {
+          orgMap.set(row.org_id, {
+            id: row.org_id,
+            name: row.org_name,
+            plans: [],
+            isActive: row.org_id === currentOrg?.id
+          });
+        }
+        const orgEntry = orgMap.get(row.org_id);
+        const planKey = row.plan_name || "free";
+        const planDisplay = row.plan_display || (planKey === "free" ? "Free Plan" : planKey === "trial" ? "Trial" : planKey);
+        const isPaid = planKey !== "free" && planKey !== "trial";
+        const planColor = isPaid
+          ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+          : planKey === "trial"
+          ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+          : "bg-slate-700/50 text-slate-400 border-slate-600/30";
+
+        if (!orgEntry.plans.some((p: any) => p.plan === planKey)) {
+           orgEntry.plans.push({
+             plan: planKey,
+             planDisplay: planDisplay,
+             status: row.sub_status || "free",
+             isPaid,
+             planColor
+           });
+        }
+      });
+      
+      const list = Array.from(orgMap.values());
+      list.forEach(org => {
+         if (org.plans.length > 1) {
+            org.plans = org.plans.filter((p: any) => p.plan !== "free");
+         }
+         if (org.plans.length === 0) {
+            org.plans.push({ plan: "free", planDisplay: "Free Plan", status: "free", isPaid: false, planColor: "bg-slate-700/50 text-slate-400 border-slate-600/30" });
+         }
+      });
+      
       setAllOrgsWithPlans(list);
     }
   };
@@ -594,25 +632,17 @@ export default function AdminPanelPage() {
                   </h3>
                   <div className="space-y-2">
                     {allOrgsWithPlans.map((org) => {
-                      const isPaid = org.plan && org.plan !== "free" && org.plan !== "trial";
-                      const planLabel = org.planDisplay || (org.plan === "free" ? "Free Plan" : org.plan === "trial" ? "Trial" : org.plan);
-                      const planColor = isPaid
-                        ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                        : org.plan === "trial"
-                        ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-                        : "bg-slate-700/50 text-slate-400 border-slate-600/30";
-
                       return (
                         <div
                           key={org.id}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                          className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${
                             org.isActive
                               ? "bg-indigo-500/10 border-indigo-500/30"
                               : "bg-slate-900/40 border-slate-700/30"
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold ${
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
                               org.isActive ? "bg-indigo-500/20 text-indigo-400" : "bg-slate-700/50 text-slate-400"
                             }`}>
                               {org.name.charAt(0).toUpperCase()}
@@ -621,20 +651,24 @@ export default function AdminPanelPage() {
                               <div className="flex items-center gap-2">
                                 <span className="text-sm font-semibold text-white">{org.name}</span>
                                 {org.isActive && (
-                                  <span className="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Active</span>
+                                  <span className="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">Active</span>
                                 )}
                               </div>
-                              <div className="flex items-center gap-2 mt-1">
-                                {isPaid && <Crown className="h-3 w-3 text-amber-400" />}
-                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${planColor}`}>
-                                  {planLabel}
-                                </span>
+                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                                {org.plans.map((p, idx) => (
+                                  <div key={idx} className="flex items-center gap-1">
+                                    {p.isPaid && <Crown className="h-3 w-3 text-amber-400" />}
+                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${p.planColor}`}>
+                                      {p.planDisplay}
+                                    </span>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
                           <button
-                            onClick={() => setOrgToDelete({ id: org.id, name: org.name, plan: org.plan })}
-                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all group"
+                            onClick={() => setOrgToDelete({ id: org.id, name: org.name, plan: org.plans[0]?.plan || 'free' })}
+                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all group mt-3 sm:mt-0 self-end sm:self-center shrink-0"
                             title="Delete this business"
                           >
                             <Trash2 className="h-4 w-4" />
