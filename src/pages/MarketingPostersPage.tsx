@@ -781,16 +781,17 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
               <Sparkles className="h-8 w-8 text-primary" /> Festival & Promotional Posts
             </h1>
             <p className="text-base text-muted-foreground">
-              Select an upcoming festival or upload your own promotional poster design.
+              Select an upcoming festival or custom promotional poster design.
             </p>
           </div>
-          <Button onClick={() => setUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shrink-0">
+          {/* <Button onClick={() => setUploadModalOpen(true)} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shrink-0">
             <Upload className="w-4 h-4 mr-2" /> Upload Post
-          </Button>
+          </Button> */}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {/* Direct Upload Card */}
+          {/*
           <div
             className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-dashed border-primary/40 hover:border-primary hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center p-6 text-center aspect-[4/5]"
             onClick={() => setUploadModalOpen(true)}
@@ -803,6 +804,7 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
               Upload your own promotional or festival design from your local device
             </p>
           </div>
+          */}
 
           {categories.map((category) => {
             const count = templates.filter(t => t.festival_name === category).length;
@@ -865,9 +867,9 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
               {isCustom ? "Select one of your uploaded posts to brand, edit, or share." : `Choose a poster design from the ${selectedCategory} collection.`}
             </p>
           </div>
-          <Button onClick={() => setUploadModalOpen(true)} variant="outline" className="shrink-0">
+          {/* <Button onClick={() => setUploadModalOpen(true)} variant="outline" className="shrink-0">
             <Upload className="w-4 h-4 mr-2" /> Upload Post
-          </Button>
+          </Button> */}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">

@@ -366,13 +366,13 @@ export function calculateEmployeeSalaryForPeriod({
       const isOff = weeklyOffs.includes(dayDate.getDay());
       const isHoliday = !!holMap[ds];
 
-      if (isOff || isHoliday) {
-        holidaysAndOffs++;
+      if (leaveMap[`${emp.id}|${ds}`]) {
+        paidLeaves++;
         return;
       }
 
-      if (leaveMap[`${emp.id}|${ds}`]) {
-        paidLeaves++;
+      if (isOff || isHoliday) {
+        holidaysAndOffs++;
         return;
       }
 

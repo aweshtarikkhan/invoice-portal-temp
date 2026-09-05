@@ -527,12 +527,12 @@ export default function AttendancePage() {
         let finalStatus = "—";
         let isAuto = false;
         
-        if (hrStatus) {
+        if (approvedLeave && !clk?.clock_in_time) {
+          finalStatus = "approved_leave";
+        } else if (hrStatus) {
           finalStatus = hrStatus;
         } else if (isHoliday || isOff) {
           finalStatus = "holiday";
-        } else if (approvedLeave && !clk?.clock_in_time) {
-          finalStatus = "approved_leave";
         } else if (clk?.clock_in_time) {
           finalStatus = computeShiftStatus(clk.clock_in_time, shift);
           isAuto = true;
