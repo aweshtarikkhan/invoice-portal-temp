@@ -415,22 +415,17 @@ export function AppLayout() {
                           {org.name}
                         </p>
                       )}
-                      <SubscriptionBadge />
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {(!subscriptionPlan || subscriptionPlan === "free" || isOnTrial) && (
-                    <>
-                      <DropdownMenuItem
-                        onClick={() => setShowPlanModal(true)}
-                        className="cursor-pointer font-semibold text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 focus:bg-amber-500/20 focus:text-amber-700 dark:focus:text-amber-400 my-1 rounded-md"
-                      >
-                        <ArrowUpCircle className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-500" />
-                        Upgrade
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
+                  <DropdownMenuItem
+                    onClick={() => setShowPlanModal(true)}
+                    className="cursor-pointer font-semibold text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 focus:bg-amber-500/20 focus:text-amber-700 dark:focus:text-amber-400 my-1 rounded-md"
+                  >
+                    <ArrowUpCircle className="mr-2 h-4 w-4 text-amber-600 dark:text-amber-500" />
+                    Upgrade Plan
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => navigate("/settings?tab=profile")} className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     My Profile
