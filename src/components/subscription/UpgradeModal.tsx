@@ -39,7 +39,8 @@ const PLANS = [
       'Unlimited Invoices',
       'Estimates & POs',
       'Inventory Management',
-      'Full Accounting Admin',
+      '10 Employees Included',
+      '+ ₹29 / Extra Employee',
       '500 WhatsApp Msgs / Mo'
     ]
   },
@@ -51,10 +52,10 @@ const PLANS = [
     priceYearly: 5999,
     color: 'indigo',
     features: [
-      'Unlimited Employees',
-      'Attendance Tracking',
-      'Payroll & Shifts',
-      'Full HR Admin',
+      '10 Employees Included',
+      '+ ₹29 / Extra Employee',
+      'Attendance & Payroll',
+      'Shifts & Leaves',
       '500 WhatsApp Msgs / Mo'
     ]
   },
@@ -69,7 +70,8 @@ const PLANS = [
       'Unlimited Leads',
       'API Integrations',
       'Sales Pipeline',
-      'Full CRM Admin',
+      '10 Employees Included',
+      '+ ₹29 / Extra Employee',
       '500 WhatsApp Msgs / Mo'
     ]
   },
@@ -83,7 +85,8 @@ const PLANS = [
     features: [
       'All Poster Categories',
       'Email Campaigns',
-      'Full Marketing Admin',
+      '10 Employees Included',
+      '+ ₹29 / Extra Employee',
       '500 WhatsApp Msgs / Mo'
     ]
   },
@@ -96,10 +99,9 @@ const PLANS = [
     color: 'orange',
     popular: true,
     features: [
-      'All Accounting Features',
-      'All HR Features',
-      'All CRM Features',
-      'All Promotion Features',
+      'All Premium Features',
+      '10 Employees Included',
+      '+ ₹29 / Extra Employee',
       'Full Suite Admin',
       '500 WhatsApp Msgs / Mo'
     ]

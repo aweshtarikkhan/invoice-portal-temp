@@ -20,7 +20,7 @@ export function hasModuleAccess(plan: PlanType = 'free', module: ModuleType): bo
     case 'accounting':
       return plan === 'free' || plan === 'accounting';
     case 'hr':
-      return plan === 'free' || plan === 'hr';
+      return true; // HR is visible to all plans, limits apply instead
     case 'crm':
       return plan === 'free' || plan === 'crm';
     case 'promotion':
@@ -43,5 +43,6 @@ export const FREE_PLAN_LIMITS = {
 };
 
 export const PAID_PLAN_LIMITS = {
+  employees: 10,
   outreach_messages: 500,
 };

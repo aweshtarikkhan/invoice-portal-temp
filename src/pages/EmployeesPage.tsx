@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { hasModuleAccess } from "@/lib/subscription";
+import { hasModuleAccess, FREE_PLAN_LIMITS, PAID_PLAN_LIMITS } from "@/lib/subscription";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, ExternalLink, Download, FileCheck, Loader2 } from "lucide-react";
@@ -484,7 +484,8 @@ export default function EmployeesPage() {
   const plan = org?.subscription_plan || 'free';
   const isFreePlan = plan === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const limitReached = isFreePlan && rows.length >= FREE_PLAN_LIMITS.employees;
+  const currentLimit = isFreePlan ? FREE_PLAN_LIMITS.employees : (PAID_PLAN_LIMITS.employees || 10);
+  const limitReached = rows.length >= currentLimit;
 
   const handleAddEmployeeClick = () => {
     if (limitReached) {
