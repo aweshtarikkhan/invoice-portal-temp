@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Send, User, CheckCheck, MessageSquare } from "lucide-react";
-import { ScrollArea } from "@/components/ui/scroll-area";
+// Removed ScrollArea import
 import { format } from "date-fns";
 import { useAuth } from "@/lib/auth";
 import { openWhatsappShare, normalizeWhatsappNumber } from "@/lib/whatsapp";
@@ -43,7 +43,9 @@ export default function ChatUIPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
   };
 
   useEffect(() => {
@@ -202,7 +204,7 @@ export default function ChatUIPage() {
             <div className="p-4 border-b font-semibold flex justify-between items-center bg-white">
               <span>WhatsApp Chats</span>
             </div>
-            <ScrollArea className="flex-1">
+            <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="p-4 text-center text-sm text-muted-foreground">Loading chats...</div>
               ) : chats.length === 0 ? (
@@ -233,7 +235,7 @@ export default function ChatUIPage() {
                   ))}
                 </div>
               )}
-            </ScrollArea>
+            </div>
           </div>
 
           {/* Main Area: Active Chat or QR Code */}
@@ -273,7 +275,7 @@ export default function ChatUIPage() {
                   </div>
                 </div>
 
-                <ScrollArea className="flex-1 p-4">
+                <div className="flex-1 overflow-y-auto p-4">
                   <div className="flex flex-col gap-2">
                     {messages.map(msg => {
                       const isOut = msg.direction === 'outgoing';
@@ -295,7 +297,7 @@ export default function ChatUIPage() {
                     })}
                     <div ref={messagesEndRef} />
                   </div>
-                </ScrollArea>
+                </div>
 
                 <div className="p-3 bg-white flex gap-2 items-center">
                   <Input
