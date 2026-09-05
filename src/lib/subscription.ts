@@ -22,7 +22,7 @@ export function hasModuleAccess(plan: PlanType = 'free', module: ModuleType): bo
     case 'hr':
       return true; // HR is visible to all plans, limits apply instead
     case 'crm':
-      return plan === 'free' || plan === 'crm';
+      return true; // CRM is visible to all plans, limits apply instead
     case 'promotion':
       return plan === 'free' || plan === 'promotion';
     case 'admin':
