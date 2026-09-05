@@ -259,7 +259,7 @@ export default function PlatformAdminPage() {
   const getUserPlans = (user: UserData): string[] => {
     if (!user.org_id) return [];
     const org = dashData?.organizations.find(o => o.id === user.org_id);
-    if (!org) return ['free'];
+    if (!org) return [];
     return (org as any).subscription_plan_names || (org.subscription?.plan_name ? [org.subscription.plan_name] : ['free']);
   };
 
@@ -269,25 +269,96 @@ export default function PlatformAdminPage() {
   };
 
   const handleUserPlanToggle = async (user: UserData, toggledPlan: string) => {
-    if (!user.org_id) {
-      await handleCreateAndAssignOrgForUser(user, [toggledPlan]);
-      return;
-    }
     const currentPlans = getUserPlans(user);
     let newPlans = currentPlans.includes(toggledPlan)
       ? currentPlans.filter(p => p !== toggledPlan)
       : [...currentPlans, toggledPlan];
     if (newPlans.length === 0) newPlans = ['free'];
 
+    // Instant optimistic update for immediate tick mark [✓] feedback
+    const defaultOrgName = user.org_name || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
+    const targetOrgId = user.org_id || `temp-org-${user.user_id}`;
+
+    setDashData(prev => {
+      if (!prev) return prev;
+      const updatedUsers = prev.users.map(u => {
+        if (u.user_id === user.user_id) {
+          return {
+            ...u,
+            org_id: u.org_id || targetOrgId,
+            org_name: u.org_name || defaultOrgName,
+            role: u.role || 'owner'
+          };
+        }
+        return u;
+      });
+
+      let found = false;
+      const updatedOrgs = prev.organizations.map(o => {
+        if (o.id === targetOrgId || (user.org_id && o.id === user.org_id)) {
+          found = true;
+          return {
+            ...o,
+            subscription_plan_names: newPlans,
+            subscription: {
+              ...o.subscription,
+              plan_name: newPlans[0],
+              plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
+              enabled_features: o.subscription?.enabled_features || []
+            }
+          };
+        }
+        return o;
+      });
+
+      if (!found) {
+        updatedOrgs.push({
+          id: targetOrgId,
+          name: defaultOrgName,
+          email: user.email,
+          phone: null,
+          currency_code: 'INR',
+          gst_enabled: true,
+          gst_number: null,
+          created_at: new Date().toISOString(),
+          member_count: 1,
+          invoice_count: 0,
+          owner: { email: user.email, name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email },
+          subscription: {
+            plan_name: newPlans[0],
+            plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
+            enabled_features: []
+          },
+          subscription_plan_names: newPlans
+        } as any);
+      }
+
+      return {
+        ...prev,
+        users: updatedUsers,
+        organizations: updatedOrgs
+      };
+    });
+
+    if (selectedUserForModal && selectedUserForModal.user_id === user.user_id) {
+      setSelectedUserForModal(prev => prev ? {
+        ...prev,
+        org_id: prev.org_id || targetOrgId,
+        org_name: prev.org_name || defaultOrgName,
+        role: prev.role || 'owner'
+      } : null);
+    }
+
     setIsChangingPlan(true);
-    const { error } = await supabase.rpc("admin_set_plans", {
-      p_org_id: user.org_id,
-      p_plan_names: newPlans,
+    const { data: res, error } = await supabase.rpc("admin_assign_user_plans", {
+      p_user_id: user.user_id,
+      p_plan_names: newPlans
     });
     setIsChangingPlan(false);
 
     if (error) {
       toast({ title: "Failed to update plan", description: error.message, variant: "destructive" });
+      await fetchDashboardData(false);
     } else {
       toast({
         title: "Plan Updated",
@@ -298,23 +369,94 @@ export default function PlatformAdminPage() {
   };
 
   const handleSetUserDirectPlan = async (user: UserData, planName: string) => {
-    if (!user.org_id) {
-      await handleCreateAndAssignOrgForUser(user, [planName]);
-      return;
-    }
     let planArray = [planName];
     if (planName === "plan_3") {
       planArray = ["plan_3", "plan_5", "plan_6"];
     }
+
+    const defaultOrgName = user.org_name || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
+    const targetOrgId = user.org_id || `temp-org-${user.user_id}`;
+
+    setDashData(prev => {
+      if (!prev) return prev;
+      const updatedUsers = prev.users.map(u => {
+        if (u.user_id === user.user_id) {
+          return {
+            ...u,
+            org_id: u.org_id || targetOrgId,
+            org_name: u.org_name || defaultOrgName,
+            role: u.role || 'owner'
+          };
+        }
+        return u;
+      });
+
+      let found = false;
+      const updatedOrgs = prev.organizations.map(o => {
+        if (o.id === targetOrgId || (user.org_id && o.id === user.org_id)) {
+          found = true;
+          return {
+            ...o,
+            subscription_plan_names: planArray,
+            subscription: {
+              ...o.subscription,
+              plan_name: planArray[0],
+              plan_display_name: PLAN_DISPLAY_NAMES[planArray[0]] || planArray[0],
+              enabled_features: o.subscription?.enabled_features || []
+            }
+          };
+        }
+        return o;
+      });
+
+      if (!found) {
+        updatedOrgs.push({
+          id: targetOrgId,
+          name: defaultOrgName,
+          email: user.email,
+          phone: null,
+          currency_code: 'INR',
+          gst_enabled: true,
+          gst_number: null,
+          created_at: new Date().toISOString(),
+          member_count: 1,
+          invoice_count: 0,
+          owner: { email: user.email, name: [user.first_name, user.last_name].filter(Boolean).join(" ") || user.email },
+          subscription: {
+            plan_name: planArray[0],
+            plan_display_name: PLAN_DISPLAY_NAMES[planArray[0]] || planArray[0],
+            enabled_features: []
+          },
+          subscription_plan_names: planArray
+        } as any);
+      }
+
+      return {
+        ...prev,
+        users: updatedUsers,
+        organizations: updatedOrgs
+      };
+    });
+
+    if (selectedUserForModal && selectedUserForModal.user_id === user.user_id) {
+      setSelectedUserForModal(prev => prev ? {
+        ...prev,
+        org_id: prev.org_id || targetOrgId,
+        org_name: prev.org_name || defaultOrgName,
+        role: prev.role || 'owner'
+      } : null);
+    }
+
     setIsChangingPlan(true);
-    const { error } = await supabase.rpc("admin_set_plans", {
-      p_org_id: user.org_id,
-      p_plan_names: planArray,
+    const { data: res, error } = await supabase.rpc("admin_assign_user_plans", {
+      p_user_id: user.user_id,
+      p_plan_names: planArray
     });
     setIsChangingPlan(false);
 
     if (error) {
       toast({ title: "Failed to update plan", description: error.message, variant: "destructive" });
+      await fetchDashboardData(false);
     } else {
       toast({
         title: "Plan Changed",
@@ -326,51 +468,32 @@ export default function PlatformAdminPage() {
 
   const handleCreateAndAssignOrgForUser = async (user: UserData, initialPlans: string[] = ['free'], customName?: string) => {
     setIsChangingPlan(true);
-    const orgName = customName || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
-    
-    const { data: orgData, error: orgError } = await supabase
-      .from("organizations")
-      .insert({
-        name: orgName,
-        currency_code: "INR",
-        gst_enabled: true
-      })
-      .select("id")
-      .single();
-
-    if (orgError) {
-      setIsChangingPlan(false);
-      toast({ title: "Failed to create business", description: orgError.message, variant: "destructive" });
-      return;
-    }
-
-    await supabase.from("organization_users").insert({
-      organization_id: orgData.id,
-      user_id: user.user_id,
-      role: "owner"
+    const { data: res, error } = await supabase.rpc("admin_assign_user_plans", {
+      p_user_id: user.user_id,
+      p_plan_names: initialPlans,
+      p_org_name: customName || null
     });
-
-    await supabase.rpc("admin_set_plans", {
-      p_org_id: orgData.id,
-      p_plan_names: initialPlans
-    });
-    
     setIsChangingPlan(false);
-    toast({
-      title: "Business Created & Plan Assigned",
-      description: `Created "${orgName}" for ${user.email} and assigned ${initialPlans.map(p => PLAN_DISPLAY_NAMES[p] || p).join(", ")}.`,
-    });
-    await fetchDashboardData(false);
+
+    if (error) {
+      toast({ title: "Failed to create business", description: error.message, variant: "destructive" });
+    } else {
+      toast({
+        title: "Business Assigned",
+        description: `Assigned plans for ${user.email}: ${initialPlans.map(p => PLAN_DISPLAY_NAMES[p] || p).join(", ")}.`,
+      });
+      await fetchDashboardData(false);
+    }
   };
 
   const handleAssignExistingOrgToUser = async (user: UserData, targetOrgId: string, role: string = "member") => {
     if (!targetOrgId) return;
     setIsChangingPlan(true);
-    const { error } = await supabase.from("organization_users").upsert({
-      organization_id: targetOrgId,
-      user_id: user.user_id,
-      role: role
-    }, { onConflict: "organization_id,user_id" });
+    const { error } = await supabase.rpc("admin_link_user_org", {
+      p_user_id: user.user_id,
+      p_org_id: targetOrgId,
+      p_role: role
+    });
     setIsChangingPlan(false);
 
     if (error) {
@@ -384,9 +507,11 @@ export default function PlatformAdminPage() {
   const handleUserRoleChange = async (user: UserData, newRole: string) => {
     if (!user.org_id) return;
     setIsChangingPlan(true);
-    const { error } = await supabase.from("organization_users").update({
-      role: newRole
-    }).eq("organization_id", user.org_id).eq("user_id", user.user_id);
+    const { error } = await supabase.rpc("admin_set_user_role", {
+      p_user_id: user.user_id,
+      p_org_id: user.org_id,
+      p_role: newRole
+    });
     setIsChangingPlan(false);
 
     if (error) {
@@ -403,6 +528,28 @@ export default function PlatformAdminPage() {
       : [...currentPlans, toggledPlan];
       
     if (newPlans.length === 0) newPlans = ['free'];
+
+    setDashData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        organizations: prev.organizations.map(o => {
+          if (o.id === orgId) {
+            return {
+              ...o,
+              subscription_plan_names: newPlans,
+              subscription: {
+                ...o.subscription,
+                plan_name: newPlans[0],
+                plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
+                enabled_features: o.subscription?.enabled_features || []
+              }
+            };
+          }
+          return o;
+        })
+      };
+    });
 
     await supabase.rpc("admin_set_plans", {
       p_org_id: orgId,
