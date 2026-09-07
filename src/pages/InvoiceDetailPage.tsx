@@ -305,7 +305,11 @@ export default function InvoiceDetailPage() {
 
   useAutoEmailPDF({ entityType: "invoice", entityData: invoice, generatePDFBlob });
 
-const snapshot = (invoice.metadata as any) || {};
+  if (!invoice) {
+    return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
+  }
+
+  const snapshot = (invoice.metadata as any) || {};
   const effectiveOrg = {
     ...org,
     template_style: snapshot.template_style || org?.template_style,
@@ -318,11 +322,7 @@ const snapshot = (invoice.metadata as any) || {};
 
   const printCSS = getPrintPageCSS(effectiveOrg.template_paper_size);
 
-  if (!invoice) {
-    return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
-  }
-
-    return (
+  return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Inject print styles for correct paper size */}
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
