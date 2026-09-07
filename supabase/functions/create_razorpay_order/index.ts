@@ -45,14 +45,15 @@ serve(async (req) => {
     // ACTION: CREATE ORDER
     // ==========================================
     if (action === "create") {
-      const { org_id, selected_plan_ids, billing_cycle, coupon_code, hrms_employee_count, total_amount } = body;
+      const { org_id, selected_plan_ids, billing_cycle, coupon_code, hrms_employee_count, total_amount, amount_in_paise } = body;
 
       if (!org_id) {
         throw new Error("Missing org_id parameter.");
       }
 
       // If total amount is 0 (e.g. Free plan)
-      if (!total_amount || Number(total_amount) <= 0) {
+      const inputAmount = Number(amount_in_paise !== undefined ? amount_in_paise : (total_amount || 0));
+      if (inputAmount <= 0) {
         return new Response(
           JSON.stringify({
             is_free: true,
@@ -63,7 +64,17 @@ serve(async (req) => {
         );
       }
 
-      const amountInPaise = Math.round(Number(total_amount) * 100);
+      // Determine final amount in paise:
+      // 1. If amount_in_paise is explicitly passed, use it directly (e.g., 59900 = ₹599, 599900 = ₹5,999)
+      // 2. If total_amount > 25000, it was sent in paise by an un-updated client (e.g., 59900, 599900, 1499900)
+      // 3. Otherwise, total_amount is in Rupees (e.g., 599, 5999, 14999), so multiply by 100 to convert to paise
+      let finalAmountInPaise: number;
+      if (amount_in_paise !== undefined && amount_in_paise !== null && Number(amount_in_paise) > 0) {
+        finalAmountInPaise = Math.round(Number(amount_in_paise));
+      } else {
+        const raw = Number(total_amount);
+        finalAmountInPaise = raw > 25000 ? Math.round(raw) : Math.round(raw * 100);
+      }
 
       // Call Razorpay API
       const auth = btoa(`${keyId}:${keySecret}`);
@@ -74,7 +85,7 @@ serve(async (req) => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          amount: amountInPaise,
+          amount: finalAmountInPaise,
           currency: "INR",
           receipt: `rcpt_${org_id.slice(0, 8)}_${Date.now()}`
         })

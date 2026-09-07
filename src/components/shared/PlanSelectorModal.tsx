@@ -213,6 +213,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       }
 
       // 3. Create Razorpay order via Supabase Edge Function
+      const amountInRupees = Math.round(totalAmount / 100);
       const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
         body: {
           action: "create",
@@ -222,12 +223,21 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
           billing_cycle: billingCycle,
           coupon_code: validCoupon ? promoCode : undefined,
           hrms_employee_count: hrmsEmployeeCount,
-          total_amount: totalAmount
+          total_amount: amountInRupees,
+          amount_in_paise: totalAmount
         }
       });
       
       if (orderError) {
-        throw new Error(orderError.message || "Failed to initialize payment order");
+        let errMsg = orderError.message || "Failed to initialize payment order";
+        try {
+          if ((orderError as any).context) {
+            const bodyText = await (orderError as any).context.text();
+            const parsed = JSON.parse(bodyText);
+            if (parsed.error) errMsg = parsed.error;
+          }
+        } catch (_) {}
+        throw new Error(errMsg);
       }
       if (!orderData) {
         throw new Error("No response received from payment server");
