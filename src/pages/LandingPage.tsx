@@ -567,26 +567,178 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 bg-slate-950 border-t border-white/5">
-        <div className="mx-auto max-w-7xl px-6 flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white font-bold">A</div>
-            <span className="text-slate-400 font-medium">© {new Date().getFullYear()} Assay Biz. Proudly Made in India.</span>
+      <footer className="bg-[#f5f5f7] border-t border-slate-200/80 pt-16 pb-8 text-slate-600">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12 pb-14">
+            {/* Column 1: Brand & Social */}
+            <div className="lg:col-span-4 flex flex-col items-start">
+              <Link to="/" className="inline-block mb-4">
+                <img
+                  src="/assets/images/lookupp-logo.png"
+                  alt="LookUPP Logo"
+                  className="h-10 w-auto object-contain"
+                />
+              </Link>
+              <p className="text-slate-500 text-sm leading-relaxed mb-6 max-w-sm">
+                Your trusted digital marketing & development partner. We help businesses grow with innovative solutions and creative strategies.
+              </p>
+              <div className="flex items-center gap-2.5">
+                <a
+                  href="https://www.youtube.com/@lookupp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="YouTube"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/youtube.png"
+                    alt="YouTube"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/lookupp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/linkedin.png"
+                    alt="LinkedIn"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+                <a
+                  href="https://www.instagram.com/lookupp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Instagram"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/instagram.png"
+                    alt="Instagram"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+                <a
+                  href="https://www.facebook.com/lookupp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Facebook"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/facebook.png"
+                    alt="Facebook"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+                <a
+                  href="https://www.threads.net/@lookupp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="Threads"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/threads.png"
+                    alt="Threads"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+              </div>
+            </div>
+
+            {/* Column 2: Quick Links */}
+            <div className="lg:col-span-2">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight mb-4 relative pb-2.5 inline-block">
+                Quick Links
+                <span className="absolute bottom-0 left-0 w-8 h-[2px] bg-[#e11d48] rounded-full"></span>
+              </h4>
+              <ul className="space-y-3 text-sm text-slate-500">
+                <li>
+                  <a href="#hero" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Home</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">About Us</a>
+                </li>
+                <li>
+                  <a href="#pricing" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Services</a>
+                </li>
+                <li>
+                  <a href="#contact" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Contact Us</a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Services */}
+            <div className="lg:col-span-3">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight mb-4 relative pb-2.5 inline-block">
+                Services
+                <span className="absolute bottom-0 left-0 w-8 h-[2px] bg-[#e11d48] rounded-full"></span>
+              </h4>
+              <ul className="space-y-3 text-sm text-slate-500">
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">SEO Optimization</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Google Ads</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Meta Ads</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Social Media Marketing</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Website Development</a>
+                </li>
+                <li>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Mobile App Development</a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 4: Contact Info */}
+            <div className="lg:col-span-3">
+              <h4 className="font-bold text-slate-900 text-sm tracking-tight mb-4 relative pb-2.5 inline-block">
+                Contact Info
+                <span className="absolute bottom-0 left-0 w-8 h-[2px] bg-[#e11d48] rounded-full"></span>
+              </h4>
+              <div className="space-y-3.5 text-sm text-slate-500">
+                <div className="flex items-center gap-3">
+                  <span className="text-base select-none">📞</span>
+                  <a href="tel:+919406545047" className="hover:text-[#e11d48] transition-colors">+91 94065 45047</a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-base select-none">💬</span>
+                  <a href="https://wa.me/919424825919" target="_blank" rel="noopener noreferrer" className="hover:text-[#e11d48] transition-colors">WhatsApp: +91 94248 25919</a>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-base select-none">📧</span>
+                  <a href="mailto:info@lookupp.in" className="hover:text-[#e11d48] transition-colors">info@lookupp.in</a>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-base select-none mt-0.5">📍</span>
+                  <span className="leading-snug">Registered Office: Flat No. 501, T-4 Sagar Lekh View Home, Bhopal, MP, India</span>
+                </div>
+                <div className="flex items-start gap-3">
+                  <span className="text-base select-none mt-0.5">🏢</span>
+                  <span className="leading-snug">Branch Office: E-9 Govindpura, Bhopal, Madhya Pradesh, India, 462023</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 font-medium hidden lg:inline">Connect with us:</span>
-            <SocialMediaLinks iconSize="sm" />
-          </div>
-          <div className="flex flex-wrap items-center gap-6">
-            <Link to="/brochure" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1.5 text-sm">
-              <FileText className="w-4 h-4" /> Download Brochure
-            </Link>
-            <Link to="/pamphlet" className="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors flex items-center gap-1.5 text-sm">
-              <Layers className="w-4 h-4" /> Download Pamphlet
-            </Link>
-            <a href="#features" className="text-slate-400 hover:text-white font-semibold transition-colors">Features</a>
-            <a href="#pricing" className="text-slate-400 hover:text-white font-semibold transition-colors">Pricing</a>
-            <Link to="/login" className="text-primary font-bold hover:text-primary/80 transition-colors">Sign in to Dashboard</Link>
+
+          {/* Bottom Bar */}
+          <div className="border-t border-slate-200/90 pt-6 pb-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+            <p>© {new Date().getFullYear()} LookUPP All Rights Reserved. A Brand of CYP First Technologies Pvt. Ltd. (CIN - U72200MP2022PTC060922)</p>
+            <div className="flex items-center gap-6">
+              <a href="#privacy" className="hover:text-[#e11d48] transition-colors">Privacy Policy</a>
+              <a href="#terms" className="hover:text-[#e11d48] transition-colors">Terms & Conditions</a>
+            </div>
           </div>
         </div>
       </footer>
