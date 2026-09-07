@@ -42,10 +42,6 @@ const t = {
     pricing_title: "Simple pricing. No surprises.",
     pricing_sub: "Start free forever. Upgrade only when you grow.",
     pricing_cta_free: "Start Free",
-    pricing_cta_pro: "Start 14-day trial",
-    final_title: "Ready to send your first GST invoice?",
-    final_sub: "No credit card. No setup. Live in 30 seconds.",
-    final_cta: "Try 14 day trial",
   },
   hi: {
     nav_features: "फीचर्स", nav_pricing: "प्राइसिंग", nav_compare: "तुलना", nav_login: "साइन इन",
@@ -73,10 +69,6 @@ const t = {
     pricing_title: "सीधी प्राइसिंग। कोई छुपा शुल्क नहीं।",
     pricing_sub: "हमेशा के लिए मुफ़्त शुरू करें। बढ़ने पर ही अपग्रेड करें।",
     pricing_cta_free: "मुफ़्त शुरू करें",
-    pricing_cta_pro: "14-दिन ट्रायल शुरू करें",
-    final_title: "अपना पहला GST बिल भेजने के लिए तैयार?",
-    final_sub: "कोई कार्ड नहीं। कोई सेटअप नहीं। 30 सेकंड में लाइव।",
-    final_cta: "Try 14 day trial",
   },
 };
 
