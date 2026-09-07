@@ -22,9 +22,9 @@ export default function GrnDetailPage() {
     })();
   }, [id]);
 
-  if (!g) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
-  return (
+  if (!g) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -79,3 +79,4 @@ export default function GrnDetailPage() {
     </div>
   );
 }
+

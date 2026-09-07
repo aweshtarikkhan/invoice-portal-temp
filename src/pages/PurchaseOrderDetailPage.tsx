@@ -114,7 +114,6 @@ export default function PurchaseOrderDetailPage() {
     cancelled: "bg-red-100 text-red-700",
   };
 
-  if (!po) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
   const generatePDFBlob = useCallback(async (): Promise<Blob | null> => {
     if (!org || !po) return null;
@@ -181,7 +180,8 @@ export default function PurchaseOrderDetailPage() {
   const cur = po.currency || (org as any)?.currency || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: cur }).format(n);
 
-  return (
+  if (!po) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  return (
     <div className="space-y-4 max-w-5xl mx-auto print:p-0 print:m-0 print:max-w-none print:w-full print:bg-white print:space-y-0">
       <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-3">
@@ -273,3 +273,4 @@ export default function PurchaseOrderDetailPage() {
     </div>
   );
 }
+

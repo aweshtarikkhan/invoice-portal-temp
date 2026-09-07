@@ -4,9 +4,8 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
-import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { hasModuleAccess, FREE_PLAN_LIMITS } from "@/lib/subscription";
+import { FREE_PLAN_LIMITS } from "@/lib/subscription";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { SummaryRibbon } from "@/components/shared/SummaryRibbon";
@@ -66,22 +65,6 @@ export default function InvoicesPage() {
   
   const [showUpgrade, setShowUpgrade] = useState(false);
   const plan = org?.subscription_plan || 'free';
-  if (!hasModuleAccess(plan, 'accounting')) {
-    return (
-      <div className="flex-1 bg-slate-50 min-h-screen">
-        <LockedFeature 
-          title="Accounting Module Locked"
-          description="Invoices and Accounting features require the Business Accounting or Business Suite plan."
-          onUpgradeClick={() => setShowUpgrade(true)}
-        />
-        <UpgradeModal 
-          isOpen={showUpgrade} 
-          onClose={() => setShowUpgrade(false)} 
-          onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
-        />
-      </div>
-    );
-  }
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -549,6 +532,11 @@ export default function InvoicesPage() {
               : i
           ));
         }}
+      />
+      <UpgradeModal 
+        isOpen={showUpgrade} 
+        onClose={() => setShowUpgrade(false)} 
+        onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
       />
     </div>
   );

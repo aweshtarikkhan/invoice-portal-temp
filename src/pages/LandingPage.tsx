@@ -443,33 +443,28 @@ export default function LandingPage() {
           {(() => {
             const allPlans = dbPlans.filter(p => p.name !== "free" || allowFreePlan);
 
-            const planIcons = {
-              free: { icon: "🆓", color: "text-slate-600", bg: "bg-slate-100", desc: "Basic invoicing features at no cost forever." },
-              plan_2: { icon: "📦", color: "text-blue-600", bg: "bg-blue-100", desc: "Full sales & inventory management for growing businesses." },
-              plan_3: { icon: "🏢", color: "text-primary", bg: "bg-primary/10", desc: "Complete business suite. CRM & Marketing included free!" },
-              plan_4: { icon: "👥", color: "text-indigo-600", bg: "bg-indigo-100", desc: "Complete HR solution — attendance, payroll & employee management." },
-              plan_5: { icon: "🎯", color: "text-pink-600", bg: "bg-pink-100", desc: "Manage leads, deals, pipeline and customer relationships." },
-              plan_6: { icon: "📢", color: "text-rose-600", bg: "bg-rose-100", desc: "SMS campaigns, email marketing, journeys and automation." },
+            const planIcons: Record<string, { icon: string; color: string; bg: string; desc: string }> = {
+              free: { icon: "🆓", color: "text-slate-600", bg: "bg-slate-100", desc: "Basic invoicing features for small businesses at no cost." },
+              accounting: { icon: "📦", color: "text-blue-600", bg: "bg-blue-100", desc: "Full billing, sales, purchases & inventory management." },
+              hr: { icon: "👥", color: "text-indigo-600", bg: "bg-indigo-100", desc: "Complete HR solution — attendance, payroll, leaves & shifts." },
+              crm: { icon: "🎯", color: "text-emerald-600", bg: "bg-emerald-100", desc: "Manage leads, deals, sales pipeline and customer relationships." },
+              promotion: { icon: "📢", color: "text-rose-600", bg: "bg-rose-100", desc: "Festival posters, WhatsApp & broadcast marketing campaigns." },
+              suite: { icon: "🏢", color: "text-primary", bg: "bg-primary/10", desc: "Complete all-in-one business suite with full system access!" },
             };
 
-            const togglePlan = (planName) => {
+            const togglePlan = (planName: string) => {
               setSelectedPlans(prev => 
                 prev.includes(planName) ? prev.filter(n => n !== planName) : [...prev, planName]
               );
             };
 
-            const hasPlan3 = selectedPlans.includes("plan_3");
+            const hasSuite = selectedPlans.includes("suite");
             const finalSelected = new Set(selectedPlans);
-            if (hasPlan3) {
-              finalSelected.add("plan_5");
-              finalSelected.add("plan_6");
-            }
 
             let totalMonthly = 0;
             finalSelected.forEach(name => {
               const plan = allPlans.find((p) => p.name === name);
               if (!plan) return;
-              if (hasPlan3 && (name === "plan_5" || name === "plan_6")) return;
               totalMonthly += plan.price_monthly;
             });
 
@@ -478,9 +473,9 @@ export default function LandingPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
                   {allPlans.map((p) => {
                     const meta = planIcons[p.name] || { icon: "✨", color: "text-primary", bg: "bg-primary/10", desc: "" };
-                    const isIncludedFree = hasPlan3 && (p.name === "plan_5" || p.name === "plan_6");
+                    const isIncludedFree = hasSuite && p.name !== "suite" && p.name !== "free";
                     const isSelected = finalSelected.has(p.name);
-                    const isPopular = p.name === "plan_3";
+                    const isPopular = p.name === "suite";
                     
                     return (
                       <div 
@@ -495,7 +490,7 @@ export default function LandingPage() {
                         )}
                         {isIncludedFree && (
                           <div className="absolute top-4 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10">
-                            Free with Plan 3
+                            Included in Suite
                           </div>
                         )}
                         

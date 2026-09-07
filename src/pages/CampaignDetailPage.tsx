@@ -30,10 +30,10 @@ export default function CampaignDetailPage() {
     load();
   };
 
-  if (!campaign) return <div className="p-6">Loading...</div>;
+
   const pending = recipients.filter((r) => r.status === "pending").length;
 
-  return (
+  if (!campaign) return <div className="p-6">Loading...</div>;  return (
     <div className="space-y-6">
       <Button variant="ghost" size="sm" onClick={() => navigate(-1)}><ArrowLeft className="h-4 w-4 mr-1" />Back</Button>
       <div className="flex justify-between items-start">
@@ -79,3 +79,4 @@ export default function CampaignDetailPage() {
     </div>
   );
 }
+

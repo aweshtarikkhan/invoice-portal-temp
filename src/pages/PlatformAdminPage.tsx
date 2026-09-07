@@ -77,24 +77,30 @@ interface DashboardData {
 
 const PLAN_COLORS: Record<string, string> = {
   free: "bg-slate-700 text-slate-200",
-  basic: "bg-blue-900/60 text-blue-300",
-  pro: "bg-purple-900/60 text-purple-300",
-  premium: "bg-pink-900/60 text-pink-300",
-  bundle: "bg-amber-900/60 text-amber-300",
-  hrms: "bg-emerald-900/60 text-emerald-300",
-  crm: "bg-cyan-900/60 text-cyan-300",
-  marketing: "bg-rose-900/60 text-rose-300",
-  plan_outreach: "bg-teal-900/60 text-teal-300",
+  accounting: "bg-blue-900/60 text-blue-300",
+  hr: "bg-indigo-900/60 text-indigo-300",
+  crm: "bg-emerald-900/60 text-emerald-300",
+  promotion: "bg-rose-900/60 text-rose-300",
+  suite: "bg-amber-900/60 text-amber-300",
+  plan_2: "bg-blue-900/60 text-blue-300",
+  plan_3: "bg-amber-900/60 text-amber-300",
+  plan_4: "bg-indigo-900/60 text-indigo-300",
+  plan_5: "bg-emerald-900/60 text-emerald-300",
+  plan_6: "bg-rose-900/60 text-rose-300",
 };
 
 const PLAN_DISPLAY_NAMES: Record<string, string> = {
-  free: "Free",
-  plan_2: "Sales & Inventory",
+  free: "Business Starter",
+  accounting: "Business Accounting",
+  hr: "Business HR",
+  crm: "Business CRM",
+  promotion: "Business Promotion",
+  suite: "Business Suite",
+  plan_2: "Business Accounting",
   plan_3: "Business Suite",
-  plan_4: "HRMS",
+  plan_4: "Business HR",
   plan_5: "Business CRM",
   plan_6: "Business Promotion",
-  plan_outreach: "Business Integration"
 };
 
 export default function PlatformAdminPage() {
@@ -559,13 +565,12 @@ export default function PlatformAdminPage() {
   };
   
   const availablePlans = [
-    { id: "free", label: "🆓 Free" },
-    { id: "plan_2", label: "📄 Sales & Inventory" },
-    { id: "plan_3", label: "🏢 Business Suite" },
-    { id: "plan_4", label: "👥 HRMS" },
-    { id: "plan_5", label: "🤝 Business CRM" },
-    { id: "plan_6", label: "📈 Business Promotion" },
-    { id: "plan_outreach", label: "💬 Business Integration" }
+    { id: "free", label: "🆓 Business Starter (Free)" },
+    { id: "accounting", label: "📦 Business Accounting (₹599)" },
+    { id: "hr", label: "👥 Business HR (₹599)" },
+    { id: "crm", label: "🎯 Business CRM (₹349)" },
+    { id: "promotion", label: "📢 Business Promotion (₹349)" },
+    { id: "suite", label: "🏢 Business Suite (₹1,499)" }
   ];
 
   const handleUpdateFeatureRequest = async (reqId: string, status: string) => {
@@ -659,10 +664,11 @@ export default function PlatformAdminPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-                {["free", "plan_2", "plan_3", "plan_4", "plan_5", "plan_6"].map(plan => {
-                  const count = dashData.organizations.filter(o =>
-                    (o.subscription?.plan_name || "free") === plan
-                  ).length;
+                {["free", "accounting", "hr", "crm", "promotion", "suite"].map(plan => {
+                  const count = dashData.organizations.filter(o => {
+                    const p = o.subscription?.plan_name || "free";
+                    return p === plan || (plan === "accounting" && p === "plan_2") || (plan === "suite" && p === "plan_3") || (plan === "hr" && p === "plan_4") || (plan === "crm" && p === "plan_5") || (plan === "promotion" && p === "plan_6");
+                  }).length;
                   return (
                     <div key={plan} className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50 text-center flex flex-col justify-center items-center">
                       <p className="text-3xl font-bold text-white">{count}</p>
@@ -902,18 +908,18 @@ export default function PlatformAdminPage() {
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-400 font-medium">Business Suite (Plan 3)</span>
+                <span className="text-xs text-slate-400 font-medium">Business Suite</span>
                 <p className="text-xl font-black text-indigo-400 mt-0.5">
-                  {dashData.users.filter(u => getUserPlans(u).includes("plan_3")).length}
+                  {dashData.users.filter(u => getUserPlans(u).includes("suite") || getUserPlans(u).includes("plan_3")).length}
                 </p>
               </div>
               <Sparkles className="w-6 h-6 text-indigo-400" />
             </div>
             <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
               <div>
-                <span className="text-xs text-slate-400 font-medium">Sales & Inventory</span>
+                <span className="text-xs text-slate-400 font-medium">Business Accounting</span>
                 <p className="text-xl font-black text-blue-400 mt-0.5">
-                  {dashData.users.filter(u => getUserPlans(u).includes("plan_2")).length}
+                  {dashData.users.filter(u => getUserPlans(u).includes("accounting") || getUserPlans(u).includes("plan_2")).length}
                 </p>
               </div>
               <FileText className="w-6 h-6 text-blue-400" />
@@ -983,12 +989,12 @@ export default function PlatformAdminPage() {
                     </SelectTrigger>
                     <SelectContent className="bg-slate-900 border-slate-800 text-white z-[9999]">
                       <SelectItem value="all">All Plans</SelectItem>
-                      <SelectItem value="free">Free Plan</SelectItem>
-                      <SelectItem value="plan_2">Plan 2: Sales & Stock</SelectItem>
-                      <SelectItem value="plan_3">Plan 3: Business Suite</SelectItem>
-                      <SelectItem value="plan_4">Plan 4: Business HR</SelectItem>
-                      <SelectItem value="plan_5">Plan 5: Business CRM</SelectItem>
-                      <SelectItem value="plan_6">Plan 6: Business Promotion</SelectItem>
+                      <SelectItem value="free">Business Starter (Free)</SelectItem>
+                      <SelectItem value="accounting">Business Accounting</SelectItem>
+                      <SelectItem value="hr">Business HR</SelectItem>
+                      <SelectItem value="crm">Business CRM</SelectItem>
+                      <SelectItem value="promotion">Business Promotion</SelectItem>
+                      <SelectItem value="suite">Business Suite</SelectItem>
                       <SelectItem value="no_business">No Business Assigned</SelectItem>
                     </SelectContent>
                   </Select>
@@ -1051,7 +1057,12 @@ export default function PlatformAdminPage() {
                       return !user.org_id;
                     }
                     const plans = getUserPlans(user);
-                    return plans.includes(userPlanFilter);
+                    return plans.includes(userPlanFilter) || 
+                      (userPlanFilter === "accounting" && plans.includes("plan_2")) ||
+                      (userPlanFilter === "suite" && plans.includes("plan_3")) ||
+                      (userPlanFilter === "hr" && plans.includes("plan_4")) ||
+                      (userPlanFilter === "crm" && plans.includes("plan_5")) ||
+                      (userPlanFilter === "promotion" && plans.includes("plan_6"));
                   }
 
                   return true;
@@ -1212,22 +1223,22 @@ export default function PlatformAdminPage() {
                                               onClick={() => handleSetUserDirectPlan(user, "free")}
                                               className="border-slate-700 hover:bg-slate-800 text-slate-300 text-[10px] h-7 px-1.5"
                                             >
-                                              🆓 Set Free
+                                              🆓 Starter
                                             </Button>
                                             <Button
                                               size="sm"
                                               variant="outline"
-                                              onClick={() => handleSetUserDirectPlan(user, "plan_2")}
+                                              onClick={() => handleSetUserDirectPlan(user, "accounting")}
                                               className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-[10px] h-7 px-1.5 font-bold"
                                             >
-                                              📄 Sales & Stock
+                                              📦 Accounting
                                             </Button>
                                             <Button
                                               size="sm"
-                                              onClick={() => handleSetUserDirectPlan(user, "plan_3")}
+                                              onClick={() => handleSetUserDirectPlan(user, "suite")}
                                               className="col-span-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-[10px] h-7 font-black shadow-sm"
                                             >
-                                              ✨ Flagship: Business Suite
+                                              🏢 Business Suite (All-In-One)
                                             </Button>
                                           </div>
                                         </div>
@@ -1599,22 +1610,22 @@ export default function PlatformAdminPage() {
                     onClick={() => handleSetUserDirectPlan(selectedUserForModal, "free")}
                     className="border-slate-700 hover:bg-slate-800 text-slate-200 text-xs font-semibold py-2"
                   >
-                    🆓 Set Free Plan (₹0)
+                    🆓 Starter (₹0)
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "plan_2")}
+                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "accounting")}
                     className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-xs font-bold py-2"
                   >
-                    📄 Sales & Stock (₹499)
+                    📦 Accounting (₹599)
                   </Button>
                   <Button
                     size="sm"
-                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "plan_3")}
+                    onClick={() => handleSetUserDirectPlan(selectedUserForModal, "suite")}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md py-2"
                   >
-                    🏢 Business Suite (₹999)
+                    🏢 Business Suite (₹1,499)
                   </Button>
                 </div>
 
@@ -1688,7 +1699,7 @@ export default function PlatformAdminPage() {
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         size="sm"
-                        onClick={() => handleCreateAndAssignOrgForUser(selectedUserForModal, ['plan_3'])}
+                        onClick={() => handleCreateAndAssignOrgForUser(selectedUserForModal, ['suite'])}
                         className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
                       >
                         <PlusCircle className="w-3.5 h-3.5 mr-1.5" /> Create Business & Assign Business Suite

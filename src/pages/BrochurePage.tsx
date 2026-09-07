@@ -278,51 +278,51 @@ export default function BrochurePage() {
               <h3 className="text-xs font-black tracking-wider uppercase text-slate-500 mb-3">Modular Base Plans</h3>
               <div className="grid grid-cols-3 gap-3.5">
                 
-                {/* Plan 1: Free */}
-                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex flex-col justify-between">
+                {/* Plan 1: Business Starter */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white flex flex-col justify-between">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Starter</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-0.5">Free Plan</h4>
+                    <h4 className="text-lg font-bold text-slate-900 mt-0.5">Business Starter</h4>
                     <div className="mt-2 mb-3">
                       <span className="text-2xl font-black text-slate-900">₹0</span>
-                      <span className="text-xs text-slate-500"> / month</span>
+                      <span className="text-xs text-slate-500"> / forever</span>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 5 Invoices per month</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 5 Clients & 5 Items</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Standard GST Templates</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Dynamic UPI QR Code</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 100 Invoices / Year</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 3 Employees Free</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 50 Leads (Manual)</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Festival Posts Only</li>
                     </ul>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-200 text-[10px] text-slate-500 text-center font-medium">
-                    Ideal for Freelancers
+                    Ideal for Micro Businesses
                   </div>
                 </div>
 
-                {/* Plan 2: Sales & Inventory */}
+                {/* Business Accounting */}
                 <div className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 flex flex-col justify-between">
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600">High Growth</span>
-                    <h4 className="text-lg font-bold text-slate-900 mt-0.5">Sales & Inventory</h4>
+                    <h4 className="text-lg font-bold text-slate-900 mt-0.5">Business Accounting</h4>
                     <div className="mt-2 mb-3">
-                      <span className="text-2xl font-black text-blue-700">₹499</span>
+                      <span className="text-2xl font-black text-blue-700">₹599</span>
                       <span className="text-xs text-slate-500"> / mo</span>
-                      <p className="text-[10px] text-blue-600 font-medium mt-0.5">₹4,790/year (20% off)</p>
+                      <p className="text-[10px] text-blue-600 font-medium mt-0.5">₹5,999/year (Save 17%)</p>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> <strong>Unlimited</strong> Invoices</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> <strong>Unlimited</strong> Clients & Items</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Delivery Challans & e-Way</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Multi-Warehouse Stock</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Barcode & Units Support</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> <strong>Unlimited</strong> Invoices & Bills</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Estimates, POs & Delivery Challans</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Multi-Warehouse Inventory</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> 10 Staff Included (+₹29/extra)</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> 500 WhatsApp Msgs / Mo</li>
                     </ul>
                   </div>
                   <div className="mt-4 pt-3 border-t border-blue-200 text-[10px] text-blue-700 text-center font-bold">
-                    For Wholesalers & Retail
+                    For Wholesalers & Retailers
                   </div>
                 </div>
 
-                {/* Plan 3: Business Suite (Flagship) */}
+                {/* Business Suite */}
                 <div className="p-4 rounded-xl border-2 border-indigo-500 bg-indigo-50/50 flex flex-col justify-between relative shadow-md">
                   <span className="absolute -top-2.5 right-3 px-2 py-0.5 rounded-full bg-indigo-600 text-white text-[9px] font-black uppercase tracking-wider">
                     Recommended
@@ -331,16 +331,16 @@ export default function BrochurePage() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">All-in-One ERP</span>
                     <h4 className="text-lg font-bold text-slate-900 mt-0.5">Business Suite</h4>
                     <div className="mt-2 mb-3">
-                      <span className="text-2xl font-black text-indigo-700">₹999</span>
+                      <span className="text-2xl font-black text-indigo-700">₹1,499</span>
                       <span className="text-xs text-slate-500"> / mo</span>
-                      <p className="text-[10px] text-indigo-600 font-medium mt-0.5">₹9,590/year (20% off)</p>
+                      <p className="text-[10px] text-indigo-600 font-medium mt-0.5">₹14,999/year (Save 17%)</p>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-700">
-                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Full Sales & Inventory</li>
-                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Purchases & Expense Tracking</li>
-                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Banking, Journal & P&L</li>
-                      <li className="flex items-center gap-1.5 text-indigo-800 font-bold bg-indigo-100/70 px-1.5 py-0.5 rounded"><Sparkles className="w-3 h-3 text-indigo-600" /> Free CRM Included</li>
-                      <li className="flex items-center gap-1.5 text-indigo-800 font-bold bg-indigo-100/70 px-1.5 py-0.5 rounded"><Sparkles className="w-3 h-3 text-indigo-600" /> Free Promotion Included</li>
+                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> All Accounting & Invoicing</li>
+                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Complete HR, Attendance & Payroll</li>
+                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Complete CRM & Sales Pipeline</li>
+                      <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Marketing Posters & Campaigns</li>
+                      <li className="flex items-center gap-1.5 text-indigo-800 font-bold bg-indigo-100/70 px-1.5 py-0.5 rounded"><Sparkles className="w-3 h-3 text-indigo-600" /> Full Suite Access & Admin</li>
                     </ul>
                   </div>
                   <div className="mt-4 pt-3 border-t border-indigo-200 text-[10px] text-indigo-700 text-center font-bold">
@@ -352,28 +352,28 @@ export default function BrochurePage() {
 
             {/* Modular Add-ons Matrix */}
             <div className="mb-6 p-4 rounded-xl border border-slate-200 bg-slate-50/60">
-              <h3 className="text-xs font-black tracking-wider uppercase text-slate-700 mb-2">Specialized Modular Add-ons</h3>
+              <h3 className="text-xs font-black tracking-wider uppercase text-slate-700 mb-2">Specialized Modular Plans</h3>
               <div className="grid grid-cols-3 gap-3 text-left">
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900">Plan 4: Business HR</span>
-                    <span className="text-xs font-black text-purple-600">₹499/mo</span>
+                    <span className="font-bold text-xs text-slate-900">Business HR</span>
+                    <span className="text-xs font-black text-purple-600">₹599/mo</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">Includes 5 employees. Biometric/selfie attendance, leave approvals, shifts (+₹29/extra employee).</p>
+                  <p className="text-[10px] text-slate-500 mt-1">10 staff included (+₹29/extra). Attendance, payroll runs, leaves & shifts.</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900">Plan 5: Business CRM</span>
-                    <span className="text-xs font-black text-cyan-600">₹299/mo</span>
+                    <span className="font-bold text-xs text-slate-900">Business CRM</span>
+                    <span className="text-xs font-black text-cyan-600">₹349/mo</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">Lead capture from IndiaMART & Meta ads, visual pipeline stages, and follow-up activities.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">Unlimited leads, IndiaMART & Meta API integrations, sales pipeline & deals.</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-slate-900">Plan 6: Promotion</span>
-                    <span className="text-xs font-black text-orange-600">₹299/mo</span>
+                    <span className="font-bold text-xs text-slate-900">Business Promotion</span>
+                    <span className="text-xs font-black text-orange-600">₹349/mo</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">Festive poster studio with business watermark, bulk WhatsApp & SMS promotional broadcasts.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">All festival & business categories, WhatsApp & email broadcast campaigns.</p>
                 </div>
               </div>
             </div>

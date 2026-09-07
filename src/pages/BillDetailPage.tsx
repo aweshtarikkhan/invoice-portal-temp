@@ -165,7 +165,6 @@ export default function BillDetailPage() {
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: (org as any)?.currency || "INR" }).format(n);
 
-  if (!bill) return <div className="p-6">Loading...</div>;
 
   const generatePDFBlob = useCallback(async (): Promise<Blob | null> => {
     if (!org || !bill) return null;
@@ -234,7 +233,8 @@ export default function BillDetailPage() {
 
   useAutoEmailPDF({ entityType: "bill", entityData: fullBillData, generatePDFBlob });
 
-  return (
+  if (!bill) return <div className="p-6">Loading...</div>;
+  return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Purchase Invoices</Button>
@@ -362,3 +362,4 @@ export default function BillDetailPage() {
     </div>
   );
 }
+

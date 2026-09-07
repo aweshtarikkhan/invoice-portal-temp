@@ -249,9 +249,9 @@ export default function BankAccountDetailPage() {
       .slice(0, 10);
   };
 
-  if (!acct) return <div className="p-6 text-muted-foreground">Loading…</div>;
 
-  return (
+  if (!acct) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -403,3 +403,4 @@ export default function BankAccountDetailPage() {
     </div>
   );
 }
+
