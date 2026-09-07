@@ -244,7 +244,7 @@ export function CorporateBlueInvoiceTemplate({
       </div>
 
       {/* 2.5 E-Invoice & E-Way Bill */}
-      {(invoice.irn || invoice.eway_bill_no) && (
+      {type !== "po" && (invoice.irn || invoice.eway_bill_no) && (
         <div style={{ marginBottom: 20, padding: 14, border: "1px solid #cbd5e1", borderRadius: 6, background: "#f8fafc", display: "flex", gap: 24 }}>
           {/* E-Invoice / IRN Details */}
           {(invoice.irn || invoice.ack_no) && (
@@ -458,7 +458,7 @@ export function CorporateBlueInvoiceTemplate({
         return (
           <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "flex-start", gap: 20, paddingTop: 14, borderTop: "1.5px solid #cbd5e1", fontSize: 11 }}>
             {/* Bank Details */}
-            {hasBankDetails && (
+            {type !== "po" && hasBankDetails && (
               <div style={{ flex: "1 1 200px", minWidth: 180 }}>
                 <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
                   <CreditCard style={{ width: 14, height: 14, color: primaryBlue }} />
@@ -491,7 +491,7 @@ export function CorporateBlueInvoiceTemplate({
             )}
 
             {/* Scan to Pay */}
-            {showQr && (
+            {type !== "po" && showQr && (
               <div style={{ textAlign: "center", flex: "0 0 110px" }}>
                 <div style={{ fontWeight: 800, color: darkNavy, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, marginBottom: 4 }}>
                   <QrCode style={{ width: 14, height: 14, color: primaryBlue }} />

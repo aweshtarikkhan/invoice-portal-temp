@@ -195,7 +195,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
       </div>
 
       {/* IRN & E-Invoice Details */}
-      {(invoice.irn || invoice.ack_no) && (
+      {type !== "po" && (invoice.irn || invoice.ack_no) && (
         <div style={{ marginBottom: 20, padding: 12, border: "1px solid #e4e4e7", borderRadius: 6, background: "#fafafa" }}>
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>E-Invoice Details</div>
           <div style={{ display: "grid", gridTemplateColumns: invoice.irn_qr ? "1fr auto" : "1fr", gap: 16 }}>
@@ -214,7 +214,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
       )}
 
       {/* E-Way Bill Details */}
-      {invoice.eway_bill_no && (
+      {type !== "po" && invoice.eway_bill_no && (
         <div style={{ marginBottom: 20, padding: 12, border: "1px solid #e4e4e7", borderRadius: 6, background: "#fafafa" }}>
           <div style={{ fontSize: 11, fontWeight: 700, marginBottom: 6 }}>E-Way Bill Details</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, fontSize: 11 }}>
@@ -339,7 +339,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             const bankBranch = invoiceBank?.bank_branch || (!isBankDisabled ? org?.bank_branch : null);
             const hasBankDetails = !isBankDisabled && Boolean(bankName || bankAccNum || bankIfsc);
 
-            if (!hasBankDetails) return null;
+            if (type === "po" || !hasBankDetails) return null;
             return (
               <div style={{ marginBottom: 16 }}>
                 <div style={{ fontSize: 11, fontWeight: 700, color: accent, marginBottom: 4 }}>Bank Details</div>
@@ -354,7 +354,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             );
           })()}
           
-          {org?.qr_code_enabled && (
+          {type !== "po" && org?.qr_code_enabled && (
             <div style={{ display: "inline-flex", alignItems: "center", gap: 12, padding: 12, border: "1px dashed #d4d4d8", borderRadius: 6 }}>
               <QRCodeSVG
                 value={

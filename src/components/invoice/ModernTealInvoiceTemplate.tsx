@@ -141,18 +141,18 @@ export function ModernTealInvoiceTemplate({
                  <p className="font-bold">{poNumber}</p>
                </div>
              )}
-             {ewayBill && (
-               <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">E-Way Bill No.</p>
-                 <p className="font-bold">{ewayBill}</p>
-               </div>
-             )}
-             {vehicleNo && (
-               <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">Vehicle No.</p>
-                 <p className="font-bold">{vehicleNo}</p>
-               </div>
-             )}
+             {type !== "po" && ewayBill && (
+                <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase">E-Way Bill No.</p>
+                  <p className="font-bold">{ewayBill}</p>
+                </div>
+              )}
+              {type !== "po" && vehicleNo && (
+                <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
+                  <p className="text-[9px] text-gray-500 font-bold uppercase">Vehicle No.</p>
+                  <p className="font-bold">{vehicleNo}</p>
+                </div>
+              )}
              
              {customFields.slice(0, 3).map((cf: any, idx: number) => (
                <div key={idx} className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
@@ -254,7 +254,7 @@ export function ModernTealInvoiceTemplate({
         {/* LEFT COLUMN */}
         <div>
            {/* BANK DETAILS */}
-           {showBankDetails && <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
+           {type !== "po" && showBankDetails && <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BANK DETAILS</div>
              <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
                <div className="font-semibold">Bank Name :</div><div>{org?.bank_name || ""}</div>
@@ -266,7 +266,7 @@ export function ModernTealInvoiceTemplate({
            </div>}
 
            {/* UPI DETAILS */}
-           {upiId && (
+           {type !== "po" && upiId && (
              <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>UPI DETAILS</div>
                <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
@@ -340,7 +340,7 @@ export function ModernTealInvoiceTemplate({
            </div>
 
            <div className="flex justify-between items-end mt-12">
-              {upiString ? (
+              {type !== "po" && upiString ? (
                 <div className="border border-gray-300 p-2 rounded text-center flex flex-col items-center">
                   <QRCodeSVG value={upiString} size={80} />
                   <span className="text-[9px] font-bold mt-1">Scan & Pay</span>

@@ -134,13 +134,13 @@ export function ClassicTabularInvoiceTemplate({
                <p className="font-bold">{poNumber}</p>
              </div>
            )}
-           {ewayBill && (
+           {type !== "po" && ewayBill && (
              <div>
                <p className="font-semibold text-gray-500">E-Way Bill No.</p>
                <p className="font-bold">{ewayBill}</p>
              </div>
            )}
-           {vehicleNo && (
+           {type !== "po" && vehicleNo && (
              <div>
                <p className="font-semibold text-gray-500">Vehicle No.</p>
                <p className="font-bold">{vehicleNo}</p>
@@ -246,7 +246,7 @@ export function ClassicTabularInvoiceTemplate({
         {/* LEFT COLUMN */}
         <div>
            {/* BANK DETAILS */}
-           {showBankDetails && <div className="border mb-4 border-gray-400">
+           {type !== "po" && showBankDetails && <div className="border mb-4 border-gray-400">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BANK DETAILS</div>
              <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
                <div className="font-semibold">Bank Name :</div><div>{org?.bank_name || ""}</div>
@@ -258,7 +258,7 @@ export function ClassicTabularInvoiceTemplate({
            </div>}
 
            {/* UPI DETAILS */}
-           {upiId && (
+           {type !== "po" && upiId && (
              <div className="border mb-4 border-gray-400">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>UPI DETAILS</div>
                <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
@@ -332,7 +332,7 @@ export function ClassicTabularInvoiceTemplate({
            </div>
 
            <div className="flex justify-between items-end mt-12">
-              {upiString ? (
+              {type !== "po" && upiString ? (
                 <div className="border border-gray-300 p-2 rounded text-center flex flex-col items-center">
                   <QRCodeSVG value={upiString} size={80} />
                   <span className="text-[9px] font-bold mt-1">Scan & Pay</span>

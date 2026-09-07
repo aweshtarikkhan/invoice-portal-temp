@@ -421,7 +421,7 @@ export function ProfessionalNavyInvoiceTemplate({
       </div>
 
       {/* Bank & UPI Details */}
-      {(bankName || bankAccNum || org?.upi_id) && (
+      {type !== "po" && (bankName || bankAccNum || org?.upi_id) && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 15 }}>
           {/* Bank */}
           {(bankName || bankAccNum) && (
@@ -501,7 +501,7 @@ export function ProfessionalNavyInvoiceTemplate({
 
       {/* Footer */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: 20 }}>
-        {org?.qr_code_enabled && org?.upi_id ? (
+        {type !== "po" && org?.qr_code_enabled && org?.upi_id ? (
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <QRCodeSVG
               value={`upi://pay?pa=${org.upi_id}&pn=${encodeURIComponent(org.name || "")}&am=${balanceDue.toFixed(2)}&cu=${invoice.currency_code || "INR"}&tn=${encodeURIComponent(`Payment for ${number}`)}`}
