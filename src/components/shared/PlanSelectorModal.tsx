@@ -309,7 +309,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             <div>
               <h3 className="text-xl font-semibold mb-4">Select Plans</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                {plans.map((plan) => {
+                                                {plans.map((plan) => {
                   const price = getPlanPrice(plan);
                   const isIncludedInSuite = hasSuite && plan.name !== "suite" && plan.name !== "free";
                   const isSelected = isIncludedInSuite || finalSelectedPlanIds.has(plan.id);
@@ -319,7 +319,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     <div 
                       key={plan.id} 
                       onClick={() => !isIncludedInSuite && togglePlan(plan.id)}
-                      className={order rounded-xl p-6 flex flex-col transition-all  relative}
+                      className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInSuite ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-200 bg-white hover:border-slate-300 shadow-sm cursor-pointer"} relative`}
                     >
                       {isIncludedInSuite && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
@@ -431,5 +431,6 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     </Dialog>
   );
 }
+
 
 
