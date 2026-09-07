@@ -43,7 +43,7 @@ export default function BillDetailPage() {
 
   const load = async () => {
     const { data: b } = await (supabase as any).from("bills").select("*").eq("id", id).maybeSingle();
-    if (!b) return;
+    if (!b) { toast({ title: "Error", description: "Bill not found", variant: "destructive" }); navigate("/bills"); return; }
     setBill(b);
     setPayAmt(String(b.balance_due));
     const [{ data: l }, { data: v }, { data: p }] = await Promise.all([

@@ -393,7 +393,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             <Row label="Shipping" value={fmt(Number(invoice.shipping_charge))} />
           )}
           
-          {Number(invoice.adjustment) !== 0 && (
+          {!isNaN(Number(invoice.adjustment)) && Number(invoice.adjustment) !== 0 && (
             <Row label={invoice.adjustment_name || "Adjustment"} value={Number(invoice.adjustment).toFixed(2)} />
           )}
           
