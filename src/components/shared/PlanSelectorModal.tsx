@@ -180,26 +180,45 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const planNames = Array.from(finalSelectedPlanIds).map(id => plans.find(p => p.id === id)?.name).filter(Boolean);
   const allSelectedPlanIdsJoined = Array.from(finalSelectedPlanIds).join(',');
 
-  const handleCheckout = async () => {
-    if (!orgId) return;
+    const handleCheckout = async () => {
+    if (!orgId) {
+      toast({ title: "Organization Missing", description: "Please select an active organization before upgrading.", variant: "destructive" });
+      return;
+    }
     setProcessingPlan(true);
     try {
-      if (onlyFreePlan) {
-        const freePlanName = planNames[0];
-        const { error } = await supabase.rpc("start_org_trial", {
+      // 1. If Free Plan selected or totalAmount is 0
+      if (onlyFreePlan || totalAmount <= 0) {
+        const { error } = await supabase.rpc("activate_org_plans", {
           p_org_id: orgId,
-          p_plan_name: freePlanName
+          p_plan_names: ["free"],
+          p_billing_cycle: "monthly"
         });
         if (error) throw error;
         toast({ title: "Plan Activated", description: "You are now on the Free plan." });
-        window.location.reload();
+        setTimeout(() => window.location.reload(), 1000);
         return;
       }
 
+      // 2. Ensure Razorpay checkout script is loaded
+      if (typeof (window as any).Razorpay === "undefined") {
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement("script");
+          script.id = "razorpay-script";
+          script.src = "https://checkout.razorpay.com/v1/checkout.js";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Unable to load payment gateway SDK. Please check your internet connection."));
+          document.body.appendChild(script);
+        });
+      }
+
+      // 3. Create Razorpay order via Supabase Edge Function
       const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
         body: {
+          action: "create",
           org_id: orgId,
           selected_plan_ids: allSelectedPlanIdsJoined,
+          plan_names: planNames,
           billing_cycle: billingCycle,
           coupon_code: validCoupon ? promoCode : undefined,
           hrms_employee_count: hrmsEmployeeCount,
@@ -207,54 +226,75 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         }
       });
       
-      if (orderError) throw new Error(orderError.message || "Failed to create order");
-      if (!orderData) throw new Error("No order data returned");
+      if (orderError) {
+        throw new Error(orderError.message || "Failed to initialize payment order");
+      }
+      if (!orderData) {
+        throw new Error("No response received from payment server");
+      }
+      if (orderData.error) {
+        throw new Error(orderData.error);
+      }
 
+      // If amount was 0 (e.g. 100% discount coupon)
+      if (orderData.is_free) {
+        const { error: freeErr } = await supabase.rpc("activate_org_plans", {
+          p_org_id: orgId,
+          p_plan_names: planNames,
+          p_billing_cycle: billingCycle
+        });
+        if (freeErr) throw freeErr;
+        toast({ title: "Plan Activated", description: "Your subscription has been activated successfully." });
+        setTimeout(() => window.location.reload(), 1000);
+        return;
+      }
+
+      // 4. Open Razorpay Checkout Modal
       const options = {
         key: orderData.razorpay_key_id,
         amount: orderData.amount,
-        currency: orderData.currency,
+        currency: orderData.currency || "INR",
         name: "Assay Biz",
-        description: "Subscription Upgrade",
+        description: `Subscription Upgrade (${planNames.join(', ')})`,
         order_id: orderData.order_id,
         handler: async function (response: any) {
           try {
-            const verifyRes = await fetch("http://localhost:4000/api/razorpay/verify-payment", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
+            setProcessingPlan(true);
+            const { data: verifyData, error: verifyError } = await supabase.functions.invoke("create_razorpay_order", {
+              body: {
+                action: "verify",
                 razorpay_order_id: response.razorpay_order_id,
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
                 org_id: orgId,
                 plan_names: planNames,
                 billing_cycle: billingCycle,
-                coupon_id: orderData.coupon_id,
-                discounted_price: orderData.discount_applied,
                 employee_count: hrmsEmployeeCount
-              })
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.error || "Payment verification failed");
-            
-            const { error: activateError } = await supabase.rpc("activate_org_plan", {
-              p_org_id: orgId,
-              p_plan_name: planNames[0] || "premium",
-              p_billing_cycle: billingCycle,
-              p_razorpay_order_id: response.razorpay_order_id,
-              p_razorpay_payment_id: response.razorpay_payment_id,
-              p_employee_count: hrmsEmployeeCount
+              }
             });
 
-            if (activateError) {
-              console.error("Plan activation error:", activateError);
-              throw new Error("Payment received but plan activation failed. Please contact support with payment ID: " + response.razorpay_payment_id);
+            if (verifyError || verifyData?.error) {
+              throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
             }
             
-            toast({ title: "\uD83C\uDF89 Payment Successful!", description: "Plans have been activated for your business." });
-            window.location.reload();
+            toast({
+              title: "Upgrade Successful!",
+              description: "Your selected plan(s) have been successfully activated."
+            });
+            setTimeout(() => window.location.reload(), 1200);
           } catch (err: any) {
-            toast({ title: "Verification Failed", description: err.message, variant: "destructive" });
+            toast({
+              title: "Activation Failed",
+              description: err.message || "Payment was received but plan activation failed. Please contact support.",
+              variant: "destructive"
+            });
+          } finally {
+            setProcessingPlan(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessingPlan(false);
           }
         },
         theme: { color: "#2563eb" }
@@ -262,14 +302,22 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
       const rzp = new (window as any).Razorpay(options);
       rzp.on("payment.failed", function (response: any) {
-        toast({ title: "Payment Failed", description: response.error.description, variant: "destructive" });
+        setProcessingPlan(false);
+        toast({
+          title: "Payment Failed",
+          description: response.error?.description || "Transaction was declined by bank or cancelled.",
+          variant: "destructive"
+        });
       });
       rzp.open();
 
     } catch (err: any) {
-      toast({ title: "Checkout Error", description: err.message, variant: "destructive" });
+      setProcessingPlan(false);
+      const message = err.message?.includes("Failed to send a request")
+        ? "Unable to reach the payment service. Please check your network connection and try again."
+        : (err.message || "Failed to initiate plan upgrade.");
+      toast({ title: "Upgrade Request Failed", description: message, variant: "destructive" });
     }
-    setProcessingPlan(false);
   };
 
   return (
