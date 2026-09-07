@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
 import { useSubscription } from "@/hooks/use-subscription";
+import { SEO } from "@/components/shared/SEO";
 import {
   Shield, Check, X, ArrowLeft, Plus, Trash2, Building2,
   FileText, Package, ShoppingCart, Calculator,
@@ -43,7 +44,7 @@ export default function AdminPanelPage() {
 
   if (isFreePlan) {
     return (
-      <div className="flex-1 bg-slate-50 min-h-screen">
+      <div className="flex-1 bg-slate-50 min-h-[60vh] py-8">
         <LockedFeature 
           title="Admin Panel Locked"
           description="The Admin Panel is available exclusively on our Premium plans. Upgrade to manage team members, advanced settings, and API integrations."
@@ -269,10 +270,10 @@ export default function AdminPanelPage() {
         const planDisplay = row.plan_display || (planKey === "free" ? "Free Plan" : planKey === "trial" ? "Trial" : planKey);
         const isPaid = planKey !== "free" && planKey !== "trial";
         const planColor = isPaid
-          ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+          ? "bg-amber-50 text-amber-800 border-amber-200"
           : planKey === "trial"
-          ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
-          : "bg-slate-700/50 text-slate-400 border-slate-600/30";
+          ? "bg-blue-50 text-blue-800 border-blue-200"
+          : "bg-slate-100 text-slate-700 border-slate-200";
 
         if (!orgEntry.plans.some((p: any) => p.plan === planKey)) {
            orgEntry.plans.push({
@@ -291,7 +292,7 @@ export default function AdminPanelPage() {
             org.plans = org.plans.filter((p: any) => p.plan !== "free");
          }
          if (org.plans.length === 0) {
-            org.plans.push({ plan: "free", planDisplay: "Free Plan", status: "free", isPaid: false, planColor: "bg-slate-700/50 text-slate-400 border-slate-600/30" });
+            org.plans.push({ plan: "free", planDisplay: "Free Plan", status: "free", isPaid: false, planColor: "bg-slate-100 text-slate-700 border-slate-200" });
          }
       });
       
@@ -341,46 +342,51 @@ export default function AdminPanelPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950">
-      {/* Header */}
-      <header className="sticky top-0 z-50 backdrop-blur-xl bg-slate-900/70 border-b border-slate-700/50">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <Shield className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-bold text-white">Admin Panel</h1>
-              <p className="text-xs text-slate-400">Manage Features & Users</p>
-            </div>
+    <div className="space-y-8 max-w-6xl mx-auto pb-12">
+      <SEO title="Admin Panel" />
+
+      {/* Header Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-2xs">
+            <Shield className="h-6 w-6" />
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="text-sm text-slate-400 hover:text-white transition-colors flex items-center gap-1.5 px-3 py-2 rounded-lg hover:bg-slate-800/50"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Dashboard
-            </button>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Admin Panel</h1>
+            <p className="text-sm text-slate-500">Manage business subscription, team members, organizations, and modular features.</p>
           </div>
         </div>
-      </header>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/dashboard")}
+            className="text-slate-600 hover:text-slate-900 border-slate-200 hover:bg-slate-50"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Dashboard
+          </Button>
+        </div>
+      </div>
 
-      <div className="max-w-6xl mx-auto px-6 py-8 space-y-12">
+      <div className="space-y-10">
         {/* Subscription & Billing Section */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Shield className="h-4 w-4 text-indigo-400" />
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Shield className="h-4 w-4 text-indigo-600" />
               Subscription & Billing
             </h2>
           </div>
-          <Card className="bg-slate-800/40 backdrop-blur border-slate-700/30">
+          <Card className="bg-white border-slate-200/80 shadow-2xs">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row gap-8 items-center justify-between">
-                <div>
-                  <h3 className="text-white font-medium mb-1">Current Plan: {subscriptionPlan ? <SubscriptionBadge /> : "Free"}</h3>
-                  <p className="text-sm text-slate-400">
+              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-sm font-medium text-slate-600">Current Plan:</span>
+                    {subscriptionPlan ? <SubscriptionBadge /> : <span className="text-sm font-semibold text-slate-900">Free Plan</span>}
+                  </div>
+                  <p className="text-sm text-slate-500">
                     {isOnTrial 
                       ? `Your free trial ends in ${trialDaysLeft} days.` 
                       : "Manage your business subscription and billing details."}
@@ -388,7 +394,7 @@ export default function AdminPanelPage() {
                 </div>
                 <Button 
                   onClick={() => setShowPlanModal(true)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-2xs"
                 >
                   {subscriptionStatus === "active" ? "Manage Subscription" : "Upgrade Plan"}
                 </Button>
@@ -399,43 +405,47 @@ export default function AdminPanelPage() {
 
         {/* Organization Users (Team) Section - Visible to all Admins */}
         <section>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <Users className="h-4 w-4 text-emerald-400" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Users className="h-4 w-4 text-emerald-600" />
               Organization Users (Team)
             </h2>
             <div className="flex items-center gap-3">
-              <span className={`text-xs font-bold px-3 py-1.5 rounded-full border ${globalLimitReached ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"}`}>
+              <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
+                globalLimitReached 
+                  ? "bg-red-50 text-red-700 border-red-200" 
+                  : "bg-emerald-50 text-emerald-700 border-emerald-200"
+              }`}>
                 Total Users Used: {totalGlobalUsers} / 5 (Across all businesses)
               </span>
             </div>
           </div>
-          <Card className="bg-slate-800/40 backdrop-blur border-slate-700/30">
+          <Card className="bg-white border-slate-200/80 shadow-2xs">
             <CardContent className="p-6">
               <div className="flex flex-col lg:flex-row gap-8">
-                <div className="flex-1 space-y-5 border-r border-slate-700/30 pr-8">
+                <div className="flex-1 space-y-5 lg:border-r lg:border-slate-200 lg:pr-8">
                   <div>
-                    <h3 className="text-white font-medium mb-1">Invite Employee</h3>
-                    <p className="text-xs text-slate-400">Add a new user to {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}.</p>
+                    <h3 className="text-base font-semibold text-slate-900 mb-1">Invite Employee</h3>
+                    <p className="text-xs text-slate-500">Add a new user to {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}.</p>
                   </div>
                   
                   {globalLimitReached ? (
-                    <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                    <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-red-400 text-sm font-medium">Global Plan Limit Reached</h4>
-                        <p className="text-xs text-red-400/80 mt-1">You have reached the limit of 5 users across all your businesses. Please extend your limit to add more users.</p>
+                        <h4 className="text-red-900 text-sm font-semibold">Global Plan Limit Reached</h4>
+                        <p className="text-xs text-red-700 mt-1">You have reached the limit of 5 users across all your businesses. Please extend your limit to add more users.</p>
                       </div>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {allOrgsWithPlans.length > 1 && (
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-slate-300">Select Business</label>
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-slate-700">Select Business</label>
                           <select
                             value={selectedTeamOrgId || currentOrgId}
                             onChange={(e) => setSelectedTeamOrgId(e.target.value)}
-                            className="w-full bg-slate-900/50 border border-slate-600/50 text-white h-10 rounded-md px-3 focus:outline-none focus:border-emerald-500"
+                            className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
                           >
                             {allOrgsWithPlans.map(org => (
                               <option key={org.id} value={org.id}>{org.name}</option>
@@ -444,22 +454,22 @@ export default function AdminPanelPage() {
                         </div>
                       )}
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-300">Email Address</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-700">Email Address</label>
                         <Input
                           placeholder="employee@company.com"
                           value={newUserEmail}
                           onChange={(e) => setNewUserEmail(e.target.value)}
-                          className="bg-slate-900/50 border-slate-600/50 text-white placeholder:text-slate-500 h-10 focus:border-emerald-500"
+                          className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 h-10 focus:border-emerald-500 focus:ring-emerald-500/20"
                         />
                       </div>
                       
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-300">User Role</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-700">User Role</label>
                         <select
                           value={newUserRole}
                           onChange={(e) => setNewUserRole(e.target.value)}
-                          className="w-full bg-slate-900/50 border border-slate-600/50 text-white h-10 rounded-md px-3 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
                         >
                           <option value="Manager">Manager</option>
                           <option value="Accountant">Accountant</option>
@@ -468,36 +478,36 @@ export default function AdminPanelPage() {
                         </select>
                       </div>
                       
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-slate-300">Feature Permissions</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-700">Feature Permissions</label>
                         <div className="grid grid-cols-2 gap-2 mt-1">
-                          <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
+                          <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
                             <input
                               type="checkbox"
                               checked={newUserPermissions.includes("settings_access")}
                               onChange={() => togglePermission("settings_access")}
-                              className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                             />
-                            <span className="truncate">Settings Access</span>
+                            <span className="truncate font-medium">Settings Access</span>
                           </label>
-                          <label className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
+                          <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
                             <input
                               type="checkbox"
                               checked={newUserPermissions.includes("whatsapp_access")}
                               onChange={() => togglePermission("whatsapp_access")}
-                              className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                              className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                             />
-                            <span className="truncate">WhatsApp Access</span>
+                            <span className="truncate font-medium">WhatsApp Access</span>
                           </label>
                           {[...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS.filter(g => selectedOrgFeatures.includes(g.key))].map(group => (
-                            <label key={group.key} className="flex items-center gap-2 text-sm text-slate-300 bg-slate-900/30 p-2 rounded border border-slate-700/30 cursor-pointer hover:bg-slate-800 transition-colors">
+                            <label key={group.key} className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
                               <input
                                 type="checkbox"
                                 checked={newUserPermissions.includes(group.key)}
                                 onChange={() => togglePermission(group.key)}
-                                className="rounded border-slate-600 bg-slate-900 text-emerald-500 focus:ring-emerald-500"
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
                               />
-                              <span className="truncate">{group.label}</span>
+                              <span className="truncate font-medium">{group.label}</span>
                             </label>
                           ))}
                         </div>
@@ -506,7 +516,7 @@ export default function AdminPanelPage() {
                       <Button
                         onClick={handleAddTeamMember}
                         disabled={!newUserEmail || !newUserEmail.includes("@")}
-                        className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 transition-colors mt-2"
+                        className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-2xs transition-colors mt-2"
                       >
                         <Plus className="h-4 w-4 mr-1.5" />
                         Add User
@@ -516,27 +526,33 @@ export default function AdminPanelPage() {
                 </div>
                 
                 <div className="flex-1">
-                  <h3 className="text-white font-medium mb-4">Current Team Members in {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}</h3>
+                  <h3 className="text-base font-semibold text-slate-900 mb-4">
+                    Current Team Members in {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}
+                  </h3>
                   {isLoadingMembers ? (
-                    <div className="flex justify-center p-4"><Loader2 className="h-5 w-5 animate-spin text-slate-500" /></div>
+                    <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                   ) : fetchedTeamMembers.length === 0 ? (
-                    <p className="text-sm text-slate-500 italic">No users have been added yet.</p>
+                    <div className="p-8 text-center rounded-xl bg-slate-50 border border-dashed border-slate-200">
+                      <Users className="h-8 w-8 text-slate-300 mx-auto mb-2" />
+                      <p className="text-sm text-slate-500 font-medium">No users have been added yet.</p>
+                      <p className="text-xs text-slate-400 mt-1">Use the form on the left to invite your first employee.</p>
+                    </div>
                   ) : (
                     <div className="space-y-3">
                       {fetchedTeamMembers.map((member) => (
-                        <div key={member.member_id} className="flex flex-col p-4 rounded-lg bg-slate-900/50 border border-slate-700/30 gap-3">
+                        <div key={member.member_id} className="flex flex-col p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 gap-3 hover:bg-slate-50 transition-colors">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                                <UserCog className="h-5 w-5 text-emerald-400" />
+                              <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                <UserCog className="h-5 w-5" />
                               </div>
                               <div>
-                                <h4 className="text-sm text-white font-medium leading-none">{member.email}</h4>
+                                <h4 className="text-sm text-slate-900 font-semibold leading-none">{member.email}</h4>
                                 <div className="flex items-center gap-2 mt-1.5">
-                                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+                                  <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-full">
                                     {member.role}
                                   </span>
-                                  <span className={`text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full `}>
+                                  <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                                     {member.status}
                                   </span>
                                 </div>
@@ -544,7 +560,7 @@ export default function AdminPanelPage() {
                             </div>
                             <button
                               onClick={async () => { await supabase.from('organization_members').delete().eq('id', member.member_id); loadTeamMembers(); }}
-                              className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors"
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                               title="Remove user"
                             >
                               <Trash2 className="h-4 w-4" />
@@ -552,13 +568,13 @@ export default function AdminPanelPage() {
                           </div>
                           
                           {member.permissions && member.permissions.length > 0 && (
-                            <div className="pt-2 border-t border-slate-700/30">
-                              <p className="text-[10px] text-slate-400 mb-1.5 font-medium">ACCESS GRANTED:</p>
+                            <div className="pt-2.5 border-t border-slate-200">
+                              <p className="text-[10px] text-slate-500 mb-1.5 font-bold uppercase tracking-wider">ACCESS GRANTED:</p>
                               <div className="flex flex-wrap gap-1">
                                 {member.permissions.map(p => {
                                   const group = [...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS].find(g => g.key === p);
                                   return (
-                                    <span key={p} className="text-[9px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                                    <span key={p} className="text-[10px] px-2 py-0.5 rounded-md bg-white text-slate-700 border border-slate-200 font-medium shadow-2xs">
                                       {group?.label || p}
                                     </span>
                                   );
@@ -578,18 +594,18 @@ export default function AdminPanelPage() {
 
         {/* Business Management Section */}
         <section>
-          <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-emerald-400" />
+          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Building2 className="h-4 w-4 text-emerald-600" />
             Manage Businesses
           </h2>
-          <Card className="bg-slate-800/40 backdrop-blur border-slate-700/30">
+          <Card className="bg-white border-slate-200/80 shadow-2xs">
             <CardContent className="p-6 space-y-6">
               {/* Create New Business */}
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex-1 space-y-4">
                   <div>
-                    <h3 className="text-white font-medium mb-1">Create New Business</h3>
-                    <p className="text-xs text-slate-400">Create a new company or business account. Purchasing a new plan is mandatory.</p>
+                    <h3 className="text-base font-semibold text-slate-900 mb-1">Create New Business</h3>
+                    <p className="text-xs text-slate-500">Create a new company or business account. Purchasing a new plan is mandatory.</p>
                   </div>
                   <div className="flex gap-2">
                     <Input
@@ -598,12 +614,12 @@ export default function AdminPanelPage() {
                       onChange={(e) => setNewBusinessName(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleCreateBusiness()}
                       disabled={isCreatingBusiness}
-                      className="bg-slate-900/50 border-slate-600/50 text-white placeholder:text-slate-500 h-10 focus:border-indigo-500"
+                      className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 h-10 focus:border-indigo-500 focus:ring-indigo-500/20"
                     />
                     <Button
                       onClick={handleCreateBusiness}
                       disabled={!newBusinessName.trim() || isCreatingBusiness}
-                      className="h-10 bg-indigo-600 hover:bg-indigo-500 transition-colors shrink-0"
+                      className="h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium shadow-2xs transition-colors shrink-0"
                     >
                       {isCreatingBusiness ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Plus className="h-4 w-4 mr-1.5" />}
                       Continue to Payment
@@ -611,11 +627,11 @@ export default function AdminPanelPage() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                    <h4 className="text-indigo-400 font-medium text-sm mb-2 flex items-center gap-2">
-                      <Building2 className="h-4 w-4" /> Multi-Business Feature
+                  <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100">
+                    <h4 className="text-indigo-900 font-semibold text-sm mb-2 flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-indigo-600" /> Multi-Business Feature
                     </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
+                    <p className="text-xs text-indigo-800 leading-relaxed">
                       Manage multiple businesses with a single login. A separate plan is required for each new business.
                     </p>
                   </div>
@@ -624,40 +640,42 @@ export default function AdminPanelPage() {
 
               {/* All Businesses List */}
               {allOrgsWithPlans.length > 0 && (
-                <div>
-                  <h3 className="text-white font-medium mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-slate-400" />
+                <div className="pt-4 border-t border-slate-100">
+                  <h3 className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <Building2 className="h-4 w-4 text-slate-500" />
                     All Your Businesses
                     <span className="text-xs text-slate-500 font-normal">({allOrgsWithPlans.length} total)</span>
                   </h3>
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {allOrgsWithPlans.map((org) => {
                       return (
                         <div
                           key={org.id}
                           className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border transition-all ${
                             org.isActive
-                              ? "bg-indigo-500/10 border-indigo-500/30"
-                              : "bg-slate-900/40 border-slate-700/30"
+                              ? "bg-indigo-50/60 border-indigo-200/80 shadow-2xs"
+                              : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-50"
                           }`}
                         >
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3.5">
                             <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-bold shrink-0 ${
-                              org.isActive ? "bg-indigo-500/20 text-indigo-400" : "bg-slate-700/50 text-slate-400"
+                              org.isActive 
+                                ? "bg-indigo-600 text-white shadow-2xs" 
+                                : "bg-slate-200 text-slate-700"
                             }`}>
                               {org.name.charAt(0).toUpperCase()}
                             </div>
                             <div>
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-semibold text-white">{org.name}</span>
+                                <span className="text-sm font-semibold text-slate-900">{org.name}</span>
                                 {org.isActive && (
-                                  <span className="text-[10px] bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">Active</span>
+                                  <span className="text-[10px] bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">Active</span>
                                 )}
                               </div>
-                              <div className="flex flex-wrap items-center gap-2 mt-2">
+                              <div className="flex flex-wrap items-center gap-2 mt-1.5">
                                 {org.plans.map((p, idx) => (
                                   <div key={idx} className="flex items-center gap-1">
-                                    {p.isPaid && <Crown className="h-3 w-3 text-amber-400" />}
+                                    {p.isPaid && <Crown className="h-3 w-3 text-amber-500" />}
                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${p.planColor}`}>
                                       {p.planDisplay}
                                     </span>
@@ -668,7 +686,7 @@ export default function AdminPanelPage() {
                           </div>
                           <button
                             onClick={() => setOrgToDelete({ id: org.id, name: org.name, plan: org.plans[0]?.plan || 'free' })}
-                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all group mt-3 sm:mt-0 self-end sm:self-center shrink-0"
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all group mt-3 sm:mt-0 self-end sm:self-center shrink-0"
                             title="Delete this business"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -682,25 +700,24 @@ export default function AdminPanelPage() {
             </CardContent>
           </Card>
         </section>
-        {/* Removed Admin Management Section */}
 
         {/* Feature Management Section */}
         <section>
           {/* Stats bar */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
-            <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Default Features</p>
-              <p className="text-3xl font-bold text-emerald-400 mt-1">{DEFAULT_FEATURE_GROUPS.reduce((a, g) => a + g.items.length, 0)}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <div className="rounded-xl bg-white border border-slate-200/80 shadow-2xs p-5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Default Features</p>
+              <p className="text-3xl font-bold text-emerald-600 mt-1">{DEFAULT_FEATURE_GROUPS.reduce((a, g) => a + g.items.length, 0)}</p>
               <p className="text-xs text-slate-500 mt-1">Always active — Invoice & Inventory</p>
             </div>
-            <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Enabled Modules</p>
-              <p className="text-3xl font-bold text-indigo-400 mt-1">{enabledCount} <span className="text-lg text-slate-500">/ {totalAdminFeatures}</span></p>
+            <div className="rounded-xl bg-white border border-slate-200/80 shadow-2xs p-5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Enabled Modules</p>
+              <p className="text-3xl font-bold text-indigo-600 mt-1">{enabledCount} <span className="text-lg text-slate-400 font-normal">/ {totalAdminFeatures}</span></p>
               <p className="text-xs text-slate-500 mt-1">Modules enabled for {currentOrg?.name || "this business"}</p>
             </div>
-            <div className="rounded-2xl bg-slate-800/40 backdrop-blur border border-slate-700/30 p-5">
-              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Total Features</p>
-              <p className="text-3xl font-bold text-blue-400 mt-1">
+            <div className="rounded-xl bg-white border border-slate-200/80 shadow-2xs p-5">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Features</p>
+              <p className="text-3xl font-bold text-blue-600 mt-1">
                 {DEFAULT_FEATURE_GROUPS.reduce((a, g) => a + g.items.length, 0) + availableAdminFeatures.filter((g) => enabledGroups.includes(g.key)).reduce((a, g) => a + g.items.length, 0)}
               </p>
               <p className="text-xs text-slate-500 mt-1">Features visible to the user</p>
@@ -709,9 +726,9 @@ export default function AdminPanelPage() {
 
           {/* Admin-controlled features */}
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                <Shield className="h-4 w-4 text-indigo-400" />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                <Shield className="h-4 w-4 text-indigo-600" />
                 Admin Controlled Features — Toggle ON/OFF ({currentOrg?.name || "Current Business"})
               </h2>
             </div>
@@ -722,32 +739,23 @@ export default function AdminPanelPage() {
                 return (
                   <div
                     key={group.key}
-                    className={`rounded-2xl border p-5 relative overflow-hidden transition-all duration-500 ${
+                    className={`rounded-xl border p-5 relative overflow-hidden transition-all duration-300 ${
                       isEnabled
-                        ? "bg-indigo-500/5 border-indigo-500/30 shadow-lg shadow-indigo-500/5"
-                        : "bg-slate-800/20 border-slate-700/30 opacity-75"
+                        ? "bg-white border-indigo-200 shadow-sm ring-1 ring-indigo-500/10"
+                        : "bg-slate-50/70 border-slate-200/80 opacity-80 hover:opacity-100"
                     }`}
                   >
-                    <div
-                      className={`absolute top-0 right-0 w-24 h-24 rounded-full -translate-y-1/2 translate-x-1/2 transition-colors duration-500 ${
-                        isEnabled ? "bg-indigo-500/10" : "bg-slate-700/10"
-                      }`}
-                    />
-                    <div className="flex items-start gap-3 relative">
+                    <div className="flex items-start gap-3.5 relative">
                       <div
                         className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                          isEnabled ? "bg-indigo-500/15" : "bg-slate-700/30"
+                          isEnabled ? "bg-indigo-50 text-indigo-600" : "bg-slate-200 text-slate-500"
                         }`}
                       >
-                        <Icon
-                          className={`h-5 w-5 transition-colors duration-300 ${
-                            isEnabled ? "text-indigo-400" : "text-slate-500"
-                          }`}
-                        />
+                        <Icon className="h-5 w-5" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between">
-                          <h3 className={`font-semibold transition-colors duration-300 ${isEnabled ? "text-white" : "text-slate-400"}`}>
+                        <div className="flex items-center justify-between gap-2">
+                          <h3 className={`font-semibold text-sm transition-colors duration-300 ${isEnabled ? "text-slate-900" : "text-slate-600"}`}>
                             {group.label}
                           </h3>
                           <Switch
@@ -756,23 +764,27 @@ export default function AdminPanelPage() {
                             className="data-[state=checked]:bg-indigo-600"
                           />
                         </div>
-                        <p className="text-xs text-slate-400 mt-0.5">{group.description}</p>
+                        <p className="text-xs text-slate-500 mt-1">{group.description}</p>
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {group.items.map((item) => (
                             <span
                               key={item.key}
-                              className={`text-[10px] px-2 py-0.5 rounded-full border transition-all duration-300 ${
+                              className={`text-[10px] px-2 py-0.5 rounded-full border font-medium transition-all duration-300 ${
                                 isEnabled
-                                  ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20"
-                                  : "bg-slate-800/40 text-slate-500 border-slate-700/30"
+                                  ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                  : "bg-white text-slate-500 border-slate-200"
                               }`}
                             >
                               {item.title}
                             </span>
                           ))}
                         </div>
-                        <p className="text-[10px] mt-2 text-slate-500">
-                          {group.items.length} features • {isEnabled ? "✅ Visible to user" : "❌ Hidden from user"}
+                        <p className="text-[11px] mt-2.5 font-medium">
+                          <span className="text-slate-500">{group.items.length} features</span>
+                          <span className="mx-1.5 text-slate-300">•</span>
+                          <span className={isEnabled ? "text-emerald-600" : "text-slate-400"}>
+                            {isEnabled ? "✅ Visible to user" : "❌ Hidden from user"}
+                          </span>
                         </p>
                       </div>
                     </div>
@@ -796,19 +808,19 @@ export default function AdminPanelPage() {
         forceOrgId={newOrgIdToUpgrade}
       />
 
-      {/* ====== DELETE ORGANIZATION MODAL (Vercel-style) ====== */}
+      {/* ====== DELETE ORGANIZATION MODAL (Vercel-style Light Mode) ====== */}
       {orgToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)'}}>
-          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-lg shadow-2xl shadow-red-500/10 animate-in fade-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white border border-red-200 rounded-2xl w-full max-w-lg shadow-2xl animate-in fade-in zoom-in-95 duration-200 overflow-hidden">
             {/* Header */}
-            <div className="p-6 border-b border-slate-800">
+            <div className="p-6 border-b border-slate-100 bg-red-50/50">
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-6 w-6 text-red-400" />
+                <div className="w-12 h-12 rounded-xl bg-red-100 border border-red-200 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold text-white">Delete Organization</h2>
-                  <p className="text-sm text-slate-400 mt-1">This action <span className="text-red-400 font-semibold">cannot be undone</span>. Please read carefully.</p>
+                  <h2 className="text-xl font-bold text-slate-900">Delete Organization</h2>
+                  <p className="text-sm text-slate-600 mt-1">This action <span className="text-red-600 font-semibold">cannot be undone</span>. Please read carefully.</p>
                 </div>
               </div>
             </div>
@@ -817,48 +829,48 @@ export default function AdminPanelPage() {
             <div className="p-6 space-y-4">
               {/* Plan Warning */}
               {orgToDelete.plan !== "free" && (
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-500/10 border border-amber-500/30">
-                  <Crown className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <Crown className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                   <div>
-                    <p className="text-sm font-semibold text-amber-400">You have a paid plan on this business</p>
-                    <p className="text-xs text-amber-400/80 mt-1">Deleting this organization will immediately cancel your <span className="font-bold uppercase">{orgToDelete.plan}</span> subscription. No refund will be issued for unused time.</p>
+                    <p className="text-sm font-semibold text-amber-900">You have a paid plan on this business</p>
+                    <p className="text-xs text-amber-800 mt-1">Deleting this organization will immediately cancel your <span className="font-bold uppercase">{orgToDelete.plan}</span> subscription. No refund will be issued for unused time.</p>
                   </div>
                 </div>
               )}
 
               {/* Data Loss Warning */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-red-50 border border-red-200">
+                <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-red-400">You will lose access to ALL your data</p>
-                  <p className="text-xs text-red-400/80 mt-1">All invoices, clients, inventory, employees, reports, and every other record in <span className="font-bold">{orgToDelete.name}</span> will be permanently deleted from our database immediately.</p>
+                  <p className="text-sm font-semibold text-red-900">You will lose access to ALL your data</p>
+                  <p className="text-xs text-red-800 mt-1">All invoices, clients, inventory, employees, reports, and every other record in <span className="font-bold text-slate-900">{orgToDelete.name}</span> will be permanently deleted from our database immediately.</p>
                 </div>
               </div>
 
               {/* Confirm by typing name */}
-              <div className="space-y-3">
-                <p className="text-sm text-slate-300">
+              <div className="space-y-2.5 pt-2">
+                <p className="text-sm text-slate-700">
                   To confirm, type the organization name below:
                 </p>
-                <p className="text-sm font-mono font-bold text-white bg-slate-800 px-3 py-2 rounded-lg border border-slate-700 select-all">
+                <p className="text-sm font-mono font-bold text-slate-900 bg-slate-100 px-3 py-2 rounded-lg border border-slate-200 select-all">
                   {orgToDelete.name}
                 </p>
                 <Input
                   placeholder={`Type "${orgToDelete.name}" to confirm`}
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  className="bg-slate-800 border-slate-600 text-white placeholder:text-slate-500 focus:border-red-500 focus:ring-red-500/20"
+                  className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-red-500 focus:ring-red-500/20 h-10"
                   autoFocus
                 />
               </div>
             </div>
 
             {/* Footer Buttons */}
-            <div className="p-6 border-t border-slate-800 flex gap-3">
+            <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
               <Button
                 variant="outline"
                 onClick={() => { setOrgToDelete(null); setDeleteConfirmText(""); }}
-                className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white"
+                className="flex-1 border-slate-300 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
                 disabled={isDeletingOrg}
               >
                 Cancel
@@ -866,7 +878,7 @@ export default function AdminPanelPage() {
               <Button
                 onClick={handleDeleteOrg}
                 disabled={deleteConfirmText !== orgToDelete.name || isDeletingOrg}
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed transition-all"
               >
                 {isDeletingOrg ? (
                   <><Loader2 className="h-4 w-4 animate-spin mr-2" />Deleting...</>

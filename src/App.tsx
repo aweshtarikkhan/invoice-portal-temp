@@ -127,7 +127,6 @@ const App = () => (
             <Route path="/brochure" element={<BrochurePage />} />
             <Route path="/pamphlet" element={<PamphletPage />} />
             <Route path="/launch-posts" element={<SocialLaunchPostsPage />} />
-            <Route path="/admin" element={<AdminPanelPage />} />
 
             {/* Protected routes */}
             <Route
@@ -252,6 +251,7 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/admin" element={<AdminPanelPage />} />
                 <Route path="/feedback" element={<ComingSoonPage title="Business Feedback" description="Collect, manage, and analyze customer feedback and satisfaction ratings." />} />
                 <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />
                 <Route path="/business-analysis" element={<ComingSoonPage title="Business Analysis" description="AI-powered insights, predictive financial forecasting, and comprehensive business analytics." />} />
