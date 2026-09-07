@@ -115,7 +115,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const getPlanPrice = (plan: Plan) => {
     let base = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
     
-    if (plan.name === "plan_4" && plan.employee_limit && plan.employee_price_extra) {
+    if (plan.name === "hr" && plan.employee_limit && plan.employee_price_extra) {
       const extra = Math.max(0, hrmsEmployeeCount - plan.employee_limit);
       const extraCost = extra * plan.employee_price_extra;
       if (billingCycle === "yearly") {
@@ -133,22 +133,16 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     );
   };
 
-  // Build final set of selected plan IDs (auto-include CRM & Marketing if Plan 3 selected)
+  // Build final set of selected plan IDs (auto-include modular plans if Business Suite selected)
   const finalSelectedPlanIds = new Set<string>(selectedPlanIds);
-  const hasPlan3 = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "plan_3");
-  if (hasPlan3) {
-    const p5 = plans.find(p => p.name === "plan_5");
-    const p6 = plans.find(p => p.name === "plan_6");
-    if (p5) finalSelectedPlanIds.add(p5.id);
-    if (p6) finalSelectedPlanIds.add(p6.id);
-  }
+  const hasSuite = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "suite");
 
   // Calculate total
   let totalAmount = 0;
   Array.from(finalSelectedPlanIds).forEach(id => {
     const plan = plans.find(p => p.id === id);
     if (!plan) return;
-    if (hasPlan3 && (plan.name === "plan_5" || plan.name === "plan_6")) return;
+    if (hasSuite && plan.name !== "suite" && plan.name !== "free") return;
     totalAmount += getPlanPrice(plan);
   });
 
@@ -262,31 +256,31 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     <Dialog open={open} onOpenChange={onClose} modal={false}>
       {open && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm pointer-events-auto" onClick={onClose} />}
       <DialogContent 
-        className="max-w-5xl max-h-[90vh] overflow-y-auto z-50 bg-slate-950 text-slate-50 border-slate-800"
+        className="max-w-5xl max-h-[90vh] overflow-y-auto z-50 bg-white text-slate-900 border-slate-200"
         onPointerDownOutside={(e) => e.preventDefault()}
         onFocusOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center">Upgrade Your Plan</DialogTitle>
-          <DialogDescription className="text-center text-slate-400">
+          <DialogDescription className="text-center text-slate-500">
             Select one or more plans to activate for your business.
           </DialogDescription>
         </DialogHeader>
 
         {loading ? (
-          <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
+          <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-slate-500" /></div>
         ) : (
           <div className="space-y-8 mt-4">
             {/* Billing Toggle */}
             <div className="flex items-center justify-center gap-4">
-              <span className={`text-sm font-medium ${billingCycle === "monthly" ? "text-primary" : "text-slate-400"}`}>Monthly</span>
+              <span className={`text-sm font-medium ${billingCycle === "monthly" ? "text-primary" : "text-slate-500"}`}>Monthly</span>
               <Switch 
                 checked={billingCycle === "yearly"} 
                 onCheckedChange={(c) => setBillingCycle(c ? "yearly" : "monthly")} 
               />
               <div className="flex items-center gap-2">
-                <span className={`text-sm font-medium ${billingCycle === "yearly" ? "text-primary" : "text-slate-400"}`}>Yearly</span>
+                <span className={`text-sm font-medium ${billingCycle === "yearly" ? "text-primary" : "text-slate-500"}`}>Yearly</span>
                 <Badge variant="secondary" className="bg-green-500/10 text-green-500 hover:bg-green-500/20 border-0">Save {yearlyDiscountPct}%</Badge>
               </div>
             </div>
@@ -297,48 +291,48 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {plans.map((plan) => {
                   const price = getPlanPrice(plan);
-                  const isIncludedInPlan3 = hasPlan3 && (plan.name === 'plan_5' || plan.name === 'plan_6');
-                  const isSelected = isIncludedInPlan3 || finalSelectedPlanIds.has(plan.id);
+                  const isIncludedInSuite = hasSuite && plan.name !== "suite" && plan.name !== "free";
+                  const isSelected = isIncludedInSuite || finalSelectedPlanIds.has(plan.id);
 
                   return (
                     <div 
                       key={plan.id} 
-                      onClick={() => !isIncludedInPlan3 && togglePlan(plan.id)}
-                      className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInPlan3 ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-800 bg-slate-900 hover:border-slate-700 cursor-pointer"} relative`}
+                      onClick={() => !isIncludedInSuite && togglePlan(plan.id)}
+                      className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInSuite ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-200 bg-white hover:border-slate-300 shadow-sm cursor-pointer"} relative`}
                     >
-                      {isIncludedInPlan3 && (
+                      {isIncludedInSuite && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
-                          <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">Included in {plans.find(p => p.name === 'plan_3')?.display_name || 'Plan 3'}</Badge>
+                          <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">Included in Business Suite</Badge>
                         </div>
                       )}
                       
                       <div className="flex items-start justify-between mt-2">
-                        <h4 className="text-lg font-bold">{plan.name === 'plan_6' ? 'Business Promotion' : plan.name === 'plan_5' ? 'Business CRM' : plan.display_name}</h4>
-                        <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-600'}`}>
+                        <h4 className="text-lg font-bold">{plan.display_name}</h4>
+                        <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-300'}`}>
                           {isSelected && <Check className="h-3 w-3" />}
                         </div>
                       </div>
                       
                       <div className="mt-4 mb-6">
-                        {isIncludedInPlan3 ? (
+                        {isIncludedInSuite ? (
                           <span className="text-xl font-bold text-green-500">Free</span>
                         ) : (
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold">{'\u20B9'}{(price / 100).toLocaleString('en-IN')}</span>
-                            <span className="text-sm text-slate-400">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                            <span className="text-sm text-slate-500">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
                           </div>
                         )}
                       </div>
 
-                      {plan.name === "plan_4" && isSelected && (
-                        <div className="mb-6 bg-slate-950 p-3 rounded-lg border border-slate-800" onClick={(e) => e.stopPropagation()}>
-                          <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2">Employees Count</label>
+                      {plan.name === "hr" && isSelected && (
+                        <div className="mb-6 bg-slate-50 p-3 rounded-lg border border-slate-200" onClick={(e) => e.stopPropagation()}>
+                          <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Employees Count</label>
                           <div className="flex items-center justify-between">
-                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
+                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-300" onClick={() => setHrmsEmployeeCount(Math.max(5, hrmsEmployeeCount - 1))}>
                               <Minus className="h-4 w-4" />
                             </Button>
                             <span className="font-bold">{hrmsEmployeeCount}</span>
-                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-700" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
+                            <Button size="icon" variant="outline" className="h-8 w-8 border-slate-300" onClick={() => setHrmsEmployeeCount(hrmsEmployeeCount + 1)}>
                               <Plus className="h-4 w-4" />
                             </Button>
                           </div>
@@ -350,9 +344,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                         </div>
                       )}
 
-                      <div className="flex-1 space-y-3 mt-auto pt-4 border-t border-slate-800/50">
+                      <div className="flex-1 space-y-3 mt-auto pt-4 border-t border-slate-200">
                         {plan.features.map((featureKey) => (
-                          <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-300">
+                          <div key={featureKey} className="flex items-center gap-2 text-sm text-slate-600">
                             <Check className="h-4 w-4 text-primary shrink-0" />
                             <span className="capitalize">{featureKey.replace("-", " ")}</span>
                           </div>
@@ -365,7 +359,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             </div>
 
             {/* Promo Code & Checkout */}
-            <div className="border-t border-slate-800 pt-8 mt-8">
+            <div className="border-t border-slate-200 pt-8 mt-8">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="flex w-full max-w-sm gap-2">
                   <Input 
@@ -373,10 +367,10 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     value={promoCode} 
                     onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
                     disabled={!!validCoupon}
-                    className="bg-slate-900 border-slate-800"
+                    className="bg-white border-slate-200"
                   />
                   {validCoupon ? (
-                    <Button variant="outline" className="border-slate-700 hover:bg-slate-800" onClick={() => { setValidCoupon(null); setPromoCode(""); }}>Remove</Button>
+                    <Button variant="outline" className="border-slate-300 hover:bg-slate-100" onClick={() => { setValidCoupon(null); setPromoCode(""); }}>Remove</Button>
                   ) : (
                     <Button onClick={handleApplyPromo} disabled={!promoCode || couponLoading}>
                       {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
@@ -386,7 +380,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
                 <div className="flex items-center gap-6 w-full md:w-auto">
                   <div className="text-right">
-                    <div className="text-sm text-slate-400">Total Amount</div>
+                    <div className="text-sm text-slate-500">Total Amount</div>
                     <div className="text-2xl font-bold">{'\u20B9'}{(totalAmount / 100).toLocaleString('en-IN')}</div>
                   </div>
                   
