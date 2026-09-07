@@ -285,10 +285,20 @@ export default function AttendancePage() {
             map[key] = clk.status;
             newAutoKeys.add(key);
           }
-        } else if (ds <= todayStr) {
-          // Employee has not marked attendance for past or today -> auto mark absent
+        } else if (ds < todayStr) {
+          // Past day without attendance -> auto mark absent
           map[key] = "absent";
           newAutoKeys.add(key);
+        } else if (ds === todayStr) {
+          // Today: only mark absent if current time is past shift grace time
+          const shift = shiftMap[emp.id] || orgDefaultShift;
+          const now = new Date();
+          const toMins = (t: string) => { if (!t) return 0; const [h,m] = t.split(':').map(Number); return h*60+m; };
+          const graceEnd = toMins(shift?.start_time || '09:00') + (shift?.grace_minutes ?? 15);
+          if (now.getHours() * 60 + now.getMinutes() >= graceEnd) {
+            map[key] = "absent";
+            newAutoKeys.add(key);
+          }
         }
       });
     });
@@ -769,12 +779,39 @@ export default function AttendancePage() {
             .eq('employee_id', leaveReq.employee_id)
             .eq('leave_type', leaveReq.leave_type)
             .maybeSingle();
-          if (bData) {
+
+          let currentUsed = (bData?.used || 0) + (leaveReq.days || 1);
+
+          if (bData?.id) {
             await (supabase as any).from('employee_leave_balances')
-              .update({ used: (bData.used || 0) + (leaveReq.days || 1) })
+              .update({ used: currentUsed })
               .eq('id', bData.id);
+          } else {
+            await (supabase as any).from('employee_leave_balances')
+              .insert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                leave_type: leaveReq.leave_type,
+                used: currentUsed
+              });
           }
         } else if (newStatus === "rejected") {
+          // Check if previously approved and we are rejecting it
+          if (leaveReq.status === "approved") {
+            const { data: bData } = await (supabase as any).from('employee_leave_balances')
+              .select('id, used')
+              .eq('employee_id', leaveReq.employee_id)
+              .eq('leave_type', leaveReq.leave_type)
+              .maybeSingle();
+            
+            if (bData?.id) {
+              const currentUsed = Math.max(0, (bData.used || 0) - (leaveReq.days || 1));
+              await (supabase as any).from('employee_leave_balances')
+                .update({ used: currentUsed })
+                .eq('id', bData.id);
+            }
+          }
+
           for (const ds of dateList) {
             await (supabase as any).from("attendance").delete()
               .eq("employee_id", leaveReq.employee_id)
