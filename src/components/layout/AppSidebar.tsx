@@ -50,6 +50,8 @@ import {
   BrainCircuit,
   MessageSquareQuote,
   Sparkles,
+  Headphones,
+  HelpCircle,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -136,6 +138,7 @@ const settingsItems = [
   { title: "Templates", url: "/templates", icon: Layout },
   { title: "Custom Fields", url: "/custom-fields", icon: SlidersHorizontal },
   { title: "Audit Logs", url: "/audit-logs", icon: ScrollText },
+  { title: "Help & Support", url: "/support", icon: Headphones },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -595,8 +598,25 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-slate-800/50 p-4 pb-6 flex flex-col gap-4">
-        <SidebarMenu>
+      <SidebarFooter className="border-t border-slate-800/50 p-4 pb-6 flex flex-col gap-3">
+        <SidebarMenu className="gap-2">
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive("/support")}
+              className="w-full flex items-center gap-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 px-3 py-5 rounded-xl border border-blue-500/20 transition-all text-left group"
+              tooltip={t("Help & Support")}
+            >
+              <NavLink
+                to="/support"
+                className="flex items-center gap-3 w-full"
+                activeClassName="bg-blue-600/30 text-white border-blue-500"
+              >
+                <Headphones className="h-4 w-4 text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
+                {!collapsed && <span className="font-semibold text-sm">{t("Help & Support")}</span>}
+              </NavLink>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={signOut}

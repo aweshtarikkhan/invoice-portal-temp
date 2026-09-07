@@ -389,8 +389,17 @@ export function AppLayout() {
           <header className="h-20 flex items-center gap-6 px-8 bg-slate-50/50 dark:bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <SidebarTrigger />
             <div className="flex-1" />
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <CommandPalette />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate("/support")}
+                className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-full h-9 w-9"
+                title="Help & Support"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="flex items-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 pr-2 rounded-full transition-colors border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
@@ -433,6 +442,10 @@ export function AppLayout() {
                   <DropdownMenuItem onClick={() => navigate("/settings")} className="cursor-pointer">
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/support")} className="cursor-pointer">
+                    <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
+                    Help & Support
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
