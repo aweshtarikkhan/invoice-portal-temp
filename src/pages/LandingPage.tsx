@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
+import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 
 type Lang = "en" | "hi";
 
@@ -123,6 +124,7 @@ export default function LandingPage() {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
+  const { socials } = usePlatformSocials();
   const L = t[lang];
 
   useEffect(() => {
@@ -574,17 +576,17 @@ export default function LandingPage() {
             <div className="lg:col-span-4 flex flex-col items-start">
               <Link to="/" className="inline-block mb-4">
                 <img
-                  src="/assets/images/lookupp-logo.png"
-                  alt="LookUPP Logo"
+                  src={logoImg}
+                  alt="Assay Biz"
                   className="h-10 w-auto object-contain"
                 />
               </Link>
               <p className="text-slate-500 text-sm leading-relaxed mb-6 max-w-sm">
-                Your trusted digital marketing & development partner. We help businesses grow with innovative solutions and creative strategies.
+                Your trusted GST billing and business operating partner. We help Indian businesses streamline invoicing, inventory, payroll, and accounting.
               </p>
               <div className="flex items-center gap-2.5">
                 <a
-                  href="https://www.youtube.com/@lookupp"
+                  href={formatSocialUrl("youtube", socials?.youtube) || "https://www.youtube.com/@assaybiz"}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="YouTube"
@@ -597,33 +599,7 @@ export default function LandingPage() {
                   />
                 </a>
                 <a
-                  href="https://www.linkedin.com/company/lookupp"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="LinkedIn"
-                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
-                >
-                  <img
-                    src="/assets/images/icons/linkedin.png"
-                    alt="LinkedIn"
-                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                  />
-                </a>
-                <a
-                  href="https://www.instagram.com/lookupp"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="Instagram"
-                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
-                >
-                  <img
-                    src="/assets/images/icons/instagram.png"
-                    alt="Instagram"
-                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
-                  />
-                </a>
-                <a
-                  href="https://www.facebook.com/lookupp"
+                  href={formatSocialUrl("facebook", socials?.facebook) || "https://www.facebook.com/assaybiz"}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label="Facebook"
@@ -636,15 +612,28 @@ export default function LandingPage() {
                   />
                 </a>
                 <a
-                  href="https://www.threads.net/@lookupp"
+                  href={formatSocialUrl("instagram", socials?.instagram) || "https://www.instagram.com/assaybiz"}
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label="Threads"
+                  aria-label="Instagram"
                   className="inline-flex items-center justify-center transition-transform hover:scale-110"
                 >
                   <img
-                    src="/assets/images/icons/threads.png"
-                    alt="Threads"
+                    src="/assets/images/icons/instagram.png"
+                    alt="Instagram"
+                    className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
+                  />
+                </a>
+                <a
+                  href="https://www.linkedin.com/company/assaybiz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="LinkedIn"
+                  className="inline-flex items-center justify-center transition-transform hover:scale-110"
+                >
+                  <img
+                    src="/assets/images/icons/linkedin.png"
+                    alt="LinkedIn"
                     className="w-7 h-7 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all duration-300"
                   />
                 </a>
@@ -662,13 +651,19 @@ export default function LandingPage() {
                   <a href="#hero" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Home</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">About Us</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Features</a>
                 </li>
                 <li>
-                  <a href="#pricing" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Services</a>
+                  <a href="#pricing" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Pricing</a>
                 </li>
                 <li>
-                  <a href="#contact" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Contact Us</a>
+                  <Link to="/brochure" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Brochure</Link>
+                </li>
+                <li>
+                  <Link to="/pamphlet" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Pamphlet</Link>
+                </li>
+                <li>
+                  <Link to="/login" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Sign In</Link>
                 </li>
               </ul>
             </div>
@@ -681,22 +676,22 @@ export default function LandingPage() {
               </h4>
               <ul className="space-y-3 text-sm text-slate-500">
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">SEO Optimization</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Invoicing</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Google Ads</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Inventory</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Meta Ads</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Accounting</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Social Media Marketing</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Payroll</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Website Development</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">CRM</a>
                 </li>
                 <li>
-                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Mobile App Development</a>
+                  <a href="#features" className="hover:text-[#e11d48] hover:translate-x-1 inline-block transition-all duration-200">Marketing</a>
                 </li>
               </ul>
             </div>
@@ -718,7 +713,7 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-base select-none">📧</span>
-                  <a href="mailto:info@lookupp.in" className="hover:text-[#e11d48] transition-colors">info@lookupp.in</a>
+                  <a href="mailto:support@assaybiz.com" className="hover:text-[#e11d48] transition-colors">support@assaybiz.com</a>
                 </div>
                 <div className="flex items-start gap-3">
                   <span className="text-base select-none mt-0.5">📍</span>
@@ -734,10 +729,11 @@ export default function LandingPage() {
 
           {/* Bottom Bar */}
           <div className="border-t border-slate-200/90 pt-6 pb-2 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <p>© {new Date().getFullYear()} LookUPP All Rights Reserved. A Brand of CYP First Technologies Pvt. Ltd. (CIN - U72200MP2022PTC060922)</p>
+            <p>© {new Date().getFullYear()} Aassay Biz, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)</p>
             <div className="flex items-center gap-6">
               <a href="#privacy" className="hover:text-[#e11d48] transition-colors">Privacy Policy</a>
               <a href="#terms" className="hover:text-[#e11d48] transition-colors">Terms & Conditions</a>
+              <a href="#refund" className="hover:text-[#e11d48] transition-colors">Refund Policy</a>
             </div>
           </div>
         </div>
