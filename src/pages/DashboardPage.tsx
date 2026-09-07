@@ -167,7 +167,7 @@ export default function DashboardPage() {
               <QuickAction icon={Receipt} label="Add Expense" onClick={() => navigate('/expenses')} />
               <QuickAction icon={UserCircle} label="Add Customer" onClick={() => navigate('/clients')} />
               <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/leads')} />
-              <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees')} />
+              <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees?add=1')} />
               <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/attendance')} />
               
                 <DropdownMenu>

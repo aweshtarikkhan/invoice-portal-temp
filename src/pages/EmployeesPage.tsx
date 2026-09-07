@@ -9,7 +9,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -242,10 +242,6 @@ export default function EmployeesPage() {
   };
 
   const openNew = (presetType: "monthly" | "daily" | "hourly" = "monthly") => {
-    if (limitReached) {
-      setShowUpgrade(true);
-      return;
-    }
     setEditId(null);
     setForm({
       ...empty,
@@ -257,6 +253,14 @@ export default function EmployeesPage() {
     setExistingDocs([]);
     setOpen(true);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("add") === "1" || params.get("new") === "1") {
+      openNew("monthly");
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const openEdit = async (e: any) => {
     setEditId(e.id);
@@ -488,14 +492,7 @@ export default function EmployeesPage() {
   const limitReached = rows.length >= currentLimit;
 
   const handleAddEmployeeClick = () => {
-    if (limitReached) {
-      setShowUpgrade(true);
-    } else {
-      setForm(empty);
-      setEditId(null);
-      setOpen(true);
-      setPortalEmp(null);
-    }
+    openNew("monthly");
   };
 
   if (!hasModuleAccess(plan, 'hr')) {
@@ -527,8 +524,12 @@ export default function EmployeesPage() {
             <NavLink to="/attendance"><CalendarCheck className="h-4 w-4 mr-2" />Attendance</NavLink>
           </Button>
 
-          <Button variant="outline" onClick={() => openNew("monthly")}>
-            <Plus className="h-4 w-4 mr-1.5" />New Employee
+          <Button
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
+            onClick={() => openNew("monthly")}
+            id="add-employee-btn"
+          >
+            <Plus className="h-4 w-4 mr-1.5" />Add Employee
           </Button>
 
           {dailyWagesEnabled && (
@@ -599,7 +600,22 @@ export default function EmployeesPage() {
               {loading ? (
                 <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading…</TableCell></TableRow>
               ) : filteredRows.length === 0 ? (
-                <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No staff members found in this view.</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                    <div className="flex flex-col items-center justify-center gap-3 max-w-sm mx-auto">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                        <Users className="h-6 w-6" />
+                      </div>
+                      <div>
+                        <p className="text-base font-semibold text-foreground">No staff members found</p>
+                        <p className="text-xs text-muted-foreground mt-1">Get started by adding employees to track attendance and payroll.</p>
+                      </div>
+                      <Button size="sm" onClick={() => openNew("monthly")} className="font-semibold shadow-sm mt-1">
+                        <Plus className="h-4 w-4 mr-1.5" /> Add Employee
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : filteredRows.map((e) => (
                 <TableRow key={e.id}>
                   <TableCell className="font-medium">
@@ -689,6 +705,9 @@ export default function EmployeesPage() {
             <DialogTitle>
               {editId ? "Edit Staff Member" : (form.wage_type === "daily" ? "Add Daily Wage Worker" : form.wage_type === "hourly" ? "Add Hourly Wage Worker" : "Add Regular Employee")}
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              {editId ? "Update employee details, compensation, and settings." : "Fill in the details below to add a new employee to your organization."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3 py-1">
             

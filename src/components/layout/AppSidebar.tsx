@@ -110,7 +110,7 @@ const catalogItems = [
 ];
 
 const peopleItems = [
-  { title: "Employees", url: "/employees", icon: UserCog, addUrl: null },
+  { title: "Employees", url: "/employees", icon: UserCog, addUrl: "/employees?add=1" },
   { title: "Attendance", url: "/attendance", icon: CalendarCheck, addUrl: null },
   { title: "Leaves", url: "/leaves", icon: ClipboardList, addUrl: null },
   { title: "Shifts", url: "/shifts", icon: CalendarCheck, addUrl: null },
