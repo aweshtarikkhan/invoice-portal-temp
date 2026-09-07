@@ -78,6 +78,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       }
       setPlans(finalPlans);
       
+      if (selectedPlanIds.length === 0) {
+        const freePlan = finalPlans.find(p => p.name === "free");
+        if (freePlan) setSelectedPlanIds([freePlan.id]);
+      }
+      
       if (settingsData?.value) setYearlyDiscountPct(parseInt(settingsData.value));
 
     } catch (error) {
@@ -128,9 +133,24 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   };
 
   const togglePlan = (planId: string) => {
-    setSelectedPlanIds(prev => 
-      prev.includes(planId) ? prev.filter(id => id !== planId) : [...prev, planId]
-    );
+    setSelectedPlanIds(prev => {
+      const plan = plans.find(p => p.id === planId);
+      if (!plan) return prev;
+      
+      const isSelecting = !prev.includes(planId);
+      
+      if (isSelecting) {
+        if (plan.name === "free") {
+          return [planId];
+        } else {
+          const freePlan = plans.find(p => p.name === "free");
+          const newSet = prev.filter(id => id !== freePlan?.id);
+          return [...newSet, planId];
+        }
+      } else {
+        return prev.filter(id => id !== planId);
+      }
+    });
   };
 
   // Build final set of selected plan IDs (auto-include modular plans if Business Suite selected)
@@ -289,16 +309,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             <div>
               <h3 className="text-xl font-semibold mb-4">Select Plans</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {plans.map((plan) => {
+                                {plans.map((plan) => {
                   const price = getPlanPrice(plan);
                   const isIncludedInSuite = hasSuite && plan.name !== "suite" && plan.name !== "free";
                   const isSelected = isIncludedInSuite || finalSelectedPlanIds.has(plan.id);
+                  const isCurrentPlan = plan.name === currentPlanName || plan.name === subscriptionStatus?.plan_name;
 
                   return (
                     <div 
                       key={plan.id} 
                       onClick={() => !isIncludedInSuite && togglePlan(plan.id)}
-                      className={`border rounded-xl p-6 flex flex-col transition-all ${isIncludedInSuite ? "opacity-80 border-primary/50 bg-primary/5" : isSelected ? "border-primary bg-primary/5 ring-1 ring-primary/20" : "border-slate-200 bg-white hover:border-slate-300 shadow-sm cursor-pointer"} relative`}
+                      className={order rounded-xl p-6 flex flex-col transition-all  relative}
                     >
                       {isIncludedInSuite && (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
@@ -306,7 +327,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                         </div>
                       )}
                       
-                      <div className="flex items-start justify-between mt-2">
+                      {isCurrentPlan && !isIncludedInSuite && (
+                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[90%]">
+                          <Badge className="bg-green-500 text-white hover:bg-green-600 border-0 text-xs truncate">Current Plan</Badge>
+                        </div>
+                      )}<div className="flex items-start justify-between mt-2">
                         <h4 className="text-lg font-bold">{plan.display_name}</h4>
                         <div className={`h-5 w-5 rounded border flex items-center justify-center ${isSelected ? 'bg-primary border-primary text-primary-foreground' : 'border-slate-300'}`}>
                           {isSelected && <Check className="h-3 w-3" />}
@@ -406,3 +431,5 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     </Dialog>
   );
 }
+
+
