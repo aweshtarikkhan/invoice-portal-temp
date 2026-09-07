@@ -427,7 +427,7 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="py-24 bg-white relative overflow-hidden">
+      <section id="pricing" className="pt-24 pb-20 bg-white relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
         <div className="mx-auto max-w-7xl px-6">
           <div className="text-center mb-20">
@@ -470,7 +470,7 @@ export default function LandingPage() {
 
             return (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 ${finalSelected.size > 0 ? "mb-12" : "mb-0"}`}>
                   {allPlans.map((p) => {
                     const meta = planIcons[p.name] || { icon: "✨", color: "text-primary", bg: "bg-primary/10", desc: "" };
                     const isIncludedFree = hasSuite && p.name !== "suite" && p.name !== "free";
@@ -571,19 +571,6 @@ export default function LandingPage() {
               </>
             );
           })()}
-        </div>
-      </section>
-
-      {/* Final CTA */}
-      <section className="py-32 bg-navy relative overflow-hidden text-center">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.05]"></div>
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-[600px] bg-primary/20 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="mx-auto max-w-4xl px-6 relative z-10">
-          <h2 className="text-4xl md:text-6xl font-black text-white tracking-tight mb-8 leading-tight">{L.final_title}</h2>
-          <p className="text-xl text-slate-300 mb-12 max-w-2xl mx-auto">{L.final_sub}</p>
-          <Button size="lg" className="h-16 px-12 text-xl font-bold bg-primary hover:bg-primary/90 text-white rounded-full shadow-[0_0_30px_rgba(249,115,22,0.6)] hover:scale-105 transition-transform" asChild>
-            <a href="#pricing">{L.final_cta}</a>
-          </Button>
         </div>
       </section>
 
