@@ -35,6 +35,13 @@ import { BulkReminderDialog } from "@/components/shared/BulkReminderDialog";
 const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
   { key: "client_name", label: "Customer Name", required: true },
+  { key: "item_name", label: "Item Name" },
+  { key: "qty", label: "Quantity" },
+  { key: "rate", label: "Rate" },
+  { key: "client_gst", label: "Client GST Number" },
+  { key: "client_address", label: "Client Address" },
+  { key: "shipping_name", label: "Shipping Name" },
+  { key: "shipping_address", label: "Shipping Address" },
   { key: "invoice_date", label: "Invoice Date" },
   { key: "issue_date", label: "Issued Date" },
   { key: "due_date", label: "Due Date" },
@@ -454,9 +461,15 @@ export default function InvoicesPage() {
             let clientId = clientMap.get(name.toLowerCase());
             // Auto-create client if not found
             if (!clientId) {
+              const billingAddr = row.client_address ? { street: row.client_address } : null;
+              const shippingAddr = (row.shipping_address || row.shipping_name) ? { street: row.shipping_address || "", name: row.shipping_name || "" } : null;
+              
               const { data: newClient, error: cErr } = await supabase.from("clients").insert({
                 org_id: org!.id,
                 display_name: name,
+                tax_number: row.client_gst || null,
+                billing_address: billingAddr,
+                shipping_address: shippingAddr,
               }).select("id").single();
               if (cErr || !newClient) { errors++; continue; }
               clientId = newClient.id;
@@ -468,7 +481,11 @@ export default function InvoicesPage() {
             const finalAmountPaid = amountPaid || (total - balanceDue);
             const status = balanceDue === 0 && total > 0 ? "paid" : (["draft","sent","paid","overdue","void","partial"].includes(row.status) ? row.status : "draft");
             const issueDate = parseDate(row.issue_date) || parseDate(row.invoice_date) || new Date().toISOString().split("T")[0];
-            const { error } = await supabase.from("invoices").insert({
+            
+            const invoiceBillingAddr = row.client_address ? { street: row.client_address } : null;
+            const invoiceShippingAddr = (row.shipping_address || row.shipping_name) ? { street: row.shipping_address || "", name: row.shipping_name || "" } : null;
+
+            const { data: newInvoice, error } = await supabase.from("invoices").insert({
               org_id: org!.id,
               client_id: clientId,
               invoice_number: row.invoice_number,
@@ -488,8 +505,27 @@ export default function InvoicesPage() {
               adjustment: parseFloat(row.adjustment) || 0,
               notes: row.notes || null,
               terms_conditions: row.terms_conditions || null,
-            });
-            if (error) errors++; else success++;
+              billing_address: invoiceBillingAddr,
+              shipping_address: invoiceShippingAddr,
+            }).select("id").single();
+
+            if (error || !newInvoice) { 
+              errors++; 
+            } else { 
+              success++;
+              if (row.item_name) {
+                const qty = parseFloat(row.qty) || 1;
+                const rate = parseFloat(row.rate) || 0;
+                await supabase.from("invoice_lines").insert({
+                  invoice_id: newInvoice.id,
+                  name: row.item_name,
+                  quantity: qty,
+                  rate: rate,
+                  amount: qty * rate,
+                  sort_order: 1
+                });
+              }
+            }
           }
           // Update opening_balance for each client based on their total balance_due
           const uniqueClientIds = Array.from(new Set(clientMap.values()));
