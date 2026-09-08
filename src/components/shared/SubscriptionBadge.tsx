@@ -8,6 +8,11 @@ export function SubscriptionBadge() {
 
   let variant: "default" | "secondary" | "destructive" | "outline" = "outline";
   let label = subscriptionPlan.toUpperCase();
+  if (subscriptionPlan.toLowerCase().includes("suite")) {
+    label = "BUSINESS SUITE";
+  } else if (subscriptionPlan.includes(" + ")) {
+    label = subscriptionPlan.split(" + ").map(s => s.trim().toUpperCase()).join(" • ");
+  }
 
   if (subscriptionStatus === "active") {
     variant = "default";

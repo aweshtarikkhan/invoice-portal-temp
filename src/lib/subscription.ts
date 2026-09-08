@@ -15,6 +15,7 @@ export const PLAN_NAMES: Record<PlanType, string> = {
  */
 export function hasModuleAccess(plan: PlanType = 'free', module: ModuleType): boolean {
   if (plan === 'suite') return true;
+  if (typeof plan === 'string' && (plan.includes('suite') || plan.includes(module))) return true;
 
   switch (module) {
     case 'accounting':

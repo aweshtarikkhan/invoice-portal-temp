@@ -3,6 +3,7 @@ import { Lock, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/app-store';
+import { useSubscription } from '@/hooks/use-subscription';
 
 interface LockedFeatureProps {
   title: string;
@@ -12,7 +13,8 @@ interface LockedFeatureProps {
 
 export function LockedFeature({ title, description, onUpgradeClick }: LockedFeatureProps) {
   const org = useAppStore((s) => s.organization);
-  const currentPlan = org?.subscription_plan || 'free';
+  const { subscriptionPlan } = useSubscription();
+  const currentPlan = subscriptionPlan || org?.subscription_plan || 'free';
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] bg-slate-50 p-6">

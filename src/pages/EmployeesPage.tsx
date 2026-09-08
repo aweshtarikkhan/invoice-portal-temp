@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { hasModuleAccess, FREE_PLAN_LIMITS, PAID_PLAN_LIMITS } from "@/lib/subscription";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useSubscription } from "@/hooks/use-subscription";
 import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, ExternalLink, Download, FileCheck, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
@@ -485,17 +486,20 @@ export default function EmployeesPage() {
 
   const currency = (org as any)?.currency || "INR";
 
-  const plan = org?.subscription_plan || 'free';
-  const isFreePlan = plan === 'free';
+  const { subscriptionPlan, employeeLimit, employeeCount } = useSubscription();
+  const effectivePlan = subscriptionPlan || org?.subscription_plan || 'free';
+  const isFreePlan = effectivePlan === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const currentLimit = isFreePlan ? FREE_PLAN_LIMITS.employees : (PAID_PLAN_LIMITS.employees || 10);
+  const currentLimit = isFreePlan 
+    ? FREE_PLAN_LIMITS.employees 
+    : Math.max(employeeCount || 0, employeeLimit || 10, PAID_PLAN_LIMITS.employees || 10);
   const limitReached = rows.length >= currentLimit;
 
   const handleAddEmployeeClick = () => {
     openNew("monthly");
   };
 
-  if (!hasModuleAccess(plan, 'hr')) {
+  if (!hasModuleAccess(effectivePlan as any, 'hr')) {
     return (
       <div className="flex-1 bg-slate-50 min-h-screen">
         <LockedFeature 
