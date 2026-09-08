@@ -36,8 +36,10 @@ const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
   { key: "client_name", label: "Customer Name", required: true },
   { key: "item_name", label: "Item Name" },
+  { key: "item_hsn", label: "Item HSN Code" },
   { key: "qty", label: "Quantity" },
   { key: "rate", label: "Rate" },
+  { key: "item_amount", label: "Item Amount" },
   { key: "client_gst", label: "Client GST Number" },
   { key: "client_address", label: "Client Address" },
   { key: "shipping_name", label: "Shipping Name" },
@@ -455,7 +457,17 @@ export default function InvoicesPage() {
             return d;
           };
 
+          // Group rows by invoice_number to support multiple line items per invoice
+          const invoiceGroups = new Map<string, any[]>();
           for (const row of rows) {
+            const num = (row.invoice_number || "").trim();
+            if (!num) continue;
+            if (!invoiceGroups.has(num)) invoiceGroups.set(num, []);
+            invoiceGroups.get(num)!.push(row);
+          }
+
+          for (const [invNum, groupRows] of invoiceGroups.entries()) {
+            const row = groupRows[0]; // Primary invoice data from the first row
             const name = (row.client_name || "").trim();
             if (!name) { errors++; continue; }
             let clientId = clientMap.get(name.toLowerCase());
@@ -488,7 +500,7 @@ export default function InvoicesPage() {
             const { data: newInvoice, error } = await supabase.from("invoices").insert({
               org_id: org!.id,
               client_id: clientId,
-              invoice_number: row.invoice_number,
+              invoice_number: invNum,
               issue_date: issueDate,
               due_date: parseDate(row.due_date) || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
               total,
@@ -513,17 +525,30 @@ export default function InvoicesPage() {
               errors++; 
             } else { 
               success++;
-              if (row.item_name) {
-                const qty = parseFloat(row.qty) || 1;
-                const rate = parseFloat(row.rate) || 0;
-                await supabase.from("invoice_lines").insert({
-                  invoice_id: newInvoice.id,
-                  name: row.item_name,
-                  quantity: qty,
-                  rate: rate,
-                  amount: qty * rate,
-                  sort_order: 1
-                });
+              
+              // Now insert all line items for this invoice
+              const lineItems = [];
+              for (let i = 0; i < groupRows.length; i++) {
+                const gRow = groupRows[i];
+                if (gRow.item_name) {
+                  const qty = parseFloat(gRow.qty) || 1;
+                  const rate = parseFloat(gRow.rate) || 0;
+                  const itemAmount = gRow.item_amount ? parseFloat(gRow.item_amount) : (qty * rate);
+
+                  lineItems.push({
+                    invoice_id: newInvoice.id,
+                    name: gRow.item_name,
+                    hsn_code: gRow.item_hsn || null,
+                    quantity: qty,
+                    rate: rate,
+                    amount: itemAmount,
+                    sort_order: i + 1
+                  });
+                }
+              }
+
+              if (lineItems.length > 0) {
+                 await supabase.from("invoice_lines").insert(lineItems);
               }
             }
           }
