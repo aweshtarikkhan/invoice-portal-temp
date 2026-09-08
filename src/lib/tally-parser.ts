@@ -27,32 +27,42 @@ export async function parseTallyExcel(file: File) {
   
   for (let r = 1; r <= Math.min(10, ws.rowCount); r++) {
     for (let c = 1; c <= ws.columnCount; c++) {
-      const text = getCellText(r, c).toLowerCase().replace(/[\n\r]/g, " ");
-      if (text.includes("buyer") && !text.includes("address")) colMap["buyer"] = c;
-      if (text.includes("buyer address")) colMap["buyer_address"] = c;
-      if (text.includes("consignee") && !text.includes("address")) colMap["consignee"] = c;
-      if (text.includes("consignee address")) colMap["consignee_address"] = c;
-      if (text.includes("voucher no") || text.includes("vch no")) colMap["voucher_no"] = c;
-      if (text.includes("gstin/uin")) colMap["gstin"] = c;
-      if (text.includes("pan no")) colMap["pan_no"] = c;
-      if (text.includes("quantity") || text.includes("qty")) colMap["qty"] = c;
-      if (text.includes("rate")) colMap["rate"] = c;
-      if (text.includes("value") || text.includes("gross total") || text.includes("amount")) colMap["value"] = c;
-      if (text.includes("output cgst")) colMap["cgst"] = c;
-      if (text.includes("output sgst")) colMap["sgst"] = c;
-      if (text.includes("date")) colMap["date"] = c;
-      if (text.includes("particulars")) colMap["particulars"] = c;
+      const text = getCellText(r, c).toLowerCase().replace(/[\n\r]/g, " ").trim();
+      if (!text) continue;
+      
+      if (text === "buyer") colMap["buyer"] = c;
+      else if (text === "buyer address") colMap["buyer_address"] = c;
+      else if (text === "consignee") colMap["consignee"] = c;
+      else if (text === "consignee address") colMap["consignee_address"] = c;
+      else if (text === "voucher no.") colMap["voucher_no"] = c;
+      else if (text === "gstin/uin") colMap["gstin"] = c;
+      else if (text === "pan no.") colMap["pan_no"] = c;
+      else if (text === "quantity") colMap["qty"] = c;
+      else if (text === "rate") colMap["rate"] = c;
+      else if (text === "value") colMap["value"] = c;
+      else if (text === "gross total") colMap["gross_total"] = c;
+      else if (text === "output cgst") colMap["cgst"] = c;
+      else if (text === "output sgst") colMap["sgst"] = c;
+      else if (text === "date") colMap["date"] = c;
+      else if (text === "particulars") colMap["particulars"] = c;
     }
   }
 
+  const parseTallyDate = (d: any) => {
+    if (!d) return "";
+    const dt = new Date(d);
+    if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0];
+    return String(d);
+  };
+
   for (let r = 1; r <= ws.rowCount; r++) {
-    const dateText = colMap["date"] ? getCellText(r, colMap["date"]) : getCellText(r, 1);
-    const particularsText = colMap["particulars"] ? getCellText(r, colMap["particulars"]) : getCellText(r, 2);
+    const rawDate = colMap["date"] ? getCellValue(r, colMap["date"]) : getCellValue(r, 1);
+    const dateText = parseTallyDate(rawDate);
     
+    const particularsText = colMap["particulars"] ? getCellText(r, colMap["particulars"]) : getCellText(r, 2);
     const vchNo = colMap["voucher_no"] ? getCellText(r, colMap["voucher_no"]) : "";
     
-    // An invoice row usually has a Date and a Voucher No, or at least a date that looks like a date
-    if ((vchNo || dateText.match(/^\d{2}-[a-zA-Z]{3}-\d{2,4}$/)) && particularsText) {
+    if (particularsText && particularsText.toLowerCase() !== "particulars") {
       // Might be a new invoice OR an item. Usually item rows don't have voucher no.
       if (vchNo && vchNo !== currentInvoice?.invoice_number) {
         const buyer = colMap["buyer"] ? getCellText(r, colMap["buyer"]) : particularsText;
