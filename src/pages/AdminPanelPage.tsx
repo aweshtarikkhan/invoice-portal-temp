@@ -38,8 +38,10 @@ export default function AdminPanelPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const { subscriptionPlan, subscriptionStatus, trialDaysLeft, isOnTrial } = useSubscription();
   const org = useAppStore((s) => s.organization);
-  const isFreePlan = org?.subscription_plan === 'free' || !org?.subscription_plan;
+  const currentPlanStr = subscriptionPlan || org?.subscription_plan || 'free';
+  const isFreePlan = currentPlanStr.toLowerCase() === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   if (isFreePlan) {
@@ -98,7 +100,6 @@ export default function AdminPanelPage() {
 
   // Subscription state
   const [showPlanModal, setShowPlanModal] = useState(false);
-  const { subscriptionPlan, subscriptionStatus, trialDaysLeft, isOnTrial } = useSubscription();
 
   // Logic for global team members limit across ALL businesses
   const totalGlobalUsers = fetchedTeamMembers.length;
@@ -335,7 +336,10 @@ export default function AdminPanelPage() {
 
 
   // Admin panel
-  const availableAdminFeatures = ADMIN_FEATURE_GROUPS.filter((g) => platformFeatures.includes(g.key));
+  // Filter features based on the organization's active subscription plans
+  const availableAdminFeatures = ADMIN_FEATURE_GROUPS.filter((g) => 
+    selectedOrgFeatures.includes(g.key)
+  );
   const totalAdminFeatures = availableAdminFeatures.length;
   const enabledCount = availableAdminFeatures.filter((g) =>
     enabledGroups.includes(g.key)
