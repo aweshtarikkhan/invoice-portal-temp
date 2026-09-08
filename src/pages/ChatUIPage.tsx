@@ -10,6 +10,8 @@ import { openWhatsappShare, normalizeWhatsappNumber } from "@/lib/whatsapp";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppTemplates } from "@/components/whatsapp/WhatsAppTemplates";
 import { useAppStore } from "@/store/app-store";
+import { useSubscription } from "@/hooks/use-subscription";
+import { toast } from "@/hooks/use-toast";
 
 interface Chat {
   id: string;
@@ -37,6 +39,7 @@ export default function ChatUIPage() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(true);
   const orgId = useAppStore((s) => s.organization?.id);
+  const { subscriptionPlan } = useSubscription();
   const [connectionStatus, setConnectionStatus] = useState<string>('connecting');
   const [qrCode, setQrCode] = useState<string | null>(null);
   
@@ -119,15 +122,16 @@ export default function ChatUIPage() {
             setQrCode(null);
           }
         }
-      } catch (e) {
-        setConnectionStatus('disconnected');
+      } catch (err) {
+        console.error('Failed to check whatsapp status', err);
       }
     };
     
     checkStatus();
     interval = setInterval(checkStatus, 5000);
+    
     return () => clearInterval(interval);
-  }, [WHATSAPP_SERVICE_URL, orgId]);
+  }, [orgId]);
 
   useEffect(() => {
     if (!activeChat) return;
@@ -168,6 +172,30 @@ export default function ChatUIPage() {
     if (!inputText.trim() || !activeChat || !orgId) return;
     const txt = inputText.trim();
     setInputText("");
+
+    const plan = subscriptionPlan || 'free';
+    const isFree = plan === 'free';
+    const maxMessages = isFree ? 100 : 500;
+
+    // Optional: Fetch current month usage count across all chats
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const { count } = await supabase
+      .from('whatsapp_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('direction', 'outgoing')
+      .gte('created_at', startOfMonth.toISOString());
+
+    if (count !== null && count >= maxMessages) {
+      toast({
+        title: "Message Limit Reached",
+        description: `You have reached your limit of ${maxMessages} WhatsApp messages this month on your current plan.`,
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Optimistic UI update
     const optMsg: Message = {

@@ -1,5 +1,5 @@
 export type PlanType = 'free' | 'accounting' | 'hr' | 'crm' | 'promotion' | 'suite';
-export type ModuleType = 'accounting' | 'hr' | 'crm' | 'promotion' | 'admin';
+export type ModuleType = 'accounting' | 'hr' | 'crm' | 'promotion' | 'admin' | 'outreach';
 
 export const PLAN_NAMES: Record<PlanType, string> = {
   free: 'Business Starter',
@@ -26,6 +26,8 @@ export function hasModuleAccess(plan: PlanType = 'free', module: ModuleType): bo
       return true; // CRM is visible to all plans, limits apply instead
     case 'promotion':
       return true; // Promotion is visible to all plans
+    case 'outreach':
+      return true; // Outreach is visible to all plans
     case 'admin':
       return plan !== 'free'; // Any paid plan has some admin access, but 'free' has none.
     default:

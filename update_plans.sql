@@ -5,27 +5,27 @@ DELETE FROM public.plans;
 
 -- Insert Free Plan
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, sort_order)
-VALUES ('plan_1', 'free', 'Free Plan', 'tiered', 0, 0, '["sales", "catalog"]'::jsonb, '["50 Invoices/month", "Client management (up to 100 clients)", "Inventory Management (up to 100 items)"]'::jsonb, 1);
+VALUES ('plan_1', 'free', 'Free Plan', 'tiered', 0, 0, '["sales", "catalog", "outreach"]'::jsonb, '["50 Invoices/month", "Client management (up to 100 clients)", "Inventory Management (up to 100 items)"]'::jsonb, 1);
 
 -- Insert Plan 2
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, sort_order)
-VALUES ('plan_2', 'plan_2', 'Sales & Inventory', 'tiered', 99, 999, '["sales", "catalog"]'::jsonb, '["All Sales item feature", "All item inventory management", "Unlimited Invoices & Clients"]'::jsonb, 2);
+VALUES ('plan_2', 'plan_2', 'Sales & Inventory', 'tiered', 99, 999, '["sales", "catalog", "outreach"]'::jsonb, '["All Sales item feature", "All item inventory management", "Unlimited Invoices & Clients"]'::jsonb, 2);
 
 -- Insert Plan 3
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, sort_order)
-VALUES ('plan_3', 'plan_3', 'Complete Business', 'tiered', 299, 2999, '["sales", "catalog", "purchases", "accounting", "reports", "crm", "marketing"]'::jsonb, '["All Plan 2 features", "Purchases", "Accounting", "Reports", "Includes Complete CRM", "Includes Marketing"]'::jsonb, 3);
+VALUES ('plan_3', 'plan_3', 'Complete Business', 'tiered', 299, 2999, '["sales", "catalog", "purchases", "accounting", "reports", "crm", "marketing", "outreach"]'::jsonb, '["All Plan 2 features", "Purchases", "Accounting", "Reports", "Includes Complete CRM", "Includes Marketing"]'::jsonb, 3);
 
 -- Insert Plan 4
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, employee_limit, employee_price_extra, sort_order)
-VALUES ('plan_4', 'plan_4', 'HR & People', 'tiered', 199, 1999, '["people"]'::jsonb, '["Complete HR & People", "Up to 20 employees", "?29 per extra employee"]'::jsonb, 20, 29, 4);
+VALUES ('plan_4', 'plan_4', 'HR & People', 'tiered', 199, 1999, '["people", "outreach"]'::jsonb, '["Complete HR & People", "Up to 20 employees", "?29 per extra employee"]'::jsonb, 20, 29, 4);
 
 -- Insert Plan 5
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, sort_order)
-VALUES ('plan_5', 'plan_5', 'Complete CRM', 'tiered', 99, 999, '["crm"]'::jsonb, '["Complete CRM Module", "Lead Pipeline", "Activities"]'::jsonb, 5);
+VALUES ('plan_5', 'plan_5', 'Complete CRM', 'tiered', 99, 999, '["crm", "outreach"]'::jsonb, '["Complete CRM Module", "Lead Pipeline", "Activities"]'::jsonb, 5);
 
 -- Insert Plan 6
 INSERT INTO public.plans (id, name, display_name, plan_type, price_monthly, price_yearly, feature_keys, features, sort_order)
-VALUES ('plan_6', 'plan_6', 'Marketing', 'tiered', 99, 999, '["marketing"]'::jsonb, '["Marketing Campaigns", "WhatsApp Bulk Messaging"]'::jsonb, 6);
+VALUES ('plan_6', 'plan_6', 'Marketing', 'tiered', 99, 999, '["marketing", "outreach"]'::jsonb, '["Marketing Campaigns", "WhatsApp Bulk Messaging"]'::jsonb, 6);
 
 
 -- Update the RPC to support multiple plans
@@ -63,7 +63,7 @@ BEGIN
       'billing_cycle',    'monthly',
       'trial_ends_at',    NULL,
       'trial_plan_name',  NULL,
-      'enabled_features', '["sales", "catalog"]'::jsonb,
+      'enabled_features', '["sales", "catalog", "outreach"]'::jsonb,
       'employee_limit',   NULL,
       'employee_count',   0,
       'current_period_end', NULL
