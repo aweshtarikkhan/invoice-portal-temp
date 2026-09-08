@@ -32,6 +32,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [gstNumber, setGstNumber] = useState("");
+  const [panNumber, setPanNumber] = useState("");
   const [billingAddress, setBillingAddress] = useState("");
   const [billingState, setBillingState] = useState("");
   const [billingZip, setBillingZip] = useState("");
@@ -44,6 +45,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
     setPhone("");
     setNotes("");
     setGstNumber("");
+    setPanNumber("");
     setBillingAddress("");
     setBillingState("");
     setBillingZip("");
@@ -63,33 +65,34 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
       setBillingState(gstNumber.slice(0, 2));
       setBillingZip(details.pincode || "");
       toast({ title: "GST Details Fetched", description: "Business details auto-filled successfully!" });
-    } catch (err: any) {
-      toast({ title: "GST Fetch Failed", description: err.message, variant: "destructive" });
+    } catch (error: any) {
+      toast({ title: "GST Fetch Failed", description: error.message || "Failed to fetch GST details.", variant: "destructive" });
     } finally {
       setIsFetchingGst(false);
     }
   };
 
   const handleSave = async () => {
-    if (!displayName.trim() || !org?.id) {
-      toast({ title: "Display name is required", variant: "destructive" });
+    if (!displayName.trim()) {
+      toast({ title: "Error", description: "Display name is required.", variant: "destructive" });
       return;
     }
     setSaving(true);
     const { data, error } = await supabase.from("clients").insert({
-      org_id: org.id,
+      org_id: org!.id,
       display_name: displayName.trim(),
       company_name: companyName.trim() || null,
       email: email.trim() || null,
       phone: phone.trim() || null,
       notes: notes.trim() || null,
       tax_number: gstNumber.trim() || null,
+      pan_number: panNumber.trim() || null,
       billing_address: {
         street: billingAddress.trim() || null,
         city: "",
         state: billingState.trim() || null,
         zip: billingZip.trim() || null,
-        country: "",
+        country: "IN",
       },
     }).select("id, display_name").single();
 
@@ -131,6 +134,17 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
               </Button>
             </div>
           </div>
+          
+          <div className="space-y-2">
+            <Label>PAN Number</Label>
+            <Input 
+              value={panNumber} 
+              onChange={(e) => setPanNumber(e.target.value.toUpperCase())} 
+              placeholder="e.g. ABCDE1234F" 
+              maxLength={10}
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Display Name *</Label>

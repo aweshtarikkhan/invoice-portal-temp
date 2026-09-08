@@ -30,6 +30,7 @@ export function InvoiceSettingsSheet() {
     gst_enabled: false,
     gst_number: "",
     show_client_gst: false,
+    pan_enabled: false,
     qr_code_enabled: false,
   });
 
@@ -44,6 +45,7 @@ export function InvoiceSettingsSheet() {
       gst_enabled: org.gst_enabled || false,
       gst_number: org.gst_number || "",
       show_client_gst: org.show_client_gst || false,
+      pan_enabled: (org as any).pan_enabled || false,
       qr_code_enabled: org.qr_code_enabled || false,
     });
   }, [org]);
@@ -198,6 +200,13 @@ export function InvoiceSettingsSheet() {
                   </div>
                 </>
               )}
+              <div className="flex items-center justify-between mt-4">
+                <div>
+                  <Label className="text-sm font-semibold">Enable PAN Number</Label>
+                  <p className="text-xs text-muted-foreground">Show PAN fields for TDS/TCS requirements</p>
+                </div>
+                <Switch checked={(settings as any).pan_enabled} onCheckedChange={(v) => setSettings({ ...settings, pan_enabled: v })} />
+              </div>
             </div>
 
             <Separator />

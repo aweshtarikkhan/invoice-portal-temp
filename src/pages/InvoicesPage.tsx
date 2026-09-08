@@ -31,6 +31,7 @@ import { differenceInDays, parseISO, isToday, isBefore, addDays } from "date-fns
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { BulkReminderDialog } from "@/components/shared/BulkReminderDialog";
+import { parseTallyExcel } from "@/lib/tally-parser";
 
 const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
@@ -41,6 +42,7 @@ const invoiceImportFields: ImportField[] = [
   { key: "rate", label: "Rate" },
   { key: "item_amount", label: "Item Amount" },
   { key: "client_gst", label: "Client GST Number" },
+  { key: "pan_no", label: "Client PAN Number" },
   { key: "client_address", label: "Client Address" },
   { key: "shipping_name", label: "Shipping Name" },
   { key: "shipping_address", label: "Shipping Address" },
@@ -441,6 +443,7 @@ export default function InvoicesPage() {
         onOpenChange={setImportOpen}
         fields={invoiceImportFields}
         entityName="Invoices"
+        onTallyImport={parseTallyExcel}
         onImport={async (rows) => {
           let success = 0, errors = 0;
           const { data: existingClients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
@@ -480,6 +483,7 @@ export default function InvoicesPage() {
                 org_id: org!.id,
                 display_name: name,
                 tax_number: row.client_gst || null,
+                pan_number: row.pan_no || null,
                 billing_address: billingAddr,
                 shipping_address: shippingAddr,
               }).select("id").single();

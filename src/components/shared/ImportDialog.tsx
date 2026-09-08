@@ -24,11 +24,12 @@ interface ImportDialogProps {
   fields: ImportField[];
   entityName: string;
   onImport: (rows: Record<string, any>[]) => Promise<{ success: number; errors: number }>;
+  onTallyImport?: (file: File) => Promise<Record<string, any>[]>;
 }
 
 type Step = "upload" | "map" | "preview" | "result";
 
-export function ImportDialog({ open, onOpenChange, fields, entityName, onImport }: ImportDialogProps) {
+export function ImportDialog({ open, onOpenChange, fields, entityName, onImport, onTallyImport }: ImportDialogProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>("upload");
@@ -237,6 +238,39 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport 
               <Button variant="outline" size="sm" onClick={downloadSample}>
                 <Download className="mr-2 h-4 w-4" /> Download Sample CSV
               </Button>
+              {onTallyImport && (
+                <div>
+                  <input
+                    id="tally-upload"
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={async (e) => {
+                      if (e.target.files?.[0]) {
+                        try {
+                          const parsedRows = await onTallyImport(e.target.files[0]);
+                          setRawData(parsedRows);
+                          // Auto-map known keys
+                          const newMapping: Record<string, string> = {};
+                          fields.forEach(f => {
+                            if (parsedRows.length > 0 && Object.keys(parsedRows[0]).includes(f.key)) {
+                              newMapping[f.key] = f.key;
+                            }
+                          });
+                          setMapping(newMapping);
+                          setStep("map");
+                        } catch (err: any) {
+                          toast({ title: "Tally Import Failed", description: err.message || "Failed to parse Tally file", variant: "destructive" });
+                        }
+                        e.target.value = "";
+                      }
+                    }}
+                  />
+                  <Button variant="secondary" size="sm" onClick={() => document.getElementById('tally-upload')?.click()}>
+                    <Upload className="mr-2 h-4 w-4 text-blue-600" /> Tally Excel Import
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

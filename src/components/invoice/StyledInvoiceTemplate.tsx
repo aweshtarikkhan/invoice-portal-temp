@@ -183,6 +183,9 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
           {clientGst && org?.gst_enabled && org?.show_client_gst && (
             <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4 }}>GSTIN: {clientGst}</div>
           )}
+          {(org as any)?.pan_enabled && (invoice.clients as any)?.pan_number && (
+            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2 }}>PAN: {(invoice.clients as any).pan_number}</div>
+          )}
         </div>
         {shipToAddressLines.length > 0 && (
           <div>
