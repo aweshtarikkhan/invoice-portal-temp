@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,15 @@ export default function LoginPage() {
   const [employeeBlocked, setEmployeeBlocked] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // ✅ Pre-fill email from ?email= query param (redirected from RegisterPage "email exists" dialog)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const prefilledEmail = params.get("email");
+    if (prefilledEmail) {
+      setEmail(decodeURIComponent(prefilledEmail));
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,7 +141,7 @@ export default function LoginPage() {
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                  <Link to={`/forgot-password?email=${encodeURIComponent(email)}`} className="text-xs text-primary hover:underline">Forgot password?</Link>
                 </div>
                 <div className="relative">
                   <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required />
@@ -146,10 +155,10 @@ export default function LoginPage() {
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
-                              <div className="flex items-center justify-center gap-2 w-full mt-4 text-sm text-muted-foreground">
-                  <p>Don't have an account?</p>
-                  <Link to="/register" className="text-primary font-bold hover:underline">Sign Up</Link>
-                </div>
+              <div className="flex items-center justify-center gap-2 w-full mt-4 text-sm text-muted-foreground">
+                <p>Don't have an account?</p>
+                <Link to="/register" className="text-primary font-bold hover:underline">Sign Up</Link>
+              </div>
             </CardFooter>
           </form>
         </Card>
@@ -157,4 +166,3 @@ export default function LoginPage() {
     </>
   );
 }
-
