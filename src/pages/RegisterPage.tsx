@@ -43,26 +43,6 @@ export default function RegisterPage() {
     }
     setLoading(true);
 
-    const { error: signInCheckError } = await supabase.auth.signInWithPassword({
-      email,
-      password: "___check_existence_only___",
-    });
-
-    const errorMsg = signInCheckError?.message?.toLowerCase() || "";
-    const emailAlreadyExists =
-      errorMsg.includes("invalid login credentials") ||
-      errorMsg.includes("invalid_credentials") ||
-      errorMsg.includes("email not confirmed") ||
-      errorMsg.includes("email already registered") ||
-      !signInCheckError;
-
-    if (emailAlreadyExists) {
-      setLoading(false);
-      setExistingEmail(email);
-      setEmailExistsDialog(true);
-      return;
-    }
-
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -89,6 +69,14 @@ export default function RegisterPage() {
     }
 
     if (authData.user) {
+      // Handle Supabase email enumeration protection returning empty identities for existing users
+      if (authData.user.identities && authData.user.identities.length === 0) {
+        setLoading(false);
+        setExistingEmail(email);
+        setEmailExistsDialog(true);
+        return;
+      }
+
       if (authData.session) {
         toast({ title: "Account created!", description: "Welcome to Assay Biz Invoices" });
         navigate("/dashboard", { replace: true });
