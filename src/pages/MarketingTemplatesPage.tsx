@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { useSubscription } from "@/hooks/use-subscription";
 import { hasModuleAccess } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,11 +40,12 @@ const EMPTY: Partial<Template> = {
 
 export default function MarketingTemplatesPage() {
   const org = useAppStore((s) => s.organization);
-  const plan = org?.subscription_plan || 'free';
+  const { subscriptionPlan } = useSubscription();
+  const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const isFreePlan = plan === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  if (isFreePlan || !hasModuleAccess(plan, 'promotion')) {
+  if (isFreePlan || (!plan.toLowerCase().includes('suite') && !hasModuleAccess(plan as any, 'promotion') && !plan.toLowerCase().includes('promotion') && !plan.toLowerCase().includes('marketing') && !plan.toLowerCase().includes('plan_6'))) {
     return (
       <div className="flex-1 bg-slate-50 min-h-screen">
         <LockedFeature 
