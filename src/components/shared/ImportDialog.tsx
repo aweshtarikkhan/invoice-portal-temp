@@ -249,11 +249,17 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
                       if (e.target.files?.[0]) {
                         try {
                           const parsedRows = await onTallyImport(e.target.files[0]);
+                          if (!parsedRows || parsedRows.length === 0) {
+                            toast({ title: "No data found", description: "Could not extract any rows from this file.", variant: "destructive" });
+                            return;
+                          }
+                          const keys = Object.keys(parsedRows[0]);
+                          setHeaders(keys);
                           setRawData(parsedRows);
                           // Auto-map known keys
                           const newMapping: Record<string, string> = {};
                           fields.forEach(f => {
-                            if (parsedRows.length > 0 && Object.keys(parsedRows[0]).includes(f.key)) {
+                            if (keys.includes(f.key)) {
                               newMapping[f.key] = f.key;
                             }
                           });
