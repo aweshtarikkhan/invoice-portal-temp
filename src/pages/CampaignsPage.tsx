@@ -114,14 +114,14 @@ export default function CampaignsPage() {
     
     const addrKey = channel === "email" ? "email" : "phone";
     return list
-      .filter((c) => c[addrKey])
       .map((c) => ({
         client_id: c.id,
         name: c.display_name,
-        to_address: c[addrKey] as string,
+        to_address: (c[addrKey] || c.email || c.phone || c.display_name) as string,
         vars: { name: c.display_name },
         org_id: org!.id,
-      }));
+      }))
+      .filter((c) => c.to_address);
   };
 
   const create = async () => {
