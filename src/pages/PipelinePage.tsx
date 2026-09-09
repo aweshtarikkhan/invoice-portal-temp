@@ -103,7 +103,7 @@ export default function PipelinePage() {
     if (!opp || opp.stage_id === stageId) return;
     const stage = stages.find((s) => s.id === stageId);
     const patch: any = { stage_id: stageId };
-    if (stage) { patch.probability = stage.win_probability; if (stage.is_won) patch.status = "won"; else if (stage.is_lost) patch.status = "lost"; else patch.status = "open"; }
+    if (stage) patch.probability = stage.win_probability;
     setOpps((prev) => prev.map((o) => (o.id === oppId ? { ...o, ...patch } : o)));
     const { error } = await (supabase as any).from("opportunities").update(patch).eq("id", oppId);
     if (error) { toast({ title: "Move failed", description: error.message, variant: "destructive" }); load(); }
