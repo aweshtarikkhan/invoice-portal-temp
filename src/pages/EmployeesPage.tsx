@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,6 +64,7 @@ const empty = {
 
 export default function EmployeesPage() {
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const setOrganization = useAppStore((s) => s.setOrganization);
   const { toast } = useToast();
   const [rows, setRows] = useState<Employee[]>([]);

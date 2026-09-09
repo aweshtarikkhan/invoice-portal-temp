@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/use-subscription";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -54,6 +56,7 @@ const emptyForm = { name: "", company: "", email: "", phone: "", source: "", sta
 
 export default function LeadsPage() {
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const currency = (org as any)?.currency_code || "INR";

@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ImportDialog } from "@/components/shared/ImportDialog";
@@ -45,6 +47,7 @@ const PIE_COLORS = ["hsl(201, 96%, 42%)", "hsl(142, 71%, 45%)", "hsl(32, 95%, 44
 export default function EstimatesPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const { toast } = useToast();
   const [estimates, setEstimates] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

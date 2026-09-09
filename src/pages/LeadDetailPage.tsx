@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
@@ -45,6 +47,7 @@ export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const { toast } = useToast();
   const currency = (org as any)?.currency_code || "INR";
 

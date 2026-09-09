@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { COMMON_UNITS } from "@/lib/constants";
@@ -47,6 +49,7 @@ const itemImportFields: ImportField[] = [
 
 export default function ItemsPage() {
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const [items, setItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);
   const [search, setSearch] = useState("");
