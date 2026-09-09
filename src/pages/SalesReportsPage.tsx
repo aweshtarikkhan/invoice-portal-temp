@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
+import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,7 +109,7 @@ export default function SalesReportsPage() {
   if (loading) return <div className="p-6">Loading sales reports...</div>;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="sales-report-page">
       <SEO title="Sales Reports" description="Analyze your sales, revenue, and client metrics." path="/sales-reports" />
       <PageHeader title="Sales Reports" description="Key performance indicators and sales analytics" />
 

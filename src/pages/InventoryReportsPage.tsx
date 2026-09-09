@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
+import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -123,7 +124,7 @@ export default function InventoryReportsPage() {
   }, [movements]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="inventory-report-page">
       <SEO title="Inventory Reports" />
       <PageHeader
         title="Inventory Reports"

@@ -441,7 +441,7 @@ export default function DealDetailPage() {
             </div>
             <div className="col-span-2">
               <Label>Expected Close Date</Label>
-              <Input type="date" value={editForm.expected_close_date} onChange={e => setEditForm({ ...editForm, expected_close_date: e.target.value })} />
+              <Input type="date" value={editForm.expected_close_date} onChange={e => setEditForm({ ...editForm, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})} />
             </div>
             <div className="col-span-2">
               <Label>Notes</Label>

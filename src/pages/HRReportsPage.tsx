@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
+import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, CalendarDays, DollarSign } from "lucide-react";
@@ -379,7 +380,7 @@ export default function HRReportsPage() {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" id="hr-report-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">HR Reports</h1>

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
+import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -37,6 +38,7 @@ export default function CRMMarketingReportsPage() {
 
   const [pipelineData, setPipelineData] = useState<any[]>([]);
   const [leadsSourceData, setLeadsSourceData] = useState<any[]>([]);
+  const [leadsList, setLeadsList] = useState<any[]>([]);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
   useEffect(() => {
@@ -105,11 +107,12 @@ export default function CRMMarketingReportsPage() {
         value,
       }));
       setLeadsSourceData(sourceData);
+      setLeadsList(leads || []);
 
       // Top 5 Open Opportunities
       const openOpp = opportunities?.filter((o: any) => {
           if (o.status === "won" || o.status === "lost") return false;
-          if (!o.expected_close_date) return true;
+          if (!o.expected_close_date) return false; // Hide if no date
           return new Date(o.expected_close_date).getTime() >= new Date().setHours(0,0,0,0);
         }) || [];
       const top5 = openOpp
@@ -129,10 +132,16 @@ export default function CRMMarketingReportsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Promotion Reports</h1>
-        <p className="text-muted-foreground">Analyze your promotional campaigns, lead conversions, and outreach performance.</p>
+    <div className="space-y-6" id="crm-report-page">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Promotion Reports</h1>
+          <p className="text-muted-foreground">Analyze your promotional campaigns, lead conversions, and outreach performance.</p>
+        </div>
+        <Button onClick={() => exportFullPagePDF('crm-report-page', 'crm_full_report')} className="shrink-0" variant="secondary">
+          <Download className="w-4 h-4 mr-2" />
+          Export Full Report (PDF)
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -251,7 +260,7 @@ export default function CRMMarketingReportsPage() {
                 if (!topOpportunities.length) return;
                 const headers = ["Opportunity Name", "Amount", "Probability", "Expected Close Date"];
                 const rows = topOpportunities.map(opp => [
-                  opp.title || opp.name || '',
+                  `${opp.title || opp.name || ''} (${leadsList.find((l: any) => l.id === opp.lead_id)?.name || 'No Lead'})`,
                   opp.amount || 0,
                   `${opp.probability || 0}%`,
                   opp.expected_close_date ? format(parseISO(opp.expected_close_date), 'MMM d, yyyy') : '-'
@@ -269,7 +278,7 @@ export default function CRMMarketingReportsPage() {
                 if (!topOpportunities.length) return;
                 const headers = ["Opportunity Name", "Amount", "Probability", "Expected Close Date"];
                 const rows = topOpportunities.map(opp => [
-                  opp.title || opp.name || '',
+                  `${opp.title || opp.name || ''} (${leadsList.find((l: any) => l.id === opp.lead_id)?.name || 'No Lead'})`,
                   formatCurrency(opp.amount || 0),
                   `${opp.probability || 0}%`,
                   opp.expected_close_date ? format(parseISO(opp.expected_close_date), 'MMM d, yyyy') : '-'
@@ -302,7 +311,7 @@ export default function CRMMarketingReportsPage() {
               ) : (
                 topOpportunities.map((opp) => (
                   <TableRow key={opp.id}>
-                    <TableCell className="font-medium">{opp.title || opp.name}</TableCell>
+                    <TableCell className="font-medium">{opp.title || opp.name} <span className="text-muted-foreground text-xs block">{leadsList.find((l: any) => l.id === opp.lead_id)?.name || "No Lead"}</span></TableCell>
                     <TableCell>{formatCurrency(opp.amount || 0)}</TableCell>
                     <TableCell>{opp.probability || 0}%</TableCell>
                     <TableCell>
