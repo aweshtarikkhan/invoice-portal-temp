@@ -147,7 +147,7 @@ export default function CampaignsPage() {
       name: form.name,
       channel: form.channel,
       template_id: form.template_id,
-      audience_type: form.audience_type,
+      audience_type: form.audience_type === "overdue" ? "overdue" : (form.audience_type.includes("custom") || form.audience_type === "prospects" ? "manual" : "all"),
       total_count: audience.length,
     }).select().single();
     if (error || !campaign) return toast.error(error?.message || "Failed");
@@ -216,7 +216,7 @@ export default function CampaignsPage() {
                   <TableCell className="font-medium">{c.name}</TableCell>
                   <TableCell><Badge variant="outline">{c.channel}</Badge></TableCell>
                   <TableCell>{c.template?.name || "—"}</TableCell>
-                  <TableCell className="text-xs">{c.audience_type}</TableCell>
+                  <TableCell className="text-xs capitalize">{c.audience_type.replace("_", " ")}</TableCell>
                   <TableCell><Badge className={STATUS_COLOR[c.status]}>{c.status}</Badge></TableCell>
                   <TableCell>{c.sent_count} / {c.total_count} {c.failed_count > 0 && <span className="text-red-600 text-xs">({c.failed_count} failed)</span>}</TableCell>
                   <TableCell className="text-xs">{format(new Date(c.created_at), "dd MMM HH:mm")}</TableCell>
