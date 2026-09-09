@@ -3,7 +3,7 @@ import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, isToday, addWeeks, subWeeks, startOfMonth, endOfMonth, isSameMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Mail, Clock, DollarSign } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Mail, Clock, DollarSign, UserPlus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function CRMCalendarPage() {
