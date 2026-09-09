@@ -152,11 +152,11 @@ export default function ClientsPage() {
   };
 
   const handleSave = async () => {
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
-    if (phone && phone.length < 10) {
+    if (form.phone && form.phone.length < 10) {
       toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
       return;
     }
