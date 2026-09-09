@@ -258,7 +258,7 @@ export default function LeadDetailPage() {
                   <div className="md:col-span-1 space-y-3">
                     <div>
                       <Label>Due Date (Optional)</Label>
-                      <Input type="date" value={activityForm.due_date} onChange={(e) => setActivityForm({ ...activityForm, due_date: e.target.value } min={new Date().toISOString().split("T")[0]})} />
+                      <Input type="date" value={activityForm.due_date} onChange={(e) => setActivityForm({ ...activityForm, due_date: e.target.value })} min={new Date().toISOString().split("T")[0]} />
                     </div>
                     <Button className="w-full" onClick={saveActivity}>Log {activityForm.type}</Button>
                   </div>
