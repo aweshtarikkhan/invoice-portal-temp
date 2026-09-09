@@ -16,9 +16,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Plus, Send, Trash2 } from "lucide-react";
+import { Plus, Send, Trash2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+
+interface Prospect { name: string; phone: string; email: string; }
 
 const STATUS_COLOR: Record<string, string> = {
   draft: "bg-gray-100 text-gray-700",
@@ -55,9 +57,13 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<string[]>([]);
+  const [prospects, setProspects] = useState<Prospect[]>([]);
+  const [prospectForm, setProspectForm] = useState<Prospect>({ name: "", phone: "", email: "" });
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all" });
+  const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all_clients" });
 
   const seedDefaultTemplates = async (orgId: string) => {
     const defaultTemplates = [
@@ -78,56 +84,63 @@ export default function CampaignsPage() {
 
   const load = async () => {
     if (!org) return;
-    const [c, t, cl] = await Promise.all([
+    const [c, t, cl, ld] = await Promise.all([
       supabase.from("campaigns").select("*, template:message_templates(name)").eq("org_id", org.id).order("created_at", { ascending: false }),
       supabase.from("message_templates").select("id,name,channel").eq("org_id", org.id),
       supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org.id),
+      (supabase as any).from("leads").select("id,name,phone,email,company").eq("org_id", org.id),
     ]);
     let templateList = t.data || [];
     if (templateList.length === 0) {
       const seeded = await seedDefaultTemplates(org.id);
-      if (seeded && seeded.length > 0) {
-        templateList = seeded;
-      }
+      if (seeded && seeded.length > 0) templateList = seeded;
     }
     setCampaigns(c.data || []);
     setTemplates(templateList);
     setClients(cl.data || []);
+    setLeads(ld.data || []);
   };
   useEffect(() => { load(); }, [org?.id]);
 
   const buildAudience = async (channel: string, audience_type: string) => {
-    let list: any[] = clients || [];
-    
-    if (!list.length) {
-      const { data } = await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id);
-      list = data || [];
-    }
+    const addrKey = channel === "email" ? "email" : "phone";
 
-    if (audience_type === "overdue") {
+    const toRecipient = (id: string | null, displayName: string, phone: string | null, email: string | null) => {
+      const addr = channel === "email" ? (email || null) : (phone || null);
+      if (!addr) return null;
+      return { client_id: id, name: displayName, to_address: addr, vars: { name: displayName }, org_id: org!.id };
+    };
+
+    let items: (ReturnType<typeof toRecipient>)[] = [];
+
+    if (audience_type === "all_clients") {
+      let list = clients.length ? clients : (await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id)).data || [];
+      items = list.map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+    } else if (audience_type === "all_leads") {
+      let list = leads.length ? leads : ((await (supabase as any).from("leads").select("id,name,phone,email").eq("org_id", org!.id)).data || []);
+      items = list.map((l: any) => toRecipient(l.id, l.name, l.phone, l.email));
+    } else if (audience_type === "overdue") {
+      const allClients = clients.length ? clients : (await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id)).data || [];
       const { data: ovd } = await supabase.from("invoices").select("client_id").eq("org_id", org!.id).gt("balance_due", 0).lt("due_date", new Date().toISOString().split("T")[0]);
       const ids = new Set((ovd || []).map((i: any) => i.client_id));
-      list = list.filter((c) => ids.has(c.id));
-    } else if (audience_type === "custom") {
-      list = list.filter((c) => selectedClientIds.includes(c.id));
+      items = allClients.filter((c: any) => ids.has(c.id)).map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+    } else if (audience_type === "custom_clients") {
+      items = clients.filter((c: any) => selectedClientIds.includes(c.id)).map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+    } else if (audience_type === "custom_leads") {
+      items = leads.filter((l: any) => selectedLeadIds.includes(l.id)).map((l: any) => toRecipient(l.id, l.name, l.phone, l.email));
+    } else if (audience_type === "prospects") {
+      items = prospects
+        .filter(p => channel === "email" ? !!p.email : !!p.phone)
+        .map(p => ({ client_id: null, name: p.name, to_address: channel === "email" ? p.email : p.phone, vars: { name: p.name }, org_id: org!.id }));
     }
-    
-    const addrKey = channel === "email" ? "email" : "phone";
-    return list
-      .map((c) => ({
-        client_id: c.id,
-        name: c.display_name,
-        to_address: (c[addrKey] || c.email || c.phone || c.display_name) as string,
-        vars: { name: c.display_name },
-        org_id: org!.id,
-      }))
-      .filter((c) => c.to_address);
+
+    return items.filter(Boolean) as any[];
   };
 
   const create = async () => {
     if (!form.name || !form.template_id) return toast.error("Name & template required");
     const audience = await buildAudience(form.channel, form.audience_type);
-    if (audience.length === 0) return toast.error("No recipients match this audience");
+    if (audience.length === 0) return toast.error("No recipients with valid contact info found. Please ensure clients/leads have phone or email.");
 
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: org!.id,
@@ -144,8 +157,11 @@ export default function CampaignsPage() {
 
     toast.success(`Campaign created with ${audience.length} recipients`);
     setOpen(false);
-    setForm({ name: "", channel: "sms", template_id: "", audience_type: "all" });
+    setForm({ name: "", channel: "sms", template_id: "", audience_type: "all_clients" });
     setSelectedClientIds([]);
+    setSelectedLeadIds([]);
+    setProspects([]);
+    setProspectForm({ name: "", phone: "", email: "" });
     load();
   };
 
@@ -291,58 +307,102 @@ export default function CampaignsPage() {
             </div>
             <div>
               <Label className="text-sm font-medium">Audience</Label>
-              <Select 
-                value={form.audience_type} 
-                onValueChange={(v) => {
-                  setForm({ ...form, audience_type: v });
-                  if (v === 'custom' && selectedClientIds.length === 0) {
-                    setSelectedClientIds(clients.map(c => c.id));
-                  }
-                }}
+              <Select
+                value={form.audience_type}
+                onValueChange={(v) => setForm({ ...form, audience_type: v })}
               >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select Audience" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Clients ({clients.length})</SelectItem>
+                  <SelectItem value="all_clients">All Clients ({clients.length})</SelectItem>
+                  <SelectItem value="all_leads">All Leads ({leads.length})</SelectItem>
                   <SelectItem value="overdue">Clients with Overdue Invoices</SelectItem>
-                  <SelectItem value="custom">Custom Selection ({selectedClientIds.length} selected)</SelectItem>
+                  <SelectItem value="custom_clients">Custom Clients ({selectedClientIds.length} selected)</SelectItem>
+                  <SelectItem value="custom_leads">Custom Leads ({selectedLeadIds.length} selected)</SelectItem>
+                  <SelectItem value="prospects">Manual Prospects ({prospects.length} added)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            
-            {form.audience_type === "custom" && (
+
+            {/* Custom Clients */}
+            {form.audience_type === "custom_clients" && (
               <div className="space-y-2 border rounded-md p-3 bg-muted/20">
                 <div className="flex items-center justify-between pb-2 border-b">
                   <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Clients</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 text-xs" 
-                    onClick={() => {
-                      if (selectedClientIds.length === clients.length) setSelectedClientIds([]);
-                      else setSelectedClientIds(clients.map(c => c.id));
-                    }}
-                  >
-                    {selectedClientIds.length === clients.length ? "Deselect All" : "Select All"}
-                  </Button>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs"
+                    onClick={() => { if (selectedClientIds.length === clients.length) setSelectedClientIds([]); else setSelectedClientIds(clients.map(c => c.id)); }}
+                  >{selectedClientIds.length === clients.length ? "Deselect All" : "Select All"}</Button>
                 </div>
                 <ScrollArea className="h-40">
                   <div className="space-y-2 pt-2">
                     {clients.map(c => (
                       <div key={c.id} className="flex items-center space-x-2">
-                        <Checkbox 
-                          id={`client-${c.id}`} 
-                          checked={selectedClientIds.includes(c.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) setSelectedClientIds([...selectedClientIds, c.id]);
-                            else setSelectedClientIds(selectedClientIds.filter(id => id !== c.id));
-                          }}
-                        />
-                        <label htmlFor={`client-${c.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
-                          {c.display_name} {c.phone ? `(${c.phone})` : c.email ? `(${c.email})` : ''}
+                        <Checkbox id={`client-${c.id}`} checked={selectedClientIds.includes(c.id)}
+                          onCheckedChange={(checked) => { if (checked) setSelectedClientIds([...selectedClientIds, c.id]); else setSelectedClientIds(selectedClientIds.filter(id => id !== c.id)); }} />
+                        <label htmlFor={`client-${c.id}`} className="text-sm cursor-pointer">
+                          {c.display_name}
+                          <span className="text-xs text-muted-foreground ml-1">{c.phone || c.email || <span className="text-red-400">No contact</span>}</span>
                         </label>
                       </div>
                     ))}
                     {clients.length === 0 && <div className="text-sm text-muted-foreground">No clients found</div>}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Custom Leads */}
+            {form.audience_type === "custom_leads" && (
+              <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+                <div className="flex items-center justify-between pb-2 border-b">
+                  <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Select Leads</Label>
+                  <Button variant="ghost" size="sm" className="h-6 text-xs"
+                    onClick={() => { if (selectedLeadIds.length === leads.length) setSelectedLeadIds([]); else setSelectedLeadIds(leads.map((l: any) => l.id)); }}
+                  >{selectedLeadIds.length === leads.length ? "Deselect All" : "Select All"}</Button>
+                </div>
+                <ScrollArea className="h-40">
+                  <div className="space-y-2 pt-2">
+                    {leads.map((l: any) => (
+                      <div key={l.id} className="flex items-center space-x-2">
+                        <Checkbox id={`lead-${l.id}`} checked={selectedLeadIds.includes(l.id)}
+                          onCheckedChange={(checked) => { if (checked) setSelectedLeadIds([...selectedLeadIds, l.id]); else setSelectedLeadIds(selectedLeadIds.filter(id => id !== l.id)); }} />
+                        <label htmlFor={`lead-${l.id}`} className="text-sm cursor-pointer">
+                          {l.name} {l.company ? `(${l.company})` : ""}
+                          <span className="text-xs text-muted-foreground ml-1">{l.phone || l.email || <span className="text-red-400">No contact</span>}</span>
+                        </label>
+                      </div>
+                    ))}
+                    {leads.length === 0 && <div className="text-sm text-muted-foreground">No leads found</div>}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Manual Prospects */}
+            {form.audience_type === "prospects" && (
+              <div className="space-y-2 border rounded-md p-3 bg-muted/20">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Prospects Manually</Label>
+                <div className="flex gap-2 mt-2">
+                  <Input placeholder="Name" value={prospectForm.name} onChange={e => setProspectForm({ ...prospectForm, name: e.target.value })} className="h-8 text-sm" />
+                  <Input placeholder="Phone" value={prospectForm.phone} onChange={e => setProspectForm({ ...prospectForm, phone: e.target.value })} className="h-8 text-sm" />
+                  <Input placeholder="Email" value={prospectForm.email} onChange={e => setProspectForm({ ...prospectForm, email: e.target.value })} className="h-8 text-sm" />
+                  <Button size="sm" className="h-8 px-3 shrink-0"
+                    onClick={() => {
+                      if (!prospectForm.name || (!prospectForm.phone && !prospectForm.email)) return toast.error("Name and phone/email required");
+                      setProspects([...prospects, { ...prospectForm }]);
+                      setProspectForm({ name: "", phone: "", email: "" });
+                    }}
+                  ><UserPlus className="w-3.5 h-3.5" /></Button>
+                </div>
+                <ScrollArea className="h-32 mt-2">
+                  <div className="space-y-1.5">
+                    {prospects.map((p, i) => (
+                      <div key={i} className="flex items-center justify-between bg-white border rounded px-2 py-1 text-xs">
+                        <span className="font-medium">{p.name}</span>
+                        <span className="text-muted-foreground">{p.phone || p.email}</span>
+                        <button onClick={() => setProspects(prospects.filter((_, j) => j !== i))} className="text-red-400 hover:text-red-600 ml-2"><X className="w-3 h-3" /></button>
+                      </div>
+                    ))}
+                    {prospects.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Add prospects above to include them in the campaign</p>}
                   </div>
                 </ScrollArea>
               </div>
