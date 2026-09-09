@@ -432,7 +432,7 @@ export default function LeadDetailPage() {
             </div>
             <div>
               <Label>Expected Close Date</Label>
-              <Input type="date" value={oppForm.expected_close_date} onChange={(e) => setOppForm({ ...oppForm, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})} />
+              <Input type="date" value={oppForm.expected_close_date} onChange={(e) => setOppForm({ ...oppForm, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]} />
             </div>
             <div>
               <Label>Notes</Label>

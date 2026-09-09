@@ -103,7 +103,7 @@ export default function PipelinePage() {
     if (!opp || opp.stage_id === stageId) return;
     const stage = stages.find((s) => s.id === stageId);
     const patch: any = { stage_id: stageId };
-    if (stage) patch.probability = stage.win_probability;
+    if (stage) { patch.probability = stage.win_probability; if (stage.is_won) patch.status = "won"; else if (stage.is_lost) patch.status = "lost"; else patch.status = "open"; }
     setOpps((prev) => prev.map((o) => (o.id === oppId ? { ...o, ...patch } : o)));
     const { error } = await (supabase as any).from("opportunities").update(patch).eq("id", oppId);
     if (error) { toast({ title: "Move failed", description: error.message, variant: "destructive" }); load(); }
@@ -239,7 +239,7 @@ export default function PipelinePage() {
             </div>
             <div><Label>Amount</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} /></div>
             <div><Label>Probability %</Label><Input type="number" value={form.probability} onChange={(e) => setForm({ ...form, probability: e.target.value })} /></div>
-            <div className="col-span-2"><Label>Expected Close Date</Label><Input type="date" value={form.expected_close_date} onChange={(e) => setForm({ ...form, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})} /></div>
+            <div className="col-span-2"><Label>Expected Close Date</Label><Input type="date" value={form.expected_close_date} onChange={(e) => setForm({ ...form, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]} /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>{editId ? "Save" : "Add"}</Button></DialogFooter>
