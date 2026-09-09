@@ -383,11 +383,13 @@ export default function CampaignsPage() {
                 <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Add Prospects Manually</Label>
                 <div className="flex gap-2 mt-2">
                   <Input placeholder="Name" value={prospectForm.name} onChange={e => setProspectForm({ ...prospectForm, name: e.target.value })} className="h-8 text-sm" />
-                  <Input placeholder="Phone" value={prospectForm.phone} onChange={e => setProspectForm({ ...prospectForm, phone: e.target.value })} className="h-8 text-sm" />
+                  <Input maxLength={15} placeholder="Phone" value={prospectForm.phone} onChange={e => setProspectForm({ ...prospectForm, phone: e.target.value.replace(/\D/g, '') })} className="h-8 text-sm" />
                   <Input placeholder="Email" value={prospectForm.email} onChange={e => setProspectForm({ ...prospectForm, email: e.target.value })} className="h-8 text-sm" />
                   <Button size="sm" className="h-8 px-3 shrink-0"
                     onClick={() => {
                       if (!prospectForm.name || (!prospectForm.phone && !prospectForm.email)) return toast.error("Name and phone/email required");
+                      if (prospectForm.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(prospectForm.email)) return toast.error("Invalid email address");
+                      if (prospectForm.phone && prospectForm.phone.length < 10) return toast.error("Phone number must be at least 10 digits");
                       setProspects([...prospects, { ...prospectForm }]);
                       setProspectForm({ name: "", phone: "", email: "" });
                     }}

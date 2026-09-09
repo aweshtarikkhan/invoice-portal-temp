@@ -152,6 +152,14 @@ export default function ClientsPage() {
   };
 
   const handleSave = async () => {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (phone && phone.length < 10) {
+      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!form.display_name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
     const payload = { ...form, org_id: org!.id };
     if (editClient) {
@@ -495,7 +503,7 @@ export default function ClientsPage() {
               </div>
               <div className="space-y-2">
                 <Label>Phone</Label>
-                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} />
               </div>
             </div>
             <div className="space-y-2">

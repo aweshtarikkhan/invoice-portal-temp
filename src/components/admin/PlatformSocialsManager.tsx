@@ -195,7 +195,7 @@ export function PlatformSocialsManager() {
               </div>
               <Input
                 value={formData.phone || ""}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                 placeholder="+91 98765 43210"
                 className="bg-slate-50 border-slate-200 text-slate-800"
               />

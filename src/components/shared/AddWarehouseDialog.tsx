@@ -295,11 +295,11 @@ export function AddWarehouseDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="wh-phone">Contact Phone</Label>
-              <Input
+              <Input maxLength={15}
                 id="wh-phone"
                 placeholder="e.g. +91 98765 43210"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
               />
             </div>
             <div className="space-y-1.5">
@@ -308,7 +308,7 @@ export function AddWarehouseDialog({
                 id="wh-pincode"
                 placeholder="e.g. 400001"
                 value={pincode}
-                onChange={(e) => setPincode(e.target.value)}
+                onChange={(e) => setPincode(e.target.value.replace(/\D/g, ''))}
               />
             </div>
           </div>

@@ -108,6 +108,14 @@ export default function LeadsPage() {
   };
 
   const save = async () => {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (phone && phone.length < 10) {
+      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!org?.id || !form.name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
     const payload: any = {
       org_id: org.id,
@@ -368,7 +376,7 @@ export default function LeadsPage() {
               </Select>
             </div>
             <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-            <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <div><Label>Phone</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} /></div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>

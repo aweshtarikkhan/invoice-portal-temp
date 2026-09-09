@@ -73,6 +73,14 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
   };
 
   const handleSave = async () => {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (phone && phone.length < 10) {
+      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!displayName.trim()) {
       toast({ title: "Error", description: "Display name is required.", variant: "destructive" });
       return;
@@ -162,7 +170,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
             </div>
             <div className="space-y-2">
               <Label>Phone</Label>
-              <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone number" />
+              <Input maxLength={15} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone number" />
             </div>
           </div>
           <div className="space-y-2">
@@ -187,7 +195,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
             </div>
             <div className="space-y-2">
               <Label>Pincode / ZIP</Label>
-              <Input value={billingZip} onChange={(e) => setBillingZip(e.target.value)} placeholder="Pincode" />
+              <Input maxLength={6} value={billingZip} onChange={(e) => setBillingZip(e.target.value.replace(/\D/g, ''))} placeholder="Pincode" />
             </div>
           </div>
           <div className="space-y-2">

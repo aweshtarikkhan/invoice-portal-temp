@@ -369,7 +369,7 @@ export default function SupportPage() {
                       id="phone"
                       placeholder="+91 98765 43210"
                       value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                     />
                   </div>
                   <div className="space-y-1.5">

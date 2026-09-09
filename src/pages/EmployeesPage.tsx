@@ -312,6 +312,14 @@ export default function EmployeesPage() {
   };
 
   const save = async () => {
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (phone && phone.length < 10) {
+      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!org?.id) return;
     if (!form.name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
 
@@ -812,7 +820,7 @@ export default function EmployeesPage() {
 
             <div>
               <Label>Phone Number</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="10-digit mobile" />
+              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} placeholder="10-digit mobile" />
             </div>
 
             <div>

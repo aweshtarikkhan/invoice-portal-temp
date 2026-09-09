@@ -169,7 +169,7 @@ export default function CRMIntegrationsPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Registered Mobile Number</Label>
-                    <Input placeholder="9876543210" value={imConfig.mobile} onChange={e => setImConfig({...imConfig, mobile: e.target.value})} />
+                    <Input placeholder="9876543210" value={imConfig.mobile} onChange={e => setImConfig({...imConfig, mobile: e.target.value.replace(/\D/g, '')})} />
                   </div>
                   <div className="space-y-2">
                     <Label>CRM Key (from IndiaMart Dashboard)</Label>

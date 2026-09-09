@@ -107,6 +107,14 @@ export default function SettingsPage() {
   }, [org]);
 
   const saveProfile = async () => {
+    if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    if (profile.phone && profile.phone.length < 10) {
+      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!profile?.id) return;
     setProfileSaving(true);
     const { error } = await supabase.from("profiles").update({
@@ -297,7 +305,7 @@ export default function SettingsPage() {
                 <Label>Mobile / Phone Number</Label>
                 <Input
                   value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })}
+                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/\D/g, '') })}
                   placeholder="+91 98765 43210"
                 />
                 <p className="text-xs text-muted-foreground">Your contact number for billing and communications.</p>
@@ -392,7 +400,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="space-y-2">
                   <Label>Phone</Label>
-                  <Input value={orgForm.phone} onChange={(e) => setOrgForm({ ...orgForm, phone: e.target.value })} />
+                  <Input value={orgForm.phone} onChange={(e) => setOrgForm({ ...orgForm, phone: e.target.value.replace(/\D/g, '') })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Website</Label>
