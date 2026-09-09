@@ -47,20 +47,20 @@ export function PlatformSettingsManager() {
     }
   };
 
-  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>;
+  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-500" /></div>;
 
   return (
-    <Card className="bg-slate-900 border-slate-800 text-white max-w-2xl">
+    <Card className="bg-white border-slate-200 text-slate-800 max-w-2xl">
       <CardHeader>
         <CardTitle>Global Platform Settings</CardTitle>
-        <CardDescription className="text-slate-400">Configure trials and discounts.</CardDescription>
+        <CardDescription className="text-slate-500">Configure trials and discounts.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="grid grid-cols-2 gap-6">
           <div className="space-y-2">
             <Label>Trial Duration (Days)</Label>
             <Input 
-              className="bg-slate-800 border-slate-700"
+              className="bg-slate-100 border-slate-200"
               value={settings.trial_days || ""}
               onChange={e => setSettings({ ...settings, trial_days: e.target.value })}
             />
@@ -68,7 +68,7 @@ export function PlatformSettingsManager() {
           <div className="space-y-2">
             <Label>Default Trial Plan</Label>
             <Input 
-              className="bg-slate-800 border-slate-700"
+              className="bg-slate-100 border-slate-200"
               value={settings.trial_plan_name || ""}
               onChange={e => setSettings({ ...settings, trial_plan_name: e.target.value })}
             />
@@ -76,16 +76,16 @@ export function PlatformSettingsManager() {
           <div className="space-y-2">
             <Label>Yearly Discount (%)</Label>
             <Input 
-              className="bg-slate-800 border-slate-700"
+              className="bg-slate-100 border-slate-200"
               value={settings.yearly_discount_pct || ""}
               onChange={e => setSettings({ ...settings, yearly_discount_pct: e.target.value })}
             />
           </div>
-          <div className="space-y-3 col-span-2 pt-2 border-t border-slate-800">
+          <div className="space-y-3 col-span-2 pt-2 border-t border-slate-200">
             <div className="flex items-center justify-between">
               <div>
                 <Label>Allow Free Plan</Label>
-                <p className="text-xs text-slate-400">If disabled, the Free plan will be hidden from the pricing page and upgrade modal.</p>
+                <p className="text-xs text-slate-500">If disabled, the Free plan will be hidden from the pricing page and upgrade modal.</p>
               </div>
               <Switch 
                 checked={settings.allow_free_plan !== "false"}

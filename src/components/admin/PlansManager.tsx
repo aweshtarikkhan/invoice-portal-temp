@@ -41,26 +41,26 @@ export function PlansManager() {
     }
   };
 
-  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>;
+  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-500" /></div>;
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-medium text-white mb-4">Subscription Plans</h3>
+      <h3 className="text-lg font-medium text-slate-800 mb-4">Subscription Plans</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {plans.map(plan => (
-          <Card key={plan.id} className="bg-slate-900 border-slate-800 text-white">
+          <Card key={plan.id} className="bg-white border-slate-200 text-slate-800">
             <CardHeader className="pb-2">
               <CardTitle className="text-md">{plan.display_name}</CardTitle>
-              <CardDescription className="text-slate-400">{plan.plan_type.toUpperCase()}</CardDescription>
+              <CardDescription className="text-slate-500">{plan.plan_type.toUpperCase()}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 pt-2">
               <div className="space-y-2">
-                <Label className="text-slate-400">Monthly Price (INR)</Label>
+                <Label className="text-slate-500">Monthly Price (INR)</Label>
                 <div className="flex gap-2">
                   <span className="flex items-center text-slate-500">₹</span>
                   <Input 
                     type="number" 
-                    className="bg-slate-800 border-slate-700 text-white"
+                    className="bg-slate-100 border-slate-200 text-slate-800"
                     value={plan.price_monthly / 100} 
                     onChange={e => {
                       const newPlans = [...plans];
@@ -72,12 +72,12 @@ export function PlansManager() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-slate-400">Yearly Price (INR)</Label>
+                <Label className="text-slate-500">Yearly Price (INR)</Label>
                 <div className="flex gap-2">
                   <span className="flex items-center text-slate-500">₹</span>
                   <Input 
                     type="number" 
-                    className="bg-slate-800 border-slate-700 text-white"
+                    className="bg-slate-100 border-slate-200 text-slate-800"
                     value={plan.price_yearly / 100} 
                     onChange={e => {
                       const newPlans = [...plans];
@@ -90,7 +90,7 @@ export function PlansManager() {
               </div>
               <Button 
                 variant="secondary"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white border-0"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-slate-800 border-0"
                 disabled={savingPlan === plan.name}
                 onClick={() => handleUpdate(plan.name, plan.price_monthly, plan.price_yearly)}
               >

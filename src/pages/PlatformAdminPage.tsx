@@ -76,17 +76,17 @@ interface DashboardData {
 }
 
 const PLAN_COLORS: Record<string, string> = {
-  free: "bg-slate-200 text-slate-200",
-  accounting: "bg-blue-900/60 text-blue-300",
-  hr: "bg-indigo-900/60 text-indigo-300",
-  crm: "bg-emerald-900/60 text-emerald-300",
-  promotion: "bg-rose-900/60 text-rose-300",
-  suite: "bg-amber-900/60 text-amber-300",
-  plan_2: "bg-blue-900/60 text-blue-300",
-  plan_3: "bg-amber-900/60 text-amber-300",
-  plan_4: "bg-indigo-900/60 text-indigo-300",
-  plan_5: "bg-emerald-900/60 text-emerald-300",
-  plan_6: "bg-rose-900/60 text-rose-300",
+  free: "bg-slate-100 text-slate-600 border border-slate-300",
+  accounting: "bg-blue-100 text-blue-700 border border-blue-200",
+  hr: "bg-indigo-100 text-indigo-700 border border-indigo-200",
+  crm: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  promotion: "bg-rose-100 text-rose-700 border border-rose-200",
+  suite: "bg-amber-100 text-amber-700 border border-amber-200",
+  plan_2: "bg-blue-100 text-blue-700 border border-blue-200",
+  plan_3: "bg-amber-100 text-amber-700 border border-amber-200",
+  plan_4: "bg-indigo-100 text-indigo-700 border border-indigo-200",
+  plan_5: "bg-emerald-100 text-emerald-700 border border-emerald-200",
+  plan_6: "bg-rose-100 text-rose-700 border border-rose-200",
 };
 
 const PLAN_DISPLAY_NAMES: Record<string, string> = {
@@ -589,7 +589,7 @@ export default function PlatformAdminPage() {
   if (error || !dashData) {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-slate-800">
-        <p className="text-rose-400 text-lg font-medium mb-2">Failed to load dashboard</p>
+        <p className="text-rose-600 text-lg font-medium mb-2">Failed to load dashboard</p>
         <p className="text-slate-500 text-sm mb-4 max-w-md text-center">{error || "Unknown error"}</p>
         <Button onClick={fetchDashboardData} variant="outline" className="border-slate-200 text-slate-600 hover:bg-slate-100">
           Retry
@@ -649,17 +649,17 @@ export default function PlatformAdminPage() {
         {/* ── Overview ── */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={<Users2 className="w-5 h-5" />} label="Total Users" value={dashData.users_count} color="text-indigo-400" sub="Registered accounts" />
-            <StatCard icon={<Building2 className="w-5 h-5" />} label="Total Businesses" value={dashData.orgs_count} color="text-emerald-400" sub="Active organizations" />
-            <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Est. Revenue" value={`₹${proOrgs * 2999 + basicOrgs * 999}`} color="text-purple-400" sub={`${proOrgs} Pro + ${basicOrgs} Basic`} />
-            <StatCard icon={<FileText className="w-5 h-5" />} label="Total Invoices" value={dashData.organizations.reduce((a, o) => a + (o.invoice_count || 0), 0)} color="text-amber-400" sub="Across all businesses" />
+            <StatCard icon={<Users2 className="w-5 h-5" />} label="Total Users" value={dashData.users_count} color="text-indigo-600" sub="Registered accounts" />
+            <StatCard icon={<Building2 className="w-5 h-5" />} label="Total Businesses" value={dashData.orgs_count} color="text-emerald-600" sub="Active organizations" />
+            <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Est. Revenue" value={`₹${proOrgs * 2999 + basicOrgs * 999}`} color="text-purple-600" sub={`${proOrgs} Pro + ${basicOrgs} Basic`} />
+            <StatCard icon={<FileText className="w-5 h-5" />} label="Total Invoices" value={dashData.organizations.reduce((a, o) => a + (o.invoice_count || 0), 0)} color="text-amber-600" sub="Across all businesses" />
           </div>
 
           {/* Plan Distribution */}
           <Card className="bg-white border-slate-200 text-slate-800">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <CreditCard className="w-5 h-5 text-indigo-400" /> Plan Distribution
+                <CreditCard className="w-5 h-5 text-indigo-600" /> Plan Distribution
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -765,15 +765,15 @@ export default function PlatformAdminPage() {
                           {/* Stats row */}
                           <div className="flex gap-4 mt-3">
                             <div className="px-3 py-1 rounded bg-slate-100 border border-slate-200/50 text-center">
-                              <p className="text-lg font-bold text-indigo-400">{org.member_count}</p>
+                              <p className="text-lg font-bold text-indigo-600">{org.member_count}</p>
                               <p className="text-[10px] text-slate-500">Users</p>
                             </div>
                             <div className="px-3 py-1 rounded bg-slate-100 border border-slate-200/50 text-center">
-                              <p className="text-lg font-bold text-emerald-400">{org.invoice_count}</p>
+                              <p className="text-lg font-bold text-emerald-600">{org.invoice_count}</p>
                               <p className="text-[10px] text-slate-500">Invoices</p>
                             </div>
                             <div className="px-3 py-1 rounded bg-slate-100 border border-slate-200/50 text-center">
-                              <p className="text-lg font-bold text-purple-400">
+                              <p className="text-lg font-bold text-purple-600">
                                 {currentFeatures.length}/{ADMIN_FEATURE_GROUPS.length}
                               </p>
                               <p className="text-[10px] text-slate-500">Features</p>
@@ -839,7 +839,7 @@ export default function PlatformAdminPage() {
                         <Settings2 className="w-4 h-4" />
                         Feature Access Control ({currentFeatures.length} of {ADMIN_FEATURE_GROUPS.length} enabled)
                         {sub.employee_limit && (
-                          <span className="ml-4 text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          <span className="ml-4 text-xs bg-emerald-500/20 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-500/30">
                             Employee Limit: {sub.employee_limit}
                           </span>
                         )}
@@ -869,7 +869,7 @@ export default function PlatformAdminPage() {
                                 key={group.key}
                                 className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
                                   isEnabled
-                                    ? "bg-indigo-950/30 border-indigo-500/30"
+                                    ? "bg-indigo-50 border-indigo-200"
                                     : "bg-slate-100/30 border-slate-200/30 opacity-60"
                                 }`}
                               >
@@ -904,34 +904,34 @@ export default function PlatformAdminPage() {
                 <span className="text-xs text-slate-500 font-medium">Total Registered</span>
                 <p className="text-xl font-black text-slate-800 mt-0.5">{dashData.users.length}</p>
               </div>
-              <Users2 className="w-6 h-6 text-indigo-400" />
+              <Users2 className="w-6 h-6 text-indigo-600" />
             </div>
             <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-medium">Business Suite</span>
-                <p className="text-xl font-black text-indigo-400 mt-0.5">
+                <p className="text-xl font-black text-indigo-600 mt-0.5">
                   {dashData.users.filter(u => getUserPlans(u).includes("suite") || getUserPlans(u).includes("plan_3")).length}
                 </p>
               </div>
-              <Sparkles className="w-6 h-6 text-indigo-400" />
+              <Sparkles className="w-6 h-6 text-indigo-600" />
             </div>
             <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-medium">Business Accounting</span>
-                <p className="text-xl font-black text-blue-400 mt-0.5">
+                <p className="text-xl font-black text-blue-600 mt-0.5">
                   {dashData.users.filter(u => getUserPlans(u).includes("accounting") || getUserPlans(u).includes("plan_2")).length}
                 </p>
               </div>
-              <FileText className="w-6 h-6 text-blue-400" />
+              <FileText className="w-6 h-6 text-blue-600" />
             </div>
             <div className="p-3.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
               <div>
                 <span className="text-xs text-slate-500 font-medium">No Business Assigned</span>
-                <p className="text-xl font-black text-amber-400 mt-0.5">
+                <p className="text-xl font-black text-amber-600 mt-0.5">
                   {dashData.users.filter(u => !u.org_id).length}
                 </p>
               </div>
-              <AlertCircle className="w-6 h-6 text-amber-400" />
+              <AlertCircle className="w-6 h-6 text-amber-600" />
             </div>
           </div>
 
@@ -940,7 +940,7 @@ export default function PlatformAdminPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <Users2 className="w-5 h-5 text-indigo-400" />
+                    <Users2 className="w-5 h-5 text-indigo-600" />
                     All Registered Users & Plan Management
                   </CardTitle>
                   <CardDescription className="text-slate-500 mt-0.5">
@@ -1123,10 +1123,10 @@ export default function PlatformAdminPage() {
                                   <button
                                     onClick={() => copyText(user.email, user.user_id)}
                                     title="Copy Email"
-                                    className="text-slate-500 hover:text-indigo-400"
+                                    className="text-slate-500 hover:text-indigo-600"
                                   >
                                     {copiedUserId === user.user_id ? (
-                                      <Check className="w-3 h-3 text-emerald-400" />
+                                      <Check className="w-3 h-3 text-emerald-600" />
                                     ) : (
                                       <Copy className="w-3 h-3" />
                                     )}
@@ -1141,8 +1141,8 @@ export default function PlatformAdminPage() {
                                     {user.org_name}
                                   </Badge>
                                 ) : (
-                                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-400/90 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded-full font-semibold">
-                                    <AlertCircle className="w-3 h-3 text-amber-400" /> No Business
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-amber-600/90 bg-amber-950/40 border border-amber-800/40 px-2 py-0.5 rounded-full font-semibold">
+                                    <AlertCircle className="w-3 h-3 text-amber-600" /> No Business
                                   </span>
                                 )}
                               </td>
@@ -1150,8 +1150,8 @@ export default function PlatformAdminPage() {
                               {/* Role */}
                               <td className="py-3.5 pr-4">
                                 <Badge className={
-                                  user.role === "owner" ? "bg-amber-900/50 text-amber-300 border border-amber-700/50 text-[10px]" :
-                                  user.role === "admin" ? "bg-purple-900/50 text-purple-300 border border-purple-700/50 text-[10px]" :
+                                  user.role === "owner" ? "bg-amber-900/50 text-amber-700 border border-amber-700/50 text-[10px]" :
+                                  user.role === "admin" ? "bg-purple-900/50 text-purple-700 border border-purple-700/50 text-[10px]" :
                                   user.role === "member" ? "bg-slate-100 text-slate-600 border border-slate-200 text-[10px]" :
                                   "bg-slate-100 text-slate-500 text-[10px]"
                                 }>
@@ -1196,7 +1196,7 @@ export default function PlatformAdminPage() {
                                     <PopoverTrigger asChild>
                                       <Button
                                         size="sm"
-                                        className="bg-indigo-600 hover:bg-indigo-700 text-slate-800 text-xs font-semibold h-8 px-2.5 shadow-sm shadow-indigo-600/30"
+                                        className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold h-8 px-2.5 shadow-sm shadow-indigo-600/30"
                                       >
                                         Change Plan <ChevronDown className="w-3.5 h-3.5 ml-1" />
                                       </Button>
@@ -1207,7 +1207,7 @@ export default function PlatformAdminPage() {
                                           <h4 className="text-xs font-bold text-slate-800 leading-snug">Change Plan for User</h4>
                                           <p className="text-[11px] text-slate-500 truncate mt-0.5">{user.email}</p>
                                           {user.org_name && (
-                                            <p className="text-[10px] text-indigo-400 font-semibold mt-0.5">Org: {user.org_name}</p>
+                                            <p className="text-[10px] text-indigo-600 font-semibold mt-0.5">Org: {user.org_name}</p>
                                           )}
                                         </div>
 
@@ -1229,7 +1229,7 @@ export default function PlatformAdminPage() {
                                               size="sm"
                                               variant="outline"
                                               onClick={() => handleSetUserDirectPlan(user, "accounting")}
-                                              className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-[10px] h-7 px-1.5 font-bold"
+                                              className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-700 text-[10px] h-7 px-1.5 font-bold"
                                             >
                                               📦 Accounting
                                             </Button>
@@ -1273,7 +1273,7 @@ export default function PlatformAdminPage() {
 
                                         {/* If No Business: Helper Prompt */}
                                         {!user.org_id && (
-                                          <div className="mt-3 p-2 bg-amber-950/40 border border-amber-800/40 rounded-lg text-[10px] text-amber-300">
+                                          <div className="mt-3 p-2 bg-amber-950/40 border border-amber-800/40 rounded-lg text-[10px] text-amber-700">
                                             Toggling a plan will automatically create a business for this user.
                                           </div>
                                         )}
@@ -1327,7 +1327,7 @@ export default function PlatformAdminPage() {
                         <p className="text-xs text-slate-500">ID: {admin.id.slice(0, 8)}...</p>
                       </div>
                     </div>
-                    <Badge className="bg-indigo-900/50 text-indigo-300">Super Admin</Badge>
+                    <Badge className="bg-indigo-900/50 text-indigo-700">Super Admin</Badge>
                   </div>
                 ))}
               </div>
@@ -1339,7 +1339,7 @@ export default function PlatformAdminPage() {
           <Card className="bg-white border-slate-200">
             <CardHeader>
               <CardTitle className="text-slate-800 flex items-center gap-2 text-xl">
-                <MessageSquare className="w-5 h-5 text-indigo-400" />
+                <MessageSquare className="w-5 h-5 text-indigo-600" />
                 Feature Access Requests
               </CardTitle>
               <CardDescription className="text-slate-500">
@@ -1358,7 +1358,7 @@ export default function PlatformAdminPage() {
                     <div key={req.id} className="p-4 rounded-xl border border-slate-200 bg-slate-100/50 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <Badge className="bg-indigo-500/20 text-indigo-300 border-0 hover:bg-indigo-500/30">
+                          <Badge className="bg-indigo-500/20 text-indigo-700 border-0 hover:bg-indigo-500/30">
                             {req.feature_name}
                           </Badge>
                           <span className="text-xs text-slate-500">
@@ -1376,7 +1376,7 @@ export default function PlatformAdminPage() {
                       <div className="flex gap-2 w-full md:w-auto">
                         <Button 
                           size="sm" 
-                          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-slate-800"
+                          className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 text-white"
                           onClick={() => {
                             // Automatically switch to orgs tab and expand this org to enable the feature
                             setExpandedOrg(req.org_id);
@@ -1506,7 +1506,7 @@ export default function PlatformAdminPage() {
                             onCheckedChange={(checked) => handleToggleAdActive(ad.id, checked)} 
                             className="data-[state=checked]:bg-indigo-500"
                           />
-                          <Button variant="ghost" size="sm" onClick={() => handleDeleteAd(ad.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-900/20">
+                          <Button variant="ghost" size="sm" onClick={() => handleDeleteAd(ad.id)} className="text-rose-600 hover:text-rose-700 hover:bg-rose-900/20">
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -1540,7 +1540,7 @@ export default function PlatformAdminPage() {
                   <div>
                     <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
                       {[selectedUserForModal.first_name, selectedUserForModal.last_name].filter(Boolean).join(" ") || "Registered User"}
-                      <Badge className="bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-[10px]">
+                      <Badge className="bg-indigo-600/30 text-indigo-700 border border-indigo-500/40 text-[10px]">
                         {selectedUserForModal.role ? selectedUserForModal.role.toUpperCase() : "NO ROLE"}
                       </Badge>
                     </DialogTitle>
@@ -1578,7 +1578,7 @@ export default function PlatformAdminPage() {
                 </div>
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase block">Current Business</span>
-                  <span className="font-medium text-indigo-400 mt-0.5 block truncate">
+                  <span className="font-medium text-indigo-600 mt-0.5 block truncate">
                     {selectedUserForModal.org_name || "None"}
                   </span>
                 </div>
@@ -1589,7 +1589,7 @@ export default function PlatformAdminPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-indigo-400" /> Subscription Plan Allocation
+                      <CreditCard className="w-4 h-4 text-indigo-600" /> Subscription Plan Allocation
                     </h4>
                     <p className="text-xs text-slate-500 mt-0.5">Select and assign the subscription tier for this user's business.</p>
                   </div>
@@ -1616,14 +1616,14 @@ export default function PlatformAdminPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleSetUserDirectPlan(selectedUserForModal, "accounting")}
-                    className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-300 text-xs font-bold py-2"
+                    className="border-blue-700/60 bg-blue-950/30 hover:bg-blue-900/50 text-blue-700 text-xs font-bold py-2"
                   >
                     📦 Accounting (₹599)
                   </Button>
                   <Button
                     size="sm"
                     onClick={() => handleSetUserDirectPlan(selectedUserForModal, "suite")}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-slate-800 text-xs font-black shadow-md py-2"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md py-2"
                   >
                     🏢 Business Suite (₹1,499)
                   </Button>
@@ -1665,7 +1665,7 @@ export default function PlatformAdminPage() {
               {/* Business Association Section */}
               <div className="space-y-3 p-4 rounded-xl bg-slate-100/40 border border-slate-200/60">
                 <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-emerald-400" /> Business Association & Role
+                  <Building2 className="w-4 h-4 text-emerald-600" /> Business Association & Role
                 </h4>
 
                 {selectedUserForModal.org_id ? (
@@ -1693,7 +1693,7 @@ export default function PlatformAdminPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <p className="text-xs text-amber-300 bg-amber-950/30 border border-amber-800/30 p-2.5 rounded-lg">
+                    <p className="text-xs text-amber-700 bg-amber-950/30 border border-amber-800/30 p-2.5 rounded-lg">
                       This user has registered but has not yet created or joined any business.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -1729,7 +1729,7 @@ export default function PlatformAdminPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                          <Settings2 className="w-4 h-4 text-purple-400" /> Module Access Control
+                          <Settings2 className="w-4 h-4 text-purple-600" /> Module Access Control
                         </h4>
                         <p className="text-xs text-slate-500 mt-0.5">Toggle specific feature modules on or off for this user's organization.</p>
                       </div>
@@ -1760,7 +1760,7 @@ export default function PlatformAdminPage() {
                           <div
                             key={group.key}
                             className={`flex items-center justify-between p-2 rounded-lg border text-xs ${
-                              isEnabled ? "bg-indigo-950/30 border-indigo-500/30 text-slate-800" : "bg-white/60 border-slate-200 text-slate-500"
+                              isEnabled ? "bg-indigo-50 border-indigo-200 text-slate-800" : "bg-white/60 border-slate-200 text-slate-500"
                             }`}
                           >
                             <span className="font-medium truncate pr-2">{group.label}</span>
@@ -1782,7 +1782,7 @@ export default function PlatformAdminPage() {
               <span className="text-[11px] text-slate-500">Changes are saved directly to the database.</span>
               <Button
                 onClick={() => setIsManageUserModalOpen(false)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-slate-800 text-xs font-semibold px-5"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-5"
               >
                 Done
               </Button>

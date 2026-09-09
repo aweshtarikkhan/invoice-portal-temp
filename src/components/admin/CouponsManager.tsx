@@ -58,21 +58,21 @@ export function CouponsManager() {
     }
   };
 
-  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>;
+  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-500" /></div>;
 
   return (
     <div className="space-y-6">
-      <Card className="bg-slate-900 border-slate-800 text-white">
+      <Card className="bg-white border-slate-200 text-slate-800">
         <CardHeader>
           <CardTitle>Create Promo Code</CardTitle>
-          <CardDescription className="text-slate-400">Generate a new discount coupon.</CardDescription>
+          <CardDescription className="text-slate-500">Generate a new discount coupon.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 items-end">
             <div className="space-y-2">
               <Label>Code</Label>
               <Input 
-                className="bg-slate-800 border-slate-700 uppercase" 
+                className="bg-slate-100 border-slate-200 uppercase" 
                 placeholder="e.g. SUMMER50"
                 value={newCoupon.code}
                 onChange={e => setNewCoupon({ ...newCoupon, code: e.target.value })}
@@ -81,7 +81,7 @@ export function CouponsManager() {
             <div className="space-y-2">
               <Label>Type</Label>
               <Select value={newCoupon.discount_type} onValueChange={v => setNewCoupon({ ...newCoupon, discount_type: v })}>
-                <SelectTrigger className="bg-slate-800 border-slate-700">
+                <SelectTrigger className="bg-slate-100 border-slate-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -94,7 +94,7 @@ export function CouponsManager() {
               <Label>Value</Label>
               <Input 
                 type="number" 
-                className="bg-slate-800 border-slate-700" 
+                className="bg-slate-100 border-slate-200" 
                 placeholder={newCoupon.discount_type === "percentage" ? "e.g. 20" : "e.g. 50000"}
                 value={newCoupon.discount_value}
                 onChange={e => setNewCoupon({ ...newCoupon, discount_value: e.target.value })}
@@ -104,7 +104,7 @@ export function CouponsManager() {
               <Label>Max Uses (Optional)</Label>
               <Input 
                 type="number" 
-                className="bg-slate-800 border-slate-700" 
+                className="bg-slate-100 border-slate-200" 
                 placeholder="e.g. 100"
                 value={newCoupon.max_uses}
                 onChange={e => setNewCoupon({ ...newCoupon, max_uses: e.target.value })}
@@ -121,14 +121,14 @@ export function CouponsManager() {
         </CardContent>
       </Card>
 
-      <Card className="bg-slate-900 border-slate-800 text-white">
+      <Card className="bg-white border-slate-200 text-slate-800">
         <CardHeader>
           <CardTitle>Active Promo Codes</CardTitle>
         </CardHeader>
         <CardContent>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-slate-400">
+              <tr className="border-b border-slate-200 text-left text-slate-500">
                 <th className="pb-3 pr-4">Code</th>
                 <th className="pb-3 pr-4">Discount</th>
                 <th className="pb-3 pr-4">Uses</th>
@@ -137,7 +137,7 @@ export function CouponsManager() {
             </thead>
             <tbody>
               {coupons.map(coupon => (
-                <tr key={coupon.id} className="border-b border-slate-800/50">
+                <tr key={coupon.id} className="border-b border-slate-200/50">
                   <td className="py-3 pr-4 font-bold text-indigo-400">{coupon.code}</td>
                   <td className="py-3 pr-4">
                     {coupon.discount_type === "percentage" ? `${coupon.discount_value}%` : `?${coupon.discount_value / 100}`}

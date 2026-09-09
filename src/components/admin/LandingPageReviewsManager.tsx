@@ -77,17 +77,17 @@ export function LandingPageReviewsManager() {
     }
   };
 
-  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-400" /></div>;
+  if (loading) return <div><Loader2 className="animate-spin h-6 w-6 text-slate-500" /></div>;
 
   return (
-    <Card className="bg-slate-900 border-slate-800 text-white">
+    <Card className="bg-white border-slate-200 text-slate-800">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
             <CardTitle>Customer Reviews</CardTitle>
-            <CardDescription className="text-slate-400 mt-1">Manage the testimonials shown on the landing page.</CardDescription>
+            <CardDescription className="text-slate-500 mt-1">Manage the testimonials shown on the landing page.</CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={handleAddReview} className="border-slate-700 hover:bg-slate-800 text-slate-100">
+          <Button variant="outline" size="sm" onClick={handleAddReview} className="border-slate-200 hover:bg-slate-100 text-slate-100">
             <Plus className="h-4 w-4 mr-2" /> Add Review
           </Button>
         </div>
@@ -95,37 +95,37 @@ export function LandingPageReviewsManager() {
       <CardContent className="space-y-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {reviews.map((rev, idx) => (
-            <div key={idx} className="bg-slate-800/50 p-4 rounded-lg border border-slate-700 relative group">
+            <div key={idx} className="bg-slate-100/50 p-4 rounded-lg border border-slate-200 relative group">
               <Button variant="ghost" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 hover:bg-red-900/30" onClick={() => handleRemoveReview(idx)}>
                 <Trash2 className="h-4 w-4" />
               </Button>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                    <Label>Name</Label>
-                   <Input className="bg-slate-800 border-slate-700" value={rev.name} onChange={e => handleReviewChange(idx, "name", e.target.value)} />
+                   <Input className="bg-slate-100 border-slate-200" value={rev.name} onChange={e => handleReviewChange(idx, "name", e.target.value)} />
                 </div>
                 <div className="space-y-2">
                    <Label>Role / Company</Label>
-                   <Input className="bg-slate-800 border-slate-700" value={rev.role} onChange={e => handleReviewChange(idx, "role", e.target.value)} />
+                   <Input className="bg-slate-100 border-slate-200" value={rev.role} onChange={e => handleReviewChange(idx, "role", e.target.value)} />
                 </div>
                 <div className="col-span-2 space-y-2">
                    <Label>Quote</Label>
-                   <Textarea className="bg-slate-800 border-slate-700" value={rev.quote} onChange={e => handleReviewChange(idx, "quote", e.target.value)} />
+                   <Textarea className="bg-slate-100 border-slate-200" value={rev.quote} onChange={e => handleReviewChange(idx, "quote", e.target.value)} />
                 </div>
                 <div className="space-y-2">
                    <Label>Rating (1-5)</Label>
-                   <Input type="number" min="1" max="5" className="bg-slate-800 border-slate-700" value={rev.rating} onChange={e => handleReviewChange(idx, "rating", Number(e.target.value))} />
+                   <Input type="number" min="1" max="5" className="bg-slate-100 border-slate-200" value={rev.rating} onChange={e => handleReviewChange(idx, "rating", Number(e.target.value))} />
                 </div>
               </div>
             </div>
           ))}
           {reviews.length === 0 && (
-             <div className="col-span-1 lg:col-span-2 text-center py-6 text-slate-500 text-sm border border-dashed border-slate-700 rounded-lg">
+             <div className="col-span-1 lg:col-span-2 text-center py-6 text-slate-500 text-sm border border-dashed border-slate-200 rounded-lg">
                No reviews found. Click "Add Review" to create one.
              </div>
           )}
         </div>
-        <div className="flex justify-end pt-4 border-t border-slate-800">
+        <div className="flex justify-end pt-4 border-t border-slate-200">
           <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-700">
             {saving ? <Loader2 className="animate-spin h-4 w-4 mr-2" /> : <Save className="h-4 w-4 mr-2" />}
             Save Reviews
