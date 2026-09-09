@@ -5,7 +5,7 @@ import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, CalendarDays, DollarSign } from "lucide-react";
+import { Users, UserCheck, CalendarDays, DollarSign, Download } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
