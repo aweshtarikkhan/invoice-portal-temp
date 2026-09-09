@@ -348,7 +348,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         name: "Assay Biz",
         description: isOnlyAddingExtraEmployees 
           ? `Add ${extraEmployeesToAdd} Extra Employee Slots`
-          : `Subscription Upgrade (${targetPlanNames.join(', ')})`,
+          : `Assay Biz Software Subscription`,
         order_id: orderData.order_id,
         handler: async function (response: any) {
           try {
