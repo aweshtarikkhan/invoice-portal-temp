@@ -549,7 +549,11 @@ export default function EstimateBuilderPage() {
             <div className="flex items-center gap-2">
               <span className="text-sm flex-1">Discount</span>
               <Input type="number" className="w-20 h-8 text-xs" value={discount}
-                onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)} />
+                onChange={(e) => {
+                    let val = parseFloat(e.target.value) || 0;
+                    if (discountType === "percentage" && val > 100) val = 100;
+                    setDiscount(val);
+                  }} />
               <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
                 <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>

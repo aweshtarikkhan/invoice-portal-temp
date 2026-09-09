@@ -1884,9 +1884,16 @@ export default function InvoiceBuilderPage() {
                   type="number"
                   className="h-7 w-16 text-xs text-right"
                   value={discount}
-                  onChange={(e) => setDiscount(parseFloat(e.target.value) || 0)}
+                  onChange={(e) => {
+                    let val = parseFloat(e.target.value) || 0;
+                    if (discountType === "percentage" && val > 100) val = 100;
+                    setDiscount(val);
+                  }}
                 />
-                <Select value={discountType} onValueChange={(v) => setDiscountType(v as any)}>
+                <Select value={discountType} onValueChange={(v) => {
+                    setDiscountType(v as any);
+                    if (v === "percentage" && discount > 100) setDiscount(100);
+                  }}>
                   <SelectTrigger className="h-7 w-14 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="percentage">%</SelectItem>
