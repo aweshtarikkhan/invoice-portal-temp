@@ -2,6 +2,8 @@ import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { logAudit } from "@/lib/audit";
+import { useAuth } from "@/lib/auth";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { Button } from "@/components/ui/button";
@@ -69,6 +71,7 @@ const initials = (name: string) =>
 export default function ClientsPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
+  const { user } = useAuth();
   const [clients, setClients] = useState<any[]>([]);
   const [invoiceAgg, setInvoiceAgg] = useState<Record<string, { billed: number; received: number; due: number; lastActivity: string | null }>>({});
   const [search, setSearch] = useState("");
@@ -155,10 +158,12 @@ export default function ClientsPage() {
       const { error } = await supabase.from("clients").update(payload).eq("id", editClient.id);
       if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Client updated" });
+        if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "client", entityId: editClient.id, action: "update", description: `Client ${payload.display_name} updated` });
     } else {
       const { error } = await supabase.from("clients").insert(payload);
       if (error) { toast({ title: "Creation failed", description: error.message, variant: "destructive" }); return; }
       toast({ title: "Client created" });
+        if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "client", action: "create", description: `Client ${payload.display_name} created` });
     }
     setDialogOpen(false);
     resetForm();
@@ -272,7 +277,7 @@ export default function ClientsPage() {
       await supabase.from("contacts").delete().in("client_id", ids);
       const { error } = await supabase.from("clients").delete().in("id", ids);
       if (error) { toast({ title: "Delete failed", description: error.message, variant: "destructive" }); }
-      else { toast({ title: `${ids.length} client(s) deleted` }); setSelected(new Set()); }
+      else { toast({ title: `${ids.length} client(s) deleted` }); setSelected(new Set()); if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "client", action: "delete", description: `${ids.length} client(s) deleted` }); }
     } catch (err: any) { toast({ title: "Delete failed", description: err.message, variant: "destructive" }); }
     setDeleting(false);
     setDeleteConfirmOpen(false);
