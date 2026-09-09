@@ -273,7 +273,27 @@ function SortableLineItem({
         </div>
         {/* Quantity */}
         <div className="col-span-2 space-y-1">
-          <Input placeholder="1" type="number" className="h-8 text-xs text-center font-medium" onFocus={(e) => e.target.select()} onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} value={line.quantity} onChange={(e) => onChange(index, "quantity", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+          <Input 
+            placeholder="1" 
+            type="number" 
+            className="h-8 text-xs text-center font-medium" 
+            onFocus={(e) => e.target.select()} 
+            onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} 
+            value={line.quantity} 
+            onChange={(e) => {
+              let val = e.target.value;
+              if (val !== "") {
+                const u = (line.unit || "").toLowerCase();
+                if (u === "pcs" || u === "pieces" || u === "box" || u === "boxes" || u === "nos") {
+                  // Prevent typing decimals for these units
+                  val = String(Math.floor(parseFloat(val) || 0));
+                }
+              }
+              onChange(index, "quantity", val === "" ? "" : (parseFloat(val) || 0));
+            }} 
+            min={0} 
+            step={["pcs", "pieces", "box", "boxes", "nos"].includes((line.unit || "").toLowerCase()) ? "1" : "0.01"} 
+          />
           {line.item_id ? (
             <div className="flex flex-col items-center">
               {hasSubUnit ? (
