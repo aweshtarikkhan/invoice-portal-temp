@@ -17,13 +17,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 
+import { useSubscription } from "@/hooks/use-subscription";
+
 export default function CRMIntegrationsPage() {
   const org = useAppStore((s) => s.organization);
-  const plan = org?.subscription_plan || 'free';
-  const isFreePlan = plan === 'free';
+  const { subscriptionPlan } = useSubscription();
+  const plan = subscriptionPlan || org?.subscription_plan || 'free';
+  const isFreePlan = plan.toLowerCase() === 'free' || (!plan.toLowerCase().includes("suite") && !plan.toLowerCase().includes("crm"));
   const [showUpgrade, setShowUpgrade] = useState(false);
 
-  if (isFreePlan || !hasModuleAccess(plan, 'crm')) {
+  if (isFreePlan) {
     return (
       <div className="flex-1 bg-slate-50 min-h-screen">
         <LockedFeature 

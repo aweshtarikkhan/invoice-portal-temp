@@ -4,6 +4,7 @@ import { TablePagination } from "@/components/shared/TablePagination";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { useSubscription } from "@/hooks/use-subscription";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { FREE_PLAN_LIMITS } from "@/lib/subscription";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -75,7 +76,8 @@ export default function InvoicesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const plan = org?.subscription_plan || 'free';
+  const { subscriptionPlan } = useSubscription();
+  const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -106,7 +108,7 @@ export default function InvoicesPage() {
     fetch();
   }, [org?.id]);
 
-  const isFreePlan = plan === 'free';
+  const isFreePlan = plan.toLowerCase() === 'free';
   const currentYear = new Date().getFullYear();
   const invoicesThisYear = invoices.filter(i => {
     if (!i.issue_date && !i.invoice_date && !i.created_at) return false;

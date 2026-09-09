@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { useSubscription } from "@/hooks/use-subscription";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -65,8 +66,9 @@ export default function LeadsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
 
-  const plan = org?.subscription_plan || 'free';
-  const isFreePlan = plan === 'free';
+  const { subscriptionPlan } = useSubscription();
+  const plan = subscriptionPlan || org?.subscription_plan || 'free';
+  const isFreePlan = plan.toLowerCase() === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
   const limitReached = isFreePlan && rows.length >= FREE_PLAN_LIMITS.leads;
 
