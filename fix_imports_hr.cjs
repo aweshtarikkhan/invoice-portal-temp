@@ -11,4 +11,4 @@ const fixImports = (file, extraLucide) => {
   fs.writeFileSync(file, content);
 };
 
-fixImports('src/pages/InventoryReportsPage.tsx', ', Download } from "lucide-react"');
+fixImports('src/pages/HRReportsPage.tsx', ', Download } from "lucide-react"');

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, FileText, IndianRupee, PieChart as PieChartIcon } from "lucide-react";
+import { TrendingUp, FileText, IndianRupee, PieChart as PieChartIcon, Download } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 
 const COLORS = ["hsl(var(--primary))", "hsl(var(--warning))", "hsl(var(--destructive))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "#94a3b8"];
@@ -208,8 +209,30 @@ export default function SalesReportsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Clients by Revenue</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              if (!topClients.length) return;
+              const csvHeader = "Rank,Client Name,Total Revenue\n";
+              const csvRows = topClients.map((cl, i) => 
+                `${i + 1},"${cl.name || ''}",${cl.total || 0}`
+              ).join("\n");
+              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "top_clients.csv";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>

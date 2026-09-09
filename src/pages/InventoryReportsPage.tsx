@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,8 +241,30 @@ export default function InventoryReportsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Low Stock Items</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              if (!lowStock.length) return;
+              const csvHeader = "Item Name,Type,Quantity\n";
+              const csvRows = lowStock.map(item => 
+                `"${item.name || ''}","${item.type || ''}",${item.quantity || 0}`
+              ).join("\n");
+              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "low_stock_items.csv";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>

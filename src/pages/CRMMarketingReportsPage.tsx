@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { Users, DollarSign, Target, Activity, BarChart3, PieChart } from "lucide-react";
+import { Users, DollarSign, Target, Activity, BarChart3, PieChart, Download } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -235,8 +236,30 @@ export default function CRMMarketingReportsPage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Open Opportunities</CardTitle>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              if (!topOpportunities.length) return;
+              const csvHeader = "Opportunity Name,Amount,Probability,Expected Close Date\n";
+              const csvRows = topOpportunities.map(opp => 
+                `"${opp.title || opp.name || ''}",${opp.amount || 0},${opp.probability || 0}%,${opp.expected_close_date || ''}`
+              ).join("\n");
+              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "top_opportunities.csv";
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <Table>
@@ -258,7 +281,7 @@ export default function CRMMarketingReportsPage() {
               ) : (
                 topOpportunities.map((opp) => (
                   <TableRow key={opp.id}>
-                    <TableCell className="font-medium">{opp.name}</TableCell>
+                    <TableCell className="font-medium">{opp.title || opp.name}</TableCell>
                     <TableCell>{formatCurrency(opp.amount || 0)}</TableCell>
                     <TableCell>{opp.probability || 0}%</TableCell>
                     <TableCell>
