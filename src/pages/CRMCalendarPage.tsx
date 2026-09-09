@@ -49,6 +49,14 @@ export default function CRMCalendarPage() {
       .gte("expected_close_date", startStr)
       .lte("expected_close_date", endStr);
 
+    // Fetch leads created in this period
+    const { data: leadsData } = await (supabase as any)
+      .from("leads")
+      .select("*")
+      .eq("org_id", org!.id)
+      .gte("created_at", startStr)
+      .lte("created_at", endStr);
+
     const items: any[] = [];
     
     if (actData) {
@@ -74,6 +82,19 @@ export default function CRMCalendarPage() {
           title: o.title,
           subTitle: o.leads ? `${o.leads.first_name} ${o.leads.last_name}` : '',
           amount: o.amount,
+          status: 'open'
+        });
+      });
+    }
+
+    if (leadsData) {
+      leadsData.forEach((l: any) => {
+        items.push({
+          id: `lead_${l.id}`,
+          type: 'lead',
+          date: l.created_at,
+          title: `New Lead: ${l.first_name} ${l.last_name}`,
+          subTitle: l.company || l.source || '',
           status: 'open'
         });
       });
@@ -105,6 +126,7 @@ export default function CRMCalendarPage() {
   
   const getIcon = (item: any) => {
     if (item.type === 'opportunity') return <DollarSign className="w-3 h-3 mr-1" />;
+    if (item.type === 'lead') return <UserPlus className="w-3 h-3 mr-1" />;
     switch(item.activity_type) {
       case 'call': return <Phone className="w-3 h-3 mr-1" />;
       case 'email': return <Mail className="w-3 h-3 mr-1" />;
@@ -165,7 +187,8 @@ export default function CRMCalendarPage() {
                     {dayItems.map(item => (
                       <div key={item.id} className={`p-1.5 rounded-md text-xs border flex items-center justify-between ${
                         item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-500' : 
-                        item.type === 'opportunity' ? 'bg-amber-50 border-amber-200 text-amber-700' : 
+                        item.type === 'opportunity' ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                        item.type === 'lead' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                         'bg-blue-50 border-blue-200 text-blue-700'
                       }`}>
                         <div className="flex flex-col gap-0.5 truncate w-full">
