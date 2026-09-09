@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
+import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { Users, DollarSign, Target, Activity, BarChart3, PieChart, Download } from "lucide-react";
+import { Users, DollarSign, Target, Activity, BarChart3, PieChart, Download, FileText } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -106,7 +107,11 @@ export default function CRMMarketingReportsPage() {
       setLeadsSourceData(sourceData);
 
       // Top 5 Open Opportunities
-      const openOpp = opportunities?.filter((o: any) => o.status !== "won" && o.status !== "lost") || [];
+      const openOpp = opportunities?.filter((o: any) => {
+          if (o.status === "won" || o.status === "lost") return false;
+          if (!o.expected_close_date) return true;
+          return new Date(o.expected_close_date).getTime() >= new Date().setHours(0,0,0,0);
+        }) || [];
       const top5 = openOpp
         .sort((a, b) => (b.amount || 0) - (a.amount || 0))
         .slice(0, 5);
@@ -238,28 +243,44 @@ export default function CRMMarketingReportsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Open Opportunities</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              if (!topOpportunities.length) return;
-              const csvHeader = "Opportunity Name,Amount,Probability,Expected Close Date\n";
-              const csvRows = topOpportunities.map(opp => 
-                `"${opp.title || opp.name || ''}",${opp.amount || 0},${opp.probability || 0}%,${opp.expected_close_date || ''}`
-              ).join("\n");
-              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "top_opportunities.csv";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!topOpportunities.length) return;
+                const headers = ["Opportunity Name", "Amount", "Probability", "Expected Close Date"];
+                const rows = topOpportunities.map(opp => [
+                  opp.title || opp.name || '',
+                  opp.amount || 0,
+                  `${opp.probability || 0}%`,
+                  opp.expected_close_date ? format(parseISO(opp.expected_close_date), 'MMM d, yyyy') : '-'
+                ]);
+                exportTableToCSV(headers, rows, "top_opportunities");
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!topOpportunities.length) return;
+                const headers = ["Opportunity Name", "Amount", "Probability", "Expected Close Date"];
+                const rows = topOpportunities.map(opp => [
+                  opp.title || opp.name || '',
+                  formatCurrency(opp.amount || 0),
+                  `${opp.probability || 0}%`,
+                  opp.expected_close_date ? format(parseISO(opp.expected_close_date), 'MMM d, yyyy') : '-'
+                ]);
+                exportTableToPDF("Top 5 Open Opportunities", headers, rows, "top_opportunities");
+              }}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>

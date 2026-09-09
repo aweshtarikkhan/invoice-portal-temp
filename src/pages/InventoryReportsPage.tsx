@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
+import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -243,28 +244,42 @@ export default function InventoryReportsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Low Stock Items</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              if (!lowStock.length) return;
-              const csvHeader = "Item Name,Type,Quantity\n";
-              const csvRows = lowStock.map(item => 
-                `"${item.name || ''}","${item.type || ''}",${item.quantity || 0}`
-              ).join("\n");
-              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "low_stock_items.csv";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!lowStock.length) return;
+                const headers = ["Item Name", "Type", "Quantity"];
+                const rows = lowStock.map(item => [
+                  item.name || '',
+                  item.type || '',
+                  item.quantity || 0
+                ]);
+                exportTableToCSV(headers, rows, "low_stock_items");
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!lowStock.length) return;
+                const headers = ["Item Name", "Type", "Quantity"];
+                const rows = lowStock.map(item => [
+                  item.name || '',
+                  item.type || '',
+                  item.quantity || 0
+                ]);
+                exportTableToPDF("Top 5 Low Stock Items", headers, rows, "low_stock_items");
+              }}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>

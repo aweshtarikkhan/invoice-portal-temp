@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
+import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, CalendarDays, DollarSign } from "lucide-react";
@@ -490,28 +491,48 @@ export default function HRReportsPage() {
       <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg text-gray-900">Recent Attendance</CardTitle>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => {
-                if (!attendance.length) return;
-                const csvHeader = "Date,Employee,Status,Check In,Check Out,Work Hours\n";
-                const csvRows = attendance.map(att => 
-                  `"${att.date || ''}","${att.employees?.first_name || ''} ${att.employees?.last_name || ''}","${att.status || ''}","${att.check_in || ''}","${att.check_out || ''}","${att.work_hours || ''}"`
-                ).join("\n");
-                const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement("a");
-                a.href = url;
-                a.download = "recent_attendance.csv";
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-              }}
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if (!attendance.length) return;
+                  const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
+                  const rows = attendance.map(att => [
+                    att.date || '',
+                    `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
+                    att.status || '',
+                    att.check_in || '',
+                    att.check_out || '',
+                    att.work_hours || ''
+                  ]);
+                  exportTableToCSV(headers, rows, "recent_attendance");
+                }}
+              >
+                <Download className="w-4 h-4 mr-2" />
+                CSV
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  if (!attendance.length) return;
+                  const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
+                  const rows = attendance.map(att => [
+                    att.date || '',
+                    `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
+                    att.status || '',
+                    att.check_in || '',
+                    att.check_out || '',
+                    att.work_hours || ''
+                  ]);
+                  exportTableToPDF("Recent Attendance", headers, rows, "recent_attendance");
+                }}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                PDF
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
           <div className="rounded-md border border-gray-200">

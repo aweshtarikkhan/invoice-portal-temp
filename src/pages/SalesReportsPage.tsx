@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
+import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -211,28 +212,42 @@ export default function SalesReportsPage() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top 5 Clients by Revenue</CardTitle>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => {
-              if (!topClients.length) return;
-              const csvHeader = "Rank,Client Name,Total Revenue\n";
-              const csvRows = topClients.map((cl, i) => 
-                `${i + 1},"${cl.name || ''}",${cl.total || 0}`
-              ).join("\n");
-              const blob = new Blob([csvHeader + csvRows], { type: "text/csv" });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "top_clients.csv";
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-            }}
-          >
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!topClients.length) return;
+                const headers = ["Rank", "Client Name", "Total Revenue"];
+                const rows = topClients.map((cl, i) => [
+                  i + 1,
+                  cl.name || '',
+                  cl.total || 0
+                ]);
+                exportTableToCSV(headers, rows, "top_clients");
+              }}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              CSV
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!topClients.length) return;
+                const headers = ["Rank", "Client Name", "Total Revenue"];
+                const rows = topClients.map((cl, i) => [
+                  i + 1,
+                  cl.name || '',
+                  fmt(cl.total || 0)
+                ]);
+                exportTableToPDF("Top 5 Clients by Revenue", headers, rows, "top_clients");
+              }}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              PDF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
