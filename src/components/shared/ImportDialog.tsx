@@ -129,7 +129,7 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
     const m: Record<string, string> = {};
     fields.forEach((f) => {
       const match = fileHeaders.find((h) => {
-        const norm = (s: string) => s.toLowerCase().replace(/[_\-\s]/g, "");
+        const norm = (s: any) => String(s || "").toLowerCase().replace(/[_\-\s]/g, "");
         return norm(h) === norm(f.key) || norm(h) === norm(f.label);
       });
       if (match) m[f.key] = match;

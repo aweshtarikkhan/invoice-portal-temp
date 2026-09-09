@@ -54,7 +54,8 @@ function parseCsv(text: string): ParsedRow[] {
   const refIdx = find("ref", "utr", "txn id", "transaction id", "cheque");
   const balIdx = find("balance", "running balance");
 
-  const parseDate = (s: string): string => {
+  const parseDate = (val: any): string => {
+    const s = String(val||"").trim();
     if (!s) return new Date().toISOString().slice(0, 10);
     // Try dd/mm/yyyy or dd-mm-yyyy or yyyy-mm-dd
     const m1 = s.match(/^(\d{2})[-\/](\d{2})[-\/](\d{4})/);

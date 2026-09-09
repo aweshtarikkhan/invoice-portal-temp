@@ -374,7 +374,7 @@ export default function EstimatesPage() {
           let success = 0, errors = 0;
           const { data: clients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           for (const row of rows) {
-            const client = clients?.find((c) => c.display_name.toLowerCase() === (row.client_name || "").toLowerCase());
+            const client = clients?.find((c) => c.display_name.toLowerCase() === String(row.client_name || "").toLowerCase());
             if (!client) { errors++; continue; }
             const { error } = await supabase.from("estimates").insert({
               org_id: org!.id,

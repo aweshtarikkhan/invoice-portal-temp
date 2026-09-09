@@ -452,8 +452,9 @@ export default function InvoicesPage() {
           const clientMap = new Map<string, string>();
           existingClients?.forEach(c => clientMap.set(c.display_name.toLowerCase(), c.id));
 
-          const parseDate = (d: string) => {
-            if (!d) return null;
+          const parseDate = (val: any) => {
+            if (!val) return null;
+            const d = String(val).trim();
             // Handle DD-MM-YYYY or DD/MM/YYYY
             const m = d.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
             if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
@@ -465,7 +466,7 @@ export default function InvoicesPage() {
           // Group rows by invoice_number to support multiple line items per invoice
           const invoiceGroups = new Map<string, any[]>();
           for (const row of rows) {
-            const num = (row.invoice_number || "").trim();
+            const num = String(row.invoice_number || "").trim();
             if (!num) continue;
             if (!invoiceGroups.has(num)) invoiceGroups.set(num, []);
             invoiceGroups.get(num)!.push(row);
@@ -473,7 +474,7 @@ export default function InvoicesPage() {
 
           for (const [invNum, groupRows] of invoiceGroups.entries()) {
             const row = groupRows[0]; // Primary invoice data from the first row
-            const name = (row.client_name || "").trim();
+            const name = String(row.client_name || "").trim();
             if (!name) { errors++; continue; }
             let clientId = clientMap.get(name.toLowerCase());
             // Auto-create client if not found
