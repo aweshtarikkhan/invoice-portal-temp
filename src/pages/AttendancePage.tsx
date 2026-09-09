@@ -597,20 +597,30 @@ export default function AttendancePage() {
   };
 
   const cycle = (empId: string, dateStr: string) => {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
+    if (dateStr > todayStr) {
+      toast({ title: "Future date not allowed", description: "Attendance can only be marked for today or past dates.", variant: "destructive" });
+      return;
+    }
     const d = parseISO(dateStr);
     const orgWeeklyOffs = org?.weekly_offs || [0];
     const isOff = orgWeeklyOffs.includes(d.getDay());
-    const todayStr = format(new Date(), "yyyy-MM-dd");
-    const current = att[`${empId}|${dateStr}`] || (isOff ? "holiday" : (dateStr <= todayStr ? "absent" : "present"));
+    const current = att[`${empId}|${dateStr}`] || (isOff ? "holiday" : "absent");
     const idx = STATUS_OPTIONS.findIndex((s) => s.value === current);
     const next = STATUS_OPTIONS[(idx + 1) % STATUS_OPTIONS.length].value;
     setCell(empId, dateStr, next);
   };
 
   const markRowAll = (empId: string, status: Status) => {
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     setAtt((prev) => {
       const next = { ...prev };
-      days.forEach((d) => { next[`${empId}|${format(d, "yyyy-MM-dd")}`] = status; });
+      days.forEach((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        if (ds <= todayStr) { // only past and today
+          next[`${empId}|${ds}`] = status;
+        }
+      });
       return next;
     });
   };
@@ -618,10 +628,13 @@ export default function AttendancePage() {
   const save = async () => {
     if (!org?.id) return;
     setSaving(true);
+    const todayStr = format(new Date(), "yyyy-MM-dd");
     const rows: any[] = [];
     const clkRows: any[] = [];
     Object.entries(att).forEach(([k, status]) => {
       const [employee_id, attendance_date] = k.split("|");
+      // Skip future dates - never save attendance for future
+      if (attendance_date > todayStr) return;
       if (employees.find((e) => e.id === employee_id)) {
         const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; 
         rows.push({ org_id: org.id, employee_id, attendance_date, status: opt.baseStatus, override_status: opt.value });
@@ -1261,9 +1274,16 @@ export default function AttendancePage() {
                         displayStatus = "absent";
                       }
 
+                      const isFuture = ds > todayStr;
+
                       return (
-                        <TableCell key={ds} className="text-center p-1 relative group">
-                          {isHoliday || isOff ? (
+                        <TableCell key={ds} className={`text-center p-1 relative group ${isFuture ? "opacity-40 bg-slate-50" : ""}`}>
+                          {isFuture ? (
+                            // Future date — locked, no interaction
+                            <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] text-slate-400 border-dashed border-slate-300 cursor-not-allowed" title="Future date — cannot mark attendance">
+                              —
+                            </span>
+                          ) : isHoliday || isOff ? (
                             <span className="inline-flex items-center justify-center h-6 w-7 rounded border text-[10px] font-semibold bg-muted text-muted-foreground border-border" title={ds}>HO</span>
                           ) : (
                             <DropdownMenu>
@@ -1292,7 +1312,7 @@ export default function AttendancePage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           )}
-                          {c && (
+                          {c && !isFuture && (
                             <button onClick={() => setSelectedClockInfo(c)} className="absolute top-0 right-0 p-0.5 text-blue-500 hover:text-blue-700 bg-white rounded-full shadow-sm opacity-80 hover:opacity-100" title="View details">
                               <MapPin className="w-3 h-3" />
                             </button>
