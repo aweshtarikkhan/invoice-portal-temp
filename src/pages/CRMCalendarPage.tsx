@@ -1,26 +1,24 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { format, startOfWeek, endOfWeek, eachDayOfInterval, isSameDay, parseISO, isToday, addWeeks, subWeeks, startOfMonth, endOfMonth, isSameMonth } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Mail, Clock, CheckCircle2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Phone, Mail, Clock, DollarSign } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function CRMCalendarPage() {
   const org = useAppStore((s) => s.organization);
-  const [activities, setActivities] = useState<any[]>([]);
+  const [calendarItems, setCalendarItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // View mode: 'week' or 'month'
   const [viewMode, setViewMode] = useState<'week' | 'month'>('month');
 
   useEffect(() => {
-    if (org?.id) fetchActivities();
+    if (org?.id) fetchCalendarData();
   }, [org?.id, currentDate, viewMode]);
 
-  const fetchActivities = async () => {
+  const fetchCalendarData = async () => {
     setLoading(true);
     let start, end;
     
@@ -32,14 +30,56 @@ export default function CRMCalendarPage() {
       end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
     }
 
-    const { data } = await (supabase as any)
+    const startStr = start.toISOString();
+    const endStr = end.toISOString();
+
+    // Fetch activities
+    const { data: actData } = await (supabase as any)
       .from("activities")
       .select("*, leads(first_name, last_name, company)")
       .eq("org_id", org!.id)
-      .gte("due_date", start.toISOString())
-      .lte("due_date", end.toISOString());
+      .gte("due_at", startStr)
+      .lte("due_at", endStr);
       
-    setActivities(data || []);
+    // Fetch opportunities
+    const { data: oppData } = await (supabase as any)
+      .from("opportunities")
+      .select("*, leads(first_name, last_name, company)")
+      .eq("org_id", org!.id)
+      .gte("expected_close_date", startStr)
+      .lte("expected_close_date", endStr);
+
+    const items: any[] = [];
+    
+    if (actData) {
+      actData.forEach((a: any) => {
+        items.push({
+          id: `act_${a.id}`,
+          type: 'activity',
+          date: a.due_at,
+          title: a.subject,
+          subTitle: a.leads ? `${a.leads.first_name} ${a.leads.last_name}` : '',
+          activity_type: a.activity_type,
+          status: a.completed_at ? 'completed' : 'open'
+        });
+      });
+    }
+
+    if (oppData) {
+      oppData.forEach((o: any) => {
+        items.push({
+          id: `opp_${o.id}`,
+          type: 'opportunity',
+          date: o.expected_close_date,
+          title: o.title,
+          subTitle: o.leads ? `${o.leads.first_name} ${o.leads.last_name}` : '',
+          amount: o.amount,
+          status: 'open'
+        });
+      });
+    }
+
+    setCalendarItems(items);
     setLoading(false);
   };
 
@@ -63,8 +103,9 @@ export default function CRMCalendarPage() {
     setCurrentDate(prev => viewMode === 'week' ? subWeeks(prev, 1) : subWeeks(prev, 4));
   };
   
-  const getActivityIcon = (type: string) => {
-    switch(type) {
+  const getIcon = (item: any) => {
+    if (item.type === 'opportunity') return <DollarSign className="w-3 h-3 mr-1" />;
+    switch(item.activity_type) {
       case 'call': return <Phone className="w-3 h-3 mr-1" />;
       case 'email': return <Mail className="w-3 h-3 mr-1" />;
       case 'meeting': return <CalendarIcon className="w-3 h-3 mr-1" />;
@@ -110,25 +151,29 @@ export default function CRMCalendarPage() {
           </div>
           <div className={`grid grid-cols-7 ${viewMode === 'month' ? 'auto-rows-[minmax(120px,auto)]' : 'auto-rows-[minmax(200px,auto)]'} bg-white`}>
             {days.map((day, idx) => {
-              const dayActivities = activities.filter(a => isSameDay(parseISO(a.due_date), day));
+              const dayItems = calendarItems.filter(a => a.date && isSameDay(parseISO(a.date), day));
               const isCurrentMonth = isSameMonth(day, currentDate);
               
               return (
-                <div key={idx} className={`border-r border-b border-slate-100 p-2 min-h-24 ${!isCurrentMonth && viewMode === 'month' ? 'bg-slate-50/50 text-slate-400' : ''}`}>
+                <div key={idx} className={`border-r border-b border-slate-100 p-2 min-h-[6rem] ${!isCurrentMonth && viewMode === 'month' ? 'bg-slate-50/50 text-slate-400' : ''}`}>
                   <div className={`text-right text-sm font-medium mb-2 ${isToday(day) ? 'text-blue-600' : ''}`}>
                     <span className={isToday(day) ? 'bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full' : ''}>
                       {format(day, 'd')}
                     </span>
                   </div>
                   <div className="space-y-1.5 max-h-32 overflow-y-auto">
-                    {dayActivities.map(act => (
-                      <div key={act.id} className={`p-1.5 rounded-md text-xs border flex items-center justify-between ${act.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-500' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                    {dayItems.map(item => (
+                      <div key={item.id} className={`p-1.5 rounded-md text-xs border flex items-center justify-between ${
+                        item.status === 'completed' ? 'bg-slate-50 border-slate-200 text-slate-500' : 
+                        item.type === 'opportunity' ? 'bg-amber-50 border-amber-200 text-amber-700' : 
+                        'bg-blue-50 border-blue-200 text-blue-700'
+                      }`}>
                         <div className="flex flex-col gap-0.5 truncate w-full">
                           <div className="flex items-center font-medium truncate">
-                            {getActivityIcon(act.activity_type)} {act.title}
+                            {getIcon(item)} {item.title}
                           </div>
                           <div className="truncate opacity-80 text-[10px]">
-                            {act.leads?.first_name} {act.leads?.last_name}
+                            {item.subTitle} {item.amount ? `(₹${item.amount})` : ''}
                           </div>
                         </div>
                       </div>
