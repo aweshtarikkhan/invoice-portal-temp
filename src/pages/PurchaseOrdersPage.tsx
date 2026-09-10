@@ -22,6 +22,17 @@ const poImportFields: ImportField[] = [
   { key: "status", label: "Status" },
 ];
 
+
+function normalizePOStatus(st: any): string {
+  if (!st) return "draft";
+  const s = String(st).toLowerCase().trim();
+  if (s === "unpaid" || s === "pending") return "sent";
+  if (["draft", "sent", "received", "cancelled"].includes(s)) {
+    return s;
+  }
+  return "draft";
+}
+
 export default function PurchaseOrdersPage() {
   const org = useAppStore((s) => s.organization);
   const navigate = useNavigate();
@@ -197,7 +208,7 @@ export default function PurchaseOrdersPage() {
               org_id: org?.id,
               po_number: row.po_number,
               total: Number(row.total) || 0,
-              status: row.status || "draft",
+              status: normalizePOStatus(row.status),
               po_date: row.po_date || new Date().toISOString()
             });
             if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }

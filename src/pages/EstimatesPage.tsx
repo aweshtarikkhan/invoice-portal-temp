@@ -44,6 +44,18 @@ const statusMap: Record<EstimateStatus, { label: string; variant: "default" | "i
 
 const PIE_COLORS = ["hsl(201, 96%, 42%)", "hsl(142, 71%, 45%)", "hsl(32, 95%, 44%)", "hsl(0, 72%, 51%)", "hsl(262, 83%, 58%)", "hsl(215, 16%, 47%)", "hsl(186, 80%, 40%)"];
 
+
+function normalizeEstStatus(st: any): "draft" | "sent" | "accepted" | "rejected" | "expired" {
+  if (!st) return "draft";
+  const s = String(st).toLowerCase().trim();
+  if (s === "pending") return "sent";
+  if (s === "approved") return "accepted";
+  if (["draft", "sent", "accepted", "rejected", "expired"].includes(s)) {
+    return s as any;
+  }
+  return "draft";
+}
+
 export default function EstimatesPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);

@@ -23,6 +23,17 @@ const billImportFields: ImportField[] = [
   { key: "status", label: "Status" },
 ];
 
+
+function normalizeBillStatus(st: any): "draft" | "received" | "partial" | "paid" | "cancelled" {
+  if (!st) return "draft";
+  const s = String(st).toLowerCase().trim();
+  if (s === "unpaid" || s === "pending") return "received";
+  if (["draft", "received", "partial", "paid", "cancelled"].includes(s)) {
+    return s as any;
+  }
+  return "draft";
+}
+
 export default function BillsPage() {
   const org = useAppStore((s) => s.organization);
   const navigate = useNavigate();
@@ -131,7 +142,7 @@ export default function BillsPage() {
               org_id: org?.id,
               bill_number: row.bill_number,
               total: Number(row.total) || 0,
-              status: row.status || "draft",
+              status: normalizeBillStatus(row.status),
               bill_date: row.bill_date || new Date().toISOString(),
               due_date: row.due_date || new Date().toISOString()
             });
