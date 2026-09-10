@@ -1,22 +1,9 @@
 const fs = require('fs');
 
-let content = fs.readFileSync('src/pages/PipelinePage.tsx', 'utf8');
-content = content.replace(
-  'onChange={(e) => setForm({ ...form, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})}',
-  'onChange={(e) => setForm({ ...form, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]}'
-);
-fs.writeFileSync('src/pages/PipelinePage.tsx', content);
+let c = fs.readFileSync('src/pages/TallySyncPage.tsx', 'utf8');
 
-let content2 = fs.readFileSync('src/pages/DealDetailPage.tsx', 'utf8');
-content2 = content2.replace(
-  'onChange={e => setEditForm({ ...editForm, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})}',
-  'onChange={e => setEditForm({ ...editForm, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]}'
-);
-fs.writeFileSync('src/pages/DealDetailPage.tsx', content2);
+c = c.replace('      )}\r\n   : !parsedData ? (', '      )\r\n   : !parsedData ? (');
+c = c.replace('      )}\n   : !parsedData ? (', '      )\n   : !parsedData ? (');
 
-let content3 = fs.readFileSync('src/pages/LeadDetailPage.tsx', 'utf8');
-content3 = content3.replace(
-  'onChange={(e) => setOppForm({ ...oppForm, expected_close_date: e.target.value } min={new Date().toISOString().split("T")[0]})}',
-  'onChange={(e) => setOppForm({ ...oppForm, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]}'
-);
-fs.writeFileSync('src/pages/LeadDetailPage.tsx', content3);
+fs.writeFileSync('src/pages/TallySyncPage.tsx', c);
+console.log('Fixed syntax error');

@@ -183,8 +183,7 @@ setSyncResult({ parties: partiesAdded, invoices: invoicesAdded, payments: paymen
       <SEO title="Tally Master Sync" />
       <PageHeader title="Tally Master Sync" description="Import Clients, Vendors, Sales, Purchases, and Payments directly from Tally Outstanding Reports." />
 
-      {syncResult ? 
-      {syncResult && (
+      {syncResult ? (
         <Card className="mt-6 border-success bg-success/5">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -232,7 +231,7 @@ setSyncResult({ parties: partiesAdded, invoices: invoicesAdded, payments: paymen
             </div>
           </CardContent>
         </Card>
-      )}
+      )
    : !parsedData ? (
         <div className="grid md:grid-cols-2 gap-6 mt-6">
           <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => { setSyncType("debtors"); fileRef.current?.click(); }}>

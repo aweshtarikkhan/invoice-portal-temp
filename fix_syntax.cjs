@@ -1,10 +1,9 @@
 const fs = require('fs');
-['src/pages/BillsPage.tsx', 'src/pages/EstimatesPage.tsx', 'src/pages/InvoicesPage.tsx', 'src/pages/PurchaseOrdersPage.tsx'].forEach(f => {
-  let c = fs.readFileSync(f, 'utf8');
-  // Literally replace the string "},\\n  {" 
-  c = c.replace(/},\\[nr]  {/g, '},\n  {');
-  // Just in case it's actually written as a literal \ and n
-  c = c.replace(/},\\n  {/g, '},\n  {');
-  fs.writeFileSync(f, c);
-  console.log('Fixed', f);
-});
+
+let c = fs.readFileSync('src/pages/TallySyncPage.tsx', 'utf8');
+
+c = c.replace('{syncResult ? \r\n      {syncResult && (', '{syncResult ? (');
+c = c.replace('{syncResult ? \n      {syncResult && (', '{syncResult ? (');
+
+fs.writeFileSync('src/pages/TallySyncPage.tsx', c);
+console.log('Fixed syntax error');
