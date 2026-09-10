@@ -464,6 +464,10 @@ export default function InvoicesPage() {
           };
 
           // Group rows by invoice_number to support multiple line items per invoice
+          const { data: existingTaxes } = await supabase.from("tax_rates").select("id, rate").eq("org_id", org!.id);
+          const taxMap = new Map();
+          existingTaxes?.forEach(t => taxMap.set(Number(t.rate), t.id));
+
           const invoiceGroups = new Map<string, any[]>();
           for (const row of rows) {
             const num = String(row.invoice_number || "").trim();
@@ -542,13 +546,37 @@ export default function InvoicesPage() {
                   const rate = parseFloat(gRow.rate) || 0;
                   const itemAmount = gRow.item_amount ? parseFloat(gRow.item_amount) : (qty * rate);
 
+                  const gstPct = parseFloat(gRow.tax_rate) || 0;
+                  let taxId = null;
+                  let taxAmount = 0;
+                  if (gstPct > 0) {
+                    taxAmount = (itemAmount * gstPct) / 100;
+                    if (taxMap.has(gstPct)) {
+                      taxId = taxMap.get(gstPct);
+                    } else {
+                      const { data: newTax } = await supabase.from("tax_rates").insert({
+                        org_id: org!.id,
+                        name: `GST ${gstPct}%`,
+                        rate: gstPct,
+                        type: "gst",
+                        is_recoverable: true
+                      }).select("id").single();
+                      if (newTax) {
+                        taxId = newTax.id;
+                        taxMap.set(gstPct, taxId);
+                      }
+                    }
+                  }
+
                   lineItems.push({
                     invoice_id: newInvoice.id,
                     name: gRow.item_name,
                     hsn_code: gRow.item_hsn || null,
                     quantity: qty,
                     rate: rate,
-                    amount: itemAmount,
+                    amount: org?.gst_number ? itemAmount + taxAmount : itemAmount,
+                    tax_id: taxId,
+                    tax_amount: taxAmount,
                     sort_order: i + 1
                   });
                 }
@@ -566,7 +594,7 @@ export default function InvoicesPage() {
             const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
             await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cid);
           }
-          window.location.reload();
+          setTimeout(() => window.location.reload(), 3000);
           return { success, errors };
         }}
       />
