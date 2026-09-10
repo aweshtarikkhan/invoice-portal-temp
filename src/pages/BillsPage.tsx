@@ -125,7 +125,7 @@ export default function BillsPage() {
         entityName="Purchase Invoices"
         fields={billImportFields}
         onImport={async (rows) => {
-          let s = 0, e = 0;
+          let s = 0, e = 0; const failedRows: any[] = [];
           for (const row of rows) {
             const { error } = await supabase.from("bills").insert({
               org_id: org?.id,
@@ -135,10 +135,10 @@ export default function BillsPage() {
               bill_date: row.bill_date || new Date().toISOString(),
               due_date: row.due_date || new Date().toISOString()
             });
-            if (error) e++; else s++;
+            if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
           }
           load();
-          return { success: s, errors: e };
+          return { success: s, errors: e, failedRows };
         }}
       />
     </div>

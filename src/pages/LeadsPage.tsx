@@ -406,7 +406,7 @@ export default function LeadsPage() {
         fields={leadImportFields}
         entityName="Leads"
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: any[] = [];
           for (const row of rows) {
             if (!row.name || !String(row.name).trim()) {
               errors++;
@@ -433,7 +433,7 @@ export default function LeadsPage() {
             }
           }
           load();
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
     </div>

@@ -1,3 +1,4 @@
+import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -51,6 +52,16 @@ interface Expense {
   created_at: string;
 }
 
+
+const expenseImportFields: ImportField[] = [
+  { key: "category", label: "Category", required: true },
+  { key: "description", label: "Description" },
+  { key: "amount", label: "Amount", required: true },
+  { key: "expense_date", label: "Date", required: true },
+  { key: "is_recurring", label: "Is Recurring (Yes/No)" },
+  { key: "recurring_frequency", label: "Frequency (e.g. monthly)" },
+];
+
 const emptyForm = {
   category: "", description: "", amount: "", expense_date: format(new Date(), "yyyy-MM-dd"),
   is_recurring: false, recurring_frequency: "monthly",
@@ -61,6 +72,7 @@ export default function BusinessExpensesPage() {
   const { toast } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [period, setPeriod] = useState("current");
@@ -244,6 +256,32 @@ export default function BusinessExpensesPage() {
           <Plus className="mr-1 h-4 w-4" /> Add Expense
         </Button>
       </PageActionBar>
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        fields={expenseImportFields}
+        entityName="Expenses"
+        onImport={async (rows) => {
+          let success = 0, errors = 0;
+          const failedRows: any[] = [];
+          for (const row of rows) {
+            const { error } = await supabase.from("business_expenses").insert({
+              org_id: org?.id,
+              category: row.category,
+              description: row.description || null,
+              amount: parseFloat(row.amount) || 0,
+              expense_date: row.expense_date || new Date().toISOString(),
+              is_recurring: row.is_recurring?.toLowerCase() === "yes" || row.is_recurring?.toLowerCase() === "true",
+              recurring_frequency: row.recurring_frequency || null
+            });
+            if (error) { errors++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else success++;
+          }
+          fetchExpenses();
+          return { success, errors, failedRows };
+        }}
+      />
+  
 
       <SummaryRibbon
         label="Expense Summary"

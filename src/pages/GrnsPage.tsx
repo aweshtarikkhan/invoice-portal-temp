@@ -1,3 +1,4 @@
+import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
@@ -10,12 +11,21 @@ import { useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
+
+const grnImportFields: ImportField[] = [
+  { key: "grn_number", label: "GRN Number", required: true },
+  { key: "received_date", label: "Received Date", required: true },
+  { key: "status", label: "Status (draft/received)" },
+  { key: "notes", label: "Notes" },
+];
+
 export default function GrnsPage() {
   const org = useAppStore((s) => s.organization);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async () => {
     if (!org?.id) return;
@@ -74,6 +84,30 @@ export default function GrnsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        fields={grnImportFields}
+        entityName="GRNs"
+        onImport={async (rows) => {
+          let success = 0, errors = 0;
+          const failedRows: any[] = [];
+          for (const row of rows) {
+            const { error } = await supabase.from("grns").insert({
+              org_id: org?.id,
+              grn_number: row.grn_number,
+              received_date: row.received_date || new Date().toISOString(),
+              status: row.status || "draft",
+              notes: row.notes || null
+            });
+            if (error) { errors++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else success++;
+          }
+          fetchGrns();
+          return { success, errors, failedRows };
+        }}
+      />
+  
     </div>
   );
 }

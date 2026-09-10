@@ -191,7 +191,7 @@ export default function PurchaseOrdersPage() {
         entityName="Purchase Orders"
         fields={poImportFields}
         onImport={async (rows) => {
-          let s = 0, e = 0;
+          let s = 0, e = 0; const failedRows: any[] = [];
           for (const row of rows) {
             const { error } = await supabase.from("purchase_orders").insert({
               org_id: org?.id,
@@ -200,10 +200,10 @@ export default function PurchaseOrdersPage() {
               status: row.status || "draft",
               po_date: row.po_date || new Date().toISOString()
             });
-            if (error) e++; else s++;
+            if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
           }
           load();
-          return { success: s, errors: e };
+          return { success: s, errors: e, failedRows };
         }}
       />
     </div>

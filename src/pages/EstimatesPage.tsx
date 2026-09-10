@@ -388,7 +388,7 @@ export default function EstimatesPage() {
               notes: row.notes || null,
               currency_code: org!.currency_code,
             });
-            if (error) errors++; else success++;
+            if (error) { errors++; failedRows.push({ row, reason: error.message || "Failed to insert estimate" }); } else success++;
           }
           fetchEstimates();
           return { success, errors, failedRows };
