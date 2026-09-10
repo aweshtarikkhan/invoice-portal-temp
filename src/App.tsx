@@ -142,6 +142,7 @@ const App = () => (
                 <Route path="/clients" element={<ClientsPage />} />
                 <Route path="/clients/:id" element={<ClientDetailPage />} />
                 <Route path="/invoices" element={<InvoicesPage />} />
+              <Route path="/tally-sync" element={<TallySyncPage />} />
                 <Route path="/invoices/new" element={<InvoiceBuilderPage />} />
                 <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
                 <Route path="/invoices/:id/edit" element={<InvoiceBuilderPage />} />

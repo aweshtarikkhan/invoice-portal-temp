@@ -12,7 +12,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   IndianRupee, Wallet, ShoppingCart, FileText, AlertTriangle, BarChart as BarChartIcon,
   Plus, Users, Phone, PhoneCall, TrendingUp, TrendingDown, Clock, CheckCircle2,
-  FilePlus2, Receipt, CreditCard, UserPlus, UserCircle, Briefcase, Mail, Activity, PackagePlus, FileSpreadsheet, Building2, BookOpen
+  FilePlus2, Receipt, CreditCard, UserPlus, UserCircle, Briefcase, Mail, Activity, PackagePlus, FileSpreadsheet, Upload, Building2, BookOpen
 } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
@@ -177,7 +177,11 @@ export default function DashboardPage() {
                     </div>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
+                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/tally-sync')}>
+                        <Upload className="w-4 h-4 mr-2 text-blue-500" />
+                        Tally Master Sync
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
                       <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
                       <span>Purchase Invoice</span>
                     </DropdownMenuItem>
