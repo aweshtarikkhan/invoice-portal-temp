@@ -54,7 +54,8 @@ export default function TallySyncPage() {
           if (existingClient) {
             partyId = existingClient.id;
           } else {
-            const { data: newClient } = await supabase.from("clients").insert({ org_id: org.id, display_name: party.partyName }).select("id").single();
+            const { data: newClient, error: clientErr } = await supabase.from("clients").insert({ org_id: org.id, display_name: party.partyName }).select("id").single();
+            if (clientErr) { syncErrors.push({ reason: clientErr.message, data: party.partyName }); }
             if (newClient) {
               partyId = newClient.id;
               partiesAdded++;
@@ -65,7 +66,8 @@ export default function TallySyncPage() {
           if (existingVendor) {
             partyId = existingVendor.id;
           } else {
-            const { data: newVendor } = await supabase.from("vendors").insert({ org_id: org.id, display_name: party.partyName }).select("id").single();
+            const { data: newVendor, error: vendorErr } = await supabase.from("vendors").insert({ org_id: org.id, display_name: party.partyName }).select("id").single();
+            if (vendorErr) { syncErrors.push({ reason: vendorErr.message, data: party.partyName }); }
             if (newVendor) {
               partyId = newVendor.id;
               partiesAdded++;
