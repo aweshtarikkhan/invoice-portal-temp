@@ -25,6 +25,7 @@ const AttendancePage = lazy(() => import("./pages/AttendancePage"));
 const ClientDetailPage = lazy(() => import("./pages/ClientDetailPage"));
 const ItemsPage = lazy(() => import("./pages/ItemsPage"));
 const InventoryPage = lazy(() => import("./pages/InventoryPage"));
+const TallySyncPage = lazy(() => import("./pages/TallySyncPage"));
 const InvoicesPage = lazy(() => import("./pages/InvoicesPage"));
 const InvoiceBuilderPage = lazy(() => import("./pages/InvoiceBuilderPage"));
 const InvoiceDetailPage = lazy(() => import("./pages/InvoiceDetailPage"));
