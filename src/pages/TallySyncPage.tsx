@@ -134,28 +134,37 @@ export default function TallySyncPage() {
             // Check if payment exists by reference
             if (!txn.reference) continue; // Skip empty ref payments
             
-            const { data: existingPay } = await supabase.from("payments").select("id").eq("org_id", org.id).eq("reference_number", txn.reference).maybeSingle();
-            if (existingPay) continue;
-
-            const payData: any = {
-              org_id: org.id,
-              payment_date: txn.date || new Date().toISOString(),
-              amount: txn.amount,
-              payment_mode: "bank_transfer",
-              reference_number: txn.reference || null,
-              notes: txn.narration || ""
-            };
-
             if (txn.type === "payment_received") {
-              payData.client_id = partyId;
-              payData.payment_number = "PAY-" + Math.floor(Math.random() * 1000000);
+              const { data: existingPay } = await supabase.from("payments").select("id").eq("org_id", org.id).eq("reference_number", txn.reference).maybeSingle();
+              if (existingPay) continue;
+
+              const payData: any = {
+                org_id: org.id,
+                payment_date: txn.date || new Date().toISOString(),
+                amount: txn.amount,
+                payment_mode: "bank_transfer",
+                reference_number: txn.reference || null,
+                notes: txn.narration || "",
+                client_id: partyId,
+                payment_number: "PAY-" + Math.floor(Math.random() * 1000000)
+              };
               const { error: payErr } = await supabase.from("payments").insert(payData);
               if (payErr) { syncErrors.push({ reason: payErr.message, data: payData.payment_number }); }
             } else {
-              payData.vendor_id = partyId;
-              payData.payment_number = "BPAY-" + Math.floor(Math.random() * 1000000);
-              const { error: bPayErr } = await supabase.from("bill_payments").insert(payData);
-              if (bPayErr) { syncErrors.push({ reason: bPayErr.message, data: payData.payment_number }); }
+              const { data: existingBPay } = await supabase.from("bill_payments").select("id").eq("org_id", org.id).eq("reference", txn.reference).maybeSingle();
+              if (existingBPay) continue;
+
+              const bPayData: any = {
+                org_id: org.id,
+                payment_date: txn.date || new Date().toISOString(),
+                amount: txn.amount,
+                payment_method: "bank_transfer",
+                reference: txn.reference || null,
+                notes: txn.narration || "",
+                vendor_id: partyId
+              };
+              const { error: bPayErr } = await supabase.from("bill_payments").insert(bPayData);
+              if (bPayErr) { syncErrors.push({ reason: bPayErr.message, data: txn.reference }); }
             }
             paymentsAdded++;
           }
