@@ -446,7 +446,14 @@ export default function PaymentsPage() {
 
       {/* All Received Payments Table */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <h2 className="text-base font-semibold">All Received Payments</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-base font-semibold">All Received Payments</h2>
+          {selected.size > 0 && (
+            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="mr-1 h-4 w-4" /> Delete ({selected.size})
+            </Button>
+          )}
+        </div>
         <div className="relative max-w-sm w-full sm:w-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search payments..." className="pl-9 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
