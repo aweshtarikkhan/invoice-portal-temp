@@ -11,7 +11,7 @@ import { useAppStore } from "@/store/app-store";
 import { useNavigate } from "react-router-dom";
 
 export default function TallySyncPage() {
-  const { org } = useAppStore();
+  const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [syncType, setSyncType] = useState<TallySyncType | null>(null);
@@ -36,7 +36,7 @@ export default function TallySyncPage() {
   };
 
   const handleSync = async () => {
-    if (!parsedData || !org || !syncType) return;
+    if (!parsedData || !org || !syncType) { console.error("Missing data to sync", { parsedData: !!parsedData, org: !!org, syncType }); return; }
     setIsProcessing(true);
 
     try {
@@ -80,12 +80,12 @@ export default function TallySyncPage() {
             const table = isInvoice ? "invoices" : "bills";
             
             // Check if exists
-            const { data: existingTxn } = await supabase.from(table).select("id").eq("org_id", org.id).eq("invoice_number", txn.reference).maybeSingle();
+            const { data: existingTxn } = await supabase.from(table).select("id").eq("org_id", org.id).eq(isInvoice ? "invoice_number" : "bill_number", txn.reference).maybeSingle();
             if (existingTxn) continue; // Skip existing
 
             const txnData: any = {
               org_id: org.id,
-              invoice_number: txn.reference,
+              ...(isInvoice ? { invoice_number: txn.reference } : { bill_number: txn.reference }),
               invoice_date: txn.date || new Date().toISOString(),
               due_date: txn.date || new Date().toISOString(),
               total: txn.amount,
