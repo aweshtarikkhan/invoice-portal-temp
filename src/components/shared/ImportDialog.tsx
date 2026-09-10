@@ -30,7 +30,7 @@ interface ImportDialogProps {
 
 type Step = "upload" | "map" | "preview" | "result";
 
-export function ImportDialog({ open, onOpenChange, fields, entityName, onImport, onTallyImport }: ImportDialogProps) {
+export function ImportDialog({ open, onOpenChange, fields, entityName, onImport, onTallyImport, renderExtraSettings }: ImportDialogProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
   const [step, setStep] = useState<Step>("upload");
