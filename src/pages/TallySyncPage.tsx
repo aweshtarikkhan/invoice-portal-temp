@@ -89,12 +89,11 @@ export default function TallySyncPage() {
 
             const txnData: any = {
               org_id: org.id,
-              ...(isInvoice ? { invoice_number: txn.reference } : { bill_number: txn.reference }),
-              invoice_date: txn.date || new Date().toISOString(),
+              ...(isInvoice ? { invoice_number: txn.reference, issue_date: txn.date || new Date().toISOString() } : { bill_number: txn.reference, bill_date: txn.date || new Date().toISOString() }),
               due_date: txn.date || new Date().toISOString(),
               total: txn.amount,
-              balance_due: txn.amount, // Payments will adjust this if we link them, but Tally handles it separately
-              status: "sent",
+              balance_due: txn.amount,
+              status: isInvoice ? "sent" : "received",
               notes: txn.narration || "",
             };
 
@@ -110,18 +109,26 @@ export default function TallySyncPage() {
             const lines = [];
             for (let i = 0; i < txn.items.length; i++) {
               const it = txn.items[i];
-              lines.push({
+              const lineData: any = { discount: 0, discount_type: "percentage", tax_amount: 0,
                 [isInvoice ? "invoice_id" : "bill_id"]: newTxn.id,
-                name: it.name,
-                hsn_code: it.hsn,
                 quantity: it.qty,
                 rate: it.rate,
                 amount: it.amount,
                 sort_order: i + 1
-              });
+              };
+              if (isInvoice) {
+                lineData.name = it.name;
+                lineData.hsn_code = it.hsn;
+              } else {
+                lineData.description = it.name;
+                lineData.hsn = it.hsn;
+                lineData.org_id = org.id;
+              }
+              lines.push(lineData);
             }
             if (lines.length > 0) {
-              await supabase.from(isInvoice ? "invoice_lines" : "bill_lines").insert(lines);
+              const { error: lineErr } = await supabase.from(isInvoice ? "invoice_lines" : "bill_lines").insert(lines);
+              if (lineErr) syncErrors.push({ reason: "Failed to add items: " + lineErr.message, data: txn.reference });
             }
           } else if (txn.type === "payment_received" || txn.type === "payment_made") {
             // Check if payment exists by reference
