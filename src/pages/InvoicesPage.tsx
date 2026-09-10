@@ -460,7 +460,9 @@ export default function InvoicesPage() {
             if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
             // Handle YYYY-MM-DD
             if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-            return d;
+            // Try native Date parse as fallback
+            try { const p = new Date(d); if (!isNaN(p.getTime())) return p.toISOString().split("T")[0]; } catch {}
+            return null;
           };
 
           // Group rows by invoice_number to support multiple line items per invoice
@@ -477,6 +479,7 @@ export default function InvoicesPage() {
           }
 
           for (const [invNum, groupRows] of invoiceGroups.entries()) {
+            try {
             const row = groupRows[0]; // Primary invoice data from the first row
             const name = String(row.client_name || "").trim();
             if (!name) { errors++; continue; }
@@ -533,6 +536,7 @@ export default function InvoicesPage() {
             }).select("id").single();
 
             if (error || !newInvoice) { 
+              console.error("Invoice insert failed:", invNum, error?.message);
               errors++; 
             } else { 
               success++;
@@ -546,20 +550,21 @@ export default function InvoicesPage() {
                   const rate = parseFloat(gRow.rate) || 0;
                   const itemAmount = gRow.item_amount ? parseFloat(gRow.item_amount) : (qty * rate);
 
-                  const gstPct = parseFloat(gRow.tax_rate) || 0;
-                  let taxId = null;
+                  // Handle GST % — support both 18 (percent) and 0.18 (decimal fraction)
+                  let rawGst = parseFloat(gRow.tax_rate) || 0;
+                  const gstPct = rawGst > 0 && rawGst < 1 ? rawGst * 100 : rawGst;
+                  let taxId: string | null = null;
                   let taxAmount = 0;
                   if (gstPct > 0) {
                     taxAmount = (itemAmount * gstPct) / 100;
                     if (taxMap.has(gstPct)) {
-                      taxId = taxMap.get(gstPct);
+                      taxId = taxMap.get(gstPct) || null;
                     } else {
                       const { data: newTax } = await supabase.from("tax_rates").insert({
                         org_id: org!.id,
                         name: `GST ${gstPct}%`,
                         rate: gstPct,
-                        type: "gst",
-                        is_recoverable: true
+                        type: "simple",
                       }).select("id").single();
                       if (newTax) {
                         taxId = newTax.id;
@@ -574,7 +579,7 @@ export default function InvoicesPage() {
                     hsn_code: gRow.item_hsn || null,
                     quantity: qty,
                     rate: rate,
-                    amount: org?.gst_number ? itemAmount + taxAmount : itemAmount,
+                    amount: gstPct > 0 ? itemAmount + taxAmount : itemAmount,
                     tax_id: taxId,
                     tax_amount: taxAmount,
                     sort_order: i + 1
@@ -586,6 +591,7 @@ export default function InvoicesPage() {
                  await supabase.from("invoice_lines").insert(lineItems);
               }
             }
+            } catch (e: any) { console.error("Import row error:", invNum, e); errors++; }
           }
           // Update opening_balance for each client based on their total balance_due
           const uniqueClientIds = Array.from(new Set(clientMap.values()));
@@ -594,7 +600,6 @@ export default function InvoicesPage() {
             const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
             await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cid);
           }
-          setTimeout(() => window.location.reload(), 3000);
           return { success, errors };
         }}
       />
