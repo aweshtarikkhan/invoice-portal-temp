@@ -410,7 +410,7 @@ export default function ItemsPage() {
         fields={dynamicImportFields}
         entityName="Items"
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           for (const row of rows) {
             const matchedTax = row.tax_name ? taxRates.find((t: any) => t.name.toLowerCase() === row.tax_name.toLowerCase()) : null;
             const price = parsePrice(row.unit_price);
@@ -442,7 +442,7 @@ export default function ItemsPage() {
             }
           }
           fetchItems();
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
 

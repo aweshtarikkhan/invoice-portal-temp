@@ -468,7 +468,7 @@ export default function InvoicesPage() {
         )}
         onTallyImport={parseTallyExcel}
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           const { data: existingClients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           const clientMap = new Map<string, string>();
           existingClients?.forEach(c => clientMap.set(c.display_name.toLowerCase(), c.id));
@@ -503,7 +503,7 @@ export default function InvoicesPage() {
             try {
             const row = groupRows[0]; // Primary invoice data from the first row
             const name = String(row.client_name || "").trim();
-            if (!name) { errors++; continue; }
+            if (!name) { errors++; failedRows.push({ row, reason: "Missing required field" }); continue; }
             let clientId = clientMap.get(name.toLowerCase());
             // Auto-create client if not found
             if (!clientId) {
@@ -622,7 +622,7 @@ export default function InvoicesPage() {
             const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
             await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cid);
           }
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

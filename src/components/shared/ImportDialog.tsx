@@ -23,7 +23,7 @@ interface ImportDialogProps {
   onOpenChange: (open: boolean) => void;
   fields: ImportField[];
   entityName: string;
-  onImport: (rows: Record<string, any>[]) => Promise<{ success: number; errors: number }>;
+  onImport: (rows: Record<string, any>[]) => Promise<{ success: number; errors: number; failedRows?: { row: Record<string, any>; reason: string }[] }>;
   onTallyImport?: (file: File) => Promise<Record<string, any>[]>;
   renderExtraSettings?: () => React.ReactNode;
 }
@@ -38,7 +38,7 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; errors: number } | null>(null);
+  const [result, setResult] = useState<{ success: number; errors: number; failedRows?: { row: Record<string, any>; reason: string }[] } | null>(null);
 
   const reset = () => {
     setStep("upload");
@@ -378,7 +378,7 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
               </div>
             </div>
             <DialogFooter className="justify-center">
-              <Button onClick={() => handleClose(false)}>Done</Button>
+              <Button onClick={() => handleClose(false)}>Close</Button>
             </DialogFooter>
           </div>
         )}

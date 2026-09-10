@@ -572,7 +572,7 @@ export default function ClientsPage() {
         fields={clientImportFields}
         entityName="Clients"
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           for (const row of rows) {
             const { error } = await supabase.from("clients").insert({
               org_id: org!.id,
@@ -593,7 +593,7 @@ export default function ClientsPage() {
             if (error) errors++; else success++;
           }
           fetchClients();
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
 

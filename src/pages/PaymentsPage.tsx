@@ -508,7 +508,7 @@ export default function PaymentsPage() {
         fields={paymentImportFields}
         entityName="Payments"
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           const { data: clients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           const clientMap = new Map<string, string>();
           clients?.forEach(c => clientMap.set(c.display_name.toLowerCase(), c.id));
@@ -519,7 +519,7 @@ export default function PaymentsPage() {
 
           for (const row of rows) {
             const name = (row.client_name || "").trim();
-            if (!name) { errors++; continue; }
+            if (!name) { errors++; failedRows.push({ row, reason: "Missing Customer Name" }); continue; }
 
             let clientId = clientMap.get(name.toLowerCase());
             // Auto-create client if not found
@@ -527,7 +527,7 @@ export default function PaymentsPage() {
               const { data: newClient, error: cErr } = await supabase.from("clients").insert({
                 org_id: org!.id, display_name: name,
               }).select("id").single();
-              if (cErr || !newClient) { errors++; continue; }
+              if (cErr || !newClient) { errors++; failedRows.push({ row, reason: "Failed to create Client" }); continue; }
               clientId = newClient.id;
               clientMap.set(name.toLowerCase(), clientId);
             }
@@ -552,7 +552,7 @@ export default function PaymentsPage() {
               notes: row.notes || null,
               currency_code: org!.currency_code,
             });
-            if (error) { errors++; continue; }
+            if (error) { errors++; failedRows.push({ row, reason: error.message || "Failed to insert payment" }); continue; }
             success++;
 
             // Update linked invoice balance
@@ -585,7 +585,7 @@ export default function PaymentsPage() {
           }
 
           fetchData();
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
 

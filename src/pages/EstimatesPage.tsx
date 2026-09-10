@@ -373,11 +373,11 @@ export default function EstimatesPage() {
         ]}
         entityName="Estimates"
         onImport={async (rows) => {
-          let success = 0, errors = 0;
+          let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           const { data: clients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           for (const row of rows) {
             const client = clients?.find((c) => c.display_name.toLowerCase() === String(row.client_name || "").toLowerCase());
-            if (!client) { errors++; continue; }
+            if (!client) { errors++; failedRows.push({ row, reason: "Missing required field" }); continue; }
             const { error } = await supabase.from("estimates").insert({
               org_id: org!.id,
               client_id: client.id,
@@ -391,7 +391,7 @@ export default function EstimatesPage() {
             if (error) errors++; else success++;
           }
           fetchEstimates();
-          return { success, errors };
+          return { success, errors, failedRows };
         }}
       />
     </div>
