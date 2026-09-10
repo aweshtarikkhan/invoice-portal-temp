@@ -196,21 +196,22 @@ export default function VendorsPage() {
         entityName="Vendors"
         fields={vendorImportFields}
         onImport={async (rows) => {
-          let s = 0, e = 0;
+          let s = 0, e = 0; const failedRows: any[] = [];
           for (const row of rows) {
             const { error } = await supabase.from("vendors").insert({
               org_id: org?.id,
               name: row.name,
+              display_name: row.name,
               gstin: row.gstin || null,
               email: row.email || null,
               phone: row.phone || null,
               address: row.address || null,
               opening_balance: Number(row.opening_balance) || 0
             });
-            if (error) e++; else s++;
+            if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
           }
           load();
-          return { success: s, errors: e };
+          return { success: s, errors: e, failedRows };
         }}
       />
     </div>

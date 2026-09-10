@@ -590,7 +590,7 @@ export default function ClientsPage() {
               opening_balance: parseFloat(row.opening_balance) || 0,
               notes: row.notes || null,
             });
-            if (error) errors++; else success++;
+            if (error) { errors++; failedRows.push({ row, reason: error.message }); } else success++;
           }
           fetchClients();
           return { success, errors, failedRows };

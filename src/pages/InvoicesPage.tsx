@@ -503,7 +503,7 @@ export default function InvoicesPage() {
             try {
             const row = groupRows[0]; // Primary invoice data from the first row
             const name = String(row.client_name || "").trim();
-            if (!name) { errors++; failedRows.push({ row, reason: "Missing required field" }); continue; }
+            if (!name) { errors++; failedRows.push({ row, reason: "Missing required field (Client Name)" }); continue; }
             let clientId = clientMap.get(name.toLowerCase());
             // Auto-create client if not found
             if (!clientId) {
@@ -518,7 +518,7 @@ export default function InvoicesPage() {
                 billing_address: billingAddr,
                 shipping_address: shippingAddr,
               }).select("id").single();
-              if (cErr || !newClient) { errors++; continue; }
+              if (cErr || !newClient) { errors++; failedRows.push({ row, reason: "Failed to create client" }); continue; }
               clientId = newClient.id;
               clientMap.set(name.toLowerCase(), clientId);
             }
@@ -613,7 +613,7 @@ export default function InvoicesPage() {
                  await supabase.from("invoice_lines").insert(lineItems);
               }
             }
-            } catch (e: any) { console.error("Import row error:", invNum, e); errors++; }
+            } catch (e: any) { console.error("Import row error:", invNum, e); errors++; failedRows.push({ row, reason: e.message || "Unknown error" }); }
           }
           // Update opening_balance for each client based on their total balance_due
           const uniqueClientIds = Array.from(new Set(clientMap.values()));
