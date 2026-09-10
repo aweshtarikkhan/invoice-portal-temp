@@ -109,7 +109,7 @@ export default function TallySyncPage() {
             const lines = [];
             for (let i = 0; i < txn.items.length; i++) {
               const it = txn.items[i];
-              const lineData: any = { discount: 0, discount_type: "percentage", tax_amount: 0,
+              const lineData: any = {
                 [isInvoice ? "invoice_id" : "bill_id"]: newTxn.id,
                 quantity: it.qty,
                 rate: it.rate,
@@ -117,7 +117,10 @@ export default function TallySyncPage() {
                 sort_order: i + 1
               };
               if (isInvoice) {
-                lineData.name = it.name;
+                  lineData.discount = 0;
+                  lineData.discount_type = "percentage";
+                  lineData.tax_amount = 0;
+                  lineData.name = it.name;
                 lineData.hsn_code = it.hsn;
               } else {
                 lineData.description = it.name;
