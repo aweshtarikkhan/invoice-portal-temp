@@ -25,6 +25,7 @@ interface ImportDialogProps {
   entityName: string;
   onImport: (rows: Record<string, any>[]) => Promise<{ success: number; errors: number }>;
   onTallyImport?: (file: File) => Promise<Record<string, any>[]>;
+  renderExtraSettings?: () => React.ReactNode;
 }
 
 type Step = "upload" | "map" | "preview" | "result";
@@ -320,6 +321,11 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
               </div>
             )}
 
+            {renderExtraSettings && (
+              <div className="my-4 p-4 bg-muted/50 rounded-lg border">
+                {renderExtraSettings()}
+              </div>
+            )}
             <DialogFooter>
               <Button variant="outline" onClick={() => setStep("upload")}>Back</Button>
               <Button onClick={() => setStep("preview")} disabled={requiredMissing.length > 0}>Preview</Button>

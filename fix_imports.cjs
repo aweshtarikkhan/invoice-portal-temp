@@ -1,14 +1,5 @@
 const fs = require('fs');
-
-const fixImports = (file, extraLucide) => {
-  let content = fs.readFileSync(file, 'utf8');
-  if (!content.includes('import { Button }')) {
-    content = content.replace('import { useAppStore } from "@/store/app-store";', 'import { useAppStore } from "@/store/app-store";\nimport { Button } from "@/components/ui/button";');
-  }
-  if (!content.includes('Download') && content.includes('lucide-react')) {
-    content = content.replace(' } from "lucide-react"', extraLucide);
-  }
-  fs.writeFileSync(file, content);
-};
-
-fixImports('src/pages/InventoryReportsPage.tsx', ', Download } from "lucide-react"');
+let c = fs.readFileSync('src/pages/InvoicesPage.tsx', 'utf8');
+c = c.replace('import { Input } from "@/components/ui/input";', 'import { Input } from "@/components/ui/input";\nimport { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";\nimport { Label } from "@/components/ui/label";');
+fs.writeFileSync('src/pages/InvoicesPage.tsx', c);
+console.log('Fixed imports');

@@ -368,6 +368,7 @@ export default function EstimatesPage() {
           { key: "expiry_date", label: "Expiry Date" },
           { key: "total", label: "Total Amount" },
   { key: "tax_rate", label: "GST %" },
+  { key: "unit", label: "Unit" },
           { key: "notes", label: "Notes" },
         ]}
         entityName="Estimates"

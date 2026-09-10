@@ -19,6 +19,7 @@ const billImportFields: ImportField[] = [
   { key: "due_date", label: "Due Date" },
   { key: "total", label: "Total Amount" },
   { key: "tax_rate", label: "GST %" },
+  { key: "unit", label: "Unit" },
   { key: "status", label: "Status" },
 ];
 

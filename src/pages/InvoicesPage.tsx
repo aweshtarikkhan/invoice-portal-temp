@@ -15,6 +15,8 @@ import { StatusBadge } from "@/components/shared/StatusBadge";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -43,6 +45,7 @@ const invoiceImportFields: ImportField[] = [
   { key: "rate", label: "Rate" },
   { key: "item_amount", label: "Item Amount" },
   { key: "tax_rate", label: "GST %" },
+  { key: "unit", label: "Unit" },
   { key: "client_gst", label: "Client GST Number" },
   { key: "pan_no", label: "Client PAN Number" },
   { key: "client_address", label: "Client Address" },
@@ -74,6 +77,7 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<string>("all");
   const [importOpen, setImportOpen] = useState(false);
+  const [dueDateRule, setDueDateRule] = useState("30");
   const [selected, setSelected] = useState<Set<string>>(new Set());
   
   const [showUpgrade, setShowUpgrade] = useState(false);
@@ -446,6 +450,22 @@ export default function InvoicesPage() {
         onOpenChange={setImportOpen}
         fields={invoiceImportFields}
         entityName="Invoices"
+        renderExtraSettings={() => (
+          <div className="flex flex-col gap-2">
+            <Label className="font-semibold">If Due Date is missing in file:</Label>
+            <Select value={dueDateRule} onValueChange={setDueDateRule}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Same as Invoice Date</SelectItem>
+                <SelectItem value="15">Invoice Date + 15 Days</SelectItem>
+                <SelectItem value="30">Invoice Date + 30 Days</SelectItem>
+                <SelectItem value="45">Invoice Date + 45 Days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
         onTallyImport={parseTallyExcel}
         onImport={async (rows) => {
           let success = 0, errors = 0;
@@ -517,7 +537,7 @@ export default function InvoicesPage() {
               client_id: clientId,
               invoice_number: invNum,
               issue_date: issueDate,
-              due_date: parseDate(row.due_date) || new Date(Date.now() + 30 * 86400000).toISOString().split("T")[0],
+              due_date: parseDate(row.due_date) || (dueDateRule === "0" ? issueDate : new Date(new Date(issueDate).getTime() + parseInt(dueDateRule) * 86400000).toISOString().split("T")[0]),
               total,
               subtotal: total,
               balance_due: balanceDue,
@@ -581,6 +601,7 @@ export default function InvoicesPage() {
                     quantity: qty,
                     rate: rate,
                     amount: gstPct > 0 ? itemAmount + taxAmount : itemAmount,
+                    unit: gRow.unit || null,
                     tax_id: taxId,
                     tax_amount: taxAmount,
                     sort_order: i + 1
