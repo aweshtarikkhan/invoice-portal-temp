@@ -1,44 +1,20 @@
 const fs = require('fs');
-let sync = fs.readFileSync('src/pages/TallySyncPage.tsx', 'utf8');
+let c = fs.readFileSync('src/pages/TallySyncPage.tsx', 'utf8');
 
-const search = `            const payData: any = {
-              org_id: org.id,
-              payment_date: txn.date || new Date().toISOString(),
-              amount: txn.amount,
-              payment_method: "Bank Transfer", // Default for Tally
-              reference_number: txn.reference,
-              notes: txn.narration || "",
-              type: txn.type
-            };
+c = c.replace('const { org } = useAppStore();', 'const org = useAppStore((s) => s.organization);');
+c = c.replace('if (!parsedData || !org || !syncType) return;', 'if (!parsedData || !org || !syncType) { console.error("Missing data to sync", { parsedData: !!parsedData, org: !!org, syncType }); return; }');
 
-            if (txn.type === "payment_received") payData.client_id = partyId;
-            else payData.vendor_id = partyId;
+// Also fix the bills bug while I'm at it
+c = c.replace(
+  'const { data: existingTxn } = await supabase.from(table).select("id").eq("org_id", org.id).eq("invoice_number", txn.reference).maybeSingle();',
+  'const { data: existingTxn } = await supabase.from(table).select("id").eq("org_id", org.id).eq(isInvoice ? "invoice_number" : "bill_number", txn.reference).maybeSingle();'
+);
 
-            await supabase.from("payments").insert(payData);`;
+c = c.replace(
+  'invoice_number: txn.reference,',
+  '...(isInvoice ? { invoice_number: txn.reference } : { bill_number: txn.reference }),'
+);
 
-const replace = `            const payData: any = {
-              org_id: org.id,
-              payment_date: txn.date || new Date().toISOString(),
-              amount: txn.amount,
-              payment_mode: "bank_transfer",
-              reference_number: txn.reference || null,
-              notes: txn.narration || ""
-            };
 
-            if (txn.type === "payment_received") {
-              payData.client_id = partyId;
-              payData.payment_number = "PAY-" + Math.floor(Math.random() * 1000000);
-              await supabase.from("payments").insert(payData);
-            } else {
-              payData.vendor_id = partyId;
-              payData.payment_number = "BPAY-" + Math.floor(Math.random() * 1000000);
-              await supabase.from("bill_payments").insert(payData);
-            }`;
-
-if (sync.includes(search)) {
-  sync = sync.replace(search, replace);
-  fs.writeFileSync('src/pages/TallySyncPage.tsx', sync);
-  console.log('Fixed payments insert');
-} else {
-  console.log('Search string not found');
-}
+fs.writeFileSync('src/pages/TallySyncPage.tsx', c);
+console.log('Fixed TallySyncPage');

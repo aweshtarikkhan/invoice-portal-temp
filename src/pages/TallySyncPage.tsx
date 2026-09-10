@@ -17,6 +17,7 @@ export default function TallySyncPage() {
   const [syncType, setSyncType] = useState<TallySyncType | null>(null);
   const [parsedData, setParsedData] = useState<ParsedTallyParty[] | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ parties: number, invoices: number, payments: number, errors: { reason: string, data: any }[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = async (file: File, type: TallySyncType) => {
@@ -43,6 +44,7 @@ export default function TallySyncPage() {
       let partiesAdded = 0;
       let invoicesAdded = 0;
       let paymentsAdded = 0;
+      const syncErrors: {reason: string, data: any}[] = [];
 
       for (const party of parsedData) {
         // 1. Upsert Party
@@ -98,7 +100,7 @@ export default function TallySyncPage() {
             else txnData.vendor_id = partyId;
 
             const { data: newTxn, error: txnError } = await supabase.from(table).insert(txnData).select("id").single();
-            if (txnError) continue;
+            if (txnError) { syncErrors.push({ reason: txnError.message || "Failed to create invoice", data: txn.reference }); continue; }
             
             invoicesAdded++;
 
@@ -138,23 +140,20 @@ export default function TallySyncPage() {
             if (txn.type === "payment_received") {
               payData.client_id = partyId;
               payData.payment_number = "PAY-" + Math.floor(Math.random() * 1000000);
-              await supabase.from("payments").insert(payData);
+              const { error: payErr } = await supabase.from("payments").insert(payData);
+              if (payErr) { syncErrors.push({ reason: payErr.message, data: payData.payment_number }); }
             } else {
               payData.vendor_id = partyId;
               payData.payment_number = "BPAY-" + Math.floor(Math.random() * 1000000);
-              await supabase.from("bill_payments").insert(payData);
+              const { error: bPayErr } = await supabase.from("bill_payments").insert(payData);
+              if (bPayErr) { syncErrors.push({ reason: bPayErr.message, data: payData.payment_number }); }
             }
             paymentsAdded++;
           }
         }
       }
 
-      toast({
-        title: "Sync Complete!",
-        description: `Added ${partiesAdded} parties, ${invoicesAdded} bills/invoices, and ${paymentsAdded} payments.`,
-      });
-      setParsedData(null);
-      setSyncType(null);
+setSyncResult({ parties: partiesAdded, invoices: invoicesAdded, payments: paymentsAdded, errors: syncErrors });
     } catch (err: any) {
       toast({ title: "Sync Error", description: err.message, variant: "destructive" });
     } finally {
@@ -175,7 +174,57 @@ export default function TallySyncPage() {
       <SEO title="Tally Master Sync" />
       <PageHeader title="Tally Master Sync" description="Import Clients, Vendors, Sales, Purchases, and Payments directly from Tally Outstanding Reports." />
 
-      {!parsedData ? (
+      {syncResult ? 
+      {syncResult && (
+        <Card className="mt-6 border-success bg-success/5">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="h-8 w-8 text-success" />
+              <div>
+                <CardTitle className="text-xl">Sync Complete</CardTitle>
+                <CardDescription>Master sync executed successfully</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 bg-background rounded-lg border text-center">
+                <div className="text-3xl font-bold text-primary">{syncResult.parties}</div>
+                <div className="text-xs uppercase text-muted-foreground mt-1">Parties Synced</div>
+              </div>
+              <div className="p-4 bg-background rounded-lg border text-center">
+                <div className="text-3xl font-bold text-primary">{syncResult.invoices}</div>
+                <div className="text-xs uppercase text-muted-foreground mt-1">Invoices Synced</div>
+              </div>
+              <div className="p-4 bg-background rounded-lg border text-center">
+                <div className="text-3xl font-bold text-primary">{syncResult.payments}</div>
+                <div className="text-xs uppercase text-muted-foreground mt-1">Payments Synced</div>
+              </div>
+            </div>
+            
+            {syncResult.errors.length > 0 && (
+              <div className="border rounded-md bg-background">
+                <div className="bg-destructive/10 px-4 py-2 border-b">
+                  <h4 className="text-sm font-semibold text-destructive">Encountered {syncResult.errors.length} Errors</h4>
+                </div>
+                <div className="max-h-48 overflow-y-auto p-2 space-y-2">
+                  {syncResult.errors.map((e, i) => (
+                    <div key={i} className="text-xs flex gap-2">
+                      <span className="font-semibold text-destructive min-w-32">{e.reason}:</span>
+                      <span className="text-muted-foreground truncate">{JSON.stringify(e.data)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex justify-end pt-4">
+              <Button onClick={() => { setSyncResult(null); setParsedData(null); setSyncType(null); }}>Done</Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+   : !parsedData ? (
         <div className="grid md:grid-cols-2 gap-6 mt-6">
           <Card className="hover:border-primary/50 transition-colors cursor-pointer" onClick={() => { setSyncType("debtors"); fileRef.current?.click(); }}>
             <CardHeader>
