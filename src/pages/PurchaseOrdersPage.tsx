@@ -203,18 +203,34 @@ export default function PurchaseOrdersPage() {
         fields={poImportFields}
         onImport={async (rows) => {
           let s = 0, e = 0; const failedRows: any[] = [];
-          for (const row of rows) {
-            const { error } = await supabase.from("purchase_orders").insert({
-              org_id: org?.id,
-              po_number: row.po_number,
-              total: Number(row.total) || 0,
-              status: normalizePOStatus(row.status),
-              po_date: row.po_date || new Date().toISOString()
-            });
-            if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
-          }
-          load();
-          return { success: s, errors: e, failedRows };
+            const { data: existingVendors } = await supabase.from("vendors").select("id, display_name").eq("org_id", org!.id);
+            const vendorMap = new Map<string, string>();
+            existingVendors?.forEach(v => vendorMap.set(String(v.display_name).toLowerCase(), v.id));
+
+            for (const row of rows) {
+              const vName = row.vendor_name;
+              if (!vName) { e++; failedRows.push({ row, reason: "Missing Vendor Name" }); continue; }
+              
+              let vendorId = vendorMap.get(String(vName).toLowerCase());
+              if (!vendorId) {
+                const { data: newV, error: vErr } = await supabase.from("vendors").insert({ org_id: org!.id, name: vName, display_name: vName }).select("id").single();
+                if (vErr || !newV) { e++; failedRows.push({ row, reason: "Failed to create vendor" }); continue; }
+                vendorId = newV.id;
+                vendorMap.set(String(vName).toLowerCase(), vendorId);
+              }
+
+              const { error } = await supabase.from("purchase_orders").insert({
+                org_id: org?.id,
+                vendor_id: vendorId,
+                po_number: row.po_number,
+                total: Number(row.total) || 0,
+                status: normalizePOStatus(row.status),
+                po_date: row.po_date || new Date().toISOString()
+              });
+              if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
+            }
+            load();
+            return { success: s, errors: e, failedRows };
         }}
       />
     </div>
