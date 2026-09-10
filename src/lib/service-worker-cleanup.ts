@@ -23,8 +23,9 @@ function isSatahCache(name: string) {
 export async function cleanupStaleServiceWorkers() {
   if (!("serviceWorker" in navigator)) return;
 
-  const shouldCleanup = isPreviewOrDevHost(window.location.hostname) || new URLSearchParams(window.location.search).get("sw") === "off";
-  if (!shouldCleanup) return;
+  // Force cleanup everywhere to resolve caching issues
+  // const shouldCleanup = isPreviewOrDevHost(window.location.hostname) || new URLSearchParams(window.location.search).get("sw") === "off";
+  // if (!shouldCleanup) return;
 
   try {
     const registrations = await navigator.serviceWorker.getRegistrations();
