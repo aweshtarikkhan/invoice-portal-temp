@@ -205,7 +205,7 @@ export default function VendorsPage() {
               gstin: row.gstin || null,
               email: row.email || null,
               phone: row.phone || null,
-              address: row.address || null,
+              billing_address: row.address ? { street: row.address } : null,
               opening_balance: Number(row.opening_balance) || 0
             });
             if (error) { e++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else { s++; }
