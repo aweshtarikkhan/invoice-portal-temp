@@ -17,7 +17,8 @@ const billImportFields: ImportField[] = [
   { key: "vendor_name", label: "Vendor Name", required: true },
   { key: "bill_date", label: "Invoice Date" },
   { key: "due_date", label: "Due Date" },
-  { key: "total", label: "Total Amount" },\n  { key: "tax_rate", label: "GST %" },
+  { key: "total", label: "Total Amount" },
+  { key: "tax_rate", label: "GST %" },
   { key: "status", label: "Status" },
 ];
 

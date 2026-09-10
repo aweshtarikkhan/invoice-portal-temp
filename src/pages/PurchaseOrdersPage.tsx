@@ -16,7 +16,8 @@ const poImportFields: ImportField[] = [
   { key: "po_number", label: "PO Number", required: true },
   { key: "vendor_name", label: "Vendor Name", required: true },
   { key: "po_date", label: "PO Date" },
-  { key: "total", label: "Total Amount" },\n  { key: "tax_rate", label: "GST %" },
+  { key: "total", label: "Total Amount" },
+  { key: "tax_rate", label: "GST %" },
   { key: "status", label: "Status" },
 ];
 
