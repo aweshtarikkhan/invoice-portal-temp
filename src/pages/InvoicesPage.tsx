@@ -41,7 +41,7 @@ const invoiceImportFields: ImportField[] = [
   { key: "item_hsn", label: "Item HSN Code" },
   { key: "qty", label: "Quantity" },
   { key: "rate", label: "Rate" },
-  { key: "item_amount", label: "Item Amount" },
+  { key: "item_amount", label: "Item Amount" },\n  { key: "tax_rate", label: "GST %" },
   { key: "client_gst", label: "Client GST Number" },
   { key: "pan_no", label: "Client PAN Number" },
   { key: "client_address", label: "Client Address" },

@@ -104,7 +104,14 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
             let hasValue = false;
             keys.forEach((k, idx) => {
               const cell = rowVals[idx + 1];
-              const val = cell && typeof cell === "object" && "text" in cell ? (cell as any).text : cell;
+              let val = cell && typeof cell === "object" && "text" in cell ? (cell as any).text : cell;
+              if (val instanceof Date) {
+                 if (!isNaN(val.getTime())) {
+                   val = new Date(val.getTime() - val.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+                 } else {
+                   val = "";
+                 }
+              }
               if (val !== undefined && val !== null && val !== "") hasValue = true;
               obj[k] = val ?? "";
             });

@@ -366,7 +366,7 @@ export default function EstimatesPage() {
           { key: "client_name", label: "Client Name", required: true },
           { key: "issue_date", label: "Issue Date" },
           { key: "expiry_date", label: "Expiry Date" },
-          { key: "total", label: "Total Amount" },
+          { key: "total", label: "Total Amount" },\n  { key: "tax_rate", label: "GST %" },
           { key: "notes", label: "Notes" },
         ]}
         entityName="Estimates"
