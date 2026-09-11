@@ -123,6 +123,7 @@ export default function PlatformAdminPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
+  const [orgSearch, setOrgSearch] = useState("");
   
   const [adsList, setAdsList] = useState<any[]>([]);
   const [adTitle, setAdTitle] = useState("");
@@ -728,12 +729,46 @@ export default function PlatformAdminPage() {
 
         {/* ── Businesses Tab ── */}
         <TabsContent value="orgs" className="space-y-6">
+          {/* Search bar */}
+          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
+            <Search className="w-4 h-4 text-slate-400 shrink-0" />
+            <input
+              type="text"
+              placeholder="Search by business name or email ID..."
+              value={orgSearch}
+              onChange={e => setOrgSearch(e.target.value)}
+              className="flex-1 outline-none text-sm text-slate-800 placeholder:text-slate-400 bg-transparent"
+            />
+            {orgSearch && (
+              <button onClick={() => setOrgSearch("")} className="text-slate-400 hover:text-slate-600 text-xs">✕ Clear</button>
+            )}
+          </div>
+
           {dashData.organizations.length === 0 ? (
             <Card className="bg-white border-slate-200 text-slate-800 p-8 text-center">
               <p className="text-slate-500">No organizations registered yet.</p>
             </Card>
           ) : (
-            dashData.organizations.map(org => {
+            (() => {
+              const q = orgSearch.trim().toLowerCase();
+              const filtered = q
+                ? dashData.organizations.filter(o =>
+                    o.name?.toLowerCase().includes(q) ||
+                    o.owner?.email?.toLowerCase().includes(q) ||
+                    o.email?.toLowerCase().includes(q)
+                  )
+                : dashData.organizations;
+
+              if (filtered.length === 0) {
+                return (
+                  <Card className="bg-white border-slate-200 text-slate-800 p-8 text-center">
+                    <p className="text-slate-500">No businesses found for "<strong>{orgSearch}</strong>".</p>
+                  </Card>
+                );
+              }
+
+              return filtered.map(org => {
+
               const sub = org.subscription || { plan_name: "free", plan_display_name: "Free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
               const currentFeatures = Array.isArray(sub.enabled_features) ? sub.enabled_features : ADMIN_FEATURE_GROUPS.map(g => g.key);
               const isExpanded = expandedOrg === org.id;
@@ -755,7 +790,12 @@ export default function PlatformAdminPage() {
                                 <UserCircle className="w-3 h-3" /> {org.owner.name?.trim() || org.owner.email}
                               </span>
                             )}
-                            {org.email && (
+                            {org.owner?.email && (
+                              <span className="flex items-center gap-1 text-indigo-600 font-medium">
+                                <Mail className="w-3 h-3" /> {org.owner.email}
+                              </span>
+                            )}
+                            {org.email && org.email !== org.owner?.email && (
                               <span className="flex items-center gap-1">
                                 <Mail className="w-3 h-3" /> {org.email}
                               </span>
@@ -801,7 +841,7 @@ export default function PlatformAdminPage() {
                       <div className="flex flex-col items-end gap-2">
                         <Popover>
                           <PopoverTrigger asChild>
-                            <Button variant="outline" className="w-[180px] justify-between bg-slate-100 border-slate-200 text-slate-200">
+                            <Button variant="outline" className="w-[180px] justify-between bg-white border-slate-300 text-slate-700 hover:bg-slate-50">
                               <span className="truncate">{(org as any).subscription_plan_names && (org as any).subscription_plan_names.length > 0
                                 ? (org as any).subscription_plan_names.map((p: string) => PLAN_DISPLAY_NAMES[p] || p).join(", ")
                                 : sub.plan_display_name || PLAN_DISPLAY_NAMES[sub.plan_name] || "Free"}</span>
@@ -823,7 +863,7 @@ export default function PlatformAdminPage() {
                                     />
                                     <label 
                                       htmlFor={`plan-${org.id}-${plan.id}`}
-                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-200 cursor-pointer"
+                                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-slate-700 cursor-pointer"
                                     >
                                       {plan.label}
                                     </label>
@@ -889,7 +929,7 @@ export default function PlatformAdminPage() {
                                 }`}
                               >
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium text-slate-200">{group.label}</p>
+                                  <p className="text-sm font-medium text-slate-700">{group.label}</p>
                                   <p className="text-[10px] text-slate-500 truncate">{group.description}</p>
                                 </div>
                                 <Switch
@@ -907,7 +947,7 @@ export default function PlatformAdminPage() {
                 </Card>
               );
             })
-          )}
+            })()}
         </TabsContent>
 
         {/* ── All Users Tab (Full User & Subscription Plan Management) ── */}
@@ -1270,7 +1310,7 @@ export default function PlatformAdminPage() {
                                                 <div key={p.id} className="flex items-center justify-between p-1.5 rounded-lg hover:bg-slate-100/60">
                                                   <label
                                                     htmlFor={`user-plan-${user.user_id}-${p.id}`}
-                                                    className="text-xs text-slate-200 font-medium cursor-pointer flex-1 pr-2"
+                                                    className="text-xs text-slate-700 font-medium cursor-pointer flex-1 pr-2"
                                                   >
                                                     {p.label}
                                                   </label>
@@ -1792,7 +1832,7 @@ export default function PlatformAdminPage() {
                     size="sm"
                     variant="outline"
                     onClick={() => handleSetUserDirectPlan(selectedUserForModal, "free")}
-                    className="border-slate-200 hover:bg-slate-100 text-slate-200 text-xs font-semibold py-2"
+                    className="border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold py-2"
                   >
                     🆓 Starter (₹0)
                   </Button>
