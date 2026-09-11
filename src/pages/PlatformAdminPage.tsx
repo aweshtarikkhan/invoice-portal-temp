@@ -1369,7 +1369,7 @@ export default function PlatformAdminPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {dashData?.recentUsers?.map((user: any, idx: number) => (
+                        {dashData?.users?.map((user: any, idx: number) => (
                           <TableRow key={idx}>
                             <TableCell className="font-medium">{user.email}</TableCell>
                             <TableCell>
@@ -1378,7 +1378,7 @@ export default function PlatformAdminPage() {
                             <TableCell className="text-slate-500">{new Date(user.created_at).toLocaleString()}</TableCell>
                           </TableRow>
                         ))}
-                        {!dashData?.recentUsers?.length && (
+                        {!dashData?.users?.length && (
                           <TableRow>
                             <TableCell colSpan={3} className="h-24 text-center text-slate-500">No signups found.</TableCell>
                           </TableRow>
