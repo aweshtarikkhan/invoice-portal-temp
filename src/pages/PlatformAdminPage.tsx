@@ -1518,13 +1518,44 @@ export default function PlatformAdminPage() {
                             {new Date(req.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <h4 className="text-slate-800 font-medium">{req.organizations?.name || 'Unknown Business'}</h4>
+                        <h4 className="text-slate-800 font-medium">
+                          {(() => {
+                            // Try to extract business/company name from JSON message
+                            try {
+                              const parsed = JSON.parse(req.message || '{}');
+                              return parsed.business || parsed.company || parsed.name || req.organizations?.name || 'Unknown Business';
+                            } catch {
+                              return req.organizations?.name || 'Unknown Business';
+                            }
+                          })()}
+                        </h4>
                         <p className="text-sm text-slate-500">{req.user_email || 'Unknown User'}</p>
-                        {req.message && (
-                          <div className="mt-3 p-3 bg-white rounded-lg text-sm text-slate-600 border border-slate-200/50">
-                            "{req.message}"
-                          </div>
-                        )}
+                        {req.message && (() => {
+                          try {
+                            const parsed = JSON.parse(req.message);
+                            const labelMap: Record<string, string> = {
+                              name: 'Name', email: 'Email', mobile: 'Mobile', phone: 'Phone',
+                              company: 'Company', business: 'Business', category: 'Category',
+                              subject: 'Subject', message: 'Message'
+                            };
+                            return (
+                              <div className="mt-3 p-3 bg-white rounded-lg text-sm border border-slate-200/50 space-y-1">
+                                {Object.entries(parsed).map(([k, v]) => (
+                                  <div key={k} className="flex gap-2">
+                                    <span className="font-medium text-slate-700 min-w-[70px]">{labelMap[k] || k}:</span>
+                                    <span className="text-slate-600">{String(v)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } catch {
+                            return (
+                              <div className="mt-3 p-3 bg-white rounded-lg text-sm text-slate-600 border border-slate-200/50">
+                                {req.message}
+                              </div>
+                            );
+                          }
+                        })()}
                       </div>
                       <div className="flex gap-2 w-full md:w-auto">
                         <Button 
