@@ -226,13 +226,14 @@ export function AppSidebar() {
       if (g.icon === "UserCog") icon = UserCog;
       if (g.icon === "Users") icon = Users;
       if (g.icon === "Warehouse") icon = Warehouse;
-      
+
+      const isOutreachUnlocked = g.key === 'outreach' && !!subscriptionPlan && subscriptionPlan !== 'free';
+
       return {
         key: g.key,
         label: g.label,
         isUpcoming: g.isUpcoming,
-        const isOutreachPaidUnlock = g.key === 'outreach' && subscriptionPlan && subscriptionPlan !== 'free';
-        isLocked: !isOutreachPaidUnlock && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key)),
+        isLocked: !isOutreachUnlocked && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key)),
         items: g.items.map(i => {
           let itemIcon = ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
