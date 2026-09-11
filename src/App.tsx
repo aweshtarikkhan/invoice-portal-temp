@@ -105,6 +105,7 @@ const BrochurePage = lazy(() => import("./pages/BrochurePage"));
 const PamphletPage = lazy(() => import("./pages/PamphletPage"));
 const SocialLaunchPostsPage = lazy(() => import("./pages/SocialLaunchPostsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
+const PartnerWithUsPage = lazy(() => import("./pages/PartnerWithUsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
@@ -280,6 +281,7 @@ const App = () => (
 
             {/* Redirects */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/partner-with-us" element={<PartnerWithUsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>

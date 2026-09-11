@@ -79,7 +79,7 @@ export default function SupportPage() {
     window.open(`https://wa.me/919424825919?text=${text}`, '_blank');
   };
 
-  const handleSubmitForm = (e: React.FormEvent) => {
+  const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.subject.trim() || !formData.message.trim()) {
       toast({
@@ -91,24 +91,51 @@ export default function SupportPage() {
     }
 
     setSubmitting(true);
-    // Compose mailto link with prefilled details
-    const subject = encodeURIComponent(`[Assay Biz Support] ${formData.category.toUpperCase()}: ${formData.subject}`);
-    const body = encodeURIComponent(
-      `Name: ${formData.name || 'N/A'}\n` +
-        `Email: ${formData.email || user?.email || 'N/A'}\n` +
-        `Phone: ${formData.phone || 'N/A'}\n` +
-        `Business: ${org?.name || 'N/A'}\n` +
-        `Category: ${formData.category}\n\n` +
-        `Message Details:\n${formData.message}`
-    );
+    
+    try {
+      const payload = {
+        name: formData.name || 'N/A',
+        email: formData.email || user?.email || 'N/A',
+        phone: (formData as any).phone || 'N/A',
+        business: org?.name || 'N/A',
+        category: formData.category,
+        subject: formData.subject,
+        message: formData.message,
+      };
 
-    window.location.href = `mailto:support@assaybiz.com?subject=${subject}&body=${body}`;
+      const { error } = await supabase.from('feature_requests').insert({
+        feature_name: 'Help & Support',
+        request_type: 'support_request',
+        user_email: payload.email,
+        message: JSON.stringify(payload),
+        status: 'pending'
+      });
 
-    toast({
-      title: 'Inquiry Prepared!',
-      description: 'Your email client has been launched with all details prefilled.',
-    });
-    setSubmitting(false);
+      if (error) throw error;
+
+      toast({
+        title: 'Request sent successfully',
+        description: 'Our support team has received your query and will respond soon.',
+      });
+
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        category: 'general',
+        subject: '',
+        message: '',
+      } as any);
+    } catch (err: any) {
+      toast({
+        title: 'Error submitting request',
+        description: err.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleFormWhatsApp = () => {

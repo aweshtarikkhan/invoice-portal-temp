@@ -11,7 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Package, AlertTriangle, ArrowRightLeft, DollarSign } from "lucide-react";
+import { Package, AlertTriangle, ArrowRightLeft, DollarSign, Download, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
 
