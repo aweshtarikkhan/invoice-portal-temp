@@ -946,8 +946,10 @@ export default function PlatformAdminPage() {
                   </div>
                 </Card>
               );
-            })
-            })()}
+            });
+          })()
+          )}
+
         </TabsContent>
 
         {/* ── All Users Tab (Full User & Subscription Plan Management) ── */}
