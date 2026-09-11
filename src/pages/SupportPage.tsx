@@ -39,6 +39,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/lib/auth';
 import { useAppStore } from '@/store/app-store';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function SupportPage() {
   const { toast } = useToast();
@@ -81,6 +82,19 @@ export default function SupportPage() {
 
   const handleSubmitForm = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!mobileRegex.test(formData.phone)) {
+      toast({ title: "Invalid Mobile", description: "Please enter a valid 10-digit mobile number.", variant: "destructive" });
+      return;
+    }
+
     if (!formData.subject.trim() || !formData.message.trim()) {
       toast({
         title: 'Missing information',
@@ -377,7 +391,7 @@ export default function SupportPage() {
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="email">Email Address *</Label>
+                    <Label htmlFor="email">Email ID *</Label>
                     <Input
                       id="email"
                       type="email"
@@ -391,10 +405,10 @@ export default function SupportPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label htmlFor="phone">Phone / WhatsApp (Optional)</Label>
+                    <Label htmlFor="phone">Mobile No. *</Label>
                     <Input
                       id="phone"
-                      placeholder="+91 98765 43210"
+                      placeholder="10-digit Mobile No." required
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                     />
@@ -443,21 +457,13 @@ export default function SupportPage() {
                   />
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
+                <div className="pt-2">
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6"
+                    className="w-full sm:w-auto bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-6"
                   >
-                    <Mail className="w-4 h-4 mr-2" /> Send via Email Client
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleFormWhatsApp}
-                    className="w-full sm:w-auto border-emerald-600/30 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 dark:text-emerald-400 font-medium"
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2 text-emerald-500" /> Send via WhatsApp
+                    <Send className="w-4 h-4 mr-2" /> {submitting ? "Submitting..." : "Submit Request"}
                   </Button>
                 </div>
               </form>
