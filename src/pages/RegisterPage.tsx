@@ -24,6 +24,7 @@ export default function RegisterPage() {
     }
   }, []);
   
+  const [mobile, setMobile] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -37,6 +38,19 @@ export default function RegisterPage() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!cleanEmail || !emailRegex.test(cleanEmail)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    const cleanMobile = mobile.replace(/\D/g, "");
+    if (!cleanMobile || cleanMobile.length !== 10) {
+      toast({ title: "Invalid Mobile No.", description: "Please enter a valid 10-digit mobile number.", variant: "destructive" });
+      return;
+    }
+
     if (password.length < 8) {
       toast({ title: "Password too short", description: "Minimum 8 characters", variant: "destructive" });
       return;
@@ -44,10 +58,10 @@ export default function RegisterPage() {
     setLoading(true);
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
+      email: cleanEmail,
       password,
       options: {
-        data: { first_name: firstName, last_name: lastName },
+        data: { first_name: firstName, last_name: lastName, phone: cleanMobile, mobile: cleanMobile },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -199,9 +213,22 @@ export default function RegisterPage() {
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="regEmail">Email</Label>
+                <Label htmlFor="regEmail">Email *</Label>
                 <Input id="regEmail" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
                 <p className="text-xs text-muted-foreground">Verification email may take a few minutes to arrive due to high traffic. Please also check your spam folder.</p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="regMobile">Mobile No. *</Label>
+                <Input 
+                  id="regMobile" 
+                  type="tel" 
+                  placeholder="10-digit mobile number" 
+                  maxLength={10} 
+                  value={mobile} 
+                  onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))} 
+                  required 
+                />
               </div>
 
               <div className="space-y-2">

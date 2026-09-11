@@ -63,6 +63,16 @@ export default function VendorsPage() {
   useEffect(() => { load(); }, [org?.id]);
 
   const save = async () => {
+    const cleanEmail = form.email?.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+    const cleanPhone = form.phone?.replace(/\D/g, "");
+    if (cleanPhone && cleanPhone.length !== 10) {
+      toast({ title: "Invalid Mobile No.", description: "Mobile number must be exactly 10 digits.", variant: "destructive" });
+      return;
+    }
     if (!org?.id || !form.name.trim()) {
       toast({ title: "Vendor name is required", variant: "destructive" });
       return;
@@ -71,8 +81,8 @@ export default function VendorsPage() {
       org_id: org.id,
       name: form.name.trim(),
       display_name: form.display_name || null,
-      email: form.email || null,
-      phone: form.phone || null,
+      email: cleanEmail || null,
+      phone: cleanPhone || null,
       gstin: form.gstin || null,
       pan: form.pan || null,
       payment_terms: Number(form.payment_terms) || 30,
@@ -177,7 +187,7 @@ export default function VendorsPage() {
             <div className="col-span-2"><Label>Name *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} /></div>
             <div><Label>Display Name</Label><Input value={form.display_name} onChange={e => setForm({ ...form, display_name: e.target.value })} /></div>
             <div><Label>Email</Label><Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
-            <div><Label>Phone</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} /></div>
+            <div><Label>Mobile No.</Label><Input maxLength={10} placeholder="10-digit mobile number" value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} /></div>
             <div><Label>GSTIN</Label><Input value={form.gstin} onChange={e => setForm({ ...form, gstin: e.target.value.toUpperCase() })} /></div>
             <div><Label>PAN</Label><Input value={form.pan} onChange={e => setForm({ ...form, pan: e.target.value.toUpperCase() })} /></div>
             <div><Label>Payment Terms (days)</Label><Input type="number" value={form.payment_terms} onChange={e => setForm({ ...form, payment_terms: e.target.value })} /></div>

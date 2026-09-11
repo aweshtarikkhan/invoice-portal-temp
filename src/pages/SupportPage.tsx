@@ -408,6 +408,8 @@ export default function SupportPage() {
                     <Label htmlFor="phone">Mobile No. *</Label>
                     <Input
                       id="phone"
+                      type="tel"
+                      maxLength={10}
                       placeholder="10-digit Mobile No." required
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}

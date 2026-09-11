@@ -315,12 +315,14 @@ export default function EmployeesPage() {
   };
 
   const save = async () => {
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    const cleanEmail = form.email?.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
-    if (form.phone && form.phone.length < 10) {
-      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+    const cleanPhone = form.phone?.replace(/\D/g, "");
+    if (cleanPhone && cleanPhone.length !== 10) {
+      toast({ title: "Invalid Mobile No.", description: "Mobile number must be exactly 10 digits.", variant: "destructive" });
       return;
     }
     if (!org?.id) return;
@@ -875,8 +877,8 @@ export default function EmployeesPage() {
             </div>
 
             <div>
-              <Label>Phone Number</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} placeholder="10-digit mobile" />
+              <Label>Mobile No.</Label>
+              <Input maxLength={10} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} placeholder="10-digit mobile number" />
             </div>
 
             <div>

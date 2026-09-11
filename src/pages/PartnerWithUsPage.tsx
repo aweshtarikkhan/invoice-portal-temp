@@ -133,10 +133,18 @@ export default function PartnerWithUsPage() {
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1.5">Mobile No.</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1.5">Mobile No. *</label>
                 <div className="relative">
                   <Phone className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input required placeholder="+91 9876543210" className="pl-10 h-11" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
+                  <Input 
+                    type="tel"
+                    required 
+                    maxLength={10}
+                    placeholder="10-digit mobile number" 
+                    className="pl-10 h-11" 
+                    value={formData.mobile} 
+                    onChange={e => setFormData({...formData, mobile: e.target.value.replace(/\D/g, '')})} 
+                  />
                 </div>
               </div>
             </div>

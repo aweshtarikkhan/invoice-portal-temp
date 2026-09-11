@@ -73,12 +73,14 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
   };
 
   const handleSave = async () => {
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    const cleanEmail = email.trim();
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
       return;
     }
-    if (form.phone && form.phone.length < 10) {
-      toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
+    const cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone && cleanPhone.length !== 10) {
+      toast({ title: "Invalid Mobile No.", description: "Mobile number must be exactly 10 digits.", variant: "destructive" });
       return;
     }
     if (!displayName.trim()) {
@@ -169,8 +171,8 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" />
             </div>
             <div className="space-y-2">
-              <Label>Phone</Label>
-              <Input maxLength={15} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="Phone number" />
+              <Label>Mobile No.</Label>
+              <Input maxLength={10} value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} placeholder="10-digit mobile number" />
             </div>
           </div>
           <div className="space-y-2">
