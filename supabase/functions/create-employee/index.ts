@@ -56,21 +56,37 @@ serve(async (req) => {
       throw new Error('Employee already has a portal account')
     }
 
-    // 2. Create the auth user
-    const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: { name: emp.name }
-    })
+    // 2. Check if an auth user already exists with this email
+    //    (can happen if employee was previously deleted from another org but auth user remains)
+    let auth_user_id: string | null = null
 
-    if (createError) {
-      throw createError
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers()
+    const existingUser = existingUsers?.users?.find((u: any) => u.email === email)
+
+    if (existingUser) {
+      // Re-use existing auth user — just update the password and link them
+      auth_user_id = existingUser.id
+      const { error: updatePwErr } = await supabaseAdmin.auth.admin.updateUserById(
+        auth_user_id,
+        { password, user_metadata: { name: emp.name } }
+      )
+      if (updatePwErr) throw updatePwErr
+    } else {
+      // 3. Create the auth user fresh
+      const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: { name: emp.name }
+      })
+
+      if (createError) {
+        throw createError
+      }
+      auth_user_id = authData.user.id
     }
 
-    const auth_user_id = authData.user.id
-
-    // 3. Update the employee record with auth_user_id
+    // 4. Update the employee record with auth_user_id
     const { data: employeeData, error: dbError } = await supabaseAdmin
       .from('employees')
       .update({ auth_user_id, email })
@@ -79,8 +95,10 @@ serve(async (req) => {
       .single()
 
     if (dbError) {
-      // Rollback auth user creation if db update fails
-      await supabaseAdmin.auth.admin.deleteUser(auth_user_id)
+      // Only delete auth user if we just created it (not re-linked)
+      if (!existingUser) {
+        await supabaseAdmin.auth.admin.deleteUser(auth_user_id!)
+      }
       throw dbError
     }
 

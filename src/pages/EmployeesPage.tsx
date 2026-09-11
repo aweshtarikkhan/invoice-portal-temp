@@ -92,6 +92,9 @@ export default function EmployeesPage() {
   const [uploadingInlineDoc, setUploadingInlineDoc] = useState(false);
   const [weekOffEmp, setWeekOffEmp] = useState<any | null>(null);
   const [quickWeekOffs, setQuickWeekOffs] = useState<number[]>([]);
+  const [resetEmp, setResetEmp] = useState<any | null>(null);
+  const [resetNewPassword, setResetNewPassword] = useState("");
+  const [resetLoading, setResetLoading] = useState(false);
 
   const isImage = (name?: string) => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name || "");
   const isPdf = (name?: string) => /\.pdf$/i.test(name || "");
@@ -464,12 +467,55 @@ export default function EmployeesPage() {
     }
   };
 
+  const resetEmployeePassword = async () => {
+    if (!resetEmp || resetNewPassword.length < 6) return;
+    setResetLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-employee-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${session?.access_token}`
+        },
+        body: JSON.stringify({ employee_id: resetEmp.id, new_password: resetNewPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      toast({ title: "Password Reset", description: `Password updated for ${resetEmp.name}` });
+      setResetEmp(null);
+      setResetNewPassword("");
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const remove = async (id: string) => {
     if (!confirm("Delete this staff member? Their attendance records will also be removed.")) return;
+    // Also delete their auth user if they have portal access
+    const emp = rows.find(r => r.id === id) as any;
+    if (emp?.auth_user_id) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-employee-auth`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`
+          },
+          body: JSON.stringify({ auth_user_id: emp.auth_user_id })
+        });
+      } catch (e) {
+        console.warn("Could not delete auth user:", e);
+      }
+    }
     const { error } = await (supabase as any).from("employees").delete().eq("id", id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     else { toast({ title: "Deleted" }); load(); }
   };
+
 
   const saveQuickWeekOff = async () => {
     if (!weekOffEmp) return;
@@ -663,7 +709,17 @@ export default function EmployeesPage() {
                   <TableCell className="text-right">{e.paid_leaves_per_month}</TableCell>
                   <TableCell>
                     {e.auth_user_id ? (
-                      <span className="text-green-600 text-xs font-medium flex items-center gap-1">✓ Active</span>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-green-600 text-xs font-medium flex items-center gap-1">✓ Active</span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 border-amber-400 text-amber-700 hover:bg-amber-50"
+                          onClick={() => { setResetEmp(e); setResetNewPassword(""); }}
+                        >
+                          <KeyRound className="h-3 w-3 mr-1" /> Reset Pass
+                        </Button>
+                      </div>
                     ) : (
                       <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => { setPortalEmp(e); setPortalEmail(e.email || ""); setPortalPassword(""); }}>
                         <KeyRound className="h-3 w-3 mr-1 text-primary" /> Grant Access
@@ -1199,6 +1255,38 @@ export default function EmployeesPage() {
             <Button variant="outline" onClick={() => setPortalEmp(null)}>Cancel</Button>
             <Button onClick={grantAccess} disabled={portalLoading || !portalEmail || portalPassword.length < 6}>
               {portalLoading ? "Creating..." : "Grant Access"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Employee Password Dialog */}
+      <Dialog open={!!resetEmp} onOpenChange={(v) => { if (!v) { setResetEmp(null); setResetNewPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset Portal Password</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Set a new password for <strong>{resetEmp?.name}</strong>. No old password required — HR can reset directly.
+          </p>
+          <div className="space-y-3 py-2">
+            <div>
+              <Label>New Password</Label>
+              <Input
+                type="text"
+                value={resetNewPassword}
+                onChange={(e) => setResetNewPassword(e.target.value)}
+                placeholder="Min 6 characters"
+              />
+              {resetNewPassword.length > 0 && resetNewPassword.length < 6 && (
+                <p className="text-xs text-destructive mt-1">Password must be at least 6 characters</p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setResetEmp(null); setResetNewPassword(""); }}>Cancel</Button>
+            <Button onClick={resetEmployeePassword} disabled={resetLoading || resetNewPassword.length < 6}>
+              {resetLoading ? "Resetting..." : "Reset Password"}
             </Button>
           </DialogFooter>
         </DialogContent>
