@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/shared/SEO";
 import { Eye, EyeOff } from "lucide-react";
 import logoImg from "@/assets/logo.png";
+import { PublicHeader } from "@/components/public/PublicHeader";
 
 
 export default function LoginPage() {
@@ -85,7 +86,9 @@ export default function LoginPage() {
 
   if (employeeBlocked) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="min-h-screen flex flex-col">
+        <PublicHeader />
+        <main className="flex-grow flex items-center justify-center bg-muted/30 px-4 py-12">
         <Card className="w-full max-w-md border-destructive/30 shadow-lg">
           <CardHeader className="text-center pb-2">
             <div className="mx-auto w-12 h-12 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-2 text-2xl font-bold">
@@ -118,14 +121,17 @@ export default function LoginPage() {
             </Button>
           </CardContent>
         </Card>
-      </div>
-    );
-  }
+</main>
+</div>
+);
+}
 
-  return (
+return (
     <>
       <SEO title="Sign In" description="Sign in to Assay Biz Invoices to manage your invoices, clients and payments." path="/login" />
-      <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
+      <div className="min-h-screen flex flex-col">
+        <PublicHeader />
+        <main className="flex-grow flex items-center justify-center bg-muted/30 px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <img src={logoImg} alt="Assay Biz Invoices" width={80} height={80} fetchPriority="high" decoding="async" className="mx-auto mb-2 h-20 w-20 object-contain" />
@@ -162,6 +168,7 @@ export default function LoginPage() {
             </CardFooter>
           </form>
         </Card>
+        </main>
       </div>
     </>
   );

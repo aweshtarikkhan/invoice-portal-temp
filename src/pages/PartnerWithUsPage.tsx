@@ -5,6 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowRight, Handshake, Mail, Phone, User, Building } from "lucide-react";
+import { PublicHeader } from "@/components/public/PublicHeader";
+import { PublicFooter } from "@/components/public/PublicFooter";
 
 export default function PartnerWithUsPage() {
   const { toast } = useToast();
@@ -58,7 +60,10 @@ export default function PartnerWithUsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <PublicHeader />
+      <main className="flex-grow">
+    <div className="bg-slate-50 py-12 px-4 sm:px-6 lg:px-8 flex items-center justify-center">
       <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 bg-white rounded-2xl shadow-xl overflow-hidden">
         
         {/* Left Side: Info */}
@@ -142,10 +147,12 @@ export default function PartnerWithUsPage() {
             </Button>
           </form>
         </div>
-
-      </div>
-    </div>
-  );
+</div>
+</div>
+</main>
+<PublicFooter />
+</div>
+);
 }
 
 function CheckIcon(props: any) {
