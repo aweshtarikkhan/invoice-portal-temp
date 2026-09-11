@@ -163,7 +163,7 @@ export function AppSidebar() {
   const userRole = useAppStore((s) => s.userRole);
   const globalPermissions = useAppStore((s) => s.userPermissions);
   const inventoryEnabled = (org as any)?.inventory_enabled;
-  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures, subscriptionPlan } = useFeatureStore();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
