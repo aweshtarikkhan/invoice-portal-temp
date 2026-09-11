@@ -163,7 +163,7 @@ export function AppSidebar() {
   const userRole = useAppStore((s) => s.userRole);
   const globalPermissions = useAppStore((s) => s.userPermissions);
   const inventoryEnabled = (org as any)?.inventory_enabled;
-  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures } = useFeatureStore();
+  const { enabledGroups, isAdmin, teamMembers, isGroupEnabled, platformFeatures, subscriptionPlan } = useFeatureStore();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
@@ -209,7 +209,13 @@ export function AppSidebar() {
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
-  ].map(g => ({ ...g, isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key) }));
+  ].map(g => {
+    let hasPlatformFeature = platformFeatures.includes(g.key);
+    if (g.key === 'outreach' && subscriptionPlan && subscriptionPlan !== 'free') {
+      hasPlatformFeature = true;
+    }
+    return { ...g, isLocked: !isGroupEnabled(g.key) || !hasPlatformFeature };
+  });
 
   // Admin controlled groups - mapped from the feature store
   const featureGroups = ADMIN_FEATURE_GROUPS
