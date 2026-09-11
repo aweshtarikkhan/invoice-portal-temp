@@ -231,7 +231,8 @@ export function AppSidebar() {
         key: g.key,
         label: g.label,
         isUpcoming: g.isUpcoming,
-        isLocked: !isGroupEnabled(g.key) || !platformFeatures.includes(g.key),
+        const isOutreachPaidUnlock = g.key === 'outreach' && subscriptionPlan && subscriptionPlan !== 'free';
+        isLocked: !isOutreachPaidUnlock && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key)),
         items: g.items.map(i => {
           let itemIcon = ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
