@@ -21,6 +21,20 @@ export default function PartnerWithUsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Add regex validation (Testers)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.email)) {
+      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
+      return;
+    }
+
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!mobileRegex.test(formData.mobile)) {
+      toast({ title: "Invalid Mobile", description: "Please enter a valid 10-digit mobile number.", variant: "destructive" });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -112,14 +126,14 @@ export default function PartnerWithUsPage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1.5">Email Address</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1.5">Email ID</label>
                 <div className="relative">
                   <Mail className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input type="email" required placeholder="john@example.com" className="pl-10 h-11" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} />
                 </div>
               </div>
               <div>
-                <label className="text-sm font-medium text-slate-700 block mb-1.5">Mobile Number</label>
+                <label className="text-sm font-medium text-slate-700 block mb-1.5">Mobile No.</label>
                 <div className="relative">
                   <Phone className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <Input required placeholder="+91 9876543210" className="pl-10 h-11" value={formData.mobile} onChange={e => setFormData({...formData, mobile: e.target.value})} />
