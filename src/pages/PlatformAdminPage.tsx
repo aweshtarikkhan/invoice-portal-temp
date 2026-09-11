@@ -198,20 +198,31 @@ export default function PlatformAdminPage() {
     setError(null);
     
     // Fetch dashboard data
-    const { data, error: rpcError } = await supabase.rpc("get_platform_dashboard_data");
-    
-    // Fetch feature requests
-    const { data: reqData, error: reqError } = await supabase.rpc("get_all_feature_requests");
+      const { data, error: rpcError } = await supabase.rpc("get_platform_dashboard_data");
+      
+      // Try direct select for all feature requests (including partner/support)
+      let allReqs: any[] = [];
+      const { data: directReqData, error: directErr } = await supabase
+        .from("feature_requests")
+        .select("*")
+        .order("created_at", { ascending: false });
+        
+      if (directReqData && !directErr) {
+        allReqs = directReqData;
+      } else {
+        const { data: reqData } = await supabase.rpc("get_all_feature_requests");
+        if (reqData) allReqs = reqData;
+      }
 
-    if (rpcError) {
-      console.error("Error fetching dashboard data:", rpcError);
-      setError(rpcError.message);
-      setLoading(false);
-      return;
-    }
-    
-    setDashData(data as unknown as DashboardData);
-    if (reqData) setFeatureRequests(reqData);
+      if (rpcError) {
+        console.error("Error fetching dashboard data:", rpcError);
+        setError(rpcError.message);
+        setLoading(false);
+        return;
+      }
+      
+      setDashData(data as unknown as DashboardData);
+      setFeatureRequests(allReqs);
     setLoading(false);
   };
 
