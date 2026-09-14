@@ -47,10 +47,12 @@ export function PublicFooter() {
             <div className="lg:col-span-3">
               <h3 className="font-semibold text-slate-900 mb-4">Quick Links</h3>
               <ul className="space-y-3 text-sm">
+                <li><Link to="/" className="hover:text-primary transition-colors">Home</Link></li>
                 <li><a href="/#features" className="hover:text-primary transition-colors">Features</a></li>
                 <li><a href="/#pricing" className="hover:text-primary transition-colors">Pricing</a></li>
                 <li><Link to="/brochure" className="hover:text-primary transition-colors">Brochure</Link></li>
                 <li><Link to="/pamphlet" className="hover:text-primary transition-colors">Pamphlet</Link></li>
+                <li><Link to="/partner-with-us" className="hover:text-primary transition-colors">Partner With Us</Link></li>
               </ul>
             </div>
 

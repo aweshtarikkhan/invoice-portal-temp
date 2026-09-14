@@ -287,6 +287,7 @@ const App = () => (
 
             {/* Redirects */}
             <Route path="/" element={<LandingPage />} />
+            <Route path="/partner" element={<PartnerWithUsPage />} />
             <Route path="/partner-with-us" element={<PartnerWithUsPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

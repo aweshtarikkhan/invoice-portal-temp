@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { FileText, Layers } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 
 export function PublicHeader() {
@@ -10,16 +9,12 @@ export function PublicHeader() {
         <Link to="/" className="flex items-center gap-2">
           <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-8 w-auto object-contain" />
         </Link>
-        <nav className="hidden md:flex items-center gap-8 text-sm font-semibold text-slate-600">
+        <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
+          <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <a href="/#features" className="hover:text-primary transition-colors">Features</a>
           <a href="/#compare" className="hover:text-primary transition-colors">Compare</a>
           <a href="/#pricing" className="hover:text-primary transition-colors">Pricing</a>
-          <Link to="/brochure" className="hover:text-primary transition-colors flex items-center gap-1.5 text-indigo-600">
-            <FileText className="w-4 h-4 text-indigo-500" /> Brochure
-          </Link>
-          <Link to="/pamphlet" className="hover:text-primary transition-colors flex items-center gap-1.5 text-indigo-600">
-            <Layers className="w-4 h-4 text-indigo-500" /> Pamphlet
-          </Link>
+          <Link to="/partner-with-us" className="hover:text-primary transition-colors">Partner With Us</Link>
         </nav>
         <div className="flex items-center gap-4">
           <Button variant="ghost" className="text-slate-700 hover:text-primary hover:bg-slate-100 hidden sm:flex font-semibold" asChild>
