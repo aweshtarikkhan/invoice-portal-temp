@@ -9,6 +9,7 @@ import {
   Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
   MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
   Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users, Layers,
+  Calculator, UserCheck, Megaphone, BrainCircuit, Link2,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { PublicHeader } from "@/components/public/PublicHeader";
@@ -84,6 +85,65 @@ const complianceBadges = [
   { icon: IndianRupee, label: "UPI / QR Payments" },
   { icon: BarChart3, label: "GSTR-1 & 3B Export" },
   { icon: Building2, label: "Tally CSV Export" },
+];
+
+const growthFeatures = [
+  {
+    icon: FileText,
+    title: "Invoicing",
+    desc: "Create, send and track invoices easily.",
+    cardBg: "bg-blue-50/50 border-blue-100 hover:border-[#28166f]/40",
+    iconBg: "bg-blue-100/80 text-[#28166f]",
+  },
+  {
+    icon: Calculator,
+    title: "Accounting",
+    desc: "Manage your finances with confidence.",
+    cardBg: "bg-emerald-50/40 border-emerald-100 hover:border-emerald-400",
+    iconBg: "bg-emerald-100/80 text-emerald-600",
+  },
+  {
+    icon: Users,
+    title: "CRM",
+    desc: "Build stronger customer relationships.",
+    cardBg: "bg-orange-50/50 border-orange-100 hover:border-[#e77817]/40",
+    iconBg: "bg-[#e77817]/15 text-[#e77817]",
+  },
+  {
+    icon: UserCheck,
+    title: "HRMS",
+    desc: "Manage your team, attendance and payroll with ease.",
+    cardBg: "bg-purple-50/40 border-purple-100 hover:border-purple-400",
+    iconBg: "bg-purple-100/80 text-purple-600",
+  },
+  {
+    icon: Megaphone,
+    title: "Promotion",
+    desc: "Grow your brand with built-in marketing tools.",
+    cardBg: "bg-rose-50/40 border-rose-100 hover:border-rose-400",
+    iconBg: "bg-rose-100/80 text-rose-500",
+  },
+  {
+    icon: Star,
+    title: "Business Feedback",
+    desc: "Listen, analyze and improve with customer feedback.",
+    cardBg: "bg-amber-50/40 border-amber-100 hover:border-amber-400",
+    iconBg: "bg-amber-100/80 text-amber-500",
+  },
+  {
+    icon: BrainCircuit,
+    title: "AI Analysis",
+    desc: "Get smart insights and predictions with AI.",
+    cardBg: "bg-cyan-50/40 border-cyan-100 hover:border-cyan-400",
+    iconBg: "bg-cyan-100/80 text-cyan-600",
+  },
+  {
+    icon: Link2,
+    title: "Integrations",
+    desc: "Connect with Email, WhatsApp and other tools seamlessly.",
+    cardBg: "bg-emerald-50/40 border-emerald-100 hover:border-emerald-400",
+    iconBg: "bg-emerald-100/80 text-emerald-600",
+  },
 ];
 
 const features = [
@@ -280,23 +340,46 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="py-24 bg-white border-y border-slate-100">
-        <div className="mx-auto max-w-7xl px-6">
+      {/* Features - Everything You Need to Grow */}
+      <section id="features" className="py-24 bg-slate-50/40 border-y border-slate-100 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-[#28166f]/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-[#e77817]/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="mx-auto max-w-7xl px-6 relative z-10">
           <div className="text-center max-w-3xl mx-auto mb-16">
-            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-navy mb-6">{L.feat_title}</h2>
-            <p className="text-lg md:text-xl text-slate-500 leading-relaxed">{L.feat_sub}</p>
+            <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#28166f] bg-[#28166f]/10 border border-[#28166f]/20 px-4 py-1.5 rounded-full mb-4">
+              POWERFUL FEATURES
+            </span>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 mb-4">
+              Everything You Need to Grow
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
+              Assaybiz brings all essential business tools together, so you can save time, reduce complexity and focus on what matters most — your growth.
+            </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {features.map((f, i) => (
-              <Card key={i} className="p-8 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-slate-100 bg-slate-50/50 hover:bg-white group">
-                <div className="h-14 w-14 rounded-2xl bg-primary/10 text-primary grid place-items-center mb-6 group-hover:scale-110 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                  <f.icon className="h-6 w-6" />
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {growthFeatures.map((f, i) => {
+              const Icon = f.icon;
+              return (
+                <div
+                  key={i}
+                  className={`p-4 sm:p-5 rounded-2xl border ${f.cardBg} transition-all duration-300 hover:shadow-md hover:-translate-y-1 flex items-center gap-4 group cursor-default`}
+                >
+                  <div className={`w-12 h-12 rounded-full ${f.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200 shadow-2xs`}>
+                    <Icon className="w-5 h-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base font-bold text-slate-900 mb-0.5 group-hover:text-[#28166f] transition-colors">
+                      {f.title}
+                    </h3>
+                    <p className="text-xs sm:text-[13px] text-slate-500 leading-snug">
+                      {f.desc}
+                    </p>
+                  </div>
                 </div>
-                <h3 className="text-xl font-bold mb-3 text-navy">{f.title}</h3>
-                <p className="text-slate-500 leading-relaxed">{f.desc}</p>
-              </Card>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
