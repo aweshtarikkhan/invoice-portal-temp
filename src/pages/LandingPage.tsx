@@ -13,6 +13,7 @@ import {
 import logoImg from "@/assets/logo.png";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
+import { HeroDashboardMockup } from "@/components/public/HeroDashboardMockup";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 
@@ -167,81 +168,79 @@ export default function LandingPage() {
       {/* Nav */}
       <PublicHeader />
 
-      {/* Hero */}
-      <section className="relative overflow-hidden bg-navy pt-20 pb-28 lg:pt-28 lg:pb-36">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/stardust.png')] opacity-[0.03]"></div>
-        <div className="absolute top-0 right-0 -translate-y-12 translate-x-1/4 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[120px] opacity-60 pointer-events-none"></div>
-        <div className="absolute bottom-0 left-0 translate-y-1/4 -translate-x-1/4 w-[500px] h-[500px] bg-blue-500/20 rounded-full blur-[120px] opacity-40 pointer-events-none"></div>
+      {/* Modern SaaS Hero Section matching user screenshot */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#f8fafc] via-[#f5f7fb] to-white pt-12 pb-20 lg:pt-18 lg:pb-28 border-b border-slate-200/70">
+        {/* Subtle gradient background orbs */}
+        <div className="absolute top-0 right-1/4 -translate-y-12 w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 translate-y-1/4 w-[500px] h-[500px] bg-violet-200/25 rounded-full blur-[140px] pointer-events-none" />
         
-        <div className="mx-auto max-w-7xl px-6 relative z-10 grid lg:grid-cols-12 gap-12 items-center">
-          <div className="lg:col-span-7 text-center lg:text-left">
-            <Badge className="mb-6 gap-2 py-1.5 px-4 bg-white/10 hover:bg-white/15 text-emerald-400 border border-emerald-500/30 rounded-full backdrop-blur-sm shadow-sm inline-flex">
-              <Sparkles className="h-4 w-4" /> {L.hero_eyebrow}
-            </Badge>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15] text-white mb-6">
-              {L.hero_title}
+        <div className="mx-auto max-w-7xl px-6 relative z-10 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+          
+          {/* Left Column: Headline, Copy & CTAs */}
+          <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-center">
+            
+            {/* Pill Eyebrow */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/70 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+              <span>ALL-IN-ONE BUSINESS PLATFORM</span>
+            </div>
+
+            {/* Main Headline */}
+            <h1 className="text-4xl sm:text-5xl lg:text-[48px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
+              Run Your Business Smarter with{" "}
+              <span className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 bg-clip-text text-transparent">
+                Assaybiz
+              </span>
             </h1>
-            <p className="text-lg sm:text-xl text-slate-300 leading-relaxed mb-10 max-w-2xl mx-auto lg:mx-0">
-              {L.hero_sub}
+
+            {/* Subtitle description */}
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 font-normal">
+              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis and more — everything your business needs, in one powerful platform.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 mb-8">
-              <Button size="lg" className="h-14 px-8 text-base font-bold bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/40 rounded-full w-full sm:w-auto" asChild>
-                <a href="#pricing">{L.cta_primary} <ArrowRight className="ml-2 h-5 w-5" /></a>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 mb-7">
+              <Button
+                size="lg"
+                className="h-13 px-7 text-base font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 rounded-xl w-full sm:w-auto transition-all duration-200 hover:scale-[1.02]"
+                asChild
+              >
+                <a href="#pricing">
+                  Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
+                </a>
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="h-13 px-6 text-base font-bold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 rounded-xl w-full sm:w-auto shadow-xs"
+                asChild
+              >
+                <Link to="/demo">
+                  <PlayCircle className="mr-2 h-4 w-4 text-indigo-600" /> Book a Demo
+                </Link>
               </Button>
             </div>
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-6 gap-y-3 text-sm text-slate-400 font-medium">
-              <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> {L.no_card_badge}</span>
-              <span className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-400" /> {L.speed_claim}</span>
+
+            {/* Trust Badges */}
+            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-xs sm:text-sm font-semibold text-slate-600">
+              <span className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> No Credit Card Required
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> Easy Setup
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> Trusted by Growing Businesses
+              </span>
             </div>
+
           </div>
-          
-          {/* Mock invoice preview */}
-          <div id="demo" className="relative lg:col-span-5 hidden md:block">
-            <div className="absolute -inset-4 bg-gradient-to-tr from-primary/30 to-emerald-400/20 blur-2xl rounded-[2rem] opacity-70" />
-            <div className="relative rounded-[2rem] border border-white/10 bg-navy/80 p-2 backdrop-blur-xl shadow-2xl overflow-hidden transform rotate-2 hover:rotate-0 transition-transform duration-500">
-              <div className="bg-slate-900 text-slate-300 px-5 py-3 flex items-center justify-between rounded-t-2xl border-b border-white/5">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <MessageCircle className="h-4 w-4 text-primary" /> WhatsApp Preview
-                </div>
-                <span className="text-xs opacity-70">Just now</span>
-              </div>
-              <div className="p-5 bg-[url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')] bg-repeat bg-center">
-                <div className="bg-emerald-950/90 backdrop-blur-sm border border-emerald-800/50 rounded-xl p-4 shadow-sm space-y-3 text-sm text-slate-200">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-white">Invoice #INV-2026-0184</span>
-                    <Badge className="bg-amber-500/20 text-amber-300 border border-amber-500/30">Due ₹24,750</Badge>
-                  </div>
-                  <div className="text-slate-400 text-xs">Sharma Hardware → Kumar Constructions</div>
-                  <div className="border-t border-emerald-800/50 pt-3 space-y-2">
-                    {[
-                      ["Cement Bags × 20", "₹8,400"],
-                      ["Steel Rods × 50", "₹14,200"],
-                      ["GST @ 18%", "₹2,150"],
-                    ].map(([k, v]) => (
-                      <div key={k} className="flex justify-between text-xs"><span className="text-slate-400">{k}</span><span className="font-medium text-white">{v}</span></div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between border-t border-emerald-800/50 pt-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-white grid place-items-center">
-                        <div className="h-7 w-7 rounded-sm grid place-items-center text-[10px] font-extrabold text-navy border border-navy/10">UPI</div>
-                      </div>
-                      <div className="text-xs">
-                        <div className="font-bold text-white">Pay via UPI</div>
-                        <div className="text-emerald-400">Scan & Pay</div>
-                      </div>
-                    </div>
-                    <Button size="sm" className="h-8 bg-emerald-500 hover:bg-emerald-600 text-white font-bold rounded-lg px-4 shadow-md">Pay ₹24,750</Button>
-                  </div>
-                </div>
-                <div className="mt-3 flex justify-end">
-                  <div className="bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs px-3 py-1.5 rounded-full flex items-center gap-1.5 backdrop-blur-sm font-medium">
-                    <Check className="h-3 w-3" /> Delivered
-                  </div>
-                </div>
-              </div>
-            </div>
+
+          {/* Right Column: Interactive SaaS Software Dashboard Mockup */}
+          <div className="lg:col-span-7 flex justify-center lg:justify-end w-full mt-4 lg:mt-0">
+            <HeroDashboardMockup />
           </div>
+
         </div>
       </section>
 
