@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import logoImg from "@/assets/logo.png";
 import {
+  LayoutDashboard,
   Briefcase,
   UserCog,
   Users,
@@ -9,7 +10,6 @@ import {
   MessageSquareQuote,
   BrainCircuit,
   Settings,
-  Search,
   Bell,
   HelpCircle,
   ChevronDown,
@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 
 export type ParentModuleKey =
+  | "dashboard"
   | "accounting"
   | "hr"
   | "crm"
@@ -75,8 +76,9 @@ interface ModuleDetail {
   };
 }
 
-// Exactly the 8 parent modules from software sidebar
+// Exactly the parent modules with Dashboard added at top
 export const PARENT_MODULES = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "accounting", label: "Business Accounting", icon: Briefcase },
   { id: "hr", label: "Business HR", icon: UserCog },
   { id: "crm", label: "Business CRM", icon: Users },
@@ -88,6 +90,55 @@ export const PARENT_MODULES = [
 ];
 
 const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
+  dashboard: {
+    title: "Executive Business Dashboard",
+    subtitle: "Real-time summary of sales, cash flow, stock health & team operations.",
+    subPages: [
+      { name: "Live Sales", count: "₹18.90L", status: "156 Invoices" },
+      { name: "Receivables", count: "₹2.50L", status: "Due in 7d" },
+      { name: "Cash Reserve", count: "₹8.45L", status: "3 Bank Accounts" },
+      { name: "Staff Check-in", count: "22 / 24", status: "91.6% Present" },
+    ],
+    metrics: [
+      { label: "Total Revenue", value: "₹18,90,000", change: "+18% MoM", isPositive: true },
+      { label: "Active Invoices", value: "156 Bills", change: "94% Collected", isPositive: true },
+      { label: "Liquid Cash", value: "₹8,45,200", change: "Surplus Runway", isPositive: true },
+      { label: "Staff Present", value: "22 / 24", change: "91.6% Attendance", isPositive: true },
+    ],
+    chartTitle: "Business Growth & Sales Curve",
+    chartBadge: "FY 2025",
+    chartPoints: [
+      { m: "Jan", v: 28, label: "₹5.2L", x: 10, y: 40 },
+      { m: "Feb", v: 42, label: "₹7.6L", x: 65, y: 32 },
+      { m: "Mar", v: 56, label: "₹10.4L", x: 120, y: 24 },
+      { m: "Apr", v: 70, label: "₹13.8L", x: 175, y: 18 },
+      { m: "May", v: 84, label: "₹16.5L", x: 225, y: 12 },
+      { m: "Jun", v: 96, label: "₹18.9L", x: 270, y: 6 },
+    ],
+    chartLinePath: "M 10 40 Q 40 36, 65 32 T 120 24 T 175 18 T 225 12 T 270 6",
+    chartAreaPath: "M 10 40 Q 40 36, 65 32 T 120 24 T 175 18 T 225 12 T 270 6 L 270 46 L 10 46 Z",
+    donutTitle: "Revenue Channels",
+    donutCenter: "₹18.9L",
+    donutCenterSub: "Total Billed",
+    donutSegments: [
+      { label: "Direct GST Bills", pct: 50, color: "bg-[#e77817]", stroke: "#e77817", dash: "100 200", offset: "0" },
+      { label: "Repeat B2B", pct: 28, color: "bg-[#28166f]", stroke: "#28166f", dash: "56 200", offset: "-100" },
+      { label: "Online Orders", pct: 14, color: "bg-emerald-500", stroke: "#10b981", dash: "28 200", offset: "-156" },
+      { label: "Services", pct: 8, color: "bg-cyan-500", stroke: "#06b6d4", dash: "16 200", offset: "-184" },
+    ],
+    featureList: [
+      { title: "Consolidated Revenue", desc: "Live tracking of sales, quotes, credit notes & payments received across businesses." },
+      { title: "Cash Flow Health", desc: "Real-time bank balances, daily collections, and upcoming 30-day payout projections." },
+      { title: "Inventory Status", desc: "Monitor multi-warehouse stock levels, re-order alerts, and high-velocity SKUs." },
+      { title: "Daily Team Attendance", desc: "Instant visibility into who is clocked in, half-day, or on approved leave today." },
+    ],
+    aiInsight: {
+      title: "Revenue Pacing 18% Ahead",
+      desc: "Healthy cash collections and zero overdue supply orders reported across all hubs.",
+      action: "View Executive Summary →",
+    },
+  },
+
   accounting: {
     title: "Business Accounting Suite",
     subtitle: "Complete unified control of Sales, Purchases, Inventory & Bank Accounts.",
@@ -106,15 +157,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Monthly Sales vs Procurement Pacing",
     chartBadge: "FY 2025",
     chartPoints: [
-      { m: "Jan", v: 28, label: "₹5.2L", x: 10, y: 56 },
-      { m: "Feb", v: 42, label: "₹7.6L", x: 65, y: 46 },
-      { m: "Mar", v: 56, label: "₹10.4L", x: 120, y: 36 },
-      { m: "Apr", v: 70, label: "₹13.8L", x: 175, y: 26 },
-      { m: "May", v: 84, label: "₹16.5L", x: 225, y: 18 },
-      { m: "Jun", v: 96, label: "₹18.9L", x: 270, y: 8 },
+      { m: "Jan", v: 28, label: "₹5.2L", x: 10, y: 40 },
+      { m: "Feb", v: 42, label: "₹7.6L", x: 65, y: 32 },
+      { m: "Mar", v: 56, label: "₹10.4L", x: 120, y: 24 },
+      { m: "Apr", v: 70, label: "₹13.8L", x: 175, y: 18 },
+      { m: "May", v: 84, label: "₹16.5L", x: 225, y: 12 },
+      { m: "Jun", v: 96, label: "₹18.9L", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 56 Q 40 50, 65 46 T 120 36 T 175 26 T 225 18 T 270 8",
-    chartAreaPath: "M 10 56 Q 40 50, 65 46 T 120 36 T 175 26 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 40 Q 40 36, 65 32 T 120 24 T 175 18 T 225 12 T 270 6",
+    chartAreaPath: "M 10 40 Q 40 36, 65 32 T 120 24 T 175 18 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Accounting Operations Split",
     donutCenter: "₹61.5L",
     donutCenterSub: "Gross Flow",
@@ -155,15 +206,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Monthly Attendance & Productivity Rate",
     chartBadge: "96.4% Avg",
     chartPoints: [
-      { m: "Jan", v: 85, label: "92%", x: 10, y: 48 },
-      { m: "Feb", v: 88, label: "93%", x: 65, y: 42 },
-      { m: "Mar", v: 91, label: "94.5%", x: 120, y: 34 },
-      { m: "Apr", v: 93, label: "95%", x: 175, y: 26 },
-      { m: "May", v: 95, label: "96.2%", x: 225, y: 16 },
-      { m: "Jun", v: 98, label: "97.4%", x: 270, y: 8 },
+      { m: "Jan", v: 85, label: "92%", x: 10, y: 38 },
+      { m: "Feb", v: 88, label: "93%", x: 65, y: 32 },
+      { m: "Mar", v: 91, label: "94.5%", x: 120, y: 26 },
+      { m: "Apr", v: 93, label: "95%", x: 175, y: 20 },
+      { m: "May", v: 95, label: "96.2%", x: 225, y: 12 },
+      { m: "Jun", v: 98, label: "97.4%", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8",
-    chartAreaPath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 38 Q 40 34, 65 32 T 120 26 T 175 20 T 225 12 T 270 6",
+    chartAreaPath: "M 10 38 Q 40 34, 65 32 T 120 26 T 175 20 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Team by Department",
     donutCenter: "24",
     donutCenterSub: "Employees",
@@ -204,15 +255,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Lead Inflow & Deal Conversions",
     chartBadge: "H1 Pacing",
     chartPoints: [
-      { m: "Jan", v: 22, label: "28 deals", x: 10, y: 58 },
-      { m: "Feb", v: 38, label: "45 deals", x: 65, y: 48 },
-      { m: "Mar", v: 54, label: "68 deals", x: 120, y: 38 },
-      { m: "Apr", v: 69, label: "92 deals", x: 175, y: 28 },
-      { m: "May", v: 84, label: "118 deals", x: 225, y: 18 },
-      { m: "Jun", v: 98, label: "142 deals", x: 270, y: 8 },
+      { m: "Jan", v: 22, label: "28 deals", x: 10, y: 42 },
+      { m: "Feb", v: 38, label: "45 deals", x: 65, y: 34 },
+      { m: "Mar", v: 54, label: "68 deals", x: 120, y: 26 },
+      { m: "Apr", v: 69, label: "92 deals", x: 175, y: 20 },
+      { m: "May", v: 84, label: "118 deals", x: 225, y: 12 },
+      { m: "Jun", v: 98, label: "142 deals", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8",
-    chartAreaPath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 42 Q 40 36, 65 34 T 120 26 T 175 20 T 225 12 T 270 6",
+    chartAreaPath: "M 10 42 Q 40 36, 65 34 T 120 26 T 175 20 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Deals by Pipeline Stage",
     donutCenter: "₹34.5L",
     donutCenterSub: "Active Deals",
@@ -253,15 +304,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Broadcast Delivery & Open Velocity",
     chartBadge: "Campaigns",
     chartPoints: [
-      { m: "Jan", v: 20, label: "2.4K opens", x: 10, y: 56 },
-      { m: "Feb", v: 36, label: "4.8K opens", x: 65, y: 46 },
-      { m: "Mar", v: 52, label: "8.1K opens", x: 120, y: 36 },
-      { m: "Apr", v: 68, label: "11.6K opens", x: 175, y: 26 },
-      { m: "May", v: 84, label: "15.2K opens", x: 225, y: 16 },
-      { m: "Jun", v: 96, label: "18.4K opens", x: 270, y: 8 },
+      { m: "Jan", v: 20, label: "2.4K opens", x: 10, y: 40 },
+      { m: "Feb", v: 36, label: "4.8K opens", x: 65, y: 32 },
+      { m: "Mar", v: 52, label: "8.1K opens", x: 120, y: 24 },
+      { m: "Apr", v: 68, label: "11.6K opens", x: 175, y: 18 },
+      { m: "May", v: 84, label: "15.2K opens", x: 225, y: 12 },
+      { m: "Jun", v: 96, label: "18.4K opens", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8",
-    chartAreaPath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 40 Q 40 34, 65 32 T 120 24 T 175 18 T 225 12 T 270 6",
+    chartAreaPath: "M 10 40 Q 40 34, 65 32 T 120 24 T 175 18 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Channel Engagement",
     donutCenter: "99.2%",
     donutCenterSub: "Delivered",
@@ -301,15 +352,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Real-time Messaging & Event Sync Volume",
     chartBadge: "Live Stream",
     chartPoints: [
-      { m: "Jan", v: 28, label: "4.2K calls", x: 10, y: 56 },
-      { m: "Feb", v: 42, label: "7.1K calls", x: 65, y: 46 },
-      { m: "Mar", v: 56, label: "10.4K calls", x: 120, y: 36 },
-      { m: "Apr", v: 72, label: "14.2K calls", x: 175, y: 26 },
-      { m: "May", v: 86, label: "18.6K calls", x: 225, y: 16 },
-      { m: "Jun", v: 98, label: "24.1K calls", x: 270, y: 8 },
+      { m: "Jan", v: 28, label: "4.2K calls", x: 10, y: 40 },
+      { m: "Feb", v: 42, label: "7.1K calls", x: 65, y: 32 },
+      { m: "Mar", v: 56, label: "10.4K calls", x: 120, y: 24 },
+      { m: "Apr", v: 72, label: "14.2K calls", x: 175, y: 18 },
+      { m: "May", v: 86, label: "18.6K calls", x: 225, y: 12 },
+      { m: "Jun", v: 98, label: "24.1K calls", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8",
-    chartAreaPath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 40 Q 40 34, 65 32 T 120 24 T 175 18 T 225 12 T 270 6",
+    chartAreaPath: "M 10 40 Q 40 34, 65 32 T 120 24 T 175 18 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Traffic by Connector",
     donutCenter: "24.1K",
     donutCenterSub: "Sync Events",
@@ -351,15 +402,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "Client Satisfaction & Review Growth",
     chartBadge: "Preview",
     chartPoints: [
-      { m: "Jan", v: 80, label: "4.5 ★", x: 10, y: 48 },
-      { m: "Feb", v: 84, label: "4.6 ★", x: 65, y: 42 },
-      { m: "Mar", v: 88, label: "4.7 ★", x: 120, y: 34 },
-      { m: "Apr", v: 92, label: "4.75 ★", x: 175, y: 26 },
-      { m: "May", v: 95, label: "4.8 ★", x: 225, y: 16 },
-      { m: "Jun", v: 98, label: "4.85 ★", x: 270, y: 8 },
+      { m: "Jan", v: 80, label: "4.5 ★", x: 10, y: 38 },
+      { m: "Feb", v: 84, label: "4.6 ★", x: 65, y: 32 },
+      { m: "Mar", v: 88, label: "4.7 ★", x: 120, y: 26 },
+      { m: "Apr", v: 92, label: "4.75 ★", x: 175, y: 20 },
+      { m: "May", v: 95, label: "4.8 ★", x: 225, y: 12 },
+      { m: "Jun", v: 98, label: "4.85 ★", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8",
-    chartAreaPath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 38 Q 40 34, 65 32 T 120 26 T 175 20 T 225 12 T 270 6",
+    chartAreaPath: "M 10 38 Q 40 34, 65 32 T 120 26 T 175 20 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Rating Distribution",
     donutCenter: "4.8 ★",
     donutCenterSub: "Target CSAT",
@@ -401,15 +452,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "AI Predictive Revenue Forecast vs Actuals",
     chartBadge: "Neural AI",
     chartPoints: [
-      { m: "Jan", v: 30, label: "₹5.1L", x: 10, y: 58 },
-      { m: "Feb", v: 45, label: "₹7.4L", x: 65, y: 48 },
-      { m: "Mar", v: 60, label: "₹9.8L", x: 120, y: 38 },
-      { m: "Apr", v: 75, label: "₹12.2L", x: 175, y: 28 },
-      { m: "May", v: 88, label: "₹14.1L", x: 225, y: 18 },
-      { m: "Jun", v: 98, label: "₹15.8L", x: 270, y: 8 },
+      { m: "Jan", v: 30, label: "₹5.1L", x: 10, y: 42 },
+      { m: "Feb", v: 45, label: "₹7.4L", x: 65, y: 34 },
+      { m: "Mar", v: 60, label: "₹9.8L", x: 120, y: 26 },
+      { m: "Apr", v: 75, label: "₹12.2L", x: 175, y: 20 },
+      { m: "May", v: 88, label: "₹14.1L", x: 225, y: 12 },
+      { m: "Jun", v: 98, label: "₹15.8L", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8",
-    chartAreaPath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 42 Q 40 36, 65 34 T 120 26 T 175 20 T 225 12 T 270 6",
+    chartAreaPath: "M 10 42 Q 40 36, 65 34 T 120 26 T 175 20 T 225 12 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "AI Business Health Index",
     donutCenter: "96.4%",
     donutCenterSub: "Optimal",
@@ -450,15 +501,15 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     chartTitle: "System Security & Audit Activity Pacing",
     chartBadge: "Secure Logs",
     chartPoints: [
-      { m: "Jan", v: 40, label: "120 logs", x: 10, y: 52 },
-      { m: "Feb", v: 55, label: "210 logs", x: 65, y: 42 },
-      { m: "Mar", v: 68, label: "340 logs", x: 120, y: 32 },
-      { m: "Apr", v: 80, label: "480 logs", x: 175, y: 24 },
-      { m: "May", v: 90, label: "620 logs", x: 225, y: 16 },
-      { m: "Jun", v: 98, label: "780 logs", x: 270, y: 8 },
+      { m: "Jan", v: 40, label: "120 logs", x: 10, y: 38 },
+      { m: "Feb", v: 55, label: "210 logs", x: 65, y: 30 },
+      { m: "Mar", v: 68, label: "340 logs", x: 120, y: 22 },
+      { m: "Apr", v: 80, label: "480 logs", x: 175, y: 16 },
+      { m: "May", v: 90, label: "620 logs", x: 225, y: 10 },
+      { m: "Jun", v: 98, label: "780 logs", x: 270, y: 6 },
     ],
-    chartLinePath: "M 10 52 Q 40 46, 65 42 T 120 32 T 175 24 T 225 16 T 270 8",
-    chartAreaPath: "M 10 52 Q 40 46, 65 42 T 120 32 T 175 24 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    chartLinePath: "M 10 38 Q 40 32, 65 30 T 120 22 T 175 16 T 225 10 T 270 6",
+    chartAreaPath: "M 10 38 Q 40 32, 65 30 T 120 22 T 175 16 T 225 10 T 270 6 L 270 46 L 10 46 Z",
     donutTitle: "Team Role Permissions",
     donutCenter: "24",
     donutCenterSub: "Active Users",
@@ -483,14 +534,14 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
 };
 
 export function HeroDashboardMockup() {
-  const [activeModule, setActiveModule] = useState<ParentModuleKey>("accounting");
+  const [activeModule, setActiveModule] = useState<ParentModuleKey>("dashboard");
   const [hoveredKpi, setHoveredKpi] = useState<number | null>(null);
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(5);
   const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | null>(null);
   const [showAiDetail, setShowAiDetail] = useState(false);
   const [selectedSubPage, setSelectedSubPage] = useState<number>(0);
 
-  const currentData = MODULE_DATA[activeModule] || MODULE_DATA.accounting;
+  const currentData = MODULE_DATA[activeModule] || MODULE_DATA.dashboard;
 
   const handleModuleSelect = (key: ParentModuleKey) => {
     setActiveModule(key);
@@ -506,28 +557,28 @@ export function HeroDashboardMockup() {
       <div className="absolute -bottom-8 -left-8 w-72 h-72 bg-[#e77817]/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main SaaS Window Frame */}
-      <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(40,22,111,0.18)] border border-slate-200/90 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(231,120,23,0.22)]">
+      <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(40,22,111,0.22)] border border-[#28166f]/20 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(231,120,23,0.25)]">
         
         {/* Flex layout: Left Sidebar + Right Main App View */}
         <div className="flex h-[475px] sm:h-[500px] text-xs">
           
-          {/* 1. LEFT SIDEBAR (Dark Navy matching logo) */}
-          <div className="w-44 sm:w-52 bg-[#0b1022] text-slate-400 flex flex-col justify-between py-3 px-2 shrink-0 border-r border-slate-800">
+          {/* 1. LEFT SIDEBAR - Logo Blue (#28166f) Panel */}
+          <div className="w-44 sm:w-52 bg-[#28166f] text-white/80 flex flex-col justify-between py-3 px-2 shrink-0 border-r border-[#1e1058]">
             <div className="flex flex-col h-full overflow-hidden">
               
-              {/* Real AssayBiz Logo Header */}
-              <div className="mb-3 px-1 shrink-0">
-                <div className="bg-white/95 px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
+              {/* Real AssayBiz Logo on crisp container */}
+              <div className="mb-2.5 px-1 shrink-0">
+                <div className="bg-white px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
                   <img src={logoImg} alt="Assay Biz" className="h-6.5 w-auto object-contain" />
                 </div>
               </div>
 
-              {/* Exact 8 Parent Menu Options */}
-              <div className="text-[9px] font-bold tracking-wider text-slate-500 uppercase px-2 mb-1 shrink-0">
+              {/* Exact Parent Menu Options */}
+              <div className="text-[9px] font-bold tracking-wider text-white/60 uppercase px-2 mb-1 shrink-0">
                 Modules
               </div>
 
-              <nav className="space-y-1 font-medium overflow-y-auto pr-0.5 flex-1 scrollbar-none">
+              <nav className="space-y-0.5 font-medium overflow-y-auto pr-0.5 flex-1 scrollbar-none">
                 {PARENT_MODULES.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
@@ -539,12 +590,12 @@ export function HeroDashboardMockup() {
                       onMouseEnter={() => handleModuleSelect(item.id as ParentModuleKey)}
                       className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
                         isActive
-                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/35 translate-x-1"
-                          : "text-slate-400 hover:text-white hover:bg-[#e77817]/20 hover:translate-x-0.5"
+                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/40 translate-x-1"
+                          : "text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
                       }`}
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-white/80"}`} />
                         <span className="text-[11px] sm:text-xs truncate">{item.label}</span>
                       </div>
                       {item.isUpcoming && (
@@ -552,7 +603,7 @@ export function HeroDashboardMockup() {
                           className={`text-[8px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
                             isActive
                               ? "bg-white/20 text-white border-white/30"
-                              : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                              : "bg-amber-400/20 text-amber-200 border-amber-400/40"
                           }`}
                         >
                           Soon
@@ -564,28 +615,28 @@ export function HeroDashboardMockup() {
               </nav>
 
               {/* Bottom Quick Indicator */}
-              <div className="pt-2 mt-1 border-t border-slate-800/80 shrink-0 px-2 flex items-center justify-between text-[9.5px] text-slate-500">
+              <div className="pt-2 mt-1 border-t border-white/15 shrink-0 px-2 flex items-center justify-between text-[9.5px] text-white/70">
                 <span className="flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> AssayBiz v2.4
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> AssayBiz v2.4
                 </span>
-                <span className="text-orange-400 font-bold">100% GST</span>
+                <span className="text-orange-300 font-bold">100% GST</span>
               </div>
             </div>
           </div>
 
-          {/* 2. RIGHT MAIN CONTENT AREA (Clean Real Software View) */}
+          {/* 2. RIGHT MAIN CONTENT AREA (Search Bar Removed, Clean Brand Breadcrumb) */}
           <div className="flex-1 bg-[#f8fafc] flex flex-col overflow-hidden">
             
-            {/* Header Bar */}
+            {/* Header Bar - Without Search Bar */}
             <div className="h-9.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
-              <div className="relative w-40 sm:w-52">
-                <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  readOnly
-                  placeholder={`Search ${currentData.title.split(" ")[0]}...`}
-                  className="w-full h-6 pl-7.5 pr-2.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md text-slate-600 focus:outline-none placeholder:text-slate-400 cursor-pointer hover:border-orange-300 transition-colors"
-                />
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-extrabold text-[#28166f] text-xs sm:text-[13px] tracking-tight">
+                  AssayBiz
+                </span>
+                <span className="text-slate-300 text-xs">/</span>
+                <span className="text-slate-700 font-semibold text-xs truncate">
+                  {currentData.title}
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
@@ -711,11 +762,11 @@ export function HeroDashboardMockup() {
                 })}
               </div>
 
-              {/* Middle Feature Highlights List (Especially for Integration, Accounting, HR, etc.) */}
+              {/* Middle Feature Highlights List */}
               {currentData.featureList && currentData.featureList.length > 0 && (
                 <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
                   <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Key Functionality Highlights:
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Key Highlights & Functionality:
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                     {currentData.featureList.map((f, fi) => (
@@ -731,11 +782,11 @@ export function HeroDashboardMockup() {
                 </div>
               )}
 
-              {/* Bottom Cards: Line Chart (Left) + Donut Breakdown (Right) */}
+              {/* Bottom Cards: COMPACT Line Chart (Left) + COMPACT Donut Breakdown (Right) */}
               <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5">
                 
-                {/* Left: Dynamic Line Chart */}
-                <div className="sm:col-span-7 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs">
+                {/* Left: Compact Dynamic Line Chart */}
+                <div className="sm:col-span-7 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-slate-800 text-[10px] truncate">{currentData.chartTitle}</span>
                     <span className="text-[8px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-1 py-0.2 rounded flex items-center gap-1">
@@ -743,39 +794,35 @@ export function HeroDashboardMockup() {
                     </span>
                   </div>
 
-                  {/* SVG Chart with Interactive Points */}
-                  <div className="relative h-18 sm:h-20 w-full pt-1">
-                    <svg className="w-full h-full overflow-visible" viewBox="0 0 280 70" preserveAspectRatio="none">
+                  {/* Compact SVG Chart */}
+                  <div className="relative h-14 sm:h-16 w-full">
+                    <svg className="w-full h-full overflow-visible" viewBox="0 0 280 50" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id={`growthGrad-${activeModule}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#e77817" stopOpacity="0.25" />
-                          <stop offset="100%" stopColor="#28166f" stopOpacity="0.02" />
+                          <stop offset="0%" stopColor="#e77817" stopOpacity="0.22" />
+                          <stop offset="100%" stopColor="#28166f" stopOpacity="0.01" />
                         </linearGradient>
                       </defs>
 
-                      {/* Background horizontal grid lines */}
-                      <line x1="0" y1="18" x2="280" y2="18" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                      <line x1="0" y1="42" x2="280" y2="42" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                      <line x1="0" y1="65" x2="280" y2="65" stroke="#e2e8f0" strokeWidth="1" />
+                      <line x1="0" y1="12" x2="280" y2="12" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="0" y1="28" x2="280" y2="28" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="0" y1="44" x2="280" y2="44" stroke="#e2e8f0" strokeWidth="1" />
 
-                      {/* Area Fill */}
                       <path
                         d={currentData.chartAreaPath}
                         fill={`url(#growthGrad-${activeModule})`}
                         className="transition-all duration-300"
                       />
 
-                      {/* Primary Line curve */}
                       <path
                         d={currentData.chartLinePath}
                         fill="none"
                         stroke="#28166f"
-                        strokeWidth="2.5"
+                        strokeWidth="2.2"
                         strokeLinecap="round"
                         className="transition-all duration-300"
                       />
 
-                      {/* Month Circles on Line */}
                       {currentData.chartPoints.map((pt, idx) => {
                         const isSelected = hoveredMonth === idx;
                         return (
@@ -787,22 +834,21 @@ export function HeroDashboardMockup() {
                             <circle
                               cx={pt.x}
                               cy={pt.y}
-                              r={isSelected ? 4.5 : 2.5}
+                              r={isSelected ? 3.5 : 2}
                               fill={isSelected ? "#e77817" : "#ffffff"}
                               stroke={isSelected ? "#e77817" : "#28166f"}
-                              strokeWidth={isSelected ? 2 : 1.5}
+                              strokeWidth={1.5}
                               className="transition-all duration-200"
                             />
                             {isSelected && (
-                              <circle cx={pt.x} cy={pt.y} r={8} fill="#e77817" opacity="0.2" />
+                              <circle cx={pt.x} cy={pt.y} r={6.5} fill="#e77817" opacity="0.2" />
                             )}
                           </g>
                         );
                       })}
                     </svg>
 
-                    {/* Month Axis Labels */}
-                    <div className="flex justify-between text-[8px] text-slate-400 font-medium px-1 mt-0.5">
+                    <div className="flex justify-between text-[7.5px] text-slate-400 font-medium px-1 mt-0.5">
                       {currentData.chartPoints.map((item, i) => (
                         <span
                           key={i}
@@ -816,30 +862,29 @@ export function HeroDashboardMockup() {
                       ))}
                     </div>
 
-                    {/* Tooltip Pill */}
                     {hoveredMonth !== null && currentData.chartPoints[hoveredMonth] && (
-                      <div className="absolute top-0 right-1 bg-[#28166f] border border-[#e77817]/40 text-white text-[8px] font-bold px-1.5 py-0.2 rounded shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute top-0 right-1 bg-[#28166f] border border-[#e77817]/40 text-white text-[8px] font-bold px-1.5 py-0.2 rounded shadow-lg pointer-events-none">
                         {currentData.chartPoints[hoveredMonth].m}: {currentData.chartPoints[hoveredMonth].label}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Right: Fitted Donut Chart */}
+                {/* Right: Compact Small Donut Chart */}
                 <div className="sm:col-span-5 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs flex flex-col justify-between overflow-hidden">
-                  <div className="font-bold text-slate-800 text-[10px] mb-0.5 truncate">{currentData.donutTitle}</div>
+                  <div className="font-bold text-slate-800 text-[10px] mb-1 truncate">{currentData.donutTitle}</div>
 
-                  <div className="flex items-center justify-center gap-2 my-auto">
-                    {/* SVG Donut */}
-                    <div className="relative w-13 h-13 shrink-0">
+                  <div className="flex items-center justify-between gap-2 my-auto">
+                    {/* Small SVG Donut (fixed 48px / 12rem) */}
+                    <div className="relative w-12 h-12 shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="32" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                        <circle cx="50" cy="50" r="34" fill="none" stroke="#f1f5f9" strokeWidth="12" />
                         {currentData.donutSegments.map((seg, i) => (
                           <circle
                             key={i}
                             cx="50"
                             cy="50"
-                            r="32"
+                            r="34"
                             fill="none"
                             stroke={seg.stroke}
                             strokeWidth={activeExpenseIndex === i ? 14 : 12}
@@ -852,12 +897,12 @@ export function HeroDashboardMockup() {
                         ))}
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                        <span className="font-black text-[9px] text-slate-900 leading-none">
+                        <span className="font-black text-[8.5px] text-slate-900 leading-none">
                           {activeExpenseIndex !== null
                             ? `${currentData.donutSegments[activeExpenseIndex]?.pct}%`
                             : currentData.donutCenter}
                         </span>
-                        <span className="text-[6.5px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[36px]">
+                        <span className="text-[6px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[32px]">
                           {activeExpenseIndex !== null
                             ? currentData.donutSegments[activeExpenseIndex]?.label
                             : currentData.donutCenterSub}
@@ -866,7 +911,7 @@ export function HeroDashboardMockup() {
                     </div>
 
                     {/* Donut Legend */}
-                    <div className="space-y-0.5 text-[8px] flex-1 min-w-0">
+                    <div className="space-y-0.5 text-[7.5px] flex-1 min-w-0">
                       {currentData.donutSegments.map((exp, i) => (
                         <div
                           key={i}
