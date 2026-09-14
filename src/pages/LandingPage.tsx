@@ -156,15 +156,16 @@ const features = [
 ];
 
 type Cell = boolean | "partial";
-const comparison: { label: string; satah: Cell; vyapar: Cell; zoho: Cell; cleartax: Cell }[] = [
-  { label: "Instant share with UPI QR", satah: true, vyapar: "partial", zoho: false, cleartax: false },
-  { label: "GSTR-1 + 3B export (free tier)", satah: true, vyapar: false, zoho: false, cleartax: "partial" },
-  { label: "Unlimited invoices on free plan", satah: true, vyapar: "partial", zoho: false, cleartax: false },
-  { label: "Customer portal (no login)", satah: true, vyapar: false, zoho: true, cleartax: false },
-  { label: "Multi-warehouse inventory", satah: true, vyapar: true, zoho: true, cleartax: false },
-  { label: "Hindi + regional UI", satah: true, vyapar: true, zoho: "partial", cleartax: "partial" },
-  { label: "Works as installable app (PWA)", satah: true, vyapar: false, zoho: false, cleartax: false },
-  { label: "Starts free, no card needed", satah: true, vyapar: false, zoho: false, cleartax: false },
+const comparison: { label: string; satah: Cell; vyapar: Cell; mybillbook: Cell; zoho: Cell; cleartax: Cell }[] = [
+  { label: "Instant share with UPI QR", satah: true, vyapar: "partial", mybillbook: "partial", zoho: false, cleartax: false },
+  { label: "Direct WhatsApp invoice & reminders", satah: true, vyapar: "partial", mybillbook: true, zoho: "partial", cleartax: false },
+  { label: "Send Email from custom domain (SES/SMTP)", satah: true, vyapar: false, mybillbook: false, zoho: true, cleartax: false },
+  { label: "GSTR-1 + 3B export", satah: true, vyapar: true, mybillbook: true, zoho: "partial", cleartax: true },
+  { label: "Multi-warehouse inventory", satah: true, vyapar: true, mybillbook: true, zoho: false, cleartax: false },
+  { label: "Built-in HRMS (Attendance & Payroll)", satah: true, vyapar: false, mybillbook: false, zoho: false, cleartax: false },
+  { label: "Business CRM (Leads & Pipeline)", satah: true, vyapar: false, mybillbook: false, zoho: false, cleartax: false },
+  { label: "Marketing Studio & Posters (Promotion)", satah: true, vyapar: false, mybillbook: "partial", zoho: false, cleartax: false },
+  { label: "Starts free, no card needed", satah: true, vyapar: false, mybillbook: false, zoho: true, cleartax: false },
 ];
 
 const testimonials = [
@@ -460,7 +461,7 @@ export default function LandingPage() {
 
       {/* Comparison */}
       <section id="compare" className="py-24 bg-slate-50">
-        <div className="mx-auto max-w-5xl px-6">
+        <div className="mx-auto max-w-6xl px-6">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-navy mb-6">{L.cmp_title}</h2>
             <p className="text-lg md:text-xl text-slate-500">{L.cmp_sub}</p>
@@ -470,23 +471,25 @@ export default function LandingPage() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200">
-                    <th className="p-6 font-bold text-slate-500 uppercase tracking-wider text-sm bg-slate-50">Feature</th>
-                    <th className="p-6 font-black text-xl text-white bg-navy text-center border-l border-white/10 shadow-inner">
+                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 min-w-[240px]">Feature</th>
+                    <th className="p-5 font-black text-lg sm:text-xl text-white bg-navy text-center border-l border-white/10 shadow-inner min-w-[130px]">
                       Assay Biz
                     </th>
-                    <th className="p-6 font-bold text-slate-500 uppercase tracking-wider text-sm bg-slate-50 text-center">Vyapar</th>
-                    <th className="p-6 font-bold text-slate-500 uppercase tracking-wider text-sm bg-slate-50 text-center">Zoho Invoice</th>
-                    <th className="p-6 font-bold text-slate-500 uppercase tracking-wider text-sm bg-slate-50 text-center">ClearTax</th>
+                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">Vyapar</th>
+                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">MyBillBook</th>
+                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">Zoho Invoice</th>
+                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">ClearTax</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {comparison.map((row, idx) => (
                     <tr key={row.label} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-5 px-6 font-semibold text-slate-700">{row.label}</td>
-                      <td className="p-5 text-center bg-navy/5 border-l border-navy/10"><Tick v={row.satah} /></td>
-                      <td className="p-5 text-center"><Tick v={row.vyapar} /></td>
-                      <td className="p-5 text-center"><Tick v={row.zoho} /></td>
-                      <td className="p-5 text-center"><Tick v={row.cleartax} /></td>
+                      <td className="p-4 sm:p-5 px-5 sm:px-6 font-semibold text-slate-700 text-sm sm:text-base">{row.label}</td>
+                      <td className="p-4 sm:p-5 text-center bg-navy/5 border-l border-navy/10"><Tick v={row.satah} /></td>
+                      <td className="p-4 sm:p-5 text-center"><Tick v={row.vyapar} /></td>
+                      <td className="p-4 sm:p-5 text-center"><Tick v={row.mybillbook} /></td>
+                      <td className="p-4 sm:p-5 text-center"><Tick v={row.zoho} /></td>
+                      <td className="p-4 sm:p-5 text-center"><Tick v={row.cleartax} /></td>
                     </tr>
                   ))}
                 </tbody>
