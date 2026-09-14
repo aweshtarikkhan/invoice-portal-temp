@@ -172,9 +172,9 @@ export default function LandingPage() {
 
       {/* Modern SaaS Hero Section matching user screenshot */}
       <section className="relative overflow-hidden bg-gradient-to-b from-[#f8fafc] via-[#f5f7fb] to-white pt-12 pb-20 lg:pt-18 lg:pb-28 border-b border-slate-200/70">
-        {/* Subtle gradient background orbs */}
-        <div className="absolute top-0 right-1/4 -translate-y-12 w-[600px] h-[600px] bg-indigo-200/25 rounded-full blur-[140px] pointer-events-none" />
-        <div className="absolute bottom-0 left-0 translate-y-1/4 w-[500px] h-[500px] bg-violet-200/25 rounded-full blur-[140px] pointer-events-none" />
+        {/* Subtle gradient background orbs matching logo colors */}
+        <div className="absolute top-0 right-1/4 -translate-y-12 w-[600px] h-[600px] bg-[#28166f]/10 rounded-full blur-[140px] pointer-events-none" />
+        <div className="absolute bottom-0 left-0 translate-y-1/4 w-[500px] h-[500px] bg-[#e77817]/10 rounded-full blur-[140px] pointer-events-none" />
         
         <div className="mx-auto max-w-7xl px-6 relative z-10 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           
@@ -182,15 +182,15 @@ export default function LandingPage() {
           <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-center">
             
             {/* Pill Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-50 border border-indigo-200/70 text-indigo-700 text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50/90 border border-[#e77817]/30 text-[#e77817] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
+              <Sparkles className="w-3.5 h-3.5 text-[#e77817]" />
               <span>ALL-IN-ONE BUSINESS PLATFORM</span>
             </div>
 
             {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-[48px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
               Run Your Business Smarter with{" "}
-              <span className="bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-600 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-[#28166f] via-[#3a1f9e] to-[#e77817] bg-clip-text text-transparent">
                 Assaybiz
               </span>
             </h1>
@@ -204,7 +204,7 @@ export default function LandingPage() {
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 mb-7">
               <Button
                 size="lg"
-                className="h-13 px-7 text-base font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/30 rounded-xl w-full sm:w-auto transition-all duration-200 hover:scale-[1.02]"
+                className="h-13 px-7 text-base font-bold bg-[#28166f] hover:bg-[#e77817] text-white shadow-lg shadow-[#28166f]/25 hover:shadow-[#e77817]/35 rounded-xl w-full sm:w-auto transition-all duration-300 hover:scale-[1.02]"
                 asChild
               >
                 <a href="#pricing">
@@ -214,10 +214,10 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-13 px-6 text-base font-bold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 rounded-xl w-full sm:w-auto shadow-xs cursor-pointer"
+                className="h-13 px-6 text-base font-bold bg-white hover:bg-orange-50/80 text-[#28166f] hover:text-[#e77817] border-slate-300 hover:border-[#e77817] rounded-xl w-full sm:w-auto shadow-xs cursor-pointer transition-all duration-300 group"
                 onClick={() => setIsDemoDialogOpen(true)}
               >
-                <PlayCircle className="mr-2 h-4 w-4 text-indigo-600" /> Book a Demo
+                <PlayCircle className="mr-2 h-4 w-4 text-[#28166f] group-hover:text-[#e77817] transition-colors" /> Book a Demo
               </Button>
             </div>
 

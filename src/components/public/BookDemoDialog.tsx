@@ -210,7 +210,7 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                 Book Another Demo
               </Button>
               <Button
-                className="w-full rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20"
+                className="w-full rounded-xl bg-[#28166f] hover:bg-[#e77817] text-white shadow-md shadow-[#28166f]/20 hover:shadow-orange-500/30 transition-all duration-300"
                 onClick={() => handleClose(false)}
               >
                 Done
@@ -219,25 +219,25 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
           </div>
         ) : (
           <div>
-            {/* Modal Header */}
-            <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 p-6 sm:p-7 text-white relative overflow-hidden rounded-t-2xl">
-              <div className="absolute -top-12 -right-12 w-40 h-40 bg-indigo-500/20 rounded-full blur-2xl" />
+            {/* Modal Header matching logo colors */}
+            <div className="bg-gradient-to-br from-[#28166f] via-[#1f1157] to-[#120b33] p-6 sm:p-7 text-white relative overflow-hidden rounded-t-2xl">
+              <div className="absolute -top-12 -right-12 w-40 h-40 bg-[#e77817]/20 rounded-full blur-2xl" />
               <div className="relative z-10 space-y-1.5">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/30 border border-indigo-400/30 text-indigo-200 text-xs font-semibold backdrop-blur-md">
-                  <Sparkles className="w-3.5 h-3.5 text-indigo-300" /> Free 1-on-1 Interactive Demo
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-orange-200 text-xs font-semibold backdrop-blur-md">
+                  <Sparkles className="w-3.5 h-3.5 text-[#e77817]" /> Free 1-on-1 Interactive Demo
                 </div>
                 <DialogTitle className="text-2xl sm:text-2xl font-black tracking-tight text-white">
                   Experience Assay Biz in Action
                 </DialogTitle>
-                <DialogDescription className="text-indigo-100/80 text-xs sm:text-sm">
+                <DialogDescription className="text-orange-100/90 text-xs sm:text-sm">
                   Get a personalized walkthrough tailored to your business workflow with our product specialist.
                 </DialogDescription>
               </div>
 
               {/* Quick Perks Pill */}
-              <div className="mt-4 pt-3 border-t border-indigo-700/50 flex flex-wrap gap-3 text-[11px] text-indigo-200/90">
+              <div className="mt-4 pt-3 border-t border-white/15 flex flex-wrap gap-3 text-[11px] text-orange-200/90">
                 <span className="flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 text-amber-300" /> 15-Minute Tailored Session
+                  <Zap className="w-3.5 h-3.5 text-[#e77817]" /> 15-Minute Tailored Session
                 </span>
                 <span className="flex items-center gap-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" /> No Credit Card & No Obligation
@@ -397,7 +397,7 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 text-base font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200 hover:scale-[1.01]"
+                  className="w-full h-12 text-base font-bold bg-[#28166f] hover:bg-[#e77817] text-white rounded-xl shadow-lg shadow-[#28166f]/25 hover:shadow-orange-500/30 transition-all duration-300 hover:scale-[1.01]"
                 >
                   {loading ? (
                     <>
@@ -405,7 +405,7 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-4 h-4 mr-2 text-indigo-200" /> Book My Free Demo
+                      <Sparkles className="w-4 h-4 mr-2 text-orange-200" /> Book My Free Demo
                     </>
                   )}
                 </Button>

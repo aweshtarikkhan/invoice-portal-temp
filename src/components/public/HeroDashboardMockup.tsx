@@ -121,22 +121,22 @@ export function HeroDashboardMockup() {
 
   return (
     <div className="relative w-full max-w-[680px] mx-auto select-none">
-      {/* Decorative background glow matching screenshot */}
-      <div className="absolute -top-10 -right-10 w-80 h-80 bg-indigo-400/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-8 -left-8 w-72 h-72 bg-violet-400/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Decorative background glow matching logo colors */}
+      <div className="absolute -top-10 -right-10 w-80 h-80 bg-[#28166f]/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-8 -left-8 w-72 h-72 bg-[#e77817]/15 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main SaaS Window Frame */}
-      <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(79,70,229,0.18)] border border-slate-200/90 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(79,70,229,0.25)]">
+      <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(40,22,111,0.18)] border border-slate-200/90 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(231,120,23,0.22)]">
         
         {/* Flex layout: Left Sidebar + Right Main App View */}
         <div className="flex h-[430px] sm:h-[460px] text-xs">
           
-          {/* 1. LEFT SIDEBAR (Dark Navy as shown in screenshot) */}
-          <div className="w-36 sm:w-44 bg-[#0f172a] text-slate-400 flex flex-col justify-between py-3.5 px-2 sm:px-3 shrink-0 border-r border-slate-800">
+          {/* 1. LEFT SIDEBAR (Dark Navy matching logo) */}
+          <div className="w-36 sm:w-44 bg-[#0d1226] text-slate-400 flex flex-col justify-between py-3.5 px-2 sm:px-3 shrink-0 border-r border-slate-800">
             <div>
               {/* Brand Logo inside mockup */}
               <div className="flex items-center gap-2 px-2 mb-4">
-                <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 flex items-center justify-center text-white font-black text-xs shadow-sm">
+                <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-[#28166f] to-[#e77817] flex items-center justify-center text-white font-black text-xs shadow-sm">
                   A
                 </div>
                 <span className="font-bold text-white text-sm tracking-tight">Assaybiz</span>
@@ -162,11 +162,11 @@ export function HeroDashboardMockup() {
                       onMouseEnter={() => setActiveModule(item.id as ModuleKey)}
                       className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 ${
                         isActive
-                          ? "bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30 translate-x-0.5"
+                          ? "bg-gradient-to-r from-[#28166f] to-[#3b209e] text-white font-semibold shadow-md shadow-[#28166f]/40 translate-x-0.5 border-l-3 border-[#e77817]"
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/60"
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-slate-400"}`} />
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? "text-[#e77817]" : "text-slate-400"}`} />
                       <span className="text-[11px] sm:text-xs truncate">{item.label}</span>
                     </button>
                   );
@@ -303,8 +303,8 @@ export function HeroDashboardMockup() {
                     <svg className="w-full h-full overflow-visible" viewBox="0 0 280 80" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id="growthGrad" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
-                          <stop offset="100%" stopColor="#818cf8" stopOpacity="0.0" />
+                          <stop offset="0%" stopColor="#28166f" stopOpacity="0.3" />
+                          <stop offset="100%" stopColor="#e77817" stopOpacity="0.02" />
                         </linearGradient>
                       </defs>
 
@@ -323,7 +323,7 @@ export function HeroDashboardMockup() {
                       <path
                         d="M 10 65 Q 40 55, 65 50 T 120 40 T 175 32 T 225 22 T 270 8"
                         fill="none"
-                        stroke="#6366f1"
+                        stroke="#28166f"
                         strokeWidth="2.5"
                         strokeLinecap="round"
                       />
@@ -348,13 +348,13 @@ export function HeroDashboardMockup() {
                               cx={pt.x}
                               cy={pt.y}
                               r={isSelected ? 5 : 3}
-                              fill={isSelected ? "#4f46e5" : "#ffffff"}
-                              stroke="#6366f1"
+                              fill={isSelected ? "#e77817" : "#ffffff"}
+                              stroke={isSelected ? "#e77817" : "#28166f"}
                               strokeWidth={isSelected ? 2.5 : 1.5}
                               className="transition-all duration-200"
                             />
                             {isSelected && (
-                              <circle cx={pt.x} cy={pt.y} r={9} fill="#6366f1" opacity="0.2" />
+                              <circle cx={pt.x} cy={pt.y} r={9} fill="#e77817" opacity="0.25" />
                             )}
                           </g>
                         );
@@ -368,7 +368,7 @@ export function HeroDashboardMockup() {
                           key={i}
                           onMouseEnter={() => setHoveredMonth(i)}
                           className={`cursor-pointer transition-colors ${
-                            hoveredMonth === i ? "text-indigo-600 font-bold" : "hover:text-slate-600"
+                            hoveredMonth === i ? "text-[#e77817] font-bold" : "hover:text-slate-600"
                           }`}
                         >
                           {item.m}
@@ -378,7 +378,7 @@ export function HeroDashboardMockup() {
 
                     {/* Tooltip Pill */}
                     {hoveredMonth !== null && (
-                      <div className="absolute top-0 right-2 bg-slate-900 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute top-0 right-2 bg-[#28166f] border border-[#e77817]/40 text-white text-[9px] font-bold px-2 py-0.5 rounded shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150">
                         {CHART_MONTHS[hoveredMonth].m}: {CHART_MONTHS[hoveredMonth].label}
                       </div>
                     )}
@@ -466,10 +466,10 @@ export function HeroDashboardMockup() {
         <div
           onMouseEnter={() => setShowAiDetail(true)}
           onMouseLeave={() => setShowAiDetail(false)}
-          className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-white/95 backdrop-blur-md border border-indigo-100 shadow-xl rounded-xl p-2.5 sm:p-3 max-w-[210px] sm:max-w-[230px] transition-all duration-300 hover:scale-105 hover:border-indigo-400 cursor-pointer z-30"
+          className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-white/95 backdrop-blur-md border border-[#28166f]/15 shadow-xl rounded-xl p-2.5 sm:p-3 max-w-[210px] sm:max-w-[230px] transition-all duration-300 hover:scale-105 hover:border-[#e77817] cursor-pointer z-30"
         >
           <div className="flex items-start gap-2.5">
-            <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-indigo-500 to-violet-500 text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
@@ -489,7 +489,7 @@ export function HeroDashboardMockup() {
               <div className="flex items-center gap-1 text-emerald-600 font-semibold">
                 <CheckCircle2 className="w-3 h-3" /> 3 invoices ready to auto-remind on WhatsApp
               </div>
-              <div className="bg-indigo-50 text-indigo-700 font-bold px-2 py-1 rounded text-center">
+              <div className="bg-orange-50 text-[#e77817] border border-orange-200/60 font-bold px-2 py-1 rounded text-center">
                 Send WhatsApp Reminders Now →
               </div>
             </div>
@@ -501,7 +501,7 @@ export function HeroDashboardMockup() {
       {/* Decorative Interactive Hint Badge */}
       <div className="mt-2 text-center">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium text-slate-500 bg-white/80 border border-slate-200/60 backdrop-blur-xs shadow-2xs">
-          <Zap className="w-3 h-3 text-amber-500 fill-amber-500" /> Hover on sidebar modules & charts to interact with live software
+          <Zap className="w-3 h-3 text-[#e77817] fill-[#e77817]" /> Hover on sidebar modules & charts to interact with live software
         </span>
       </div>
     </div>

@@ -316,12 +316,12 @@ export default function DemoAutoLoginPage() {
                     </div>
                   ) : (
                     <div>
-                      {/* Card Header */}
-                      <div className="bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 p-6 sm:p-8 text-white">
+                      {/* Card Header matching logo colors */}
+                      <div className="bg-gradient-to-br from-[#28166f] via-[#1f1157] to-[#120b33] p-6 sm:p-8 text-white">
                         <h2 className="text-2xl font-bold tracking-tight text-white">
                           Fill Your Details to Schedule
                         </h2>
-                        <p className="text-indigo-200/90 text-xs sm:text-sm mt-1">
+                        <p className="text-orange-200/90 text-xs sm:text-sm mt-1">
                           Takes less than 1 minute. We will connect via Phone & WhatsApp at your chosen time.
                         </p>
                       </div>
@@ -478,7 +478,7 @@ export default function DemoAutoLoginPage() {
                           <Button
                             type="submit"
                             disabled={loading}
-                            className="w-full h-13 text-base font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/30 transition-all duration-200 hover:scale-[1.01]"
+                            className="w-full h-13 text-base font-bold bg-[#28166f] hover:bg-[#e77817] text-white rounded-xl shadow-lg shadow-[#28166f]/25 hover:shadow-orange-500/35 transition-all duration-300 hover:scale-[1.01]"
                           >
                             {loading ? (
                               <>
@@ -486,7 +486,7 @@ export default function DemoAutoLoginPage() {
                               </>
                             ) : (
                               <>
-                                <Sparkles className="w-5 h-5 mr-2 text-indigo-200" /> Confirm & Book Free Demo
+                                <Sparkles className="w-5 h-5 mr-2 text-orange-200" /> Confirm & Book Free Demo
                               </>
                             )}
                           </Button>
