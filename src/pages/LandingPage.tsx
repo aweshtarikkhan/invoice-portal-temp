@@ -472,8 +472,14 @@ export default function LandingPage() {
                 <thead>
                   <tr className="border-b border-slate-200">
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 min-w-[240px]">Feature</th>
-                    <th className="p-5 font-black text-lg sm:text-xl text-white bg-navy text-center border-l border-white/10 shadow-inner min-w-[130px]">
-                      Assay Biz
+                    <th className="p-4 sm:p-5 text-center bg-navy border-l border-white/10 shadow-inner min-w-[150px]">
+                      <div className="inline-flex items-center justify-center bg-white px-3.5 py-1.5 rounded-xl shadow-md tracking-tight select-none">
+                        <span className="font-black text-lg sm:text-xl leading-none">
+                          <span className="text-[#e77817]">A</span>
+                          <span className="text-[#28166f]">assay</span>
+                          <span className="text-[#e77817] ml-1">Biz</span>
+                        </span>
+                      </div>
                     </th>
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">Vyapar</th>
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">MyBillBook</th>
