@@ -118,7 +118,10 @@ serve(async (req) => {
         org_id,
         plan_names,
         billing_cycle,
-        employee_count
+        employee_count,
+        customer_email,
+        customer_name,
+        total_amount
       } = body;
 
       if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -163,10 +166,13 @@ serve(async (req) => {
         throw new Error("Payment verified, but plan activation failed: " + actError.message);
       }
 
+      const invoiceNumber = `AB-SUB-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-4)}`;
+
       return new Response(
         JSON.stringify({
           success: true,
           message: "Payment verified and plans activated successfully!",
+          invoice_number: invoiceNumber,
           result: actData
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

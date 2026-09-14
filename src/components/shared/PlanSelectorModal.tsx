@@ -4,11 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Check, Loader2, Minus, Plus, Users, Sparkles } from "lucide-react";
+import { Check, Loader2, Minus, Plus, Users, Sparkles, Download, CheckCircle2, Mail, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureStore } from "@/store/feature-store";
 import { useAppStore } from "@/store/app-store";
+import { useAuth } from "@/lib/auth";
+import {
+  SubscriptionInvoiceData,
+  downloadSubscriptionInvoicePDF,
+} from "@/lib/subscription-invoice-pdf";
+import { sendSubscriptionInvoiceEmail } from "@/lib/subscription-email-service";
 
 interface Plan {
   id: string;
@@ -53,6 +59,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [newHrEmployeeCount, setNewHrEmployeeCount] = useState<number>(10);
 
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [completedInvoice, setCompletedInvoice] = useState<SubscriptionInvoiceData | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const currentOrg = useAppStore((s) => s.organization);
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
   const orgId = forceOrgId || currentOrg?.id || (storeOrgId && storeOrgId !== "default" ? storeOrgId : null);
@@ -362,7 +371,10 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 org_id: orgId,
                 plan_names: targetPlanNames,
                 billing_cycle: billingCycle,
-                employee_count: totalEmployeesToSend
+                employee_count: totalEmployeesToSend,
+                customer_email: user?.email || currentOrg?.email || "",
+                customer_name: user?.user_metadata?.full_name || currentOrg?.name || "",
+                total_amount: amountInRupees,
               }
             });
 
@@ -370,13 +382,81 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
             }
             
-            toast({
-              title: "Upgrade Successful!",
-              description: isOnlyAddingExtraEmployees
-                ? `Successfully added ${extraEmployeesToAdd} extra employee slots.`
-                : "Your selected plan(s) have been successfully activated."
-            });
-            setTimeout(() => window.location.reload(), 1200);
+            // Generate official subscription invoice details
+            const now = new Date();
+            const periodEnd = new Date(now);
+            if (billingCycle === "yearly") {
+              periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+            } else {
+              periodEnd.setMonth(periodEnd.getMonth() + 1);
+            }
+
+            const formatDateStr = (d: Date) =>
+              d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+            const invoiceNumber =
+              verifyData?.invoice_number ||
+              `AB-SUB-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-4)}`;
+
+            let planDisplay = targetPlanNames
+              .map((p) => {
+                const found = plans.find((pl) => pl.name === p);
+                return found ? found.display_name : p.toUpperCase();
+              })
+              .join(" + ");
+
+            if (targetPlanNames.includes("suite")) {
+              planDisplay = "Assay Biz - Flagship Business Suite";
+            } else if (isOnlyAddingExtraEmployees) {
+              planDisplay = `HRMS Capacity Expansion (+${extraEmployeesToAdd} Staff Slots)`;
+            }
+
+            const invoicePayload: SubscriptionInvoiceData = {
+              invoiceNumber,
+              invoiceDate: formatDateStr(now),
+              billingCycle,
+              planNames: targetPlanNames,
+              planDisplayName: planDisplay,
+              periodStart: formatDateStr(now),
+              periodEnd: formatDateStr(periodEnd),
+              customerName: user?.user_metadata?.full_name || currentOrg?.name || user?.email || "Valued Customer",
+              customerEmail: user?.email || currentOrg?.email || "",
+              customerPhone: currentOrg?.phone || undefined,
+              organizationName: currentOrg?.name || "My Business",
+              customerGstin: currentOrg?.tax_number || undefined,
+              billingAddress: currentOrg?.billing_address || undefined,
+              totalAmount: amountInRupees,
+              discount: validCoupon?.amount || 0,
+              paymentMethod: "Razorpay Online (UPI/Cards/NetBanking)",
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              employeeCount: totalEmployeesToSend,
+            };
+
+            setCompletedInvoice(invoicePayload);
+            setShowSuccessModal(true);
+
+            // Automatically dispatch the invoice email with PDF attachment
+            if (invoicePayload.customerEmail) {
+              toast({
+                title: "Payment Confirmed! 🚀",
+                description: `Dispatching your Tax Invoice PDF to ${invoicePayload.customerEmail}...`,
+              });
+
+              sendSubscriptionInvoiceEmail(invoicePayload, orgId)
+                .then((res) => {
+                  if (res.success) {
+                    toast({
+                      title: "Invoice Emailed! ✉️",
+                      description: `Tax Invoice #${invoiceNumber} delivered to ${invoicePayload.customerEmail}.`,
+                    });
+                  } else {
+                    console.warn("Subscription email dispatch returned:", res.error);
+                  }
+                })
+                .catch((e) => {
+                  console.error("Subscription email dispatch error:", e);
+                });
+            }
           } catch (err: any) {
             toast({
               title: "Activation Failed",
@@ -414,6 +494,83 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       toast({ title: "Upgrade Request Failed", description: message, variant: "destructive" });
     }
   };
+
+  if (showSuccessModal && completedInvoice) {
+    return (
+      <Dialog open={open} onOpenChange={(val) => { if (!val) { setShowSuccessModal(false); window.location.reload(); } }}>
+        <DialogContent 
+          className="max-w-lg p-0 overflow-hidden bg-white border-0 shadow-2xl rounded-3xl z-50 text-slate-900"
+          onPointerDownOutside={(e) => e.preventDefault()}
+        >
+          {/* Header Banner */}
+          <div className="bg-gradient-to-br from-[#160e3d] via-[#211559] to-[#28166f] p-8 text-center text-white relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-48 h-48 bg-[#e77817]/20 rounded-full blur-2xl pointer-events-none" />
+            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto mb-4 shadow-lg">
+              <CheckCircle2 className="w-9 h-9" />
+            </div>
+            <span className="inline-block bg-[#e77817] text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
+              Payment Verified • Invoice Issued
+            </span>
+            <h2 className="text-2xl font-black tracking-tight text-white mb-1">
+              Subscription Activated! 🚀
+            </h2>
+            <p className="text-slate-300 text-xs sm:text-sm">
+              Your plan is now active for <strong className="text-white">{completedInvoice.organizationName}</strong>
+            </p>
+          </div>
+
+          {/* Details & Actions */}
+          <div className="p-6 space-y-5">
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs sm:text-sm">
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Active Plan</span>
+                <span className="font-bold text-slate-900">{completedInvoice.planDisplayName}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Tax Invoice No.</span>
+                <span className="font-semibold text-slate-900 font-mono">{completedInvoice.invoiceNumber}</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Amount Paid</span>
+                <span className="font-extrabold text-emerald-700 text-base">
+                  ₹{completedInvoice.totalAmount.toLocaleString("en-IN")}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-slate-600">
+                <span>Valid Period</span>
+                <span className="font-medium text-slate-700">{completedInvoice.periodStart} to {completedInvoice.periodEnd}</span>
+              </div>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+              <Mail className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="text-xs text-emerald-900">
+                <span className="font-bold block">Tax Invoice PDF Emailed!</span>
+                An official GST Tax Invoice PDF has been dispatched to <strong>{completedInvoice.customerEmail}</strong>.
+              </div>
+            </div>
+
+            <div className="space-y-2.5 pt-2">
+              <Button
+                onClick={() => downloadSubscriptionInvoicePDF(completedInvoice)}
+                className="w-full py-6 rounded-xl bg-[#e77817] hover:bg-[#ff8a24] text-white font-bold text-sm shadow-lg shadow-[#e77817]/25 flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Tax Invoice (PDF)</span>
+              </Button>
+              <Button
+                onClick={() => { setShowSuccessModal(false); window.location.reload(); }}
+                variant="outline"
+                className="w-full py-6 rounded-xl border-slate-300 hover:bg-slate-100 text-slate-700 font-semibold text-sm"
+              >
+                Continue to Dashboard
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onClose} modal={false}>
