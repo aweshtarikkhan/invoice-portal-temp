@@ -184,20 +184,20 @@ export default function LandingPage() {
             {/* Pill Eyebrow */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50/90 border border-[#e77817]/30 text-[#e77817] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#e77817]" />
-              <span>ALL-IN-ONE BUSINESS PLATFORM</span>
+              <span>FASTEST GST BILLING PLATFORM</span>
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[48px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
-              Run Your Business Smarter with{" "}
+            <h1 className="text-4xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
+              Send GST invoices in{" "}
               <span className="bg-gradient-to-r from-[#28166f] via-[#3a1f9e] to-[#e77817] bg-clip-text text-transparent">
-                Assaybiz
+                30 seconds.
               </span>
             </h1>
 
             {/* Subtitle description */}
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 font-normal">
-              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis and more — everything your business needs, in one powerful platform.
+              Assay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.
             </p>
 
             {/* CTA Buttons */}
