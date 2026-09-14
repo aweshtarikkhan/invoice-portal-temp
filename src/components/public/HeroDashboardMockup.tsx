@@ -538,7 +538,6 @@ export function HeroDashboardMockup() {
   const [hoveredKpi, setHoveredKpi] = useState<number | null>(null);
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(5);
   const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | null>(null);
-  const [showAiDetail, setShowAiDetail] = useState(false);
   const [selectedSubPage, setSelectedSubPage] = useState<number>(0);
 
   const currentData = MODULE_DATA[activeModule] || MODULE_DATA.dashboard;
@@ -938,40 +937,6 @@ export function HeroDashboardMockup() {
           </div>
         </div>
 
-        {/* 3. FLOATING "GET AI INSIGHTS" CARD */}
-        <div
-          onMouseEnter={() => setShowAiDetail(true)}
-          onMouseLeave={() => setShowAiDetail(false)}
-          className="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 bg-white/95 backdrop-blur-md border border-[#28166f]/15 shadow-xl rounded-xl p-2 max-w-[200px] sm:max-w-[220px] transition-all duration-300 hover:scale-105 hover:border-[#e77817] cursor-pointer z-30"
-        >
-          <div className="flex items-start gap-1.5">
-            <div className="h-5.5 w-5.5 rounded-md bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
-              <Sparkles className="w-3 h-3" />
-            </div>
-            <div>
-              <div className="font-bold text-slate-900 text-[10px] flex items-center gap-1">
-                AI Insight
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              </div>
-              <p className="text-[8.5px] text-slate-600 font-medium leading-tight mt-0.5 line-clamp-2">
-                {currentData.aiInsight.title}
-              </p>
-            </div>
-          </div>
-
-          {/* Interactive expansion on hover */}
-          {showAiDetail && (
-            <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[8px] text-slate-600 space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-200">
-              <div className="flex items-start gap-1 text-slate-600 leading-tight">
-                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0 mt-0.5" />
-                <span>{currentData.aiInsight.desc}</span>
-              </div>
-              <div className="bg-orange-50 text-[#e77817] hover:bg-[#e77817] hover:text-white border border-orange-200/60 font-bold px-1.5 py-0.5 rounded text-center transition-colors">
-                {currentData.aiInsight.action}
-              </div>
-            </div>
-          )}
-        </div>
 
       </div>
 
