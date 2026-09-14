@@ -182,22 +182,24 @@ export default function LandingPage() {
           <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-center">
             
             {/* Pill Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-orange-50/90 border border-[#e77817]/30 text-[#e77817] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#e77817]" />
-              <span>FASTEST GST BILLING PLATFORM</span>
+              <span>ALL-IN-ONE BUSINESS PLATFORM</span>
             </div>
 
-            {/* Main Headline */}
+            {/* Main Headline with Logo-matched A(orange) + assay(blue) + biz(orange) */}
             <h1 className="text-4xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
-              Send GST invoices in{" "}
-              <span className="bg-gradient-to-r from-[#28166f] via-[#3a1f9e] to-[#e77817] bg-clip-text text-transparent">
-                30 seconds.
+              Run Your Business Smarter with{" "}
+              <span className="inline-block whitespace-nowrap">
+                <span className="text-[#e77817]">A</span>
+                <span className="text-[#28166f]">assay</span>
+                <span className="text-[#e77817]">biz</span>
               </span>
             </h1>
 
             {/* Subtitle description */}
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 font-normal">
-              Assay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.
+              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis and more — everything your business needs, in one powerful platform.
             </p>
 
             {/* CTA Buttons */}
@@ -217,7 +219,7 @@ export default function LandingPage() {
                 className="h-13 px-6 text-base font-bold bg-white hover:bg-orange-50/80 text-[#28166f] hover:text-[#e77817] border-slate-300 hover:border-[#e77817] rounded-xl w-full sm:w-auto shadow-xs cursor-pointer transition-all duration-300 group"
                 onClick={() => setIsDemoDialogOpen(true)}
               >
-                <PlayCircle className="mr-2 h-4 w-4 text-[#28166f] group-hover:text-[#e77817] transition-colors" /> Book a Demo
+                Book a Demo
               </Button>
             </div>
 
