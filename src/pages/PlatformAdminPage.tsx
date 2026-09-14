@@ -591,6 +591,12 @@ export default function PlatformAdminPage() {
     fetchDashboardData(false);
   };
 
+  const handleDeleteFeatureRequest = async (reqId: string) => {
+    if (!confirm("Are you sure you want to delete this submission?")) return;
+    await supabase.from("feature_requests").delete().eq("id", reqId);
+    fetchDashboardData(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-20">
@@ -1402,14 +1408,185 @@ export default function PlatformAdminPage() {
               <CardDescription>View signups, partnership requests, and support queries from the website.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <Tabs defaultValue="signups" className="w-full">
+              <Tabs defaultValue="demo" className="w-full">
                 <div className="px-6 pt-4">
                   <TabsList className="bg-slate-100">
+                    <TabsTrigger value="demo" className="relative">
+                      Demo Requests
+                      {featureRequests.filter((r: any) => r.request_type === 'demo_request').length > 0 && (
+                        <Badge className="ml-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-full px-1.5 min-w-[18px] h-4.5 flex items-center justify-center text-[10px]">
+                          {featureRequests.filter((r: any) => r.request_type === 'demo_request').length}
+                        </Badge>
+                      )}
+                    </TabsTrigger>
                     <TabsTrigger value="signups">Recent Sign Ups</TabsTrigger>
                     <TabsTrigger value="partners">Partner With Us</TabsTrigger>
                     <TabsTrigger value="support">Help & Support</TabsTrigger>
                   </TabsList>
                 </div>
+
+                <TabsContent value="demo" className="p-6">
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
+                    <Table>
+                      <TableHeader className="bg-slate-50">
+                        <TableRow>
+                          <TableHead className="w-[140px]">Date & Time</TableHead>
+                          <TableHead className="min-w-[170px]">Prospect & Business</TableHead>
+                          <TableHead className="min-w-[180px]">Contact Info</TableHead>
+                          <TableHead className="min-w-[160px]">City & Industry</TableHead>
+                          <TableHead className="min-w-[170px]">Preferred Slot</TableHead>
+                          <TableHead className="min-w-[220px]">Requirements / Notes</TableHead>
+                          <TableHead className="min-w-[130px]">Status</TableHead>
+                          <TableHead className="w-[70px] text-right">Action</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {featureRequests
+                          .filter((r: any) => r.request_type === 'demo_request')
+                          .map((req: any) => {
+                            let payload: any = {};
+                            try { payload = JSON.parse(req.message || '{}'); } catch(e){}
+                            const name = payload.name || 'Anonymous Prospect';
+                            const mobile = payload.mobile || payload.phone || '';
+                            const email = payload.email || req.user_email || '-';
+                            const company = payload.company || payload.business || '-';
+                            const city = payload.city || '-';
+                            const industry = payload.industry || '-';
+                            const preferredTime = payload.preferred_time || '-';
+                            const message = payload.message || '';
+
+                            const waLink = mobile ? `https://wa.me/91${mobile}?text=Hello%20${encodeURIComponent(name)},%20thank%20you%20for%20booking%20a%20demo%20with%20Assay%20Biz!%20Are%20you%20available%20for%20your%20scheduled%20session?` : '';
+
+                            return (
+                              <TableRow key={req.id} className="hover:bg-slate-50/80 transition-colors">
+                                <TableCell className="whitespace-nowrap text-xs text-slate-500 font-medium">
+                                  {new Date(req.created_at).toLocaleDateString('en-IN', {
+                                    day: '2-digit', month: 'short', year: 'numeric'
+                                  })}
+                                  <div className="text-[11px] text-slate-400">
+                                    {new Date(req.created_at).toLocaleTimeString('en-IN', {
+                                      hour: '2-digit', minute: '2-digit'
+                                    })}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="font-bold text-slate-900 text-sm">
+                                    {name}
+                                  </div>
+                                  <div className="text-xs text-indigo-700 font-medium flex items-center gap-1 mt-0.5">
+                                    <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                                    {company}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-1 text-xs font-mono text-slate-700 font-medium">
+                                      <Phone className="w-3 h-3 text-slate-400" />
+                                      {mobile ? `+91 ${mobile}` : '-'}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-xs text-slate-500">
+                                      <Mail className="w-3 h-3 text-slate-400" />
+                                      {email}
+                                    </div>
+                                    {mobile && (
+                                      <div className="flex items-center gap-2 pt-1">
+                                        <a
+                                          href={waLink}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-[11px] font-semibold border border-emerald-200 transition-colors"
+                                        >
+                                          WhatsApp
+                                        </a>
+                                        <a
+                                          href={`tel:${mobile}`}
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[11px] font-semibold border border-indigo-200 transition-colors"
+                                        >
+                                          Call
+                                        </a>
+                                      </div>
+                                    )}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="text-xs font-medium text-slate-800">{city}</div>
+                                  <Badge variant="outline" className="text-[10px] mt-1 bg-slate-50 text-slate-600 border-slate-200">
+                                    {industry}
+                                  </Badge>
+                                </TableCell>
+
+                                <TableCell>
+                                  <div className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
+                                    <Calendar className="w-3 h-3 text-indigo-500 shrink-0" />
+                                    {preferredTime}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell className="max-w-[240px]">
+                                  <div className="text-xs text-slate-600 line-clamp-2" title={message}>
+                                    {message || 'No special requirements noted'}
+                                  </div>
+                                </TableCell>
+
+                                <TableCell>
+                                  <Select
+                                    value={req.status || 'pending'}
+                                    onValueChange={(val) => handleUpdateFeatureRequest(req.id, val)}
+                                  >
+                                    <SelectTrigger className={`h-8 text-xs font-bold rounded-lg border ${
+                                      req.status === 'completed'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : req.status === 'contacted'
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                        : req.status === 'scheduled'
+                                        ? 'bg-purple-50 text-purple-700 border-purple-200'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'
+                                    }`}>
+                                      <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="pending">⏳ Pending</SelectItem>
+                                      <SelectItem value="contacted">📞 Contacted</SelectItem>
+                                      <SelectItem value="scheduled">📅 Scheduled</SelectItem>
+                                      <SelectItem value="completed">✅ Completed</SelectItem>
+                                      <SelectItem value="rejected">❌ Cancelled</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </TableCell>
+
+                                <TableCell className="text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                    onClick={() => handleDeleteFeatureRequest(req.id)}
+                                    title="Delete Request"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+
+                        {!featureRequests.find((r: any) => r.request_type === 'demo_request') && (
+                          <TableRow>
+                            <TableCell colSpan={8} className="h-32 text-center text-slate-500">
+                              <div className="flex flex-col items-center justify-center space-y-1">
+                                <Sparkles className="w-6 h-6 text-slate-400 mb-1" />
+                                <p className="font-medium text-slate-600 text-sm">No demo requests yet</p>
+                                <p className="text-xs text-slate-400">Incoming requests from the "Book a Demo" form will show up here.</p>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
                 
                 <TabsContent value="signups" className="p-6">
                   <div className="rounded-xl border border-slate-200 overflow-hidden">

@@ -14,6 +14,7 @@ import logoImg from "@/assets/logo.png";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { HeroDashboardMockup } from "@/components/public/HeroDashboardMockup";
+import { BookDemoDialog } from "@/components/public/BookDemoDialog";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 
@@ -127,6 +128,7 @@ export default function LandingPage() {
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
+  const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
   const { socials } = usePlatformSocials();
   const L = t[lang];
 
@@ -212,12 +214,10 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 variant="outline"
-                className="h-13 px-6 text-base font-bold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 rounded-xl w-full sm:w-auto shadow-xs"
-                asChild
+                className="h-13 px-6 text-base font-bold bg-white hover:bg-slate-50 text-slate-700 border-slate-300 rounded-xl w-full sm:w-auto shadow-xs cursor-pointer"
+                onClick={() => setIsDemoDialogOpen(true)}
               >
-                <Link to="/demo">
-                  <PlayCircle className="mr-2 h-4 w-4 text-indigo-600" /> Book a Demo
-                </Link>
+                <PlayCircle className="mr-2 h-4 w-4 text-indigo-600" /> Book a Demo
               </Button>
             </div>
 
@@ -548,6 +548,9 @@ export default function LandingPage() {
 
       {/* Footer */}
       <PublicFooter />
+
+      {/* Book a Demo Modal */}
+      <BookDemoDialog open={isDemoDialogOpen} onOpenChange={setIsDemoDialogOpen} />
     </div>
   );
 }
