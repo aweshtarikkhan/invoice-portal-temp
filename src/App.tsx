@@ -134,8 +134,14 @@ const App = () => (
             <Route path="/pamphlet" element={<PamphletPage />} />
             <Route path="/launch-posts" element={<SocialLaunchPostsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
             <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+            <Route path="/terms-conditions" element={<TermsOfServicePage />} />
+            <Route path="/refund" element={<RefundPolicyPage />} />
             <Route path="/refund-policy" element={<RefundPolicyPage />} />
+            <Route path="/cancellation-refund" element={<RefundPolicyPage />} />
+            <Route path="/cancellation-policy" element={<RefundPolicyPage />} />
 
             {/* Protected routes */}
             <Route

@@ -138,29 +138,56 @@ export function PublicFooter() {
               </ul>
             </div>
 
-            {/* Column 4: Trust & Security Card (3 cols) */}
-            <div className="lg:col-span-3">
-              <h3 className="font-bold text-white text-base tracking-wide mb-4">Trust & Security</h3>
-              <div className="p-5 rounded-2xl bg-white/5 border border-white/10 space-y-4 text-xs sm:text-sm">
-                <div className="flex items-start gap-3">
-                  <span className="text-xl leading-none">🇮🇳</span>
+            {/* Column 4: Legal & Trust (3 cols) */}
+            <div className="lg:col-span-3 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-white text-base tracking-wide mb-4 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-[#ff9438]" />
+                  <span>Legal & Compliance</span>
+                </h3>
+                <ul className="space-y-2.5 text-sm mb-6">
+                  <li>
+                    <Link to="/privacy" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
+                      <span>Privacy Policy</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/terms" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
+                      <span>Terms of Service</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link to="/refund-policy" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
+                      <span>Cancellation & Refund Policy</span>
+                    </Link>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Trust & Security Badge Card */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3 text-xs">
+                <div className="flex items-start gap-2.5">
+                  <span className="text-lg leading-none">🇮🇳</span>
                   <div>
                     <div className="font-bold text-white">100% Made in India</div>
-                    <div className="text-slate-400 text-xs">Crafted for Indian business & tax compliance</div>
+                    <div className="text-slate-400 text-[11px]">Crafted for Indian business & GST compliance</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
                     <div className="font-bold text-white">Bank-Grade 256-bit SSL</div>
-                    <div className="text-slate-400 text-xs">Full encryption with automated daily backups</div>
+                    <div className="text-slate-400 text-[11px]">End-to-end encrypted daily backups</div>
                   </div>
                 </div>
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-[#ff9438] shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#ff9438] shrink-0 mt-0.5" />
                   <div>
                     <div className="font-bold text-white">Priority Phone Support</div>
-                    <div className="text-slate-400 text-xs">Mon - Sat: 9:30 AM - 7:00 PM IST</div>
+                    <div className="text-slate-400 text-[11px]">Mon - Sat: 9:30 AM - 7:00 PM IST</div>
                   </div>
                 </div>
               </div>
@@ -169,16 +196,29 @@ export function PublicFooter() {
           </div>
 
           {/* Bottom Copyright & Legal Links Bar */}
-          <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:pr-44 text-xs sm:text-sm text-slate-400">
-            <p>
+          <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:pr-44 text-xs sm:text-sm">
+            <p className="text-slate-400 text-center md:text-left">
               &copy; {new Date().getFullYear()} Assay Biz. All rights reserved.
             </p>
-            <div className="flex flex-wrap items-center gap-4 sm:gap-6">
-              <Link to="/privacy" className="hover:text-white transition-colors py-1">Privacy Policy</Link>
-              <span className="text-white/20 hidden sm:inline">•</span>
-              <Link to="/terms" className="hover:text-white transition-colors py-1">Terms of Service</Link>
-              <span className="text-white/20 hidden sm:inline">•</span>
-              <Link to="/refund-policy" className="hover:text-[#ff9438] text-slate-300 font-medium transition-colors py-1">Refund Policy</Link>
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+              <Link 
+                to="/privacy" 
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all"
+              >
+                Privacy Policy
+              </Link>
+              <Link 
+                to="/terms" 
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all"
+              >
+                Terms of Service
+              </Link>
+              <Link 
+                to="/refund-policy" 
+                className="px-3 py-1.5 rounded-lg bg-[#e77817]/15 hover:bg-[#e77817]/30 text-[#ffaa47] hover:text-white border border-[#e77817]/40 text-xs font-semibold transition-all shadow-sm"
+              >
+                Cancellation & Refund Policy
+              </Link>
             </div>
           </div>
 

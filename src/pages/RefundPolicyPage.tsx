@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
+import { LegalNavTabs } from "@/components/public/LegalNavTabs";
 import { RefreshCw } from "lucide-react";
 import { SEO } from "@/components/shared/SEO";
 
@@ -19,6 +20,7 @@ export default function RefundPolicyPage() {
 
       <main className="flex-1 py-12 px-6">
         <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-200/80 p-8 sm:p-12">
+          <LegalNavTabs />
           
           <div className="border-b border-slate-200 pb-6 mb-8">
             <div className="flex items-center gap-3 mb-3">
