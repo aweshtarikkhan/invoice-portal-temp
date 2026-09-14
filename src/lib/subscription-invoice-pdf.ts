@@ -1,4 +1,4 @@
-﻿import { jsPDF } from "jspdf";
+import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export interface SubscriptionInvoiceData {
@@ -25,13 +25,23 @@ export interface SubscriptionInvoiceData {
   employeeCount?: number;
 }
 
-// Helper to format currency
+// Helper to format currency (pure ASCII to avoid jsPDF unicode spacing bugs)
 function formatINR(val: number): string {
-  return new Intl.NumberFormat("en-IN", {
-    style: "currency",
-    currency: "INR",
-    maximumFractionDigits: 2,
-  }).format(val);
+  if (val === undefined || val === null) return "Rs. 0.00";
+  const num = Number(val) || 0;
+  const fixed = num.toFixed(2);
+  const parts = fixed.split(".");
+  let intPart = parts[0];
+  const decPart = parts[1];
+  
+  let lastThree = intPart.substring(intPart.length - 3);
+  const otherNumbers = intPart.substring(0, intPart.length - 3);
+  if (otherNumbers !== '') {
+      lastThree = ',' + lastThree;
+  }
+  const formatted = otherNumbers.replace(/\B(?=(\d{2})+(?!\d))/g, ",") + lastThree;
+  
+  return "Rs. " + formatted + "." + decPart;
 }
 
 // Convert amount in numbers to words (Indian numbering system)
@@ -148,7 +158,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
 
   // Paid badge
   doc.setTextColor(22, 163, 74); // green-600
-  doc.text("✓ PAID IN FULL", margin + 50, y + 14);
+  doc.text("PAID IN FULL", margin + 50, y + 14);
 
   doc.setTextColor(15, 23, 42);
   doc.text((data.billingCycle || "Monthly").toUpperCase(), margin + 100, y + 14);
@@ -245,7 +255,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
     "998313",
     "1",
     formatINR(taxable),
-    data.discount ? formatINR(data.discount) : "₹0.00",
+    data.discount ? formatINR(data.discount) : formatINR(0),
     formatINR(taxable),
     "18%",
     formatINR(total),
@@ -259,7 +269,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
       "998313",
       "1",
       "Included",
-      "₹0.00",
+      formatINR(0),
       "Included",
       "18%",
       "Included",
@@ -294,15 +304,15 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
       cellPadding: 3,
     },
     columnStyles: {
-      0: { halign: "center", cellWidth: 10, fontSize: 8 },
-      1: { cellWidth: 64, fontSize: 8 },
-      2: { halign: "center", cellWidth: 18, fontSize: 8 },
-      3: { halign: "center", cellWidth: 12, fontSize: 8 },
-      4: { halign: "right", cellWidth: 20, fontSize: 8 },
+      0: { halign: "center", cellWidth: 9, fontSize: 8 },
+      1: { cellWidth: 58, fontSize: 8 },
+      2: { halign: "center", cellWidth: 14, fontSize: 8 },
+      3: { halign: "center", cellWidth: 9, fontSize: 8 },
+      4: { halign: "right", cellWidth: 19, fontSize: 8 },
       5: { halign: "right", cellWidth: 15, fontSize: 8 },
       6: { halign: "right", cellWidth: 20, fontSize: 8 },
-      7: { halign: "center", cellWidth: 11, fontSize: 8 },
-      8: { halign: "right", cellWidth: 22, fontSize: 8, fontStyle: "bold" },
+      7: { halign: "center", cellWidth: 14, fontSize: 8 },
+      8: { halign: "right", cellWidth: 24, fontSize: 8, fontStyle: "bold" },
     },
     styles: {
       textColor: [30, 41, 59],
@@ -411,7 +421,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(22, 163, 74);
-  doc.text("✓ PAYMENT RECEIVED", stampX + 27.5, stampY + 9, { align: "center" });
+  doc.text("PAYMENT RECEIVED", stampX + 27.5, stampY + 9, { align: "center" });
 
   // -------------------------------------------------------------
   // 7. AUTHORIZED SIGNATURE BLOCK
