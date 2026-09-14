@@ -472,14 +472,12 @@ export default function LandingPage() {
                 <thead>
                   <tr className="border-b border-slate-200">
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 min-w-[240px]">Feature</th>
-                    <th className="p-4 sm:p-5 text-center bg-navy border-l border-white/10 shadow-inner min-w-[150px]">
-                      <div className="inline-flex items-center justify-center bg-white px-3.5 py-1.5 rounded-xl shadow-md tracking-tight select-none">
-                        <span className="font-black text-lg sm:text-xl leading-none">
-                          <span className="text-[#e77817]">A</span>
-                          <span className="text-[#28166f]">assay</span>
-                          <span className="text-[#e77817] ml-1">Biz</span>
-                        </span>
-                      </div>
+                    <th className="p-5 text-center bg-white border-l border-r border-slate-200 shadow-xs min-w-[150px]">
+                      <span className="font-black text-xl tracking-tight select-none inline-block">
+                        <span className="text-[#e77817]">A</span>
+                        <span className="text-[#28166f]">assay</span>
+                        <span className="text-[#e77817] ml-1">Biz</span>
+                      </span>
                     </th>
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">Vyapar</th>
                     <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">MyBillBook</th>
@@ -491,7 +489,7 @@ export default function LandingPage() {
                   {comparison.map((row, idx) => (
                     <tr key={row.label} className="hover:bg-slate-50/50 transition-colors">
                       <td className="p-4 sm:p-5 px-5 sm:px-6 font-semibold text-slate-700 text-sm sm:text-base">{row.label}</td>
-                      <td className="p-4 sm:p-5 text-center bg-navy/5 border-l border-navy/10"><Tick v={row.satah} /></td>
+                      <td className="p-4 sm:p-5 text-center bg-white border-l border-r border-slate-200/80"><Tick v={row.satah} /></td>
                       <td className="p-4 sm:p-5 text-center"><Tick v={row.vyapar} /></td>
                       <td className="p-4 sm:p-5 text-center"><Tick v={row.mybillbook} /></td>
                       <td className="p-4 sm:p-5 text-center"><Tick v={row.zoho} /></td>
