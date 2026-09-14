@@ -1,11 +1,7 @@
 import React, { useState } from "react";
 import logoImg from "@/assets/logo.png";
 import {
-  LayoutDashboard,
-  FileText,
-  Boxes,
-  ShoppingCart,
-  Landmark,
+  Briefcase,
   UserCog,
   Users,
   Send,
@@ -21,15 +17,14 @@ import {
   Zap,
   ArrowUpRight,
   Sparkles,
+  Clock,
+  ShieldCheck,
+  Check,
 } from "lucide-react";
 
-export type ModuleKey =
-  | "dashboard"
-  | "sales"
-  | "inventory"
-  | "purchases"
-  | "banking"
-  | "people"
+export type ParentModuleKey =
+  | "accounting"
+  | "hr"
   | "crm"
   | "promotion"
   | "integration"
@@ -41,7 +36,6 @@ interface SubPageItem {
   name: string;
   count: string;
   status: string;
-  badgeColor?: string;
 }
 
 interface MetricData {
@@ -54,6 +48,7 @@ interface MetricData {
 interface ModuleDetail {
   title: string;
   subtitle: string;
+  isUpcoming?: boolean;
   subPages: SubPageItem[];
   metrics: MetricData[];
   chartTitle: string;
@@ -72,6 +67,7 @@ interface ModuleDetail {
     dash: string;
     offset: string;
   }[];
+  featureList?: { title: string; desc: string }[];
   aiInsight: {
     title: string;
     desc: string;
@@ -79,256 +75,79 @@ interface ModuleDetail {
   };
 }
 
-// 12 Exact Main Pages from App Sidebar
-export const MODULE_NAV = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "sales", label: "Sales", icon: FileText },
-  { id: "inventory", label: "Inventory Management", icon: Boxes },
-  { id: "purchases", label: "Purchases", icon: ShoppingCart },
-  { id: "banking", label: "Banking", icon: Landmark },
-  { id: "people", label: "Business HR", icon: UserCog },
+// Exactly the 8 parent modules from software sidebar
+export const PARENT_MODULES = [
+  { id: "accounting", label: "Business Accounting", icon: Briefcase },
+  { id: "hr", label: "Business HR", icon: UserCog },
   { id: "crm", label: "Business CRM", icon: Users },
   { id: "promotion", label: "Business Promotion", icon: Send },
   { id: "integration", label: "Business Integration", icon: MessageCircle },
-  { id: "feedback", label: "Business Feedback", icon: MessageSquareQuote },
-  { id: "analysis", label: "Business Analysis", icon: BrainCircuit },
-  { id: "settings", label: "Settings", icon: Settings },
+  { id: "feedback", label: "Business Feedback", icon: MessageSquareQuote, isUpcoming: true },
+  { id: "analysis", label: "Business Analysis", icon: BrainCircuit, isUpcoming: true },
+  { id: "settings", label: "System & Settings", icon: Settings },
 ];
 
-const MODULE_DATA: Record<ModuleKey, ModuleDetail> = {
-  dashboard: {
-    title: "Executive Business Dashboard",
-    subtitle: "Consolidated real-time overview of revenue, operations, receivables & staff.",
+const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
+  accounting: {
+    title: "Business Accounting Suite",
+    subtitle: "Complete unified control of Sales, Purchases, Inventory & Bank Accounts.",
     subPages: [
-      { name: "Overview", count: "All Units", status: "Live Sync", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Live Sales", count: "₹12.48L", status: "+14% MoM", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Receivables", count: "₹2.50L", status: "Due in 7d", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-      { name: "Cash Balance", count: "₹8.45L", status: "3 Accounts", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Attendance", count: "22 / 24", status: "91.6% Present", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+      { name: "Sales (Invoices & Quotes)", count: "₹18.90L", status: "156 Invoices" },
+      { name: "Purchases & Bills", count: "₹9.40L", status: "48 Vendors" },
+      { name: "Inventory (Stock & Hubs)", count: "₹24.8L", status: "1,420 Items" },
+      { name: "Banking & Cash Flow", count: "₹8.45L", status: "98.4% Matched" },
     ],
     metrics: [
-      { label: "Total Revenue", value: "₹12,48,000", change: "+14%", isPositive: true },
-      { label: "Active Invoices", value: "156 Bills", change: "+8%", isPositive: true },
-      { label: "Customer Accounts", value: "320 Clients", change: "+15%", isPositive: true },
-      { label: "Staff Present", value: "22 / 24", change: "91.6%", isPositive: true },
+      { label: "Sales & Invoicing", value: "₹18,90,000", change: "+18% MoM", isPositive: true },
+      { label: "Purchases & Bills", value: "₹9,40,000", change: "48 Vendors", isPositive: true },
+      { label: "Inventory Stock", value: "₹24,80,000", change: "4 Hubs", isPositive: true },
+      { label: "Liquid Bank Cash", value: "₹8,45,200", change: "+15% Surplus", isPositive: true },
     ],
-    chartTitle: "Business Growth & Sales Curve",
-    chartBadge: "This Year",
+    chartTitle: "Monthly Sales vs Procurement Pacing",
+    chartBadge: "FY 2025",
     chartPoints: [
-      { m: "Jan", v: 28, label: "₹4.8L", x: 10, y: 65 },
-      { m: "Feb", v: 42, label: "₹6.5L", x: 65, y: 52 },
-      { m: "Mar", v: 55, label: "₹8.2L", x: 120, y: 42 },
-      { m: "Apr", v: 68, label: "₹9.8L", x: 175, y: 30 },
-      { m: "May", v: 82, label: "₹11.4L", x: 225, y: 20 },
-      { m: "Jun", v: 96, label: "₹12.48L", x: 270, y: 10 },
+      { m: "Jan", v: 28, label: "₹5.2L", x: 10, y: 56 },
+      { m: "Feb", v: 42, label: "₹7.6L", x: 65, y: 46 },
+      { m: "Mar", v: 56, label: "₹10.4L", x: 120, y: 36 },
+      { m: "Apr", v: 70, label: "₹13.8L", x: 175, y: 26 },
+      { m: "May", v: 84, label: "₹16.5L", x: 225, y: 18 },
+      { m: "Jun", v: 96, label: "₹18.9L", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 65 Q 40 58, 65 52 T 120 42 T 175 30 T 225 20 T 270 10",
-    chartAreaPath: "M 10 65 Q 40 58, 65 52 T 120 42 T 175 30 T 225 20 T 270 10 L 270 75 L 10 75 Z",
-    donutTitle: "Revenue Channels",
-    donutCenter: "₹12.48L",
-    donutCenterSub: "Gross",
+    chartLinePath: "M 10 56 Q 40 50, 65 46 T 120 36 T 175 26 T 225 18 T 270 8",
+    chartAreaPath: "M 10 56 Q 40 50, 65 46 T 120 36 T 175 26 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    donutTitle: "Accounting Operations Split",
+    donutCenter: "₹61.5L",
+    donutCenterSub: "Gross Flow",
     donutSegments: [
-      { label: "Direct Invoices", pct: 50, color: "bg-[#e77817]", stroke: "#e77817", dash: "125.6 251.2", offset: "0" },
-      { label: "Repeat Clients", pct: 28, color: "bg-[#28166f]", stroke: "#28166f", dash: "70.3 251.2", offset: "-125.6" },
-      { label: "Online Orders", pct: 14, color: "bg-emerald-500", stroke: "#10b981", dash: "35.2 251.2", offset: "-195.9" },
-      { label: "Other Services", pct: 8, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20.1 251.2", offset: "-231.1" },
+      { label: "Sales & Bills", pct: 45, color: "bg-[#e77817]", stroke: "#e77817", dash: "90 200", offset: "0" },
+      { label: "Live Inventory", pct: 30, color: "bg-[#28166f]", stroke: "#28166f", dash: "60 200", offset: "-90" },
+      { label: "Purchases", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-150" },
+      { label: "Bank Reserve", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20 200", offset: "-180" },
+    ],
+    featureList: [
+      { title: "Sales & Invoicing", desc: "GST invoices, estimates, credit notes, client ledger & delivery challans." },
+      { title: "Purchases & Expenses", desc: "Vendor orders, 3-way GRN match, supplier purchase bills & expense tracking." },
+      { title: "Inventory & Warehouses", desc: "Real-time stock quantities across multi-warehouses with auto re-order alerts." },
+      { title: "Double-Entry Banking", desc: "Live bank account feed, automated reconciliation, and GSTR-1/3B export." },
     ],
     aiInsight: {
-      title: "Revenue Pacing 14% Higher",
-      desc: "B2B client repeat orders are 14% higher than last month with strong cash collection.",
-      action: "View Growth Forecast →",
+      title: "Strong Financial Health",
+      desc: "Working capital runway is 68 days with 94% on-time client payments.",
+      action: "View Cash Flow Audit →",
     },
   },
 
-  sales: {
-    title: "Sales & Invoicing Command Center",
-    subtitle: "Create GST invoices, quotations, manage clients, credit notes & challans.",
+  hr: {
+    title: "Business HR & Staff Management",
+    subtitle: "Biometric & web attendance, leave tracking, shift rosters, employee KYC & 1-click payroll.",
     subPages: [
-      { name: "Invoices", count: "156 Issued", status: "₹18.90L Billed", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Quotations", count: "48 Quotes", status: "82% Won", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Client", count: "320 Active", status: "+14 New", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Credit Notes", count: "4 Issued", status: "₹24,500", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-      { name: "Payments Received", count: "142 Paid", status: "₹15.40L", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Delivery Challan", count: "38 Dispatched", status: "Tracked", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Recurring", count: "12 Auto", status: "Active", badgeColor: "bg-slate-50 text-slate-600 border-slate-200" },
+      { name: "Employees Roster", count: "24 Staff", status: "100% Onboarded" },
+      { name: "Today Attendance", count: "22 Present", status: "91.6% Turnout" },
+      { name: "Leave Balances", count: "2 Pending", status: "4 Leave Types" },
+      { name: "Monthly Payroll", count: "₹4.80L", status: "1-Click Payslips" },
     ],
     metrics: [
-      { label: "Total Invoiced", value: "₹18,90,000", change: "+18%", isPositive: true },
-      { label: "Payments Received", value: "₹15,40,000", change: "+22%", isPositive: true },
-      { label: "Quotations Sent", value: "48 Quotes", change: "82% Converted", isPositive: true },
-      { label: "Overdue Bills", value: "₹2,50,000", change: "-12%", isPositive: false },
-    ],
-    chartTitle: "Monthly Sales Volume & Billing",
-    chartBadge: "Jan - Jun",
-    chartPoints: [
-      { m: "Jan", v: 32, label: "₹5.2L", x: 10, y: 68 },
-      { m: "Feb", v: 48, label: "₹7.6L", x: 65, y: 55 },
-      { m: "Mar", v: 62, label: "₹10.4L", x: 120, y: 46 },
-      { m: "Apr", v: 75, label: "₹13.8L", x: 175, y: 32 },
-      { m: "May", v: 88, label: "₹16.5L", x: 225, y: 22 },
-      { m: "Jun", v: 99, label: "₹18.9L", x: 270, y: 8 },
-    ],
-    chartLinePath: "M 10 68 Q 40 60, 65 55 T 120 46 T 175 32 T 225 22 T 270 8",
-    chartAreaPath: "M 10 68 Q 40 60, 65 55 T 120 46 T 175 32 T 225 22 T 270 8 L 270 75 L 10 75 Z",
-    donutTitle: "Sales Documents Split",
-    donutCenter: "81.5%",
-    donutCenterSub: "Paid Rate",
-    donutSegments: [
-      { label: "Paid Invoices", pct: 65, color: "bg-emerald-500", stroke: "#10b981", dash: "163.3 251.2", offset: "0" },
-      { label: "Quotations", pct: 18, color: "bg-[#e77817]", stroke: "#e77817", dash: "45.2 251.2", offset: "-163.3" },
-      { label: "Challans", pct: 10, color: "bg-[#28166f]", stroke: "#28166f", dash: "25.1 251.2", offset: "-208.5" },
-      { label: "Credit Notes", pct: 7, color: "bg-rose-500", stroke: "#f43f5e", dash: "17.6 251.2", offset: "-233.6" },
-    ],
-    aiInsight: {
-      title: "3 Invoices Overdue",
-      desc: "₹2.50L pending collection. Automated WhatsApp reminders prepared for 1-click dispatch.",
-      action: "Send WhatsApp Reminders Now →",
-    },
-  },
-
-  inventory: {
-    title: "Inventory & Warehouse Management",
-    subtitle: "Real-time product stock, multi-warehouse transfers, low-stock re-order alerts.",
-    subPages: [
-      { name: "Items", count: "1,420 SKUs", status: "Categorized", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Inventory", count: "₹24.8L Value", status: "Live Synced", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Warehouses", count: "4 Locations", status: "92% Capacity", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Branches", count: "3 Retail Hubs", status: "Connected", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-    ],
-    metrics: [
-      { label: "Total Stock Value", value: "₹24,80,000", change: "+6%", isPositive: true },
-      { label: "Catalog SKUs", value: "1,420 Items", change: "98% In-Stock", isPositive: true },
-      { label: "Active Hubs", value: "4 Warehouses", change: "Multi-Location", isPositive: true },
-      { label: "Low Stock Items", value: "3 Items", change: "Restock Soon", isPositive: false },
-    ],
-    chartTitle: "Stock Movement & Inventory Velocity",
-    chartBadge: "Live Units",
-    chartPoints: [
-      { m: "Jan", v: 20, label: "940 units", x: 10, y: 64 },
-      { m: "Feb", v: 35, label: "1,120 units", x: 65, y: 54 },
-      { m: "Mar", v: 50, label: "1,380 units", x: 120, y: 44 },
-      { m: "Apr", v: 65, label: "1,650 units", x: 175, y: 32 },
-      { m: "May", v: 80, label: "1,890 units", x: 225, y: 22 },
-      { m: "Jun", v: 95, label: "2,140 units", x: 270, y: 12 },
-    ],
-    chartLinePath: "M 10 64 Q 40 56, 65 54 T 120 44 T 175 32 T 225 22 T 270 12",
-    chartAreaPath: "M 10 64 Q 40 56, 65 54 T 120 44 T 175 32 T 225 22 T 270 12 L 270 75 L 10 75 Z",
-    donutTitle: "Category Valuation",
-    donutCenter: "₹24.8L",
-    donutCenterSub: "Stock Value",
-    donutSegments: [
-      { label: "Electronics", pct: 45, color: "bg-[#e77817]", stroke: "#e77817", dash: "113 251.2", offset: "0" },
-      { label: "Spare Parts", pct: 30, color: "bg-[#28166f]", stroke: "#28166f", dash: "75.4 251.2", offset: "-113" },
-      { label: "Raw Materials", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "37.7 251.2", offset: "-188.4" },
-      { label: "Packaged Goods", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "25.1 251.2", offset: "-226.1" },
-    ],
-    aiInsight: {
-      title: "Zero Outage Risk",
-      desc: "Fastest-moving items have 34 days of buffer stock across all 4 warehouse hubs.",
-      action: "Review Re-Order Limits →",
-    },
-  },
-
-  purchases: {
-    title: "Purchases & Procurement Operations",
-    subtitle: "Vendor management, purchase orders, goods receipts (GRN) & expenses.",
-    subPages: [
-      { name: "Vendor", count: "48 Suppliers", status: "GST Verified", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Purchase Orders", count: "28 POs", status: "96% On-Time", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Goods Receipt (GRN)", count: "26 Matched", status: "3-Way Match", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Purchase Invoice", count: "34 Bills", status: "₹9.40L Total", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Expenses", count: "₹1.25L", status: "Categorized", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-    ],
-    metrics: [
-      { label: "Purchase Volume", value: "₹9,40,000", change: "+8%", isPositive: true },
-      { label: "Active Suppliers", value: "48 Vendors", change: "+4 New", isPositive: true },
-      { label: "PO On-Time Delivery", value: "96.2%", change: "High Trust", isPositive: true },
-      { label: "Business Expenses", value: "₹1,25,000", change: "-4% Savings", isPositive: true },
-    ],
-    chartTitle: "Monthly Procurement Cost vs Expenses",
-    chartBadge: "Spend Trend",
-    chartPoints: [
-      { m: "Jan", v: 30, label: "₹3.8L", x: 10, y: 62 },
-      { m: "Feb", v: 45, label: "₹5.1L", x: 65, y: 50 },
-      { m: "Mar", v: 58, label: "₹6.8L", x: 120, y: 40 },
-      { m: "Apr", v: 70, label: "₹8.0L", x: 175, y: 28 },
-      { m: "May", v: 82, label: "₹8.9L", x: 225, y: 18 },
-      { m: "Jun", v: 92, label: "₹9.4L", x: 270, y: 12 },
-    ],
-    chartLinePath: "M 10 62 Q 40 54, 65 50 T 120 40 T 175 28 T 225 18 T 270 12",
-    chartAreaPath: "M 10 62 Q 40 54, 65 50 T 120 40 T 175 28 T 225 18 T 270 12 L 270 75 L 10 75 Z",
-    donutTitle: "Procurement Expense Split",
-    donutCenter: "₹9.40L",
-    donutCenterSub: "Procured",
-    donutSegments: [
-      { label: "Inventory Stock", pct: 60, color: "bg-[#28166f]", stroke: "#28166f", dash: "150.7 251.2", offset: "0" },
-      { label: "Freight & Logistics", pct: 20, color: "bg-[#e77817]", stroke: "#e77817", dash: "50.2 251.2", offset: "-150.7" },
-      { label: "Utility & Office", pct: 12, color: "bg-emerald-500", stroke: "#10b981", dash: "30.1 251.2", offset: "-200.9" },
-      { label: "Software & Tools", pct: 8, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20.1 251.2", offset: "-231.1" },
-    ],
-    aiInsight: {
-      title: "Vendor ITC Matched",
-      desc: "₹1.42L Input Tax Credit matched against vendor GSTR-2B with zero tax mismatch.",
-      action: "Export Vendor Summary →",
-    },
-  },
-
-  banking: {
-    title: "Banking & Double-Entry Accounting",
-    subtitle: "Multi-bank reconciliation, journal entries, ledger charts & cash flow.",
-    subPages: [
-      { name: "Chart of Accounts", count: "42 Ledgers", status: "Double-Entry", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Journal Entries", count: "128 Posted", status: "Balanced", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Bank", count: "3 Accounts", status: "Live Synced", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Cash Flow", count: "₹8.45L", status: "+15% Surplus", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-    ],
-    metrics: [
-      { label: "Total Bank Balance", value: "₹8,45,200", change: "+15%", isPositive: true },
-      { label: "Net Cash Inflow", value: "₹12,10,000", change: "+9%", isPositive: true },
-      { label: "Auto Reconciliation", value: "98.4%", change: "Zero Errors", isPositive: true },
-      { label: "GST Input Credit (ITC)", value: "₹1,42,800", change: "GSTR-2B Synced", isPositive: true },
-    ],
-    chartTitle: "Net Cash Flow Pacing",
-    chartBadge: "H1 Audit",
-    chartPoints: [
-      { m: "Jan", v: 25, label: "₹3.2L", x: 10, y: 66 },
-      { m: "Feb", v: 38, label: "₹4.8L", x: 65, y: 55 },
-      { m: "Mar", v: 52, label: "₹6.1L", x: 120, y: 44 },
-      { m: "Apr", v: 66, label: "₹7.2L", x: 175, y: 34 },
-      { m: "May", v: 79, label: "₹7.9L", x: 225, y: 22 },
-      { m: "Jun", v: 92, label: "₹8.45L", x: 270, y: 12 },
-    ],
-    chartLinePath: "M 10 66 Q 40 58, 65 55 T 120 44 T 175 34 T 225 22 T 270 12",
-    chartAreaPath: "M 10 66 Q 40 58, 65 55 T 120 44 T 175 34 T 225 22 T 270 12 L 270 75 L 10 75 Z",
-    donutTitle: "Fund Allocation",
-    donutCenter: "₹8.45L",
-    donutCenterSub: "Total Cash",
-    donutSegments: [
-      { label: "HDFC Primary", pct: 50, color: "bg-[#28166f]", stroke: "#28166f", dash: "125.6 251.2", offset: "0" },
-      { label: "ICICI Ops", pct: 30, color: "bg-[#e77817]", stroke: "#e77817", dash: "75.4 251.2", offset: "-125.6" },
-      { label: "SBI Tax Reserve", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "37.7 251.2", offset: "-200.9" },
-      { label: "Petty Cash", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "12.6 251.2", offset: "-238.6" },
-    ],
-    aiInsight: {
-      title: "Working Capital Health",
-      desc: "Healthy 68 days of operational cash runway with consistent monthly collections.",
-      action: "Download Audit Report →",
-    },
-  },
-
-  people: {
-    title: "Business HR & Attendance Management",
-    subtitle: "Biometric & web attendance, leave tracking, shift rosters, KYC & payroll.",
-    subPages: [
-      { name: "Employees", count: "24 Staff", status: "All Onboarded", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Attendance", count: "22 Present", status: "91.6% Turnout", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Leaves", count: "2 Pending", status: "4 Categories", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-      { name: "Shifts", count: "3 Rosters", status: "Assigned", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Documents", count: "96 Files", status: "KYC Verified", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Payroll", count: "₹4.80L", status: "1-Click Ready", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-    ],
-    metrics: [
-      { label: "Total Staff", value: "24 Employees", change: "100% Onboarded", isPositive: true },
+      { label: "Total Staff", value: "24 Employees", change: "100% Active", isPositive: true },
       { label: "Today Attendance", value: "22 Present", change: "91.6% Turnout", isPositive: true },
       { label: "Pending Leaves", value: "2 Requests", change: "1-Hour SLA", isPositive: true },
       { label: "Monthly Payroll", value: "₹4,80,000", change: "Auto-Calculated", isPositive: true },
@@ -336,23 +155,29 @@ const MODULE_DATA: Record<ModuleKey, ModuleDetail> = {
     chartTitle: "Monthly Attendance & Productivity Rate",
     chartBadge: "96.4% Avg",
     chartPoints: [
-      { m: "Jan", v: 85, label: "92%", x: 10, y: 55 },
-      { m: "Feb", v: 88, label: "93%", x: 65, y: 48 },
-      { m: "Mar", v: 91, label: "94.5%", x: 120, y: 38 },
-      { m: "Apr", v: 93, label: "95%", x: 175, y: 28 },
-      { m: "May", v: 95, label: "96.2%", x: 225, y: 18 },
-      { m: "Jun", v: 98, label: "97.4%", x: 270, y: 10 },
+      { m: "Jan", v: 85, label: "92%", x: 10, y: 48 },
+      { m: "Feb", v: 88, label: "93%", x: 65, y: 42 },
+      { m: "Mar", v: 91, label: "94.5%", x: 120, y: 34 },
+      { m: "Apr", v: 93, label: "95%", x: 175, y: 26 },
+      { m: "May", v: 95, label: "96.2%", x: 225, y: 16 },
+      { m: "Jun", v: 98, label: "97.4%", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 55 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 10",
-    chartAreaPath: "M 10 55 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 10 L 270 75 L 10 75 Z",
-    donutTitle: "Team By Department",
+    chartLinePath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8",
+    chartAreaPath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    donutTitle: "Team by Department",
     donutCenter: "24",
     donutCenterSub: "Employees",
     donutSegments: [
-      { label: "Sales & CRM", pct: 40, color: "bg-[#e77817]", stroke: "#e77817", dash: "100.5 251.2", offset: "0" },
-      { label: "Operations", pct: 30, color: "bg-[#28166f]", stroke: "#28166f", dash: "75.4 251.2", offset: "-100.5" },
-      { label: "Accounts", pct: 20, color: "bg-emerald-500", stroke: "#10b981", dash: "50.2 251.2", offset: "-175.9" },
-      { label: "Tech Support", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "25.1 251.2", offset: "-226.1" },
+      { label: "Sales & CRM", pct: 40, color: "bg-[#e77817]", stroke: "#e77817", dash: "80 200", offset: "0" },
+      { label: "Operations", pct: 30, color: "bg-[#28166f]", stroke: "#28166f", dash: "60 200", offset: "-80" },
+      { label: "Accounts", pct: 20, color: "bg-emerald-500", stroke: "#10b981", dash: "40 200", offset: "-140" },
+      { label: "Tech & Support", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20 200", offset: "-180" },
+    ],
+    featureList: [
+      { title: "Attendance & Shifts", desc: "Biometric integration & web punch with GPS geo-fencing for shop & field staff." },
+      { title: "Leave Management", desc: "Casual, Sick, Earned & Comp-off leaves with automated balance calculations." },
+      { title: "1-Click Payroll", desc: "Instant calculation of basic, HRA, PF/ESI deductions, and digital salary slips." },
+      { title: "Employee KYC Desk", desc: "Store Aadhaar, PAN, bank account details, and employment contracts securely." },
     ],
     aiInsight: {
       title: "Payroll Ready for 1st",
@@ -362,86 +187,94 @@ const MODULE_DATA: Record<ModuleKey, ModuleDetail> = {
   },
 
   crm: {
-    title: "Business CRM & Sales Pipeline",
-    subtitle: "Lead capture, drag-and-drop pipeline stages, deal activities & calendar.",
+    title: "Business CRM & Deal Pipeline",
+    subtitle: "Multi-channel lead capture, visual deal pipelines, task activities & client calendar.",
     subPages: [
-      { name: "CRM Dashboard", count: "Stage Metrics", status: "Real-Time", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Leads", count: "142 Active", status: "+28 This Wk", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Pipeline", count: "₹34.5L Deals", status: "4 Stages", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Activities", count: "18 Completed", status: "Today", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-      { name: "Calendar", count: "6 Meetings", status: "Scheduled", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Tickets", count: "0 Overdue", status: "100% Resolved", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
+      { name: "Lead Capture", count: "142 Active", status: "+28 This Week" },
+      { name: "Pipeline Stages", count: "₹34.5L", status: "4 Visual Stages" },
+      { name: "Daily Activities", count: "18 Calls Done", status: "100% Target" },
+      { name: "Support Tickets", count: "0 Overdue", status: "Resolved" },
     ],
     metrics: [
-      { label: "Active Deals Value", value: "₹34,50,000", change: "+24%", isPositive: true },
+      { label: "Active Deals Value", value: "₹34,50,000", change: "+24% Pipeline", isPositive: true },
       { label: "Qualified Leads", value: "142 Leads", change: "+28 New", isPositive: true },
       { label: "Pipeline Win Rate", value: "24.8%", change: "+3.2% Lift", isPositive: true },
       { label: "Sales Activities", value: "18 Done Today", change: "100% Target", isPositive: true },
     ],
-    chartTitle: "Lead Capture & Deal Conversions",
-    chartBadge: "H1 Growth",
+    chartTitle: "Lead Inflow & Deal Conversions",
+    chartBadge: "H1 Pacing",
     chartPoints: [
-      { m: "Jan", v: 22, label: "28 deals", x: 10, y: 68 },
-      { m: "Feb", v: 38, label: "45 deals", x: 65, y: 55 },
-      { m: "Mar", v: 54, label: "68 deals", x: 120, y: 44 },
-      { m: "Apr", v: 69, label: "92 deals", x: 175, y: 32 },
-      { m: "May", v: 84, label: "118 deals", x: 225, y: 20 },
+      { m: "Jan", v: 22, label: "28 deals", x: 10, y: 58 },
+      { m: "Feb", v: 38, label: "45 deals", x: 65, y: 48 },
+      { m: "Mar", v: 54, label: "68 deals", x: 120, y: 38 },
+      { m: "Apr", v: 69, label: "92 deals", x: 175, y: 28 },
+      { m: "May", v: 84, label: "118 deals", x: 225, y: 18 },
       { m: "Jun", v: 98, label: "142 deals", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 68 Q 40 58, 65 55 T 120 44 T 175 32 T 225 20 T 270 8",
-    chartAreaPath: "M 10 68 Q 40 58, 65 55 T 120 44 T 175 32 T 225 20 T 270 8 L 270 75 L 10 75 Z",
-    donutTitle: "Pipeline by Stage",
+    chartLinePath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8",
+    chartAreaPath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    donutTitle: "Deals by Pipeline Stage",
     donutCenter: "₹34.5L",
     donutCenterSub: "Active Deals",
     donutSegments: [
-      { label: "New Leads", pct: 35, color: "bg-[#28166f]", stroke: "#28166f", dash: "87.9 251.2", offset: "0" },
-      { label: "Demo Given", pct: 30, color: "bg-[#e77817]", stroke: "#e77817", dash: "75.4 251.2", offset: "-87.9" },
-      { label: "Proposal Sent", pct: 20, color: "bg-emerald-500", stroke: "#10b981", dash: "50.2 251.2", offset: "-163.3" },
-      { label: "Closed Won", pct: 15, color: "bg-cyan-500", stroke: "#06b6d4", dash: "37.7 251.2", offset: "-213.5" },
+      { label: "New Leads", pct: 35, color: "bg-[#28166f]", stroke: "#28166f", dash: "70 200", offset: "0" },
+      { label: "Demo Given", pct: 30, color: "bg-[#e77817]", stroke: "#e77817", dash: "60 200", offset: "-70" },
+      { label: "Proposal Sent", pct: 20, color: "bg-emerald-500", stroke: "#10b981", dash: "40 200", offset: "-130" },
+      { label: "Closed Won", pct: 15, color: "bg-cyan-500", stroke: "#06b6d4", dash: "30 200", offset: "-170" },
+    ],
+    featureList: [
+      { title: "Multi-Source Lead Capture", desc: "Capture inquiries automatically from WhatsApp, website forms, calls & walk-ins." },
+      { title: "Kanban Pipeline Board", desc: "Drag-and-drop deals across customized stages: Inquiry, Demo, Negotiation, Won." },
+      { title: "Activity & Task Scheduler", desc: "Never miss follow-ups with automated call reminders and calendar view." },
+      { title: "Client Helpdesk Tickets", desc: "Track customer issues and resolve service requests with clear accountability." },
     ],
     aiInsight: {
-      title: "High Deal Probability",
-      desc: "5 high-value leads are actively viewing quotations with 88% predicted close probability.",
-      action: "Schedule Follow-up Calls →",
+      title: "5 Hot Leads Ready to Close",
+      desc: "Prospects have reviewed your quotations multiple times; high closing probability today.",
+      action: "Call High-Value Leads →",
     },
   },
 
   promotion: {
-    title: "Business Promotion & Marketing",
-    subtitle: "Festival posters, WhatsApp bulk broadcasts, approved templates & drip journeys.",
+    title: "Business Promotion & Marketing Studio",
+    subtitle: "Pre-designed festival posters, automated WhatsApp broadcasts, templates & customer journeys.",
     subPages: [
-      { name: "Promotion Reports", count: "18.4K Sent", status: "Detailed Analytics", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Festival Posters", count: "85 Creatives", status: "Auto-Branded", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Campaigns", count: "12 Broadcasts", status: "99.2% Delivered", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Templates", count: "24 Approved", status: "WhatsApp & SMS", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Journeys", count: "4 Automated", status: "Drip Running", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
-      { name: "Message Logs", count: "18,400 Logs", status: "Live Feed", badgeColor: "bg-slate-50 text-slate-600 border-slate-200" },
+      { name: "Festival Posters", count: "85 Creatives", status: "Auto-Branded" },
+      { name: "WhatsApp Campaigns", count: "12 Broadcasts", status: "99.2% Delivery" },
+      { name: "Approved Templates", count: "24 Ready", status: "Meta Verified" },
+      { name: "Message Logs", count: "18,400 Sent", status: "Live Delivery" },
     ],
     metrics: [
-      { label: "Total Audience Reach", value: "18,400 Customers", change: "+35%", isPositive: true },
-      { label: "WhatsApp Delivery Rate", value: "99.2%", change: "Meta Verified", isPositive: true },
-      { label: "Ready Posters", value: "85 Creatives", change: "Festival Ready", isPositive: true },
-      { label: "Campaign CTR", value: "16.4%", change: "High Orders", isPositive: true },
+      { label: "Total Audience Reach", value: "18,400 Customers", change: "+35% Reach", isPositive: true },
+      { label: "WhatsApp Delivery Rate", value: "99.2%", change: "Official API", isPositive: true },
+      { label: "Ready Posters", value: "85 Templates", change: "Festival Ready", isPositive: true },
+      { label: "Campaign CTR", value: "16.4%", change: "Direct Orders", isPositive: true },
     ],
-    chartTitle: "Broadcast Engagement & Conversion Rate",
+    chartTitle: "Broadcast Delivery & Open Velocity",
     chartBadge: "Campaigns",
     chartPoints: [
-      { m: "Jan", v: 20, label: "2.4K opens", x: 10, y: 65 },
-      { m: "Feb", v: 36, label: "4.8K opens", x: 65, y: 52 },
-      { m: "Mar", v: 52, label: "8.1K opens", x: 120, y: 40 },
-      { m: "Apr", v: 68, label: "11.6K opens", x: 175, y: 28 },
-      { m: "May", v: 84, label: "15.2K opens", x: 225, y: 18 },
-      { m: "Jun", v: 96, label: "18.4K opens", x: 270, y: 10 },
+      { m: "Jan", v: 20, label: "2.4K opens", x: 10, y: 56 },
+      { m: "Feb", v: 36, label: "4.8K opens", x: 65, y: 46 },
+      { m: "Mar", v: 52, label: "8.1K opens", x: 120, y: 36 },
+      { m: "Apr", v: 68, label: "11.6K opens", x: 175, y: 26 },
+      { m: "May", v: 84, label: "15.2K opens", x: 225, y: 16 },
+      { m: "Jun", v: 96, label: "18.4K opens", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 65 Q 40 56, 65 52 T 120 40 T 175 28 T 225 18 T 270 10",
-    chartAreaPath: "M 10 65 Q 40 56, 65 52 T 120 40 T 175 28 T 225 18 T 270 10 L 270 75 L 10 75 Z",
+    chartLinePath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8",
+    chartAreaPath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
     donutTitle: "Channel Engagement",
     donutCenter: "99.2%",
     donutCenterSub: "Delivered",
     donutSegments: [
-      { label: "WhatsApp Broadcast", pct: 60, color: "bg-[#e77817]", stroke: "#e77817", dash: "150.7 251.2", offset: "0" },
-      { label: "SMS Campaigns", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "62.8 251.2", offset: "-150.7" },
-      { label: "Email Dispatch", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "37.7 251.2", offset: "-213.5" },
+      { label: "WhatsApp Blast", pct: 60, color: "bg-[#e77817]", stroke: "#e77817", dash: "120 200", offset: "0" },
+      { label: "SMS Broadcast", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "50 200", offset: "-120" },
+      { label: "Email Dispatch", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-170" },
+    ],
+    featureList: [
+      { title: "Auto-Branded Posters", desc: "85+ high-converting festival & offer creatives automatically stamped with your logo." },
+      { title: "Bulk WhatsApp Broadcasts", desc: "Send personalized offers and product launches to your entire customer base." },
+      { title: "Drip Automation Journeys", desc: "Auto-send welcome discounts, payment receipts, and birthday greetings." },
+      { title: "Real-time Delivery Analytics", desc: "Track delivered, opened, and clicked stats for every broadcast message." },
     ],
     aiInsight: {
       title: "Festive Campaign Ready",
@@ -451,173 +284,198 @@ const MODULE_DATA: Record<ModuleKey, ModuleDetail> = {
   },
 
   integration: {
-    title: "Business Integration & Outreach",
-    subtitle: "Official WhatsApp messaging, automated emails, external APIs & webhooks.",
+    title: "Business Integration & Connectors",
+    subtitle: "Integrate your official WhatsApp, business email & payments for 100% automated ops.",
     subPages: [
-      { name: "Emails", count: "340 Sent", status: "Zero Bounce", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "WhatsApp Chats", count: "48 Active", status: "Meta Official", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Webhooks & APIs", count: "8 Endpoints", status: "99.9% Uptime", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Automations", count: "1,420 Triggers", status: "Real-Time", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
+      { name: "Official WhatsApp API", count: "Active", status: "Meta Verified" },
+      { name: "Business Email (SES)", count: "Active", status: "Zero Bounce" },
+      { name: "Payment Gateways (UPI/Card)", count: "Live", status: "Razorpay & QR" },
+      { name: "Webhooks & Sync", count: "8 APIs", status: "99.9% Uptime" },
     ],
     metrics: [
-      { label: "Connected Apps", value: "8 Live APIs", change: "All Connected", isPositive: true },
-      { label: "Webhook Sync Rate", value: "99.9%", change: "Zero Errors", isPositive: true },
-      { label: "Live WhatsApp Chats", value: "48 Chats", change: "<3m SLA", isPositive: true },
-      { label: "Automated Triggers", value: "1,420 Events", change: "+18%", isPositive: true },
+      { label: "WhatsApp Integration", value: "Connected", change: "Meta Cloud API", isPositive: true },
+      { label: "Email Dispatch", value: "Live (SES)", change: "Instant PDF Delivery", isPositive: true },
+      { label: "Payment Gateways", value: "Active", change: "Dynamic UPI QR", isPositive: true },
+      { label: "API Sync Success", value: "99.9%", change: "Zero Errors", isPositive: true },
     ],
-    chartTitle: "API Calls & Integration Sync Volume",
-    chartBadge: "Real-Time",
+    chartTitle: "Real-time Messaging & Event Sync Volume",
+    chartBadge: "Live Stream",
     chartPoints: [
-      { m: "Jan", v: 28, label: "4.2K calls", x: 10, y: 64 },
-      { m: "Feb", v: 42, label: "7.1K calls", x: 65, y: 52 },
-      { m: "Mar", v: 56, label: "10.4K calls", x: 120, y: 40 },
-      { m: "Apr", v: 72, label: "14.2K calls", x: 175, y: 28 },
+      { m: "Jan", v: 28, label: "4.2K calls", x: 10, y: 56 },
+      { m: "Feb", v: 42, label: "7.1K calls", x: 65, y: 46 },
+      { m: "Mar", v: 56, label: "10.4K calls", x: 120, y: 36 },
+      { m: "Apr", v: 72, label: "14.2K calls", x: 175, y: 26 },
       { m: "May", v: 86, label: "18.6K calls", x: 225, y: 16 },
       { m: "Jun", v: 98, label: "24.1K calls", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 64 Q 40 56, 65 52 T 120 40 T 175 28 T 225 16 T 270 8",
-    chartAreaPath: "M 10 64 Q 40 56, 65 52 T 120 40 T 175 28 T 225 16 T 270 8 L 270 75 L 10 75 Z",
-    donutTitle: "Traffic by Integration",
+    chartLinePath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8",
+    chartAreaPath: "M 10 56 Q 40 48, 65 46 T 120 36 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
+    donutTitle: "Traffic by Connector",
     donutCenter: "24.1K",
-    donutCenterSub: "API Events",
+    donutCenterSub: "Sync Events",
     donutSegments: [
-      { label: "WhatsApp Cloud API", pct: 55, color: "bg-[#e77817]", stroke: "#e77817", dash: "138.2 251.2", offset: "0" },
-      { label: "Payment Gateways", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "62.8 251.2", offset: "-138.2" },
-      { label: "Bank Statement Feeds", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "37.7 251.2", offset: "-201" },
-      { label: "Webhooks", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "12.6 251.2", offset: "-238.7" },
+      { label: "WhatsApp Cloud API", pct: 55, color: "bg-[#e77817]", stroke: "#e77817", dash: "110 200", offset: "0" },
+      { label: "Payment Webhooks", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "50 200", offset: "-110" },
+      { label: "Amazon SES Email", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-160" },
+      { label: "External REST APIs", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "10 200", offset: "-190" },
+    ],
+    featureList: [
+      { title: "Integrate WhatsApp", desc: "Send invoices, receipts, payment reminders & festival posters directly to customer WhatsApp." },
+      { title: "Integrate Email (SES)", desc: "Dispatch GST invoices and estimates directly from your business domain with zero spam." },
+      { title: "UPI QR & Payment Links", desc: "Dynamic UPI QR codes printed on invoices; client scans to pay and bill auto-marks paid." },
+      { title: "External Webhooks", desc: "Connect with WooCommerce, Shopify, Zoho, or your custom inventory software in seconds." },
     ],
     aiInsight: {
-      title: "All Endpoints Healthy",
-      desc: "Razorpay, Cashfree, and WhatsApp API connected with 100% real-time transaction webhook delivery.",
+      title: "All Connectors Live & Healthy",
+      desc: "WhatsApp Meta Cloud and Amazon SES operating with 100% real-time transaction delivery.",
       action: "Test Live Webhooks →",
     },
   },
 
   feedback: {
     title: "Business Feedback & Reputation",
-    subtitle: "Post-invoice review links, star ratings, NPS surveys & Google review sync.",
+    subtitle: "Automated post-invoice client reviews, CSAT ratings & Google review sync.",
+    isUpcoming: true,
     subPages: [
-      { name: "Client Reviews", count: "248 Verified", status: "4.8 / 5.0 Rating", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Star Ratings", count: "78% 5-Star", status: "High Trust", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "NPS Surveys", count: "+68 Score", status: "World-Class", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Google Review Sync", count: "+34 Synced", status: "Auto-Pushed", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
+      { name: "Client Feedback Link", count: "Upcoming", status: "Post-Payment Link" },
+      { name: "5-Star Rating Push", count: "Upcoming", status: "Google My Business" },
+      { name: "NPS Survey Engine", count: "Upcoming", status: "Loyalty Metric" },
+      { name: "Private Resolution Desk", count: "Upcoming", status: "Negative Alerts" },
     ],
     metrics: [
-      { label: "Overall Rating", value: "4.8 / 5.0", change: "248 Reviews", isPositive: true },
-      { label: "Google 5-Star Sync", value: "+34 Reviews", change: "Auto-Pushed", isPositive: true },
-      { label: "Response Rate", value: "94.2%", change: "<2hr Average", isPositive: true },
-      { label: "Net Promoter (NPS)", value: "+68 Score", change: "Top 5% Tier", isPositive: true },
+      { label: "Target CSAT Score", value: "4.8 / 5.0", change: "Upcoming Feature", isPositive: true },
+      { label: "Google 5-Star Push", value: "+34 Reviews", change: "Auto-Synced", isPositive: true },
+      { label: "Response Rate", value: "94.2%", change: "WhatsApp Quick Link", isPositive: true },
+      { label: "Net Promoter (NPS)", value: "+68 Score", change: "World-Class", isPositive: true },
     ],
-    chartTitle: "Client Satisfaction (CSAT) Trend",
-    chartBadge: "4.8 ★",
+    chartTitle: "Client Satisfaction & Review Growth",
+    chartBadge: "Preview",
     chartPoints: [
-      { m: "Jan", v: 80, label: "4.5 ★", x: 10, y: 55 },
-      { m: "Feb", v: 84, label: "4.6 ★", x: 65, y: 48 },
-      { m: "Mar", v: 88, label: "4.7 ★", x: 120, y: 40 },
-      { m: "Apr", v: 92, label: "4.75 ★", x: 175, y: 30 },
-      { m: "May", v: 95, label: "4.8 ★", x: 225, y: 20 },
-      { m: "Jun", v: 98, label: "4.85 ★", x: 270, y: 10 },
+      { m: "Jan", v: 80, label: "4.5 ★", x: 10, y: 48 },
+      { m: "Feb", v: 84, label: "4.6 ★", x: 65, y: 42 },
+      { m: "Mar", v: 88, label: "4.7 ★", x: 120, y: 34 },
+      { m: "Apr", v: 92, label: "4.75 ★", x: 175, y: 26 },
+      { m: "May", v: 95, label: "4.8 ★", x: 225, y: 16 },
+      { m: "Jun", v: 98, label: "4.85 ★", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 55 Q 40 50, 65 48 T 120 40 T 175 30 T 225 20 T 270 10",
-    chartAreaPath: "M 10 55 Q 40 50, 65 48 T 120 40 T 175 30 T 225 20 T 270 10 L 270 75 L 10 75 Z",
+    chartLinePath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8",
+    chartAreaPath: "M 10 48 Q 40 44, 65 42 T 120 34 T 175 26 T 225 16 T 270 8 L 270 65 L 10 65 Z",
     donutTitle: "Rating Distribution",
     donutCenter: "4.8 ★",
-    donutCenterSub: "Avg CSAT",
+    donutCenterSub: "Target CSAT",
     donutSegments: [
-      { label: "5-Star Rating", pct: 78, color: "bg-emerald-500", stroke: "#10b981", dash: "196 251.2", offset: "0" },
-      { label: "4-Star Rating", pct: 16, color: "bg-[#e77817]", stroke: "#e77817", dash: "40.2 251.2", offset: "-196" },
-      { label: "3-Star Rating", pct: 4, color: "bg-amber-500", stroke: "#f59e0b", dash: "10 251.2", offset: "-236.2" },
-      { label: "Under 3 Stars", pct: 2, color: "bg-rose-500", stroke: "#f43f5e", dash: "5 251.2", offset: "-246.2" },
+      { label: "5-Star Rating", pct: 78, color: "bg-emerald-500", stroke: "#10b981", dash: "156 200", offset: "0" },
+      { label: "4-Star Rating", pct: 16, color: "bg-[#e77817]", stroke: "#e77817", dash: "32 200", offset: "-156" },
+      { label: "3-Star Rating", pct: 4, color: "bg-amber-500", stroke: "#f59e0b", dash: "8 200", offset: "-188" },
+      { label: "Under 3 Stars", pct: 2, color: "bg-rose-500", stroke: "#f43f5e", dash: "4 200", offset: "-196" },
+    ],
+    featureList: [
+      { title: "Post-Payment Review Links", desc: "Automatically send a quick 1-click rating link to customers as soon as they pay." },
+      { title: "Push to Google My Business", desc: "Direct satisfied 5-star reviewers straight to your Google page to skyrocket local rankings." },
+      { title: "Private Feedback Filter", desc: "Any rating under 4 stars gets routed privately to you so you can resolve issues immediately." },
+      { title: "NPS Customer Loyalty", desc: "Track repeat client sentiment and know exactly who your happiest brand advocates are." },
     ],
     aiInsight: {
-      title: "High Google Review Conversion",
-      desc: "34 satisfied clients converted their post-payment feedback into Google My Business 5-star ratings.",
-      action: "View Review Feed →",
+      title: "Reputation Booster (Coming Soon)",
+      desc: "Designed to triple your Google 5-star reviews automatically after every invoice settlement.",
+      action: "Notify Me When Ready →",
     },
   },
 
   analysis: {
     title: "Business Analysis & AI Intelligence",
-    subtitle: "Automated revenue forecasting, cash flow anomalies & smart suggestions.",
+    subtitle: "AI-powered revenue forecasts, stock outage warnings & profit margin optimization.",
+    isUpcoming: true,
     subPages: [
-      { name: "Predictive Revenue", count: "₹15.8L Q3", status: "+16% Projected", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Stock Outage Risk", count: "0 Items", status: "Healthy Stock", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Margin Boost", count: "31.2%", status: "+3.8% AI Lift", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Smart Insights", count: "14 Live", status: "Actionable", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
+      { name: "Predictive Revenue AI", count: "Upcoming", status: "+16% Projected" },
+      { name: "Stock Outage Risk", count: "Upcoming", status: "Zero Downtime" },
+      { name: "Profit Margin Boost", count: "Upcoming", status: "Smart Bundling" },
+      { name: "Cash Runway Model", count: "Upcoming", status: "30-Day Ahead" },
     ],
     metrics: [
       { label: "Revenue Target Q3", value: "₹15.8L", change: "+16% Projected", isPositive: true },
-      { label: "Stock Outage Risk", value: "0 Items", change: "Healthy", isPositive: true },
+      { label: "Stock Outage Risk", value: "0 Items", change: "Healthy Buffer", isPositive: true },
       { label: "Profit Margin Boost", value: "31.2%", change: "+3.8% AI Lift", isPositive: true },
-      { label: "Smart Insights", value: "14 Live", change: "Actionable", isPositive: true },
+      { label: "Smart Action Alerts", value: "14 Live", change: "Upcoming AI", isPositive: true },
     ],
-    chartTitle: "AI Predictive Revenue Forecast",
+    chartTitle: "AI Predictive Revenue Forecast vs Actuals",
     chartBadge: "Neural AI",
     chartPoints: [
-      { m: "Jan", v: 30, label: "₹5.1L", x: 10, y: 70 },
-      { m: "Feb", v: 45, label: "₹7.4L", x: 65, y: 58 },
-      { m: "Mar", v: 60, label: "₹9.8L", x: 120, y: 46 },
-      { m: "Apr", v: 75, label: "₹12.2L", x: 175, y: 34 },
-      { m: "May", v: 88, label: "₹14.1L", x: 225, y: 22 },
+      { m: "Jan", v: 30, label: "₹5.1L", x: 10, y: 58 },
+      { m: "Feb", v: 45, label: "₹7.4L", x: 65, y: 48 },
+      { m: "Mar", v: 60, label: "₹9.8L", x: 120, y: 38 },
+      { m: "Apr", v: 75, label: "₹12.2L", x: 175, y: 28 },
+      { m: "May", v: 88, label: "₹14.1L", x: 225, y: 18 },
       { m: "Jun", v: 98, label: "₹15.8L", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 70 Q 40 62, 65 58 T 120 46 T 175 34 T 225 22 T 270 8",
-    chartAreaPath: "M 10 70 Q 40 62, 65 58 T 120 46 T 175 34 T 225 22 T 270 8 L 270 75 L 10 75 Z",
-    donutTitle: "AI Business Health",
+    chartLinePath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8",
+    chartAreaPath: "M 10 58 Q 40 50, 65 48 T 120 38 T 175 28 T 225 18 T 270 8 L 270 65 L 10 65 Z",
+    donutTitle: "AI Business Health Index",
     donutCenter: "96.4%",
     donutCenterSub: "Optimal",
     donutSegments: [
-      { label: "Cash Flow Run", pct: 40, color: "bg-emerald-500", stroke: "#10b981", dash: "100.5 251.2", offset: "0" },
-      { label: "Stock Velocity", pct: 30, color: "bg-[#e77817]", stroke: "#e77817", dash: "75.4 251.2", offset: "-100.5" },
-      { label: "Margin Strength", pct: 20, color: "bg-[#28166f]", stroke: "#28166f", dash: "50.2 251.2", offset: "-175.9" },
-      { label: "Client Retention", pct: 10, color: "bg-purple-500", stroke: "#a855f7", dash: "25.1 251.2", offset: "-226.1" },
+      { label: "Cash Flow Run", pct: 40, color: "bg-emerald-500", stroke: "#10b981", dash: "80 200", offset: "0" },
+      { label: "Stock Velocity", pct: 30, color: "bg-[#e77817]", stroke: "#e77817", dash: "60 200", offset: "-80" },
+      { label: "Margin Strength", pct: 20, color: "bg-[#28166f]", stroke: "#28166f", dash: "40 200", offset: "-140" },
+      { label: "Client Retention", pct: 10, color: "bg-purple-500", stroke: "#a855f7", dash: "20 200", offset: "-180" },
+    ],
+    featureList: [
+      { title: "Predictive Revenue Model", desc: "Machine-learning models forecast next month's sales based on past seasonal trends." },
+      { title: "Stock Outage Warning", desc: "Detects fast-moving items running low and suggests exact purchase order quantities." },
+      { title: "Profit Margin Optimizer", desc: "Discovers your most profitable item combinations to cross-sell to regular clients." },
+      { title: "Cash Crunch Early Alert", desc: "Forecasts pending payables vs receivables 30 days ahead to prevent cash crunches." },
     ],
     aiInsight: {
-      title: "High-Margin Bundling",
-      desc: "Bundling Item #104 with Item #208 can boost net profit margins by 3.8% across 40 regular clients.",
-      action: "Apply Smart Pricing →",
+      title: "Neural Engine (Coming Soon)",
+      desc: "Trained on Indian MSME billing patterns to unlock an estimated 16% revenue growth.",
+      action: "Notify Me When Ready →",
     },
   },
 
   settings: {
-    title: "System Settings & Customization",
-    subtitle: "Invoice templates, custom data fields, tamper-proof audit trails & team roles.",
+    title: "System & Settings Configuration",
+    subtitle: "Custom invoice designs, business tax setup, team role security & audit trails.",
     subPages: [
-      { name: "Templates", count: "7 Styles", status: "Custom Brand", badgeColor: "bg-emerald-50 text-emerald-600 border-emerald-200" },
-      { name: "Custom Fields", count: "12 Fields", status: "Active", badgeColor: "bg-blue-50 text-blue-600 border-blue-200" },
-      { name: "Audit Logs", count: "100% Logged", status: "Tamper-Proof", badgeColor: "bg-purple-50 text-purple-600 border-purple-200" },
-      { name: "Business Settings", count: "GST & Bank", status: "Configured", badgeColor: "bg-indigo-50 text-indigo-600 border-indigo-200" },
-      { name: "Team Roles", count: "4 Access Levels", status: "Role-Based", badgeColor: "bg-amber-50 text-amber-600 border-amber-200" },
+      { name: "Invoice Templates", count: "7 Formats", status: "Custom Brand" },
+      { name: "Custom Fields", count: "12 Fields", status: "Active in Forms" },
+      { name: "Audit Trail History", count: "100% Logged", status: "Tamper-Proof" },
+      { name: "Role Access Control", count: "4 Roles", status: "Secure Permissions" },
     ],
     metrics: [
-      { label: "Invoice Templates", value: "7 Formats", change: "Standard to Modern", isPositive: true },
+      { label: "Invoice Templates", value: "7 Styles", change: "Standard to Modern", isPositive: true },
       { label: "Custom Fields", value: "12 Fields", change: "PAN, PO, Vehicle", isPositive: true },
-      { label: "Audit Trail", value: "100% Logged", change: "Full Activity History", isPositive: true },
-      { label: "User Access Roles", value: "4 Roles", change: "Admin & Staff", isPositive: true },
+      { label: "Audit Trail Logs", value: "100% Logged", change: "Full Activity History", isPositive: true },
+      { label: "User Access Roles", value: "4 Roles", change: "Role-Based Security", isPositive: true },
     ],
-    chartTitle: "System Operations & Audit Trail Pacing",
+    chartTitle: "System Security & Audit Activity Pacing",
     chartBadge: "Secure Logs",
     chartPoints: [
-      { m: "Jan", v: 40, label: "120 logs", x: 10, y: 60 },
-      { m: "Feb", v: 55, label: "210 logs", x: 65, y: 48 },
-      { m: "Mar", v: 68, label: "340 logs", x: 120, y: 38 },
-      { m: "Apr", v: 80, label: "480 logs", x: 175, y: 28 },
-      { m: "May", v: 90, label: "620 logs", x: 225, y: 18 },
-      { m: "Jun", v: 98, label: "780 logs", x: 270, y: 10 },
+      { m: "Jan", v: 40, label: "120 logs", x: 10, y: 52 },
+      { m: "Feb", v: 55, label: "210 logs", x: 65, y: 42 },
+      { m: "Mar", v: 68, label: "340 logs", x: 120, y: 32 },
+      { m: "Apr", v: 80, label: "480 logs", x: 175, y: 24 },
+      { m: "May", v: 90, label: "620 logs", x: 225, y: 16 },
+      { m: "Jun", v: 98, label: "780 logs", x: 270, y: 8 },
     ],
-    chartLinePath: "M 10 60 Q 40 52, 65 48 T 120 38 T 175 28 T 225 18 T 270 10",
-    chartAreaPath: "M 10 60 Q 40 52, 65 48 T 120 38 T 175 28 T 225 18 T 270 10 L 270 75 L 10 75 Z",
+    chartLinePath: "M 10 52 Q 40 46, 65 42 T 120 32 T 175 24 T 225 16 T 270 8",
+    chartAreaPath: "M 10 52 Q 40 46, 65 42 T 120 32 T 175 24 T 225 16 T 270 8 L 270 65 L 10 65 Z",
     donutTitle: "Team Role Permissions",
     donutCenter: "24",
     donutCenterSub: "Active Users",
     donutSegments: [
-      { label: "Staff Members", pct: 60, color: "bg-[#28166f]", stroke: "#28166f", dash: "150.7 251.2", offset: "0" },
-      { label: "Accountants", pct: 20, color: "bg-[#e77817]", stroke: "#e77817", dash: "50.2 251.2", offset: "-150.7" },
-      { label: "Administrators", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "37.7 251.2", offset: "-200.9" },
-      { label: "Viewers / Audit", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "12.6 251.2", offset: "-238.6" },
+      { label: "Staff Members", pct: 60, color: "bg-[#28166f]", stroke: "#28166f", dash: "120 200", offset: "0" },
+      { label: "Accountants", pct: 20, color: "bg-[#e77817]", stroke: "#e77817", dash: "40 200", offset: "-120" },
+      { label: "Administrators", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-160" },
+      { label: "Auditors / Viewers", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "10 200", offset: "-190" },
+    ],
+    featureList: [
+      { title: "Invoice Template Studio", desc: "Select between Standard GST, Modern, Classic & Corporate with custom accent colors." },
+      { title: "Custom Data Fields", desc: "Add PAN, Vehicle Number, E-Way Bill Number, or custom attributes to any form." },
+      { title: "Audit Trail & Activity History", desc: "Tamper-proof logs record every invoice created, edited, printed, or deleted with timestamps." },
+      { title: "Role-Based Access Control", desc: "Restrict employees to specific modules so they only access what their role requires." },
     ],
     aiInsight: {
-      title: "Security & Role Guard",
+      title: "Enterprise Role Guard",
       desc: "All critical modules secured with strict role-based access control and live audit history.",
       action: "Manage Permissions →",
     },
@@ -625,16 +483,16 @@ const MODULE_DATA: Record<ModuleKey, ModuleDetail> = {
 };
 
 export function HeroDashboardMockup() {
-  const [activeModule, setActiveModule] = useState<ModuleKey>("sales");
+  const [activeModule, setActiveModule] = useState<ParentModuleKey>("accounting");
   const [hoveredKpi, setHoveredKpi] = useState<number | null>(null);
   const [hoveredMonth, setHoveredMonth] = useState<number | null>(5);
   const [activeExpenseIndex, setActiveExpenseIndex] = useState<number | null>(null);
   const [showAiDetail, setShowAiDetail] = useState(false);
   const [selectedSubPage, setSelectedSubPage] = useState<number>(0);
 
-  const currentData = MODULE_DATA[activeModule] || MODULE_DATA.sales;
+  const currentData = MODULE_DATA[activeModule] || MODULE_DATA.accounting;
 
-  const handleModuleSelect = (key: ModuleKey) => {
+  const handleModuleSelect = (key: ParentModuleKey) => {
     setActiveModule(key);
     setHoveredMonth(5);
     setActiveExpenseIndex(null);
@@ -651,69 +509,82 @@ export function HeroDashboardMockup() {
       <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(40,22,111,0.18)] border border-slate-200/90 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(231,120,23,0.22)]">
         
         {/* Flex layout: Left Sidebar + Right Main App View */}
-        <div className="flex h-[490px] sm:h-[520px] text-xs">
+        <div className="flex h-[475px] sm:h-[500px] text-xs">
           
           {/* 1. LEFT SIDEBAR (Dark Navy matching logo) */}
-          <div className="w-40 sm:w-48 bg-[#0b1022] text-slate-400 flex flex-col justify-between py-3 px-2 shrink-0 border-r border-slate-800">
+          <div className="w-44 sm:w-52 bg-[#0b1022] text-slate-400 flex flex-col justify-between py-3 px-2 shrink-0 border-r border-slate-800">
             <div className="flex flex-col h-full overflow-hidden">
               
-              {/* Real AssayBiz Logo */}
-              <div className="mb-2 px-1 shrink-0">
+              {/* Real AssayBiz Logo Header */}
+              <div className="mb-3 px-1 shrink-0">
                 <div className="bg-white/95 px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
-                  <img src={logoImg} alt="Assay Biz" className="h-6 w-auto object-contain" />
+                  <img src={logoImg} alt="Assay Biz" className="h-6.5 w-auto object-contain" />
                 </div>
               </div>
 
-              {/* Exact Main Menu Options - Scrollable without showing raw scrollbars */}
-              <div className="text-[9.5px] font-bold tracking-wider text-slate-500 uppercase px-2 mb-1 shrink-0">
-                Main Pages
+              {/* Exact 8 Parent Menu Options */}
+              <div className="text-[9px] font-bold tracking-wider text-slate-500 uppercase px-2 mb-1 shrink-0">
+                Modules
               </div>
 
-              <nav className="space-y-0.5 font-medium overflow-y-auto pr-1 flex-1 scrollbar-none">
-                {MODULE_NAV.map((item) => {
+              <nav className="space-y-1 font-medium overflow-y-auto pr-0.5 flex-1 scrollbar-none">
+                {PARENT_MODULES.map((item) => {
                   const Icon = item.icon;
                   const isActive = activeModule === item.id;
                   return (
                     <button
                       key={item.id}
                       type="button"
-                      onClick={() => handleModuleSelect(item.id as ModuleKey)}
-                      onMouseEnter={() => handleModuleSelect(item.id as ModuleKey)}
-                      className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
+                      onClick={() => handleModuleSelect(item.id as ParentModuleKey)}
+                      onMouseEnter={() => handleModuleSelect(item.id as ParentModuleKey)}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
                         isActive
                           ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/35 translate-x-1"
                           : "text-slate-400 hover:text-white hover:bg-[#e77817]/20 hover:translate-x-0.5"
                       }`}
                     >
-                      <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
-                      <span className="text-[11px] sm:text-xs truncate">{item.label}</span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-slate-400"}`} />
+                        <span className="text-[11px] sm:text-xs truncate">{item.label}</span>
+                      </div>
+                      {item.isUpcoming && (
+                        <span
+                          className={`text-[8px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
+                            isActive
+                              ? "bg-white/20 text-white border-white/30"
+                              : "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                          }`}
+                        >
+                          Soon
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </nav>
 
               {/* Bottom Quick Indicator */}
-              <div className="pt-2 mt-1 border-t border-slate-800/80 shrink-0 px-2 flex items-center justify-between text-[10px] text-slate-500">
+              <div className="pt-2 mt-1 border-t border-slate-800/80 shrink-0 px-2 flex items-center justify-between text-[9.5px] text-slate-500">
                 <span className="flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> AssayBiz v2.4
                 </span>
-                <span className="text-orange-400 font-semibold">100% GST</span>
+                <span className="text-orange-400 font-bold">100% GST</span>
               </div>
             </div>
           </div>
 
-          {/* 2. RIGHT MAIN CONTENT AREA (Light Clean Real Software View) */}
+          {/* 2. RIGHT MAIN CONTENT AREA (Clean Real Software View) */}
           <div className="flex-1 bg-[#f8fafc] flex flex-col overflow-hidden">
             
             {/* Header Bar */}
-            <div className="h-10 px-4 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
-              <div className="relative w-44 sm:w-56">
+            <div className="h-9.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
+              <div className="relative w-40 sm:w-52">
                 <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
                   readOnly
                   placeholder={`Search ${currentData.title.split(" ")[0]}...`}
-                  className="w-full h-6.5 pl-8 pr-3 text-[10.5px] bg-slate-50 border border-slate-200 rounded-md text-slate-600 focus:outline-none placeholder:text-slate-400 cursor-pointer hover:border-orange-300 transition-colors"
+                  className="w-full h-6 pl-7.5 pr-2.5 text-[10px] bg-slate-50 border border-slate-200 rounded-md text-slate-600 focus:outline-none placeholder:text-slate-400 cursor-pointer hover:border-orange-300 transition-colors"
                 />
               </div>
 
@@ -733,38 +604,44 @@ export function HeroDashboardMockup() {
                 >
                   <HelpCircle className="w-3.5 h-3.5" />
                 </button>
-                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white font-bold flex items-center justify-center text-[10px] ring-2 ring-[#e77817]/30 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                <div className="w-5.5 h-5.5 rounded-full bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white font-bold flex items-center justify-center text-[9.5px] ring-2 ring-[#e77817]/30 shadow-sm cursor-pointer hover:scale-105 transition-transform">
                   A
                 </div>
               </div>
             </div>
 
-            {/* Scrollable / Interactive Dashboard View */}
-            <div className="p-3 sm:p-3.5 space-y-2.5 overflow-y-auto flex-1">
+            {/* Scrollable Dashboard View */}
+            <div className="p-3 space-y-2 overflow-y-auto flex-1 scrollbar-none">
               
               {/* Greetings & Active Module Header */}
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-extrabold text-slate-900 text-sm sm:text-base tracking-tight transition-all">
+                  <h3 className="font-black text-slate-900 text-sm sm:text-base tracking-tight transition-all truncate">
                     {currentData.title}
                   </h3>
-                  <span className="text-[9.5px] font-semibold text-emerald-600 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
-                  </span>
+                  {currentData.isUpcoming ? (
+                    <span className="text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <Clock className="w-3 h-3 text-amber-500" /> Upcoming Feature
+                    </span>
+                  ) : (
+                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
+                    </span>
+                  )}
                 </div>
-                <p className="text-[10px] sm:text-[10.5px] text-slate-500 mt-0.5 truncate">
+                <p className="text-[10px] text-slate-500 mt-0.5 truncate">
                   {currentData.subtitle}
                 </p>
               </div>
 
-              {/* INSIDE PAGES PILLS (Directly showing data & pages of selected main module) */}
-              <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[9.5px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <ArrowUpRight className="w-3 h-3 text-[#e77817]" /> Inside Pages of {MODULE_NAV.find(m => m.id === activeModule)?.label}:
+              {/* INSIDE PAGES PILLS BAR */}
+              <div className="bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <ArrowUpRight className="w-3 h-3 text-[#e77817]" /> Inside Modules:
                   </span>
-                  <span className="text-[9px] text-[#e77817] font-semibold">
-                    {currentData.subPages.length} Active Modules
+                  <span className="text-[8.5px] text-[#e77817] font-semibold">
+                    {currentData.subPages.length} Areas
                   </span>
                 </div>
 
@@ -777,15 +654,15 @@ export function HeroDashboardMockup() {
                         type="button"
                         onClick={() => setSelectedSubPage(i)}
                         onMouseEnter={() => setSelectedSubPage(i)}
-                        className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[10.5px] font-semibold transition-all cursor-pointer shrink-0 ${
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer shrink-0 ${
                           isSelected
                             ? "bg-[#28166f] text-white shadow-xs"
-                            : "bg-slate-50 hover:bg-orange-50/80 text-slate-700 border border-slate-200/80 hover:border-[#e77817]"
+                            : "bg-slate-50 hover:bg-orange-50/80 text-slate-700 border border-slate-200 hover:border-[#e77817]"
                         }`}
                       >
                         <span>{sub.name}</span>
                         <span
-                          className={`text-[8.5px] px-1 py-0.2 rounded font-bold ${
+                          className={`text-[8px] px-1 py-0.2 rounded font-bold ${
                             isSelected
                               ? "bg-white/20 text-white"
                               : "bg-white text-[#e77817] border border-orange-200/60"
@@ -799,8 +676,8 @@ export function HeroDashboardMockup() {
                 </div>
               </div>
 
-              {/* 4 KPI Metric Cards (Corresponding to Inside Pages Data) */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {/* 4 KPI Metric Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                 {currentData.metrics.map((m, idx) => {
                   const isHovered = hoveredKpi === idx;
                   return (
@@ -808,19 +685,19 @@ export function HeroDashboardMockup() {
                       key={idx}
                       onMouseEnter={() => setHoveredKpi(idx)}
                       onMouseLeave={() => setHoveredKpi(null)}
-                      className={`p-2 sm:p-2.5 rounded-xl border transition-all duration-200 cursor-pointer ${
+                      className={`p-2 rounded-xl border transition-all duration-200 cursor-pointer ${
                         isHovered
-                          ? "bg-white border-[#e77817] shadow-md -translate-y-0.5 scale-[1.02]"
-                          : "bg-white/90 border-slate-200/80 hover:bg-white hover:border-slate-300 shadow-xs"
+                          ? "bg-white border-[#e77817] shadow-sm -translate-y-0.5"
+                          : "bg-white/90 border-slate-200/80 hover:bg-white hover:border-slate-300 shadow-2xs"
                       }`}
                     >
-                      <div className="text-[9.5px] text-slate-500 font-medium truncate">{m.label}</div>
-                      <div className="text-xs sm:text-sm font-black text-slate-900 mt-0.5 tracking-tight truncate">
+                      <div className="text-[9px] text-slate-500 font-medium truncate">{m.label}</div>
+                      <div className="text-xs sm:text-[13px] font-black text-slate-900 mt-0.5 tracking-tight truncate">
                         {m.value}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
                         <span
-                          className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded ${
+                          className={`text-[8px] font-bold px-1 py-0.2 rounded ${
                             m.isPositive
                               ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
                               : "bg-rose-50 text-rose-600 border border-rose-200/60"
@@ -834,32 +711,52 @@ export function HeroDashboardMockup() {
                 })}
               </div>
 
-              {/* Bottom Cards: Chart (Left) + Donut Breakdown (Right) */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+              {/* Middle Feature Highlights List (Especially for Integration, Accounting, HR, etc.) */}
+              {currentData.featureList && currentData.featureList.length > 0 && (
+                <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
+                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Key Functionality Highlights:
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {currentData.featureList.map((f, fi) => (
+                      <div key={fi} className="flex items-start gap-1.5 p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
+                        <Check className="w-3 h-3 text-[#e77817] shrink-0 mt-0.5" />
+                        <div className="min-w-0">
+                          <span className="font-bold text-[10px] text-slate-800 block truncate">{f.title}</span>
+                          <span className="text-[8.5px] text-slate-500 leading-tight block line-clamp-1">{f.desc}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Bottom Cards: Line Chart (Left) + Donut Breakdown (Right) */}
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5">
                 
                 {/* Left: Dynamic Line Chart */}
-                <div className="sm:col-span-7 p-2.5 bg-white border border-slate-200/80 rounded-xl shadow-xs">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-slate-800 text-[10.5px] truncate">{currentData.chartTitle}</span>
-                    <span className="text-[8.5px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded flex items-center gap-1 cursor-pointer hover:bg-slate-100">
-                      {currentData.chartBadge} <ChevronDown className="w-2.5 h-2.5" />
+                <div className="sm:col-span-7 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold text-slate-800 text-[10px] truncate">{currentData.chartTitle}</span>
+                    <span className="text-[8px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-1 py-0.2 rounded flex items-center gap-1">
+                      {currentData.chartBadge} <ChevronDown className="w-2 h-2" />
                     </span>
                   </div>
 
                   {/* SVG Chart with Interactive Points */}
-                  <div className="relative h-20 sm:h-24 w-full pt-1">
-                    <svg className="w-full h-full overflow-visible" viewBox="0 0 280 80" preserveAspectRatio="none">
+                  <div className="relative h-18 sm:h-20 w-full pt-1">
+                    <svg className="w-full h-full overflow-visible" viewBox="0 0 280 70" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id={`growthGrad-${activeModule}`} x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#e77817" stopOpacity="0.3" />
+                          <stop offset="0%" stopColor="#e77817" stopOpacity="0.25" />
                           <stop offset="100%" stopColor="#28166f" stopOpacity="0.02" />
                         </linearGradient>
                       </defs>
 
                       {/* Background horizontal grid lines */}
-                      <line x1="0" y1="20" x2="280" y2="20" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                      <line x1="0" y1="50" x2="280" y2="50" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
-                      <line x1="0" y1="75" x2="280" y2="75" stroke="#e2e8f0" strokeWidth="1" />
+                      <line x1="0" y1="18" x2="280" y2="18" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="0" y1="42" x2="280" y2="42" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="3 3" />
+                      <line x1="0" y1="65" x2="280" y2="65" stroke="#e2e8f0" strokeWidth="1" />
 
                       {/* Area Fill */}
                       <path
@@ -890,14 +787,14 @@ export function HeroDashboardMockup() {
                             <circle
                               cx={pt.x}
                               cy={pt.y}
-                              r={isSelected ? 5 : 3}
+                              r={isSelected ? 4.5 : 2.5}
                               fill={isSelected ? "#e77817" : "#ffffff"}
                               stroke={isSelected ? "#e77817" : "#28166f"}
-                              strokeWidth={isSelected ? 2.5 : 1.5}
+                              strokeWidth={isSelected ? 2 : 1.5}
                               className="transition-all duration-200"
                             />
                             {isSelected && (
-                              <circle cx={pt.x} cy={pt.y} r={9} fill="#e77817" opacity="0.25" />
+                              <circle cx={pt.x} cy={pt.y} r={8} fill="#e77817" opacity="0.2" />
                             )}
                           </g>
                         );
@@ -905,7 +802,7 @@ export function HeroDashboardMockup() {
                     </svg>
 
                     {/* Month Axis Labels */}
-                    <div className="flex justify-between text-[8.5px] text-slate-400 font-medium px-1 mt-0.5">
+                    <div className="flex justify-between text-[8px] text-slate-400 font-medium px-1 mt-0.5">
                       {currentData.chartPoints.map((item, i) => (
                         <span
                           key={i}
@@ -921,31 +818,31 @@ export function HeroDashboardMockup() {
 
                     {/* Tooltip Pill */}
                     {hoveredMonth !== null && currentData.chartPoints[hoveredMonth] && (
-                      <div className="absolute top-0 right-2 bg-[#28166f] border border-[#e77817]/40 text-white text-[8.5px] font-bold px-2 py-0.5 rounded shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150">
+                      <div className="absolute top-0 right-1 bg-[#28166f] border border-[#e77817]/40 text-white text-[8px] font-bold px-1.5 py-0.2 rounded shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150">
                         {currentData.chartPoints[hoveredMonth].m}: {currentData.chartPoints[hoveredMonth].label}
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Right: Dynamic Donut Chart */}
-                <div className="sm:col-span-5 p-2.5 bg-white border border-slate-200/80 rounded-xl shadow-xs flex flex-col justify-between">
-                  <div className="font-bold text-slate-800 text-[10.5px] mb-1 truncate">{currentData.donutTitle}</div>
+                {/* Right: Fitted Donut Chart */}
+                <div className="sm:col-span-5 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs flex flex-col justify-between overflow-hidden">
+                  <div className="font-bold text-slate-800 text-[10px] mb-0.5 truncate">{currentData.donutTitle}</div>
 
-                  <div className="flex items-center justify-center gap-2.5 my-auto">
+                  <div className="flex items-center justify-center gap-2 my-auto">
                     {/* SVG Donut */}
-                    <div className="relative w-15 h-15 shrink-0">
+                    <div className="relative w-13 h-13 shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="14" />
+                        <circle cx="50" cy="50" r="32" fill="none" stroke="#f1f5f9" strokeWidth="12" />
                         {currentData.donutSegments.map((seg, i) => (
                           <circle
                             key={i}
                             cx="50"
                             cy="50"
-                            r="40"
+                            r="32"
                             fill="none"
                             stroke={seg.stroke}
-                            strokeWidth={activeExpenseIndex === i ? 17 : 14}
+                            strokeWidth={activeExpenseIndex === i ? 14 : 12}
                             strokeDasharray={seg.dash}
                             strokeDashoffset={seg.offset}
                             className="hover:opacity-80 transition-all cursor-pointer"
@@ -954,13 +851,13 @@ export function HeroDashboardMockup() {
                           />
                         ))}
                       </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                        <span className="font-black text-[9.5px] text-slate-900 leading-none">
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                        <span className="font-black text-[9px] text-slate-900 leading-none">
                           {activeExpenseIndex !== null
                             ? `${currentData.donutSegments[activeExpenseIndex]?.pct}%`
                             : currentData.donutCenter}
                         </span>
-                        <span className="text-[7px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[42px]">
+                        <span className="text-[6.5px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[36px]">
                           {activeExpenseIndex !== null
                             ? currentData.donutSegments[activeExpenseIndex]?.label
                             : currentData.donutCenterSub}
@@ -969,7 +866,7 @@ export function HeroDashboardMockup() {
                     </div>
 
                     {/* Donut Legend */}
-                    <div className="space-y-0.5 text-[8.5px] flex-1 min-w-0">
+                    <div className="space-y-0.5 text-[8px] flex-1 min-w-0">
                       {currentData.donutSegments.map((exp, i) => (
                         <div
                           key={i}
@@ -979,7 +876,7 @@ export function HeroDashboardMockup() {
                             activeExpenseIndex === i ? "font-bold text-slate-900" : "text-slate-500 hover:text-slate-800"
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 min-w-0">
+                          <div className="flex items-center gap-1 min-w-0">
                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${exp.color}`} />
                             <span className="truncate">{exp.label}</span>
                           </div>
@@ -1000,18 +897,18 @@ export function HeroDashboardMockup() {
         <div
           onMouseEnter={() => setShowAiDetail(true)}
           onMouseLeave={() => setShowAiDetail(false)}
-          className="absolute bottom-2.5 right-2.5 sm:bottom-3 sm:right-3 bg-white/95 backdrop-blur-md border border-[#28166f]/15 shadow-xl rounded-xl p-2 sm:p-2.5 max-w-[210px] sm:max-w-[230px] transition-all duration-300 hover:scale-105 hover:border-[#e77817] cursor-pointer z-30"
+          className="absolute bottom-2 right-2 sm:bottom-2.5 sm:right-2.5 bg-white/95 backdrop-blur-md border border-[#28166f]/15 shadow-xl rounded-xl p-2 max-w-[200px] sm:max-w-[220px] transition-all duration-300 hover:scale-105 hover:border-[#e77817] cursor-pointer z-30"
         >
-          <div className="flex items-start gap-2">
-            <div className="h-6 w-6 rounded-lg bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white flex items-center justify-center shrink-0 shadow-sm animate-pulse">
-              <Sparkles className="w-3.5 h-3.5" />
+          <div className="flex items-start gap-1.5">
+            <div className="h-5.5 w-5.5 rounded-md bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white flex items-center justify-center shrink-0 shadow-xs animate-pulse">
+              <Sparkles className="w-3 h-3" />
             </div>
             <div>
-              <div className="font-bold text-slate-900 text-[10.5px] flex items-center gap-1">
+              <div className="font-bold text-slate-900 text-[10px] flex items-center gap-1">
                 AI Insight
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               </div>
-              <p className="text-[9px] text-slate-600 font-medium leading-tight mt-0.5">
+              <p className="text-[8.5px] text-slate-600 font-medium leading-tight mt-0.5 line-clamp-2">
                 {currentData.aiInsight.title}
               </p>
             </div>
@@ -1019,12 +916,12 @@ export function HeroDashboardMockup() {
 
           {/* Interactive expansion on hover */}
           {showAiDetail && (
-            <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[8.5px] text-slate-600 space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-200">
+            <div className="mt-1.5 pt-1.5 border-t border-slate-100 text-[8px] text-slate-600 space-y-1 animate-in fade-in slide-in-from-bottom-1 duration-200">
               <div className="flex items-start gap-1 text-slate-600 leading-tight">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0 mt-0.5" />
                 <span>{currentData.aiInsight.desc}</span>
               </div>
-              <div className="bg-orange-50 text-[#e77817] hover:bg-[#e77817] hover:text-white border border-orange-200/60 font-bold px-2 py-0.5 rounded text-center transition-colors">
+              <div className="bg-orange-50 text-[#e77817] hover:bg-[#e77817] hover:text-white border border-orange-200/60 font-bold px-1.5 py-0.5 rounded text-center transition-colors">
                 {currentData.aiInsight.action}
               </div>
             </div>
@@ -1035,8 +932,8 @@ export function HeroDashboardMockup() {
 
       {/* Decorative Interactive Hint Badge */}
       <div className="mt-2 text-center">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10.5px] font-medium text-slate-500 bg-white/80 border border-slate-200/60 backdrop-blur-xs shadow-2xs">
-          <Zap className="w-3 h-3 text-[#e77817] fill-[#e77817]" /> Click or hover on any main page (Sales, Inventory, Banking, HR, CRM...) to explore inside pages & live data
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-medium text-slate-500 bg-white/80 border border-slate-200/60 backdrop-blur-xs shadow-2xs">
+          <Zap className="w-3 h-3 text-[#e77817] fill-[#e77817]" /> Click or hover any module on the left to view its inside pages, active live status & features
         </span>
       </div>
     </div>
