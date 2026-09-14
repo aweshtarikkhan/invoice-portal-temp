@@ -7,7 +7,7 @@ export function PublicFooter() {
 
   return (
     <>
-      <footer className="bg-[#f5f5f7] border-t border-slate-200/80 pt-16 pb-8 text-slate-600">
+      <footer className="bg-[#f5f5f7] border-t border-slate-200/80 pt-16 pb-12 sm:pb-14 text-slate-600">
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12 pb-14">
             {/* Column 1: Brand & Social */}
@@ -68,16 +68,16 @@ export function PublicFooter() {
             </div>
           </div>
 
-          <div className="border-t border-slate-200/80 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="border-t border-slate-200/80 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:pr-44">
             <p className="text-sm">
               &copy; {new Date().getFullYear()} Assay Biz. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-slate-500">
-              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <Link to="/privacy" className="hover:text-primary transition-colors py-1">Privacy Policy</Link>
               <span className="text-slate-300 hidden sm:inline">•</span>
-              <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              <Link to="/terms" className="hover:text-primary transition-colors py-1">Terms of Service</Link>
               <span className="text-slate-300 hidden sm:inline">•</span>
-              <Link to="/refund-policy" className="hover:text-primary transition-colors">Refund Policy</Link>
+              <Link to="/refund-policy" className="hover:text-primary transition-colors py-1 font-medium">Refund Policy</Link>
             </div>
           </div>
         </div>
