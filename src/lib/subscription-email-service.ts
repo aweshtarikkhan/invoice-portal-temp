@@ -1,4 +1,4 @@
-﻿import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import {
   SubscriptionInvoiceData,
   getSubscriptionInvoiceBase64,
@@ -242,9 +242,14 @@ export async function sendSubscriptionInvoiceEmail(
   // 3. Fallback Pathway: Direct EC2 / VPS API proxy (/api/email/send -> AWS SES Outbound SMTP)
   try {
     console.log(`[Email Dispatch] Attempting direct API fallback dispatch to ${recipientEmail}...`);
-    const apiUrl = typeof window !== "undefined" && window.location.origin
-      ? `${window.location.origin}/api/email/send`
-      : "http://13.201.228.83/api/email/send";
+    let apiUrl = "http://13.201.228.83/api/email/send";
+    if (typeof window !== "undefined" && window.location.origin) {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        apiUrl = "http://localhost:3010/api/email/send";
+      } else {
+        apiUrl = `${window.location.origin}/api/email/send`;
+      }
+    }
 
     const res = await fetch(apiUrl, {
       method: "POST",

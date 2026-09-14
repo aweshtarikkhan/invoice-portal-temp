@@ -311,8 +311,65 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
           p_employee_count: totalEmployeesToSend
         });
         if (error) throw error;
-        toast({ title: "Plan Updated", description: "Your subscription settings have been updated successfully." });
-        setTimeout(() => window.location.reload(), 1000);
+        
+        // Generate zero-value invoice and send email
+        const now = new Date();
+        const periodEnd = new Date(now);
+        if (billingCycle === "yearly") {
+          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+        } else {
+          periodEnd.setMonth(periodEnd.getMonth() + 1);
+        }
+        const formatDateStr = (d: Date) => d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+        const invoiceNumber = `AB-SUB-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-4)}`;
+        
+        let planDisplay = targetPlanNames.map((p) => {
+          const found = plans.find((pl) => pl.name === p);
+          return found ? found.display_name : p.toUpperCase();
+        }).join(" + ");
+
+        if (targetPlanNames.includes("suite")) {
+          planDisplay = "Assay Biz - Flagship Business Suite";
+        } else if (isOnlyAddingExtraEmployees) {
+          planDisplay = `HRMS Capacity Expansion (+${extraEmployeesToAdd} Staff Slots)`;
+        }
+
+        const invoicePayload: SubscriptionInvoiceData = {
+          invoiceNumber,
+          invoiceDate: formatDateStr(now),
+          billingCycle,
+          planNames: targetPlanNames.length > 0 ? targetPlanNames : ["free"],
+          planDisplayName: targetPlanNames.length === 0 || (targetPlanNames.length === 1 && targetPlanNames[0] === "free") ? "Free Forever Plan" : planDisplay,
+          periodStart: formatDateStr(now),
+          periodEnd: formatDateStr(periodEnd),
+          customerName: user?.user_metadata?.full_name || currentOrg?.name || user?.email || "Valued Customer",
+          customerEmail: user?.email || currentOrg?.email || "",
+          customerPhone: currentOrg?.phone || undefined,
+          organizationName: currentOrg?.name || "My Business",
+          customerGstin: currentOrg?.tax_number || undefined,
+          billingAddress: currentOrg?.billing_address || undefined,
+          totalAmount: 0,
+          discount: 0,
+          paymentMethod: "Promo Code / Free Plan",
+          razorpayPaymentId: "N/A",
+          razorpayOrderId: "N/A",
+          employeeCount: totalEmployeesToSend,
+        };
+
+        setCompletedInvoice(invoicePayload);
+        setShowSuccessModal(true);
+
+        if (invoicePayload.customerEmail) {
+          toast({
+            title: "Plan Upgraded! 🚀",
+            description: `Dispatching your Tax Invoice PDF to ${invoicePayload.customerEmail}...`,
+          });
+          sendSubscriptionInvoiceEmail(invoicePayload, orgId).then((res) => {
+            if (res.success) {
+              toast({ title: "Invoice Emailed! ✉️", description: `Tax Invoice delivered to ${invoicePayload.customerEmail}.` });
+            }
+          });
+        }
         return;
       }
 
