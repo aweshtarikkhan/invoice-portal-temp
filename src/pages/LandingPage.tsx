@@ -386,21 +386,34 @@ export default function LandingPage() {
 
       {/* WhatsApp highlight */}
       <section className="py-24 bg-navy relative overflow-hidden text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#e77817]/10 rounded-full blur-[120px] pointer-events-none"></div>
         <div className="mx-auto max-w-7xl px-6 grid md:grid-cols-2 gap-16 items-center relative z-10">
           <div>
-            <Badge className="bg-primary/20 text-primary hover:bg-primary/30 border border-primary/30 gap-2 mb-6 py-1.5 px-4 rounded-full">
-              <MessageCircle className="h-4 w-4" /> {L.wa_eyebrow}
-            </Badge>
-            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6 leading-tight">{L.wa_title}</h2>
-            <p className="text-lg text-slate-300 leading-relaxed mb-8">{L.wa_sub}</p>
+            <div className="inline-flex items-center gap-2 mb-6 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs">
+              <MessageCircle className="h-4 w-4 text-[#ff9438]" />
+              <span>{L.wa_eyebrow}</span>
+            </div>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white !text-white mb-6 leading-tight">
+              {lang === "hi" ? (
+                <>
+                  बिल भेजें।{" "}
+                  <span className="text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
+                </>
+              ) : (
+                <>
+                  Send invoices instantly.{" "}
+                  <span className="text-[#ff9438]">Get paid 2x faster.</span>
+                </>
+              )}
+            </h2>
+            <p className="text-base sm:text-lg text-slate-200 leading-relaxed mb-8 font-normal">{L.wa_sub}</p>
             <ul className="space-y-4">
               {L.wa_bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <div className="mt-1 h-6 w-6 rounded-full bg-emerald-500/20 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-4 w-4" />
+                <li key={i} className="flex items-start gap-3.5">
+                  <div className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3.5 w-3.5 stroke-[3]" />
                   </div>
-                  <span className="text-slate-200 font-medium text-lg">{b}</span>
+                  <span className="text-white font-medium text-base sm:text-lg leading-snug">{b}</span>
                 </li>
               ))}
             </ul>
