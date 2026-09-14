@@ -15,7 +15,7 @@ import {
   CheckCircle2, IndianRupee, Image as ImageIcon, Trash2, Share2,
   Search, Filter, Check, Copy, Sparkles, PlusCircle, ArrowUpDown,
   SlidersHorizontal, UserCheck, RefreshCw, AlertCircle, ExternalLink,
-  Layers, Lock, Unlock, HelpCircle, Database
+  Layers, Lock, Unlock, HelpCircle, Database, Clock
 } from "lucide-react";
 import {
   Dialog,
@@ -1433,8 +1433,8 @@ export default function PlatformAdminPage() {
                           <TableHead className="w-[140px]">Date & Time</TableHead>
                           <TableHead className="min-w-[170px]">Prospect & Business</TableHead>
                           <TableHead className="min-w-[180px]">Contact Info</TableHead>
-                          <TableHead className="min-w-[160px]">City & Industry</TableHead>
-                          <TableHead className="min-w-[170px]">Preferred Slot</TableHead>
+                          <TableHead className="min-w-[130px]">Location</TableHead>
+                          <TableHead className="min-w-[190px]">Scheduled Slot</TableHead>
                           <TableHead className="min-w-[220px]">Requirements / Notes</TableHead>
                           <TableHead className="min-w-[130px]">Status</TableHead>
                           <TableHead className="w-[70px] text-right">Action</TableHead>
@@ -1451,11 +1451,21 @@ export default function PlatformAdminPage() {
                             const email = payload.email || req.user_email || '-';
                             const company = payload.company || payload.business || '-';
                             const city = payload.city || '-';
-                            const industry = payload.industry || '-';
+                            const preferredDate = payload.preferred_date || '';
                             const preferredTime = payload.preferred_time || '-';
                             const message = payload.message || '';
 
-                            const waLink = mobile ? `https://wa.me/91${mobile}?text=Hello%20${encodeURIComponent(name)},%20thank%20you%20for%20booking%20a%20demo%20with%20Assay%20Biz!%20Are%20you%20available%20for%20your%20scheduled%20session?` : '';
+                            const formattedDemoDate = preferredDate ? (() => {
+                              try {
+                                return new Date(preferredDate + 'T00:00:00').toLocaleDateString('en-IN', {
+                                  weekday: 'short', day: '2-digit', month: 'short', year: 'numeric'
+                                });
+                              } catch {
+                                return preferredDate;
+                              }
+                            })() : '';
+
+                            const waLink = mobile ? `https://wa.me/91${mobile}?text=Hello%20${encodeURIComponent(name)},%20thank%20you%20for%20booking%20a%20demo%20with%20Assay%20Biz!%20Are%20you%20available%20for%20your%20scheduled%20session${formattedDemoDate ? `%20on%20${encodeURIComponent(formattedDemoDate)}` : ''}%20during%20${encodeURIComponent(preferredTime)}?` : '';
 
                             return (
                               <TableRow key={req.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1513,15 +1523,27 @@ export default function PlatformAdminPage() {
 
                                 <TableCell>
                                   <div className="text-xs font-medium text-slate-800">{city}</div>
-                                  <Badge variant="outline" className="text-[10px] mt-1 bg-slate-50 text-slate-600 border-slate-200">
-                                    {industry}
-                                  </Badge>
+                                  {payload.industry && (
+                                    <Badge variant="outline" className="text-[10px] mt-1 bg-slate-50 text-slate-500 border-slate-200">
+                                      {payload.industry}
+                                    </Badge>
+                                  )}
                                 </TableCell>
 
                                 <TableCell>
-                                  <div className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-1 rounded-lg">
-                                    <Calendar className="w-3 h-3 text-indigo-500 shrink-0" />
-                                    {preferredTime}
+                                  <div className="space-y-1">
+                                    {formattedDemoDate ? (
+                                      <div className="flex items-center gap-1 text-xs font-semibold text-slate-900">
+                                        <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                        {formattedDemoDate}
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-slate-400">Date not set</div>
+                                    )}
+                                    <div className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md">
+                                      <Clock className="w-3 h-3 text-indigo-500 shrink-0" />
+                                      {preferredTime}
+                                    </div>
                                   </div>
                                 </TableCell>
 

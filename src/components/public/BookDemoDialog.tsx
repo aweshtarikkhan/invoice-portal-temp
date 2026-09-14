@@ -32,6 +32,8 @@ import {
   Loader2,
   ShieldCheck,
   Zap,
+  ArrowRight,
+  Clock,
 } from "lucide-react";
 
 interface BookDemoDialogProps {
@@ -39,31 +41,113 @@ interface BookDemoDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+const ALL_TIME_SLOTS = [
+  { id: "Morning (10:00 AM - 01:00 PM)", startHour: 10 },
+  { id: "Afternoon (02:00 PM - 05:00 PM)", startHour: 14 },
+  { id: "Evening (05:00 PM - 08:00 PM)", startHour: 17 },
+];
+
+const getTodayStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getTomorrowStr = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getAvailableSlots = (dateStr: string) => {
+  const todayStr = getTodayStr();
+  if (!dateStr || dateStr !== todayStr) {
+    return ALL_TIME_SLOTS.map((s) => s.id);
+  }
+  const currentHour = new Date().getHours();
+  // For today: only allow slots whose start hour has not arrived yet
+  return ALL_TIME_SLOTS.filter((s) => currentHour < s.startHour).map((s) => s.id);
+};
+
+const getInitialDateAndSlot = () => {
+  const todayStr = getTodayStr();
+  const todaySlots = getAvailableSlots(todayStr);
+  if (todaySlots.length > 0) {
+    return {
+      date: todayStr,
+      slot: todaySlots[0],
+    };
+  }
+  // If no slots remain today (e.g. past 5 PM / 17:00), default to tomorrow!
+  return {
+    date: getTomorrowStr(),
+    slot: ALL_TIME_SLOTS[0].id,
+  };
+};
+
+const formatDisplayDate = (dateStr: string) => {
+  if (!dateStr) return "";
+  try {
+    const todayStr = getTodayStr();
+    const tomorrowStr = getTomorrowStr();
+    const d = new Date(dateStr + "T00:00:00");
+    const formatted = d.toLocaleDateString("en-IN", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+    if (dateStr === todayStr) return `Today (${formatted})`;
+    if (dateStr === tomorrowStr) return `Tomorrow (${formatted})`;
+    return formatted;
+  } catch {
+    return dateStr;
+  }
+};
+
 export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
 
+  const initialSchedule = getInitialDateAndSlot();
   const [formData, setFormData] = useState({
     name: "",
     mobile: "",
     email: "",
     company: "",
     city: "",
-    industry: "Retail & Wholesale",
-    preferred_time: "Morning (10:00 AM - 1:00 PM)",
+    preferred_date: initialSchedule.date,
+    preferred_time: initialSchedule.slot,
     message: "",
   });
 
+  const availableSlots = getAvailableSlots(formData.preferred_date);
+
+  const handleDateChange = (newDate: string) => {
+    const slots = getAvailableSlots(newDate);
+    setFormData((prev) => ({
+      ...prev,
+      preferred_date: newDate,
+      preferred_time: slots.includes(prev.preferred_time) ? prev.preferred_time : (slots[0] || ""),
+    }));
+  };
+
   const resetForm = () => {
+    const sched = getInitialDateAndSlot();
     setFormData({
       name: "",
       mobile: "",
       email: "",
       company: "",
       city: "",
-      industry: "Retail & Wholesale",
-      preferred_time: "Morning (10:00 AM - 1:00 PM)",
+      preferred_date: sched.date,
+      preferred_time: sched.slot,
       message: "",
     });
     setSubmitted(false);
@@ -119,6 +203,24 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
       return;
     }
 
+    if (!formData.preferred_date) {
+      toast({
+        title: "Date Required",
+        description: "Please select your preferred demo date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!formData.preferred_time) {
+      toast({
+        title: "Time Slot Required",
+        description: "Please select an available time slot for your chosen date.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -128,7 +230,7 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
         email: formData.email.trim().toLowerCase(),
         company: formData.company.trim(),
         city: formData.city.trim() || "Not specified",
-        industry: formData.industry,
+        preferred_date: formData.preferred_date,
         preferred_time: formData.preferred_time,
         message: formData.message.trim() || "Standard product walkthrough requested",
       };
@@ -177,12 +279,13 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
               <p className="text-slate-600 text-sm max-w-md mx-auto leading-relaxed">
                 Thank you, <span className="font-semibold text-slate-900">{formData.name}</span>!
                 Our product expert will connect with you on{" "}
-                <span className="font-semibold text-indigo-600">+91 {formData.mobile}</span> during{" "}
-                <span className="font-semibold text-slate-900">{formData.preferred_time}</span> for a personalized live walkthrough.
+                <span className="font-semibold text-[#28166f]">+91 {formData.mobile}</span> on{" "}
+                <span className="font-semibold text-slate-900">{formatDisplayDate(formData.preferred_date)}</span> during{" "}
+                <span className="font-semibold text-[#e77817]">{formData.preferred_time}</span> for a personalized live walkthrough.
               </p>
             </div>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs text-slate-600">
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-left space-y-2.5 text-xs text-slate-600">
               <div className="flex justify-between">
                 <span className="text-slate-500">Business:</span>
                 <span className="font-semibold text-slate-800">{formData.company}</span>
@@ -192,25 +295,39 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                 <span className="font-semibold text-slate-800">{formData.email}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Industry:</span>
-                <span className="font-semibold text-slate-800">{formData.industry}</span>
+                <span className="text-slate-500">Scheduled Date:</span>
+                <span className="font-semibold text-slate-900 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5 text-[#28166f]" />
+                  {formatDisplayDate(formData.preferred_date)}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Scheduled Slot:</span>
-                <span className="font-semibold text-indigo-700">{formData.preferred_time}</span>
+                <span className="text-slate-500">Scheduled Time Slot:</span>
+                <span className="font-semibold text-[#28166f] flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-[#e77817]" />
+                  {formData.preferred_time}
+                </span>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <Button
-                variant="outline"
-                className="w-full rounded-xl"
-                onClick={resetForm}
+                className="w-full rounded-xl bg-[#28166f] hover:bg-[#e77817] text-white shadow-md shadow-[#28166f]/20 hover:shadow-orange-500/30 transition-all duration-300 font-bold"
+                onClick={() => {
+                  handleClose(false);
+                  const el = document.getElementById("features");
+                  if (el) {
+                    el.scrollIntoView({ behavior: "smooth" });
+                  } else {
+                    window.location.href = "/#features";
+                  }
+                }}
               >
-                Book Another Demo
+                Explore Platform <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
               <Button
-                className="w-full rounded-xl bg-[#28166f] hover:bg-[#e77817] text-white shadow-md shadow-[#28166f]/20 hover:shadow-orange-500/30 transition-all duration-300"
+                variant="outline"
+                className="w-full sm:w-auto rounded-xl border-slate-300 text-slate-700 hover:bg-slate-100"
                 onClick={() => handleClose(false)}
               >
                 Done
@@ -330,51 +447,65 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                   />
                 </div>
 
-                {/* Industry */}
+                {/* Preferred Date */}
                 <div className="space-y-1.5">
-                  <Label htmlFor="demo-industry" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                    <Briefcase className="w-3.5 h-3.5 text-slate-400" /> Business Category
+                  <Label htmlFor="demo-date" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" /> Preferred Demo Date <span className="text-rose-500">*</span>
                   </Label>
-                  <Select
-                    value={formData.industry}
-                    onValueChange={(val) => setFormData({ ...formData, industry: val })}
-                  >
-                    <SelectTrigger id="demo-industry" className="h-10 rounded-xl border-slate-200">
-                      <SelectValue placeholder="Select business type" />
-                    </SelectTrigger>
-                    <SelectContent className="z-[10000]">
-                      <SelectItem value="Retail & Wholesale">Retail & Wholesale</SelectItem>
-                      <SelectItem value="Manufacturing & Production">Manufacturing & Production</SelectItem>
-                      <SelectItem value="Services & Consulting">Services & Consulting</SelectItem>
-                      <SelectItem value="Pharma & Healthcare">Pharma & Healthcare</SelectItem>
-                      <SelectItem value="Technology & IT Agency">Technology & IT Agency</SelectItem>
-                      <SelectItem value="Construction & Real Estate">Construction & Real Estate</SelectItem>
-                      <SelectItem value="Logistics & Transport">Logistics & Transport</SelectItem>
-                      <SelectItem value="Other">Other Category</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Input
+                    id="demo-date"
+                    type="date"
+                    min={getTodayStr()}
+                    value={formData.preferred_date}
+                    onChange={(e) => handleDateChange(e.target.value)}
+                    required
+                    className="h-10 rounded-xl border-slate-200 focus-visible:ring-indigo-500 text-sm font-medium"
+                  />
                 </div>
               </div>
 
               {/* Preferred Slot */}
               <div className="space-y-1.5 pt-1">
-                <Label htmlFor="demo-slot" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-slate-400" /> Preferred Demo Time Slot
-                </Label>
-                <Select
-                  value={formData.preferred_time}
-                  onValueChange={(val) => setFormData({ ...formData, preferred_time: val })}
-                >
-                  <SelectTrigger id="demo-slot" className="h-10 rounded-xl border-slate-200">
-                    <SelectValue placeholder="Select time slot" />
-                  </SelectTrigger>
-                  <SelectContent className="z-[10000]">
-                    <SelectItem value="Morning (10:00 AM - 1:00 PM)">Morning (10:00 AM - 1:00 PM)</SelectItem>
-                    <SelectItem value="Afternoon (2:00 PM - 5:00 PM)">Afternoon (2:00 PM - 5:00 PM)</SelectItem>
-                    <SelectItem value="Evening (5:00 PM - 8:00 PM)">Evening (5:00 PM - 8:00 PM)</SelectItem>
-                    <SelectItem value="Instant / Connect Today ASAP">Instant / Connect Today ASAP</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="demo-slot" className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-slate-400" /> Preferred Demo Time Slot <span className="text-rose-500">*</span>
+                  </Label>
+                  {formData.preferred_date === getTodayStr() && (
+                    <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium border border-amber-200">
+                      Showing remaining slots for today
+                    </span>
+                  )}
+                </div>
+                {availableSlots.length > 0 ? (
+                  <Select
+                    value={formData.preferred_time}
+                    onValueChange={(val) => setFormData({ ...formData, preferred_time: val })}
+                  >
+                    <SelectTrigger id="demo-slot" className="h-10 rounded-xl border-slate-200">
+                      <SelectValue placeholder="Select time slot" />
+                    </SelectTrigger>
+                    <SelectContent className="z-[10000]">
+                      {availableSlots.map((slot) => (
+                        <SelectItem key={slot} value={slot}>
+                          {slot}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center justify-between">
+                    <span>No slots remaining for today. Please select tomorrow or another future date.</span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs bg-white text-amber-900 border-amber-300"
+                      onClick={() => handleDateChange(getTomorrowStr())}
+                    >
+                      Pick Tomorrow
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Specific Requirements / Notes */}
