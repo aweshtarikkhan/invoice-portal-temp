@@ -13,6 +13,7 @@ interface ProfessionalNavyInvoiceTemplateProps {
   type?: "invoice" | "estimate" | "bill" | "po";
   taxBreakdown?: { name: string; amount: number; rate?: number }[];
   isInterstate?: boolean;
+  showSignature?: boolean;
 }
 
 function formatAmountInWords(num: number): string {
@@ -43,6 +44,7 @@ export function ProfessionalNavyInvoiceTemplate({
   type = "invoice",
   taxBreakdown = [],
   isInterstate = false,
+  showSignature = true,
 }: ProfessionalNavyInvoiceTemplateProps) {
   const navy = "#001a4d";
   const darkBlue = "#0f2e6b";

@@ -5,6 +5,7 @@ import { useAppStore } from "@/store/app-store";
 import { stateCodeFromGstin } from "@/lib/gst";
 import { formatSequenceNumber } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +44,10 @@ export default function PurchaseOrderBuilderPage() {
   const duplicateId = searchParams.get("duplicate");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [showSignature, setShowSignature] = useState(() => {
+    const org = useAppStore.getState().organization;
+    return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
+  });
   const [vendors, setVendors] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);

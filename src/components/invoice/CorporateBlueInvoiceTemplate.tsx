@@ -12,6 +12,7 @@ interface CorporateBlueInvoiceTemplateProps {
   type?: "invoice" | "estimate" | "bill" | "po";
   taxBreakdown?: { name: string; amount: number; rate?: number }[];
   isInterstate?: boolean;
+  showSignature?: boolean;
 }
 
 function formatAmountInWords(num: number): string {
@@ -33,6 +34,7 @@ export function CorporateBlueInvoiceTemplate({
   type = "invoice",
   taxBreakdown = [],
   isInterstate = false,
+  showSignature = true,
 }: CorporateBlueInvoiceTemplateProps) {
   const primaryBlue = "#0a47d0";
   const darkNavy = "#002060";
@@ -514,6 +516,18 @@ export function CorporateBlueInvoiceTemplate({
 
             {/* Authorized Signature */}
             <div style={{ textAlign: "center", display: "flex", flexDirection: "column", justifyContent: "space-between", flex: "0 0 160px", marginLeft: "auto" }}>
+              
+          {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 40, marginTop: -40, position: 'relative', zIndex: 10 }}>
+              {org.address.signature_type === 'image' && org.address.signature_image_url ? (
+                <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 60, mixBlendMode: 'multiply', objectFit: 'contain' }} />
+              ) : org.address.signature_type === 'font' && org.address.signature_name ? (
+                <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 32, lineHeight: 1, color: '#1e293b' }}>
+                  {org.address.signature_name}
+                </div>
+              ) : null}
+            </div>
+          )}
               <div style={{ fontWeight: 800, color: darkNavy }}>AUTHORIZED SIGNATURE</div>
               <div style={{ margin: "8px 0 4px", minHeight: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {org?.signature_url ? (

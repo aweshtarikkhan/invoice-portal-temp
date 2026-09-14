@@ -43,6 +43,17 @@ export function EmailSettingsTab() {
   const [isRegisteringDomain, setIsRegisteringDomain] = useState(false);
   const [isVerifyingDomain, setIsVerifyingDomain] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string, label: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    toast({
+      title: "Copied!",
+      description: `${label} copied to clipboard.`,
+    });
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
 
   // Load existing settings
   const { data: settings, isLoading } = useQuery({
@@ -100,11 +111,18 @@ export function EmailSettingsTab() {
     setIsSaving(true);
 
     try {
+      const effectiveFromEmail = 
+        providerType === "resend_domain" && domainName.trim()
+          ? `no-reply@${domainName.trim().toLowerCase()}`
+          : (providerType === "smtp" || providerType === "gmail") && smtpUser.trim()
+          ? smtpUser.trim()
+          : "no-reply@test.satahinvoice.com";
+
       const payload: any = {
         org_id: org.id,
         provider_type: providerType,
         from_name: fromName,
-        from_email: fromEmail,
+        from_email: effectiveFromEmail,
         domain_name: domainName,
         resend_domain_id: resendDomainId,
         dns_records: dnsRecords,
@@ -123,6 +141,27 @@ export function EmailSettingsTab() {
 
       if (error) throw error;
 
+      // Also ensure backend PostgreSQL receives updated configuration
+      try {
+        await fetch("/api/domain/save-settings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orgId: org.id,
+            providerType,
+            fromName,
+            domainName,
+            smtpHost,
+            smtpPort: Number(smtpPort),
+            smtpUser,
+            smtpPass,
+            smtpSecure,
+          }),
+        });
+      } catch (backendErr) {
+        console.warn("Direct backend save warning:", backendErr);
+      }
+
       toast({
         title: "Settings Saved",
         description: "Your email configuration has been updated.",
@@ -140,7 +179,7 @@ export function EmailSettingsTab() {
     }
   };
 
-  // Register Custom Domain via Edge Function
+  // Register Custom Domain via AWS SES
   const handleRegisterDomain = async () => {
     if (!domainName.trim() || !org?.id) {
       toast({ variant: "destructive", title: "Please enter a valid domain name" });
@@ -149,23 +188,25 @@ export function EmailSettingsTab() {
 
     setIsRegisteringDomain(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-resend-domain", {
-        body: {
-          action: "create",
+      const resp = await fetch("/api/domain/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
           domainName: domainName.trim(),
           orgId: org.id,
-        },
+        }),
       });
 
-      if (error || data?.error) throw new Error(error?.message || data?.error);
+      const resData = await resp.json();
+      if (!resp.ok || resData.error) throw new Error(resData.error || "Failed to register domain in AWS SES");
 
-      setResendDomainId(data.data.id);
-      setDnsRecords(data.data.records || []);
-      setDomainStatus(data.data.status || "pending");
+      setResendDomainId(resData.data.id);
+      setDnsRecords(resData.data.records || []);
+      setDomainStatus(resData.data.status || "pending");
 
       toast({
-        title: "Domain Registered",
-        description: "DNS records generated! Please add them to your domain provider.",
+        title: "Domain Registered in AWS SES",
+        description: "DKIM & Verification DNS records generated! Add them to your domain provider.",
       });
 
       queryClient.invalidateQueries({ queryKey: ["org-email-settings"] });
@@ -176,40 +217,44 @@ export function EmailSettingsTab() {
     }
   };
 
-  // Verify Custom Domain
+  // Verify Custom Domain via AWS SES
   const handleVerifyDomain = async () => {
-    if (!resendDomainId || !org?.id) return;
+    if (!domainName.trim() || !org?.id) return;
 
     setIsVerifyingDomain(true);
     try {
-      const { data, error } = await supabase.functions.invoke("manage-resend-domain", {
-        body: {
-          action: "get",
-          domainId: resendDomainId,
+      const resp = await fetch("/api/domain/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          domainName: domainName.trim(),
           orgId: org.id,
-        },
+        }),
       });
 
-      if (error || data?.error) throw new Error(error?.message || data?.error);
+      const resData = await resp.json();
+      if (!resp.ok || resData.error) throw new Error(resData.error || "Failed to check verification");
 
-      setDomainStatus(data.status);
-      setDnsRecords(data.data?.records || dnsRecords);
+      setDomainStatus(resData.status);
+      if (resData.data?.records) {
+        setDnsRecords(resData.data.records);
+      }
 
-      if (data.status === "verified") {
+      if (resData.status === "verified") {
         toast({
-          title: "Domain Verified!",
-          description: "Your custom domain is now verified and ready to send emails.",
+          title: "Domain 100% Verified!",
+          description: "Your custom domain is authenticated via AWS SES DKIM and ready to send emails.",
         });
       } else {
         toast({
-          title: "Verification Pending",
-          description: "DNS changes can take a few minutes to propagate. Please check back shortly.",
+          title: "Verification Pending in AWS SES",
+          description: "DNS changes can take 5-10 minutes to propagate. If already added, please wait a moment.",
         });
       }
 
       queryClient.invalidateQueries({ queryKey: ["org-email-settings"] });
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Verification Failed", description: err.message });
+      toast({ variant: "destructive", title: "Verification Check Failed", description: err.message });
     } finally {
       setIsVerifyingDomain(false);
     }
@@ -221,26 +266,71 @@ export function EmailSettingsTab() {
 
     setIsSendingTest(true);
     try {
-      // First auto-save settings so the edge function reads current choices
+      // First auto-save settings so the edge function and server read current choices
       await handleSave();
 
-      const { data, error } = await supabase.functions.invoke("send-email-dispatcher", {
-        body: {
-          orgId: org.id,
-          to: testEmailAddress.trim(),
-          subject: "Test Email from Assay Biz",
-          html: `
-            <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; rounded-lg;">
-              <h2 style="color: #2563eb;">Test Email Successful! 🎉</h2>
-              <p>Hello,</p>
-              <p>This is a test email sent from your application using your configured email sending method (<strong>${providerType}</strong>).</p>
-              <p style="font-size: 12px; color: #64748b; margin-top: 20px;">Sent at: ${new Date().toLocaleString()}</p>
-            </div>
-          `,
-        },
-      });
+      const effectiveFromEmail = 
+        providerType === "resend_domain" && domainName.trim()
+          ? `no-reply@${domainName.trim().toLowerCase()}`
+          : (providerType === "smtp" || providerType === "gmail") && smtpUser.trim()
+          ? smtpUser.trim()
+          : "no-reply@test.satahinvoice.com";
 
-      if (error || data?.error) throw new Error(error?.message || data?.error);
+      const effectiveFromName = fromName || org?.name || "Assay Biz";
+
+      // Try EC2 native email dispatcher first (supports AWS SES & Custom SMTP reliably)
+      let sentSuccessfully = false;
+      try {
+        const resp = await fetch("/api/email/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orgId: org.id,
+            fromEmail: effectiveFromEmail,
+            fromName: effectiveFromName,
+            to: testEmailAddress.trim(),
+            subject: "Test Email from Assay Biz",
+            html: `
+              <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #2563eb;">Test Email Successful! 🎉</h2>
+                <p>Hello,</p>
+                <p>This is a test email sent from your application using your configured email sending method (<strong>${providerType}</strong>).</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 20px;">Sent at: ${new Date().toLocaleString()}</p>
+              </div>
+            `,
+          }),
+        });
+        const respData = await resp.json();
+        if (resp.ok && respData.success) {
+          sentSuccessfully = true;
+        } else if (!resp.ok && respData.error) {
+          throw new Error(respData.error);
+        }
+      } catch (err: any) {
+        console.warn("EC2 mailer failed or unavailable, trying cloud function:", err);
+      }
+
+      if (!sentSuccessfully) {
+        const { data, error } = await supabase.functions.invoke("send-email-dispatcher", {
+          body: {
+            orgId: org.id,
+            fromEmail: effectiveFromEmail,
+            fromName: effectiveFromName,
+            to: testEmailAddress.trim(),
+            subject: "Test Email from Assay Biz",
+            html: `
+              <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+                <h2 style="color: #2563eb;">Test Email Successful! 🎉</h2>
+                <p>Hello,</p>
+                <p>This is a test email sent from your application using your configured email sending method (<strong>${providerType}</strong>).</p>
+                <p style="font-size: 12px; color: #64748b; margin-top: 20px;">Sent at: ${new Date().toLocaleString()}</p>
+              </div>
+            `,
+          },
+        });
+
+        if (error || data?.error) throw new Error(error?.message || data?.error);
+      }
 
       toast({
         title: "Test Email Sent!",
@@ -259,10 +349,6 @@ export function EmailSettingsTab() {
     }
   };
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({ title: "Copied to clipboard" });
-  };
 
   if (isLoading) {
     return (
@@ -293,24 +379,55 @@ export function EmailSettingsTab() {
         <CardContent className="space-y-6">
           
           {/* Sender Identity */}
-          <div className="grid grid-cols-2 gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border">
-            <div className="space-y-2">
-              <Label>Sender Name</Label>
-              <Input 
-                value={fromName} 
-                onChange={(e) => setFromName(e.target.value)} 
-                placeholder="e.g. Assay Biz Billing"
-              />
-              <p className="text-xs text-muted-foreground">The display name clients will see in their Inbox.</p>
-            </div>
-            <div className="space-y-2">
-              <Label>Reply-To / From Email Address</Label>
-              <Input 
-                value={fromEmail} 
-                onChange={(e) => setFromEmail(e.target.value)} 
-                placeholder="e.g. billing@yourcompany.com"
-              />
-              <p className="text-xs text-muted-foreground">Email address used for sending / receiving replies.</p>
+          <div className="p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center gap-2">
+                  Sender Display Name
+                </Label>
+                <Input 
+                  value={fromName} 
+                  onChange={(e) => setFromName(e.target.value)} 
+                  placeholder="e.g. Assay Biz Billing or Your Business Name"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The business name clients will see in their Inbox (e.g. "Acme Corp Billing").
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold flex items-center justify-between">
+                  <span>Sending Email Address</span>
+                  <Badge variant="outline" className="text-[10px] font-mono font-normal">
+                    System Managed
+                  </Badge>
+                </Label>
+                <div className="h-10 px-3 py-2 rounded-md border bg-muted/60 flex items-center justify-between text-sm text-muted-foreground select-none">
+                  <div className="flex items-center gap-2 truncate">
+                    <Mail className="h-4 w-4 text-primary shrink-0" />
+                    <span className="font-mono text-xs text-foreground truncate">
+                      {providerType === "resend_domain" && domainName.trim()
+                        ? `no-reply@${domainName.trim()}`
+                        : (providerType === "smtp" || providerType === "gmail") && smtpUser
+                        ? smtpUser
+                        : "no-reply@test.satahinvoice.com"}
+                    </span>
+                  </div>
+                  <Badge 
+                    variant={providerType === "resend_domain" && domainStatus === "verified" ? "default" : "secondary"}
+                    className="text-[10px] shrink-0 ml-2"
+                  >
+                    {providerType === "resend_domain" && domainStatus === "verified" 
+                      ? "Custom Verified" 
+                      : (providerType === "smtp" || providerType === "gmail")
+                      ? "SMTP Auth" 
+                      : "Platform Verified"}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Fixed to your verified AWS SES or SMTP sender to ensure 100% email deliverability.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -341,20 +458,25 @@ export function EmailSettingsTab() {
               <Badge variant="secondary" className="text-[10px]">Instant • 100% Ready</Badge>
             </div>
 
-            {/* Card 2: Custom Resend Domain (Coming Soon) */}
+            {/* Card 2: Custom AWS SES Domain */}
             <div 
-              className="p-4 rounded-xl border-2 border-border opacity-60 bg-muted/20 cursor-not-allowed"
+              className={`p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                providerType === "resend_domain" 
+                  ? "border-primary bg-primary/5 shadow-sm" 
+                  : "border-border hover:border-muted-foreground/30"
+              }`}
+              onClick={() => setProviderType("resend_domain")}
             >
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 font-semibold text-sm text-muted-foreground">
-                  <Globe className="h-4 w-4" /> Custom Domain (DKIM)
+                <div className="flex items-center gap-2 font-semibold text-sm">
+                  <Globe className="h-4 w-4 text-blue-600" /> Custom Domain (AWS SES)
                 </div>
-                <RadioGroupItem value="resend_domain" id="resend_domain" disabled />
+                <RadioGroupItem value="resend_domain" id="resend_domain" />
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Send from your custom domain (`yourdomain.com`). High deliverability with DNS authentication.
+                Send from your custom domain (`yourdomain.com`). Authenticated via AWS SES DKIM tokens.
               </p>
-              <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-500">Coming Soon</Badge>
+              <Badge variant="outline" className="text-[10px] border-blue-500 text-blue-600 bg-blue-50/50">AWS SES • DKIM</Badge>
             </div>
 
             {/* Card 3: Custom SMTP / Gmail */}
@@ -379,9 +501,134 @@ export function EmailSettingsTab() {
             </div>
           </RadioGroup>
 
-          {/* Dynamic Configuration Sections */}
+          {/* --- SECTION 2: CUSTOM AWS SES DOMAIN SETUP --- */}
+          {providerType === "resend_domain" && (
+            <div className="p-5 border rounded-xl bg-slate-50/50 dark:bg-slate-900/50 space-y-4">
+              <div className="flex items-center justify-between border-b pb-3">
+                <div>
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-blue-600" /> Custom Domain Authentication (AWS SES)
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Connect your own domain with DKIM and TXT records for 100% inbox delivery.
+                  </p>
+                </div>
+                <Badge 
+                  variant={domainStatus === "verified" ? "default" : "secondary"}
+                  className={domainStatus === "verified" ? "bg-emerald-500 hover:bg-emerald-600 text-white" : "bg-amber-100 text-amber-800 border-amber-300"}
+                >
+                  {domainStatus === "verified" ? "✓ Verified & Active" : "Verification Pending"}
+                </Badge>
+              </div>
 
+              {/* Domain Registration Form */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <Input 
+                    placeholder="e.g. yourcompany.com" 
+                    value={domainName} 
+                    onChange={(e) => setDomainName(e.target.value)} 
+                    disabled={isRegisteringDomain || isVerifyingDomain}
+                  />
+                </div>
+                <Button 
+                  onClick={handleRegisterDomain} 
+                  disabled={isRegisteringDomain || !domainName.trim()}
+                  className="gap-2"
+                >
+                  {isRegisteringDomain && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Generate DNS Records
+                </Button>
+                {dnsRecords && dnsRecords.length > 0 && (
+                  <Button 
+                    variant="outline" 
+                    onClick={handleVerifyDomain} 
+                    disabled={isVerifyingDomain}
+                    className="gap-2"
+                  >
+                    {isVerifyingDomain && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Check Verification
+                  </Button>
+                )}
+              </div>
 
+              {/* DNS Records Table */}
+              {dnsRecords && dnsRecords.length > 0 && (
+                <div className="space-y-3 pt-2">
+                  <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
+                    <span>Add these DNS records to your domain provider (Cloudflare, GoDaddy, Hostinger, etc.):</span>
+                  </div>
+
+                  <div className="overflow-x-auto border rounded-lg bg-white dark:bg-slate-950">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b bg-slate-50 dark:bg-slate-900 text-muted-foreground font-medium">
+                          <th className="p-2.5 text-left">Type</th>
+                          <th className="p-2.5 text-left">Record / Purpose</th>
+                          <th className="p-2.5 text-left">Host / Name</th>
+                          <th className="p-2.5 text-left">Value / Points to</th>
+                          <th className="p-2.5 text-left">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y font-mono">
+                        {dnsRecords.map((r, i) => (
+                          <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                            <td className="p-3 font-semibold text-blue-600 whitespace-nowrap">{r.type}</td>
+                            <td className="p-3 font-sans text-muted-foreground whitespace-nowrap">{r.record || "DKIM / TXT"}</td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2 group">
+                                <span className="select-all text-[12px] font-mono break-all text-foreground" title={r.name}>{r.name}</span>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                  onClick={() => copyToClipboard(r.name, `name-${i}`, "Host / Name")}
+                                  title="Copy Host"
+                                >
+                                  {copiedKey === `name-${i}` ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="p-3">
+                              <div className="flex items-center gap-2 group">
+                                <span className="select-all text-[12px] font-mono break-all text-foreground" title={r.value}>{r.value}</span>
+                                <Button
+                                  type="button"
+                                  size="icon"
+                                  variant="outline"
+                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                  onClick={() => copyToClipboard(r.value, `val-${i}`, "Value / Target")}
+                                  title="Copy Value"
+                                >
+                                  {copiedKey === `val-${i}` ? (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                  ) : (
+                                    <Copy className="h-3.5 w-3.5" />
+                                  )}
+                                </Button>
+                              </div>
+                            </td>
+                            <td className="p-3 font-sans whitespace-nowrap">
+                              {r.status === "verified" || domainStatus === "verified" ? (
+                                <span className="text-emerald-600 font-semibold">✓ Verified</span>
+                              ) : (
+                                <span className="text-amber-600 font-medium">Pending</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* --- SECTION 3: CUSTOM SMTP / GMAIL SETUP --- */}
           {(providerType === "smtp" || providerType === "gmail") && (

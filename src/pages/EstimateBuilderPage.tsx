@@ -5,6 +5,7 @@ import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -188,6 +189,10 @@ export default function EstimateBuilderPage() {
   const { toast } = useToast();
 
   const [clients, setClients] = useState<any[]>([]);
+  const [showSignature, setShowSignature] = useState(() => {
+    const org = useAppStore.getState().organization;
+    return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
+  });
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);
   const [clientId, setClientId] = useState("");

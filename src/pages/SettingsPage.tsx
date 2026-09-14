@@ -235,7 +235,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 w-full">
       <SEO title="Settings" description="Configure organization details, currency, tax rates, branding and document preferences." path="/settings" />
       <PageHeader title="Settings" description="Manage your organization and preferences" />
 

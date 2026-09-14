@@ -11,6 +11,7 @@ export interface InvoiceTemplateProps {
   type?: "invoice" | "estimate" | "bill" | "po";
   taxBreakdown?: { name: string; amount: number; rate?: number }[];
   isInterstate?: boolean;
+  showSignature?: boolean;
 }
 
 function formatAmountInWords(num: number): string {
@@ -41,6 +42,7 @@ export function ModernCrimsonInvoiceTemplate({
   type = "invoice",
   taxBreakdown = [],
   isInterstate = false,
+  showSignature = true,
 }: InvoiceTemplateProps) {
   const primary = "#be123c";
   const accent = "#f43f5e";
@@ -349,6 +351,18 @@ export function ModernCrimsonInvoiceTemplate({
               
               <div className="text-center">
                  <div className="border-b border-gray-400 w-40 mb-2"></div>
+                 
+          {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 40, marginTop: -40, position: 'relative', zIndex: 10 }}>
+              {org.address.signature_type === 'image' && org.address.signature_image_url ? (
+                <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 60, mixBlendMode: 'multiply', objectFit: 'contain' }} />
+              ) : org.address.signature_type === 'font' && org.address.signature_name ? (
+                <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 32, lineHeight: 1, color: '#1e293b' }}>
+                  {org.address.signature_name}
+                </div>
+              ) : null}
+            </div>
+          )}
                  <div className="font-bold text-[10px]">Authorized Signature</div>
               </div>
            </div>

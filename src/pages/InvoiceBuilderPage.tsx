@@ -15,6 +15,7 @@ import { stateCodeFromGstin } from "@/lib/gst";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -420,6 +421,10 @@ export default function InvoiceBuilderPage() {
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const [clients, setClients] = useState<any[]>([]);
+  const [showSignature, setShowSignature] = useState(() => {
+    const org = useAppStore.getState().organization;
+    return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
+  });
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);
 
@@ -1509,6 +1514,8 @@ export default function InvoiceBuilderPage() {
         </CardContent>
       </Card>
 
+      
+  
       {/* Custom Fields */}
       <Card>
         <CardContent className="pt-6">
@@ -1995,6 +2002,35 @@ export default function InvoiceBuilderPage() {
           </CardContent>
         </Card>
       </div>
+
+                      {/* Signature Toggle */}
+                <div className="flex items-center space-x-2 py-4 border-t mt-4">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="show-signature" 
+                            checked={showSignature} 
+                            onCheckedChange={(checked) => {
+                              if (checked && (!org?.address?.signature_type || org.address.signature_type === 'none')) {
+                                toast({ title: "No signature found", description: "Please upload or select your signature in Settings > Custom Fields" });
+                                return;
+                              }
+                              setShowSignature(!!checked);
+                            }} 
+                          />
+                          <Label htmlFor="show-signature" className="cursor-pointer">Include Authorized Signature</Label>
+                        </div>
+                      </TooltipTrigger>
+                      {(!org?.address?.signature_type || org?.address?.signature_type === 'none') && (
+                        <TooltipContent>
+                          <p>Please upload or select your signature in Settings {'>'} Custom Fields</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
 
       {/* Fixed Bottom Action Bar */}
       <div className="sticky bottom-0 z-30 -mx-6 -mb-6 mt-8 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/85 border-t px-6 py-4 flex flex-wrap items-center justify-between gap-4 shadow-[0_-4px_16px_rgba(0,0,0,0.08)] dark:shadow-[0_-4px_16px_rgba(0,0,0,0.4)]">

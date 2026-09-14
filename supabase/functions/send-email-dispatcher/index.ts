@@ -121,69 +121,77 @@ serve(async (req) => {
       sendSuccess = true;
 
     } else if (providerType === "resend_domain") {
-      // Send via Resend using Custom Verified Domain
+      // Send via AWS SES using Custom Verified Domain (e.g. concall.cloud)
       if (settings?.domain_status !== "verified") {
         throw new Error(`Custom domain is not verified yet. Current status: ${settings?.domain_status || 'pending'}`);
       }
 
-      senderAddress = `${fromName} <${fromEmail}>`;
+      const domain = (settings?.domain_name || "").toLowerCase().trim();
+      const effectiveFrom = domain ? `no-reply@${domain}` : (fromEmail || "no-reply@test.satahinvoice.com");
+      senderAddress = `"${fromName}" <${effectiveFrom}>`;
 
-      const resendPayload: any = {
+      const transporter = nodemailer.createTransport({
+        host: "email-smtp.ap-south-1.amazonaws.com",
+        port: 587,
+        secure: false,
+        auth: {
+          user: "AKIA2LJCCXAWLPSYPMPE",
+          pass: "BAxlpu5HTiNPIdt7NRhHnENs2tbnczd/J3PLt/uJfNk5",
+        },
+      });
+
+      const mailOptions: any = {
         from: senderAddress,
-        to: toArray,
+        to: toArray.join(", "),
         subject: finalSubject,
         html: finalHtml,
+        text: finalText,
       };
 
       if (attachments && attachments.length > 0) {
-        resendPayload.attachments = attachments;
+        mailOptions.attachments = attachments.map((a) => ({
+          filename: a.filename,
+          content: Buffer.from(a.content, "base64"),
+          contentType: a.content_type,
+        }));
       }
 
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify(resendPayload),
-      });
-
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(`Resend API error: ${JSON.stringify(resData)}`);
-      }
+      const info = await transporter.sendMail(mailOptions);
       sendSuccess = true;
-      resendId = resData.id;
+      resendId = info?.messageId || "aws-ses";
     } else {
-      // Default: Resend platform email
-      senderAddress = "Assay Biz <no-reply@satahinvoice.com>";
+      // Default: AWS SES platform verified email
+      senderAddress = `"${fromName}" <no-reply@test.satahinvoice.com>`;
 
-      const resendPayload: any = {
+      const transporter = nodemailer.createTransport({
+        host: "email-smtp.ap-south-1.amazonaws.com",
+        port: 587,
+        secure: false,
+        auth: {
+          user: "AKIA2LJCCXAWLPSYPMPE",
+          pass: "BAxlpu5HTiNPIdt7NRhHnENs2tbnczd/J3PLt/uJfNk5",
+        },
+      });
+
+      const mailOptions: any = {
         from: senderAddress,
-        to: toArray,
+        to: toArray.join(", "),
         subject: finalSubject,
         html: finalHtml,
+        text: finalText,
       };
 
       if (attachments && attachments.length > 0) {
-        resendPayload.attachments = attachments;
+        mailOptions.attachments = attachments.map((a) => ({
+          filename: a.filename,
+          content: Buffer.from(a.content, "base64"),
+          contentType: a.content_type,
+        }));
       }
 
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify(resendPayload),
-      });
-
-      const resData = await res.json();
-      if (!res.ok) {
-        throw new Error(`Resend API error: ${JSON.stringify(resData)}`);
-      }
+      const info = await transporter.sendMail(mailOptions);
       sendSuccess = true;
-      resendId = resData.id;
+      resendId = info?.messageId || "aws-ses";
     }
 
     // Log email to DB

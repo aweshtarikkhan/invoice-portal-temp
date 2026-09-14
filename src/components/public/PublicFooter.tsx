@@ -11,7 +11,7 @@ export function PublicFooter() {
         <div className="mx-auto max-w-7xl px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 lg:gap-12 pb-14">
             {/* Column 1: Brand & Social */}
-            <div className="lg:col-span-4 flex flex-col items-start">
+            <div className="lg:col-span-5 flex flex-col items-start">
               <Link to="/" className="inline-block mb-4">
                 <img src={logoImg} alt="Assay Biz" className="h-10 w-auto object-contain" />
               </Link>
@@ -43,9 +43,9 @@ export function PublicFooter() {
               </div>
             </div>
 
-            {/* Column 2: Product */}
-            <div className="lg:col-span-2">
-              <h3 className="font-semibold text-slate-900 mb-4">Product</h3>
+            {/* Column 2: Quick Links */}
+            <div className="lg:col-span-3">
+              <h3 className="font-semibold text-slate-900 mb-4">Quick Links</h3>
               <ul className="space-y-3 text-sm">
                 <li><a href="/#features" className="hover:text-primary transition-colors">Features</a></li>
                 <li><a href="/#pricing" className="hover:text-primary transition-colors">Pricing</a></li>
@@ -54,25 +54,14 @@ export function PublicFooter() {
               </ul>
             </div>
 
-            {/* Column 3: Resources */}
-            <div className="lg:col-span-3">
-              <h3 className="font-semibold text-slate-900 mb-4">Resources</h3>
+            {/* Column 3: Services */}
+            <div className="lg:col-span-4">
+              <h3 className="font-semibold text-slate-900 mb-4">Services</h3>
               <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-primary transition-colors">Help Center</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">API Documentation</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Community Forum</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">GST Guide</a></li>
-              </ul>
-            </div>
-
-            {/* Column 4: Legal */}
-            <div className="lg:col-span-3">
-              <h3 className="font-semibold text-slate-900 mb-4">Legal</h3>
-              <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-primary transition-colors">Privacy Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Terms of Service</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Cookie Policy</a></li>
-                <li><a href="#" className="hover:text-primary transition-colors">Refund Policy</a></li>
+                <li><a href="/#features" className="hover:text-primary transition-colors">GST Invoicing & Billing</a></li>
+                <li><a href="/#features" className="hover:text-primary transition-colors">Employee & Attendance</a></li>
+                <li><a href="/#features" className="hover:text-primary transition-colors">Business CRM & Leads</a></li>
+                <li><a href="/#features" className="hover:text-primary transition-colors">Promotion & Marketing Studio</a></li>
               </ul>
             </div>
           </div>
@@ -81,8 +70,12 @@ export function PublicFooter() {
             <p className="text-sm">
               &copy; {new Date().getFullYear()} Assay Biz. All rights reserved.
             </p>
-            <div className="flex items-center gap-2 text-sm">
-              <span>Made with ❤️ in India for the World</span>
+            <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm text-slate-500">
+              <Link to="/privacy" className="hover:text-primary transition-colors">Privacy Policy</Link>
+              <span className="text-slate-300 hidden sm:inline">•</span>
+              <Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link>
+              <span className="text-slate-300 hidden sm:inline">•</span>
+              <Link to="/refund-policy" className="hover:text-primary transition-colors">Refund Policy</Link>
             </div>
           </div>
         </div>

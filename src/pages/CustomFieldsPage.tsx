@@ -19,6 +19,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2 } from "lucide-react";
+import { SignatureSettingsTab } from "@/components/settings/SignatureSettingsTab";
 
 const ENTITY_TYPES = [
   { value: "invoice", label: "Invoice" },
@@ -26,6 +27,7 @@ const ENTITY_TYPES = [
   { value: "credit_note", label: "Credit Note" },
   { value: "client", label: "Client" },
   { value: "item", label: "Item" },
+  { value: "signature", label: "Signature" },
 ];
 
 const FIELD_TYPES = [
@@ -95,9 +97,11 @@ export default function CustomFieldsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <PageHeader title="Custom Fields" description="Define custom fields for your documents and entities">
-        <Button onClick={() => setDialogOpen(true)}>
-          <Plus className="mr-1 h-4 w-4" /> Add Field
-        </Button>
+        {activeTab !== "signature" && (
+          <Button onClick={() => setDialogOpen(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Add Field
+          </Button>
+        )}
       </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -105,7 +109,7 @@ export default function CustomFieldsPage() {
           {ENTITY_TYPES.map((et) => (
             <TabsTrigger key={et.value} value={et.value}>
               {et.label}
-              {fields.filter((f) => f.entity_type === et.value).length > 0 && (
+              {et.value !== "signature" && fields.filter((f) => f.entity_type === et.value).length > 0 && (
                 <span className="ml-1 text-xs text-muted-foreground">
                   ({fields.filter((f) => f.entity_type === et.value).length})
                 </span>
@@ -116,6 +120,9 @@ export default function CustomFieldsPage() {
 
         {ENTITY_TYPES.map((et) => (
           <TabsContent key={et.value} value={et.value} className="mt-4">
+            {et.value === "signature" ? (
+              <SignatureSettingsTab />
+            ) : (
             <Card>
               <CardContent className="p-0">
                 {filteredFields.length === 0 ? (
@@ -154,6 +161,7 @@ export default function CustomFieldsPage() {
                 )}
               </CardContent>
             </Card>
+            )}
           </TabsContent>
         ))}
       </Tabs>

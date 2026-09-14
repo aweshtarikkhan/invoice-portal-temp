@@ -16,6 +16,7 @@ interface StyledInvoiceTemplateProps {
   type?: "invoice" | "estimate" | "bill" | "po";
   taxBreakdown?: { name: string; amount: number }[];
   isInterstate?: boolean;
+  showSignature?: boolean;
 }
 
 const getTitleText = (type: string) => {
@@ -25,18 +26,18 @@ const getTitleText = (type: string) => {
   return "TAX INVOICE";
 };
 
-export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate }: StyledInvoiceTemplateProps) {
+export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate, showSignature = true }: StyledInvoiceTemplateProps) {
   if (org?.template_style === "classic_tabular") {
-    return <ClassicTabularInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+    return <ClassicTabularInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} showSignature={showSignature} />;
   }
   if (org?.template_style === "modern_navy") {
-    return <ModernNavyInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+    return <ModernNavyInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} showSignature={showSignature} />;
   }
   if (org?.template_style === "modern_teal") {
-    return <ModernTealInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+    return <ModernTealInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} showSignature={showSignature} />;
   }
   if (org?.template_style === "modern_crimson") {
-    return <ModernCrimsonInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} />;
+    return <ModernCrimsonInvoiceTemplate org={org} invoice={invoice} lines={lines} fmt={fmt} type={type} taxBreakdown={taxBreakdown} isInterstate={isInterstate} showSignature={showSignature} />;
   }
 
   if (org?.template_style === "professional_navy") {
@@ -48,7 +49,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         fmt={fmt}
         type={type}
         taxBreakdown={taxBreakdown}
-        isInterstate={isInterstate}
+        isInterstate={isInterstate} showSignature={showSignature}
       />
     );
   }
@@ -62,7 +63,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         fmt={fmt}
         type={type}
         taxBreakdown={taxBreakdown}
-        isInterstate={isInterstate}
+        isInterstate={isInterstate} showSignature={showSignature}
       />
     );
   }
@@ -428,6 +429,18 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
       <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
         <div style={{ textAlign: "center", width: 200 }}>
           <div style={{ height: 60, borderBottom: "1px solid #d4d4d8", marginBottom: 8 }}></div>
+          
+          {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 40, marginTop: -40, position: 'relative', zIndex: 10 }}>
+              {org.address.signature_type === 'image' && org.address.signature_image_url ? (
+                <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 60, mixBlendMode: 'multiply', objectFit: 'contain' }} />
+              ) : org.address.signature_type === 'font' && org.address.signature_name ? (
+                <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 32, lineHeight: 1, color: '#1e293b' }}>
+                  {org.address.signature_name}
+                </div>
+              ) : null}
+            </div>
+          )}
           <div style={{ fontSize: 11, fontWeight: 600 }}>Authorized Signature</div>
           <div style={{ fontSize: 10, color: "#71717a", marginTop: 2 }}>{org?.name}</div>
         </div>

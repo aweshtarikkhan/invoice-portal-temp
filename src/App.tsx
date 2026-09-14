@@ -106,6 +106,9 @@ const PamphletPage = lazy(() => import("./pages/PamphletPage"));
 const SocialLaunchPostsPage = lazy(() => import("./pages/SocialLaunchPostsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 const PartnerWithUsPage = lazy(() => import("./pages/PartnerWithUsPage"));
+const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
+const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
+const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
@@ -130,6 +133,9 @@ const App = () => (
             <Route path="/brochure" element={<BrochurePage />} />
             <Route path="/pamphlet" element={<PamphletPage />} />
             <Route path="/launch-posts" element={<SocialLaunchPostsPage />} />
+            <Route path="/privacy" element={<PrivacyPolicyPage />} />
+            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/refund-policy" element={<RefundPolicyPage />} />
 
             {/* Protected routes */}
             <Route

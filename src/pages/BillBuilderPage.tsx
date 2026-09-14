@@ -12,6 +12,7 @@ import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
 import { stateCodeFromGstin } from "@/lib/gst";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -409,6 +410,10 @@ export default function BillBuilderPage() {
   const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
+  const [showSignature, setShowSignature] = useState(() => {
+    const org = useAppStore.getState().organization;
+    return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
+  });
   const { user } = useAuth();
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
@@ -1211,6 +1216,8 @@ export default function BillBuilderPage() {
         </CardContent>
       </Card>
 
+      
+  
       {/* Custom Fields */}
       <Card>
         <CardContent className="pt-6">
@@ -1572,6 +1579,36 @@ export default function BillBuilderPage() {
       </div>
 
 
-    </div>
+    
+                {/* Signature Toggle */}
+                <div className="flex items-center space-x-2 py-4 border-t mt-4">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox 
+                            id="show-signature" 
+                            checked={showSignature} 
+                            onCheckedChange={(checked) => {
+                              if (checked && (!org?.address?.signature_type || org.address.signature_type === 'none')) {
+                                toast({ title: "No signature found", description: "Please upload or select your signature in Settings > Custom Fields" });
+                                return;
+                              }
+                              setShowSignature(!!checked);
+                            }} 
+                          />
+                          <Label htmlFor="show-signature" className="cursor-pointer">Include Authorized Signature</Label>
+                        </div>
+                      </TooltipTrigger>
+                      {(!org?.address?.signature_type || org?.address?.signature_type === 'none') && (
+                        <TooltipContent>
+                          <p>Please upload or select your signature in Settings {'>'} Custom Fields</p>
+                        </TooltipContent>
+                      )}
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+</div>
   );
 }

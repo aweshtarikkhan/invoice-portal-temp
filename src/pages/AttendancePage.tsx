@@ -1187,14 +1187,7 @@ export default function AttendancePage() {
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="roster">Roster Planner</TabsTrigger>
           <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
-          <TabsTrigger value="leaves" className="flex items-center gap-1.5">
-            Leave Requests
-            {leaves.filter(l => l.status === 'pending').length > 0 && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                {leaves.filter(l => l.status === 'pending').length}
-              </span>
-            )}
-          </TabsTrigger>
+
           <TabsTrigger value="regularizations" className="flex items-center gap-1.5">
             Regularizations
             {regularizations.filter(r => r.status === 'pending').length > 0 && (
@@ -1203,10 +1196,7 @@ export default function AttendancePage() {
               </span>
             )}
           </TabsTrigger>
-          <TabsTrigger value="salaries" className="flex items-center gap-1.5 font-semibold text-emerald-700 dark:text-emerald-400">
-            <Calculator className="w-4 h-4" />
-            Salaries & Calculation
-          </TabsTrigger>
+
           <TabsTrigger value="holidays">Company Holidays</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="hr-chat" className="flex items-center gap-1.5">
@@ -1885,59 +1875,6 @@ export default function AttendancePage() {
         </Tabs>
       </TabsContent>
 
-      <TabsContent value="leaves">
-        <Card>
-          <CardHeader>
-            <CardTitle>Employee Leave Requests</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 overflow-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Leave Type</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leaves.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">No leave requests found.</TableCell>
-                  </TableRow>
-                ) : (
-                  leaves.map((leave) => (
-                    <TableRow key={leave.id}>
-                      <TableCell className="font-medium">{leave.employees?.name}</TableCell>
-                      <TableCell className="capitalize">{leave.leave_type}</TableCell>
-                      <TableCell>
-                        {format(parseISO(leave.start_date), 'MMM dd')} - {format(parseISO(leave.end_date), 'MMM dd')} ({leave.days}d)
-                      </TableCell>
-                      <TableCell className="text-muted-foreground max-w-[200px] truncate" title={leave.reason}>{leave.reason}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${leave.status === 'approved' ? 'bg-green-100 text-green-700' : leave.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                          {leave.status}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {leave.status === 'pending' && (
-                          <div className="flex justify-end gap-2">
-                            <Button size="sm" variant="outline" className="text-green-600 border-green-200 bg-green-50 hover:bg-green-100" onClick={() => updateLeaveStatus(leave.id, 'approved')}>Approve</Button>
-                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 bg-red-50 hover:bg-red-100" onClick={() => updateLeaveStatus(leave.id, 'rejected')}>Reject</Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </TabsContent>
-
       <TabsContent value="regularizations">
         <Card>
           <CardHeader>
@@ -2016,10 +1953,6 @@ export default function AttendancePage() {
             </Table>
           </CardContent>
         </Card>
-      </TabsContent>
-
-      <TabsContent value="salaries" className="space-y-4">
-        <SalariesTab />
       </TabsContent>
 
       <TabsContent value="holidays" className="space-y-6">
