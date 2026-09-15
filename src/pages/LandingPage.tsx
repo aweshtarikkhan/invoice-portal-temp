@@ -249,7 +249,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
+            <h1 className="text-3xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
               Simplify Your Business<br/>
               Amplify Your Growth
             </h1>
@@ -305,7 +305,7 @@ export default function LandingPage() {
 
       {/* Stats/Trust strip */}
       <section className="bg-white border-b py-10 relative -mt-8 z-20 mx-4 sm:mx-8 lg:mx-auto max-w-6xl rounded-2xl shadow-xl">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 px-6 text-center divide-x divide-slate-100">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 md:gap-y-0 px-6 text-center md:divide-x divide-slate-100">
           {[
             { v: "500+", l: L.trust_users, c: "text-primary" },
             { v: "₹820 Cr+", l: L.trust_invoices, c: "text-emerald-500" },
@@ -622,8 +622,8 @@ export default function LandingPage() {
 
                 {/* Floating Checkout Bar */}
                 {finalSelected.size > 0 && (
-                  <div className="sticky bottom-6 z-40 animate-in slide-in-from-bottom-10 fade-in duration-300">
-                    <div className="bg-navy/95 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl shadow-navy/50 p-3 pl-8 flex flex-col md:flex-row items-center justify-between gap-6 max-w-4xl mx-auto">
+                  <div className="sticky bottom-6 z-40 animate-in slide-in-from-bottom-10 fade-in duration-300 mx-4 md:mx-auto max-w-4xl">
+                    <div className="bg-navy/95 backdrop-blur-xl border border-white/10 rounded-3xl md:rounded-full shadow-2xl shadow-navy/50 p-4 md:p-3 md:pl-8 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6 w-full">
                       <div className="flex items-center gap-6">
                         <div className="bg-white/10 h-12 w-12 rounded-full flex items-center justify-center">
                           <span className="text-xl font-bold text-white">{finalSelected.size}</span>

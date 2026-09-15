@@ -188,7 +188,7 @@ export function PublicFooter() {
 
           {/* Bottom Copyright & Legal Links Bar */}
           <div className="pt-8 flex flex-col xl:flex-row items-center justify-between gap-4 text-xs sm:text-sm">
-            <p className="text-slate-400 text-center xl:text-left whitespace-nowrap">
+            <p className="text-slate-400 text-center xl:text-left md:whitespace-nowrap">
               &copy; {new Date().getFullYear()} Aassay Biz, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)
             </p>
             <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-2 sm:gap-2.5 pr-0 lg:pr-20">
