@@ -132,9 +132,8 @@ export function PublicFooter() {
             {/* Column 4: Legal & Trust (3 cols) */}
             <div className="lg:col-span-3 flex flex-col justify-between">
               <div>
-                <h3 className="font-bold text-white text-base tracking-wide mb-4 flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#ff9438]" />
-                  <span>Contact Us</span>
+                <h3 className="font-bold text-white text-base tracking-wide mb-4">
+                  Contact Us
                 </h3>
                 <ul className="space-y-3 text-sm mb-6">
                   <li>
