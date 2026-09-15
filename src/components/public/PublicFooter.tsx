@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
-import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2 } from "lucide-react";
+import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin } from "lucide-react";
 
 export function PublicFooter() {
   const { data: socials } = usePlatformSocials();
@@ -63,23 +63,7 @@ export function PublicFooter() {
                 India's smartest GST billing and business operating platform. We help shopkeepers, freelancers, and growing enterprises automate invoicing, stock, HRMS, and CRM.
               </p>
 
-              {/* Direct Support Helpline & Email */}
-              <div className="space-y-2.5 w-full mb-6">
-                <a
-                  href={`tel:${phone}`}
-                  className="flex items-center gap-3 text-xs sm:text-sm text-slate-200 hover:text-[#ff9438] transition-colors p-2.5 px-3 rounded-xl bg-white/5 border border-white/10 hover:border-[#e77817]/40 w-fit"
-                >
-                  <Phone className="w-4 h-4 text-[#ff9438]" />
-                  <span className="font-semibold">{formattedPhone}</span>
-                </a>
-                <a
-                  href="mailto:support@assaybiz.com"
-                  className="flex items-center gap-3 text-xs sm:text-sm text-slate-200 hover:text-[#ff9438] transition-colors p-2.5 px-3 rounded-xl bg-white/5 border border-white/10 hover:border-[#e77817]/40 w-fit"
-                >
-                  <Mail className="w-4 h-4 text-[#ff9438]" />
-                  <span>support@assaybiz.com</span>
-                </a>
-              </div>
+
 
               {/* Social Channels */}
               <div>
@@ -142,27 +126,27 @@ export function PublicFooter() {
             <div className="lg:col-span-3 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-white text-base tracking-wide mb-4 flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-[#ff9438]" />
-                  <span>Legal & Compliance</span>
+                  <Phone className="w-4 h-4 text-[#ff9438]" />
+                  <span>Contact Us</span>
                 </h3>
-                <ul className="space-y-2.5 text-sm mb-6">
+                <ul className="space-y-3 text-sm mb-6">
                   <li>
-                    <Link to="/privacy" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
-                      <span>Privacy Policy</span>
-                    </Link>
+                    <a href={`tel:${phone}`} className="flex items-start gap-3 text-slate-300 hover:text-[#ff9438] transition-colors">
+                      <Phone className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
+                      <span>{formattedPhone}</span>
+                    </a>
                   </li>
                   <li>
-                    <Link to="/terms" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
-                      <span>Terms of Service</span>
-                    </Link>
+                    <a href="mailto:support@assaybiz.com" className="flex items-start gap-3 text-slate-300 hover:text-[#ff9438] transition-colors">
+                      <Mail className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
+                      <span>support@assaybiz.com</span>
+                    </a>
                   </li>
                   <li>
-                    <Link to="/refund-policy" className="flex items-center gap-2 text-slate-300 hover:text-[#ff9438] transition-colors">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#ff9438]" />
-                      <span>Cancellation & Refund Policy</span>
-                    </Link>
+                    <div className="flex items-start gap-3 text-slate-300">
+                      <MapPin className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
+                      <span>Commercial Hub, Bhopal,<br/>Madhya Pradesh, India</span>
+                    </div>
                   </li>
                 </ul>
               </div>
