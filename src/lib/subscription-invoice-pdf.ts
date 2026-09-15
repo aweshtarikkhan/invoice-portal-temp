@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
+import { ASSAYBIZ_LOGO_BASE64 } from "@/assets/logo-base64";
 
 export interface SubscriptionInvoiceData {
   invoiceNumber: string;
@@ -95,46 +96,64 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   // 1. TOP CORPORATE HEADER (Deep Navy Banner)
   // -------------------------------------------------------------
   doc.setFillColor(22, 14, 61); // #160e3d
-  doc.rect(0, 0, pageWidth, 36, "F");
+  doc.rect(0, 0, pageWidth, 38, "F");
 
   // Accent Bottom Stripe
   doc.setFillColor(231, 120, 23); // #e77817
-  doc.rect(0, 36, pageWidth, 2.5, "F");
+  doc.rect(0, 38, pageWidth, 2.5, "F");
 
-  // Assay Biz Wordmark Logo
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
-  doc.setTextColor(231, 120, 23); // 'A' in Orange
-  doc.text("A", margin, 20);
+  // Assay Biz Official Logo in Crisp White Box Container (matching website)
+  const boxX = margin;
+  const boxY = 6;
+  const boxW = 50;
+  const boxH = 15;
+  doc.setFillColor(255, 255, 255); // White box
+  doc.roundedRect(boxX, boxY, boxW, boxH, 2, 2, "F");
 
-  const aWidth = doc.getTextWidth("A");
-  doc.setTextColor(255, 255, 255); // 'ssay' in White
-  doc.text("ssay", margin + aWidth, 20);
+  // Logo Image centered inside white box (aspect ratio ~4.14:1)
+  const logoW = 42;
+  const logoH = 10.1;
+  const logoX = boxX + (boxW - logoW) / 2;
+  const logoY = boxY + (boxH - logoH) / 2;
+  try {
+    doc.addImage(ASSAYBIZ_LOGO_BASE64, "PNG", logoX, logoY, logoW, logoH);
+  } catch (imgErr) {
+    console.warn("Failed to embed logo image, falling back to wordmark:", imgErr);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(16);
+    doc.setTextColor(231, 120, 23);
+    doc.text("Assay", logoX + 2, logoY + 7);
+    doc.setTextColor(40, 22, 111);
+    doc.text("Biz", logoX + 22, logoY + 7);
+  }
 
-  const assayWidth = doc.getTextWidth("Assay");
-  doc.setTextColor(231, 120, 23); // 'Biz' in Orange
-  doc.text("Biz", margin + assayWidth + 2, 20);
-
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(203, 213, 225); // slate-300
   doc.text("India's Smartest Business Operating & GST Billing Platform", margin, 27);
+  doc.setFontSize(7);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text("CIN: U73200MP2025PTC074472 • Emerging Thoughts Pvt. Ltd.", margin, 33);
 
   // Right Header: TAX INVOICE & Details
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
   doc.setTextColor(255, 255, 255);
-  doc.text("TAX INVOICE", pageWidth - margin, 17, { align: "right" });
+  doc.text("TAX INVOICE", pageWidth - margin, 16, { align: "right" });
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(254, 215, 170); // orange-200
-  doc.text("Original For Recipient • SaaS Subscription", pageWidth - margin, 23, { align: "right" });
+  doc.text("Original For Recipient • SaaS Subscription", pageWidth - margin, 22, { align: "right" });
 
   doc.setTextColor(226, 232, 240); // slate-200
-  doc.text(`Invoice No: ${data.invoiceNumber}`, pageWidth - margin, 29, { align: "right" });
+  doc.text(`Invoice No: ${data.invoiceNumber}`, pageWidth - margin, 28, { align: "right" });
 
-  let y = 46;
+  doc.setFontSize(7.5);
+  doc.setTextColor(203, 213, 225);
+  doc.text(`Date: ${data.invoiceDate || new Date().toLocaleDateString("en-IN")}`, pageWidth - margin, 33, { align: "right" });
+
+  let y = 47;
 
   // -------------------------------------------------------------
   // 2. INVOICE META CARD (Quick Overview Grid)
