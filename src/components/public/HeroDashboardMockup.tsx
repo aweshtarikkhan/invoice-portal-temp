@@ -562,18 +562,18 @@ export function HeroDashboardMockup() {
         <div className="flex h-[475px] sm:h-[500px] text-xs">
           
           {/* 1. LEFT SIDEBAR - Logo Blue (#28166f) Panel */}
-          <div className="w-44 sm:w-52 bg-[#28166f] text-white/80 flex flex-col justify-between py-3 px-2 shrink-0 border-r border-[#1e1058]">
+          <div className="w-12 sm:w-52 bg-[#28166f] text-white/80 flex flex-col justify-between py-3 px-1 sm:px-2 shrink-0 border-r border-[#1e1058]">
             <div className="flex flex-col h-full overflow-hidden">
               
               {/* Real AssayBiz Logo on crisp container */}
-              <div className="mb-2.5 px-1 shrink-0">
-                <div className="bg-white px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
-                  <img src={logoImg} alt="Assay Biz" className="h-6.5 w-auto object-contain" />
+              <div className="mb-2.5 px-0 sm:px-1 shrink-0">
+                <div className="bg-white px-1 sm:px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
+                  <img src={logoImg} alt="Assay Biz" className="h-4 sm:h-6.5 w-auto object-contain" />
                 </div>
               </div>
 
               {/* Exact Parent Menu Options */}
-              <div className="text-[9px] font-bold tracking-wider text-white/60 uppercase px-2 mb-1 shrink-0">
+              <div className="hidden sm:block text-[9px] font-bold tracking-wider text-white/60 uppercase px-2 mb-1 shrink-0">
                 Modules
               </div>
 
@@ -587,19 +587,19 @@ export function HeroDashboardMockup() {
                       type="button"
                       onClick={() => handleModuleSelect(item.id as ParentModuleKey)}
                       onMouseEnter={() => handleModuleSelect(item.id as ParentModuleKey)}
-                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
+                      className={`w-full flex items-center justify-center sm:justify-between p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
                         isActive
-                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/40 translate-x-1"
-                          : "text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-0.5"
+                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/40 sm:translate-x-1"
+                          : "text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-0 sm:hover:translate-x-0.5"
                       }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-white" : "text-white/80"}`} />
-                        <span className="text-[11px] sm:text-xs truncate">{item.label}</span>
+                      <div className="flex items-center justify-center sm:justify-start gap-2 min-w-0 w-full sm:w-auto">
+                        <Icon className={`w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 mx-auto sm:mx-0 ${isActive ? "text-white" : "text-white/80"}`} />
+                        <span className="hidden sm:inline text-[11px] sm:text-xs truncate">{item.label}</span>
                       </div>
                       {item.isUpcoming && (
                         <span
-                          className={`text-[8px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
+                          className={`hidden sm:inline text-[8px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
                             isActive
                               ? "bg-white/20 text-white border-white/30"
                               : "bg-amber-400/20 text-amber-200 border-amber-400/40"
@@ -614,11 +614,11 @@ export function HeroDashboardMockup() {
               </nav>
 
               {/* Bottom Quick Indicator */}
-              <div className="pt-2 mt-1 border-t border-white/15 shrink-0 px-2 flex items-center justify-between text-[9.5px] text-white/70">
-                <span className="flex items-center gap-1">
+              <div className="pt-2 mt-1 border-t border-white/15 shrink-0 px-1 sm:px-2 flex items-center justify-center sm:justify-between text-[9.5px] text-white/70">
+                <span className="hidden sm:flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> AssayBiz v2.4
                 </span>
-                <span className="text-orange-300 font-bold">100% GST</span>
+                <span className="text-orange-300 font-bold hidden sm:inline">100% GST</span>
               </div>
             </div>
           </div>

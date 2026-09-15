@@ -243,8 +243,8 @@ export default function LandingPage() {
           <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-center">
             
             {/* Pill Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#e77817]" />
+            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-[9px] sm:text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 shadow-xs max-w-full truncate whitespace-normal text-center">
+              <Sparkles className="w-3.5 h-3.5 text-[#e77817] shrink-0" />
               <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
             </div>
 
@@ -296,7 +296,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right Column: Interactive SaaS Software Dashboard Mockup */}
-          <div className="lg:col-span-7 flex justify-center lg:justify-end w-full mt-4 lg:mt-0">
+          <div className="lg:col-span-7 flex justify-center lg:justify-end w-full mt-4 lg:mt-0 overflow-hidden sm:overflow-visible px-1 sm:px-0">
             <HeroDashboardMockup />
           </div>
 
