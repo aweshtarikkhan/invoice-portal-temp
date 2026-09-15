@@ -392,15 +392,15 @@ export default function LandingPage() {
       </section>
 
       {/* WhatsApp highlight */}
-      <section className="py-24 bg-navy relative overflow-hidden text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#e77817]/10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="mx-auto max-w-7xl px-6 grid md:grid-cols-2 gap-16 items-center relative z-10">
+      <section className="py-12 bg-navy relative overflow-hidden text-white">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e77817]/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-8 items-center relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 mb-6 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs">
-              <MessageCircle className="h-4 w-4 text-[#ff9438]" />
+            <div className="inline-flex items-center gap-2 mb-4 py-1 px-3 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-wide shadow-xs">
+              <MessageCircle className="h-3.5 w-3.5 text-[#ff9438]" />
               <span>{L.wa_eyebrow}</span>
             </div>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-white !text-white mb-6 leading-tight">
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight text-white !text-white mb-4 leading-tight">
               {lang === "hi" ? (
                 <>
                   बिल भेजें।{" "}
@@ -413,50 +413,50 @@ export default function LandingPage() {
                 </>
               )}
             </h2>
-            <p className="text-base sm:text-lg text-slate-200 leading-relaxed mb-8 font-normal">{L.wa_sub}</p>
-            <ul className="space-y-4">
+            <p className="text-sm text-slate-200 leading-relaxed mb-5 font-normal">{L.wa_sub}</p>
+            <ul className="space-y-3">
               {L.wa_bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-3.5">
-                  <div className="mt-0.5 h-6 w-6 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-3.5 w-3.5 stroke-[3]" />
+                <li key={i} className="flex items-start gap-3">
+                  <div className="mt-0.5 h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
                   </div>
-                  <span className="text-white font-medium text-base sm:text-lg leading-snug">{b}</span>
+                  <span className="text-white font-medium text-sm leading-snug">{b}</span>
                 </li>
               ))}
             </ul>
           </div>
-          <div className="relative mx-auto w-full max-w-sm">
-             <div className="aspect-[9/19] rounded-[3rem] border-[12px] border-slate-900 bg-slate-900 overflow-hidden shadow-2xl shadow-black/50 relative">
-               <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 z-20 rounded-b-xl w-40 mx-auto"></div>
+          <div className="relative mx-auto w-full max-w-[210px]">
+             <div className="aspect-[9/19] rounded-[2rem] border-[8px] border-slate-900 bg-slate-900 overflow-hidden shadow-2xl shadow-black/50 relative">
+               <div className="absolute top-0 inset-x-0 h-4 bg-slate-900 z-20 rounded-b-lg w-24 mx-auto"></div>
                <img src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=600&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-20" alt="" />
                <div className="absolute inset-0 flex flex-col bg-[#ece5dd]/90">
-                 <div className="bg-[#075e54] text-white p-4 pt-10 flex items-center gap-3 shadow-md z-10">
-                   <div className="h-10 w-10 rounded-full bg-slate-300 shrink-0 border border-white/20"></div>
+                 <div className="bg-[#075e54] text-white p-2 pt-6 flex items-center gap-2 shadow-md z-10">
+                   <div className="h-7 w-7 rounded-full bg-slate-300 shrink-0 border border-white/20"></div>
                    <div>
-                     <div className="font-bold">Kumar Constructions</div>
-                     <div className="text-xs text-white/80">typing...</div>
+                     <div className="font-bold text-xs">Kumar Constructions</div>
+                     <div className="text-[10px] text-white/80">typing...</div>
                    </div>
                  </div>
-                 <div className="flex-1 p-4 space-y-4 overflow-y-auto">
-                   <div className="bg-white p-3 rounded-2xl rounded-tl-none shadow-sm text-sm max-w-[85%] relative text-slate-800">
+                 <div className="flex-1 p-2 space-y-2 overflow-y-auto">
+                   <div className="bg-white p-2 rounded-xl rounded-tl-none shadow-sm text-[10px] max-w-[85%] relative text-slate-800">
                      Hello sir, sending the invoice for cement and steel delivery. 👇
                    </div>
-                   <div className="bg-white p-1 rounded-2xl rounded-tl-none shadow-sm text-sm max-w-[85%] relative">
-                     <div className="bg-slate-100 rounded-xl p-3 flex items-center gap-3 mb-2">
-                        <div className="bg-[#ff0000] p-2 rounded-lg"><FileText className="h-5 w-5 text-white" /></div>
+                   <div className="bg-white p-1 rounded-xl rounded-tl-none shadow-sm text-[10px] max-w-[85%] relative">
+                     <div className="bg-slate-100 rounded-lg p-2 flex items-center gap-2 mb-1">
+                        <div className="bg-[#ff0000] p-1 rounded-md"><FileText className="h-3 w-3 text-white" /></div>
                         <div>
-                          <div className="font-bold text-slate-700">INV-2026-0184.pdf</div>
-                          <div className="text-xs text-slate-500">2 Pages • 245 KB</div>
+                          <div className="font-bold text-slate-700 text-[10px]">INV-2026-0184.pdf</div>
+                          <div className="text-[9px] text-slate-500">2 Pages • 245 KB</div>
                         </div>
                      </div>
-                     <div className="px-2 pb-2">
-                        <div className="font-bold text-slate-800 text-lg mb-1">₹24,750</div>
-                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl h-10 shadow-md">Pay via UPI</Button>
+                     <div className="px-1 pb-1">
+                        <div className="font-bold text-slate-800 text-xs mb-1">₹24,750</div>
+                        <Button className="w-full bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg h-7 text-[10px] shadow-md">Pay via UPI</Button>
                      </div>
                    </div>
-                   <div className="ml-auto bg-[#dcf8c6] p-3 rounded-2xl rounded-tr-none shadow-sm text-sm max-w-[80%] relative text-slate-800 flex justify-between items-end">
+                   <div className="ml-auto bg-[#dcf8c6] p-2 rounded-xl rounded-tr-none shadow-sm text-[10px] max-w-[80%] relative text-slate-800 flex justify-between items-end">
                      <span>Payment done. Thanks! ✅</span>
-                     <span className="text-[10px] text-slate-500 ml-2">10:42 AM</span>
+                     <span className="text-[9px] text-slate-500 ml-1">10:42 AM</span>
                    </div>
                  </div>
                </div>
