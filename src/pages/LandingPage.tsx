@@ -29,9 +29,9 @@ const t = {
     hero_sub: "Assay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.",
     cta_primary: "Create your first invoice — Free",
     cta_secondary: "Watch 60-sec demo",
-    trust_users: "500+ businesses trust Assay Biz",
-    trust_invoices: "₹820 Cr+ invoiced",
-    trust_rating: "4.8 / 5 on Play Store",
+    trust_users: "100+ businesses trust Assay Biz",
+    trust_invoices: "₹23 Cr+ invoiced",
+    trust_rating: "4.8 / 5 on Assay",
     trust_uptime: "99.99% uptime",
     speed_claim: "Invoice ready in 60 seconds",
     no_card_badge: "No credit card needed",
@@ -56,9 +56,9 @@ const t = {
     hero_sub: "Assay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह।",
     cta_primary: "अभी मुफ़्त बिल बनाएं",
     cta_secondary: "60-सेकंड डेमो देखें",
-    trust_users: "500+ बिज़नेस Assay Biz पर भरोसा करते हैं",
-    trust_invoices: "₹820 करोड़+ की बिलिंग",
-    trust_rating: "Play Store पर 4.8 / 5",
+    trust_users: "100+ बिज़नेस Assay Biz पर भरोसा करते हैं",
+    trust_invoices: "₹23 करोड़+ की बिलिंग",
+    trust_rating: "4.8 / 5 Assay पर",
     trust_uptime: "99.99% अपटाइम",
     speed_claim: "60 सेकंड में इनवॉइस तैयार",
     no_card_badge: "कोई क्रेडिट कार्ड नहीं चाहिए",
@@ -317,8 +317,8 @@ export default function LandingPage() {
       <section className="bg-white border-b py-10 relative -mt-8 z-20 mx-4 sm:mx-8 lg:mx-auto max-w-6xl rounded-2xl shadow-xl">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 md:gap-y-0 px-6 text-center md:divide-x divide-slate-100">
           {[
-            { v: "500+", l: L.trust_users, c: "text-primary" },
-            { v: "₹820 Cr+", l: L.trust_invoices, c: "text-emerald-500" },
+            { v: "100+", l: L.trust_users, c: "text-primary" },
+            { v: "₹23 Cr+", l: L.trust_invoices, c: "text-emerald-500" },
             { v: "4.8 ★", l: L.trust_rating, c: "text-amber-500" },
             { v: "99.99%", l: L.trust_uptime, c: "text-blue-500" },
           ].map((s, i) => (
