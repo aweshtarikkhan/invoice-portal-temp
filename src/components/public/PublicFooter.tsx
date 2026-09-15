@@ -187,26 +187,26 @@ export function PublicFooter() {
           </div>
 
           {/* Bottom Copyright & Legal Links Bar */}
-          <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:pr-44 text-xs sm:text-sm">
-            <p className="text-slate-400 text-center md:text-left">
+          <div className="pt-8 flex flex-col xl:flex-row items-center justify-between gap-4 text-xs sm:text-sm">
+            <p className="text-slate-400 text-center xl:text-left whitespace-nowrap">
               &copy; {new Date().getFullYear()} Aassay Biz, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+            <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-2 sm:gap-2.5 pr-0 lg:pr-20">
               <Link 
                 to="/privacy" 
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all"
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all whitespace-nowrap"
               >
                 Privacy Policy
               </Link>
               <Link 
                 to="/terms" 
-                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all"
+                className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 hover:text-white border border-white/10 hover:border-[#e77817]/50 text-xs font-medium transition-all whitespace-nowrap"
               >
                 Terms of Service
               </Link>
               <Link 
                 to="/refund-policy" 
-                className="px-3 py-1.5 rounded-lg bg-[#e77817]/15 hover:bg-[#e77817]/30 text-[#ffaa47] hover:text-white border border-[#e77817]/40 text-xs font-semibold transition-all shadow-sm"
+                className="px-3 py-1.5 rounded-lg bg-[#e77817]/15 hover:bg-[#e77817]/30 text-[#ffaa47] hover:text-white border border-[#e77817]/40 text-xs font-semibold transition-all shadow-sm whitespace-nowrap"
               >
                 Cancellation & Refund Policy
               </Link>
