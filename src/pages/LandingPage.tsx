@@ -240,10 +240,10 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 relative z-10 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           
           {/* Left Column: Headline, Copy & CTAs */}
-          <div className="lg:col-span-5 text-center lg:text-left flex flex-col justify-center">
+          <div className="lg:col-span-5 text-left flex flex-col justify-center items-start">
             
             {/* Pill Eyebrow */}
-            <div className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-[9px] sm:text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 shadow-xs max-w-full truncate whitespace-normal text-center">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#e77817] shrink-0" />
               <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
             </div>
@@ -255,12 +255,12 @@ export default function LandingPage() {
             </h1>
 
             {/* Subtitle description */}
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 font-normal">
+            <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl font-normal">
               Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, Ai Analysis and more — everything your business needs, in one powerful platform.
             </p>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3.5 mb-7">
+            <div className="flex flex-col sm:flex-row items-center justify-start gap-3.5 mb-7 w-full sm:w-auto">
               <Button
                 size="lg"
                 className="h-13 px-7 text-base font-bold bg-[#28166f] hover:bg-[#e77817] text-white shadow-lg shadow-[#28166f]/25 hover:shadow-[#e77817]/35 rounded-xl w-full sm:w-auto transition-all duration-300 hover:scale-[1.02]"
@@ -281,7 +281,7 @@ export default function LandingPage() {
             </div>
 
             {/* Trust Badges */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-x-5 gap-y-2 text-xs sm:text-sm font-semibold text-slate-600">
+            <div className="flex flex-wrap items-center justify-start gap-x-5 gap-y-2 text-xs sm:text-sm font-semibold text-slate-600">
               <span className="flex items-center gap-1.5">
                 <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> No Credit Card Required
               </span>
