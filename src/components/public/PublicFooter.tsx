@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
-import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin } from "lucide-react";
+import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
 
 export function PublicFooter() {
   const { data: socials } = usePlatformSocials();
@@ -72,25 +72,32 @@ export function PublicFooter() {
                 </span>
                 <div className="flex items-center gap-3">
                   <a
-                    href={formatSocialUrl("youtube", socials?.youtube) || "https://www.youtube.com/@assaybiz"}
-                    target="_blank" rel="noopener noreferrer" aria-label="YouTube"
-                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#e77817] flex items-center justify-center border border-white/10 hover:border-transparent transition-all duration-300 hover:scale-110 shadow-sm"
-                  >
-                    <img src="/assets/images/icons/youtube.png" alt="YouTube" className="w-5 h-5 object-contain brightness-0 invert" />
-                  </a>
-                  <a
                     href={formatSocialUrl("facebook", socials?.facebook) || "https://www.facebook.com/assaybiz"}
                     target="_blank" rel="noopener noreferrer" aria-label="Facebook"
                     className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#e77817] flex items-center justify-center border border-white/10 hover:border-transparent transition-all duration-300 hover:scale-110 shadow-sm"
                   >
-                    <img src="/assets/images/icons/facebook.png" alt="Facebook" className="w-5 h-5 object-contain brightness-0 invert" />
+                    <Facebook className="w-5 h-5 text-white" />
                   </a>
                   <a
                     href={formatSocialUrl("instagram", socials?.instagram) || "https://www.instagram.com/assaybiz"}
                     target="_blank" rel="noopener noreferrer" aria-label="Instagram"
                     className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#e77817] flex items-center justify-center border border-white/10 hover:border-transparent transition-all duration-300 hover:scale-110 shadow-sm"
                   >
-                    <img src="/assets/images/icons/instagram.png" alt="Instagram" className="w-5 h-5 object-contain brightness-0 invert" />
+                    <Instagram className="w-5 h-5 text-white" />
+                  </a>
+                  <a
+                    href={formatSocialUrl("youtube", socials?.youtube) || "https://www.youtube.com/@assaybiz"}
+                    target="_blank" rel="noopener noreferrer" aria-label="YouTube"
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#e77817] flex items-center justify-center border border-white/10 hover:border-transparent transition-all duration-300 hover:scale-110 shadow-sm"
+                  >
+                    <Youtube className="w-5 h-5 text-white" />
+                  </a>
+                  <a
+                    href={formatSocialUrl("linkedin", socials?.linkedin) || "https://www.linkedin.com/company/assaybiz"}
+                    target="_blank" rel="noopener noreferrer" aria-label="LinkedIn"
+                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-[#e77817] flex items-center justify-center border border-white/10 hover:border-transparent transition-all duration-300 hover:scale-110 shadow-sm"
+                  >
+                    <Linkedin className="w-5 h-5 text-white" />
                   </a>
                 </div>
               </div>
@@ -145,7 +152,7 @@ export function PublicFooter() {
                   <li>
                     <div className="flex items-start gap-3 text-slate-300">
                       <MapPin className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
-                      <span>Commercial Hub, Bhopal,<br/>Madhya Pradesh, India</span>
+                      <span>Bhopal, India</span>
                     </div>
                   </li>
                 </ul>
@@ -182,7 +189,7 @@ export function PublicFooter() {
           {/* Bottom Copyright & Legal Links Bar */}
           <div className="pt-8 flex flex-col md:flex-row items-center justify-between gap-4 md:pr-44 text-xs sm:text-sm">
             <p className="text-slate-400 text-center md:text-left">
-              &copy; {new Date().getFullYear()} Assay Biz. All rights reserved.
+              &copy; {new Date().getFullYear()} Aassay Biz, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)
             </p>
             <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
               <Link 
