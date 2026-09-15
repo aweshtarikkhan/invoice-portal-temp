@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
+import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
 const blank = () => ({
   id: "", name: "", account_type: "bank", bank_name: "", account_number: "",
@@ -91,8 +92,8 @@ export default function BankAccountsPage() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Card><CardContent className="pt-4"><div className="text-xs text-muted-foreground">Accounts</div><div className="text-2xl font-semibold">{rows.length}</div></CardContent></Card>
-        <Card><CardContent className="pt-4"><div className="text-xs text-muted-foreground">Total Balance</div><div className="text-2xl font-semibold">{formatCurrency(total, cur)}</div></CardContent></Card>
+        <Card className="min-w-0"><CardContent className="pt-4 min-w-0"><div className="text-xs text-muted-foreground truncate">Accounts</div><div className="min-w-0"><AutoFitNumber value={rows.length} maxSize="2xl" /></div></CardContent></Card>
+        <Card className="min-w-0"><CardContent className="pt-4 min-w-0"><div className="text-xs text-muted-foreground truncate">Total Balance</div><div className="min-w-0"><AutoFitNumber value={formatCurrency(total, cur)} maxSize="2xl" /></div></CardContent></Card>
       </div>
 
       <Card>

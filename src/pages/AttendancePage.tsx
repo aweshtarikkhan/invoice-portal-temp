@@ -1470,26 +1470,26 @@ export default function AttendancePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card className="p-4 bg-slate-50">
-            <p className="text-xs font-medium text-muted-foreground">Total Staff</p>
-            <p className="text-2xl font-bold text-slate-800">{employees.length}</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <Card className="p-3.5 sm:p-4 bg-slate-50 min-w-0">
+            <p className="text-xs font-medium text-muted-foreground truncate">Total Staff</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-800 tabular-nums truncate">{employees.length}</p>
           </Card>
-          <Card className="p-4 bg-emerald-50 border-emerald-200">
-            <p className="text-xs font-medium text-emerald-700">Clocked In</p>
-            <p className="text-2xl font-bold text-emerald-800">
+          <Card className="p-3.5 sm:p-4 bg-emerald-50 border-emerald-200 min-w-0">
+            <p className="text-xs font-medium text-emerald-700 truncate">Clocked In</p>
+            <p className="text-xl sm:text-2xl font-bold text-emerald-800 tabular-nums truncate">
               {employees.filter(e => dailyLogs[e.id]?.clock_in_time).length}
             </p>
           </Card>
-          <Card className="p-4 bg-amber-50 border-amber-200">
-            <p className="text-xs font-medium text-amber-700">Clocked Out</p>
-            <p className="text-2xl font-bold text-amber-800">
+          <Card className="p-3.5 sm:p-4 bg-amber-50 border-amber-200 min-w-0">
+            <p className="text-xs font-medium text-amber-700 truncate">Clocked Out</p>
+            <p className="text-xl sm:text-2xl font-bold text-amber-800 tabular-nums truncate">
               {employees.filter(e => dailyLogs[e.id]?.clock_out_time).length}
             </p>
           </Card>
-          <Card className="p-4 bg-rose-50 border-rose-200">
-            <p className="text-xs font-medium text-rose-700">Pending / Not Clocked In</p>
-            <p className="text-2xl font-bold text-rose-800">
+          <Card className="p-3.5 sm:p-4 bg-rose-50 border-rose-200 min-w-0">
+            <p className="text-xs font-medium text-rose-700 truncate">Pending / Not Clocked In</p>
+            <p className="text-xl sm:text-2xl font-bold text-rose-800 tabular-nums truncate">
               {employees.filter(e => !dailyLogs[e.id]?.clock_in_time).length}
             </p>
           </Card>

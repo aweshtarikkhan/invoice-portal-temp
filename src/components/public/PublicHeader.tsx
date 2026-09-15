@@ -13,7 +13,6 @@ export function PublicHeader() {
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <a href="/#features" className="hover:text-primary transition-colors">Features</a>
           <a href="/#compare" className="hover:text-primary transition-colors">Compare</a>
-          <a href="/#pricing" className="hover:text-primary transition-colors">Pricing</a>
           <Link to="/partner-with-us" className="hover:text-primary transition-colors">Partner With Us</Link>
         </nav>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">

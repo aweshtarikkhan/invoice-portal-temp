@@ -19,6 +19,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, Legend
 } from "recharts";
 import { format, subDays, isAfter, isSameDay } from "date-fns";
+import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -161,55 +162,54 @@ export default function DashboardPage() {
         </div>
       </div>
 
-<div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
-              <QuickAction icon={FilePlus2} label="Create Invoice" onClick={() => navigate('/invoices/new')} />
-              <QuickAction icon={CreditCard} label="Record Payment" onClick={() => navigate('/payments')} />
-              <QuickAction icon={Receipt} label="Add Expense" onClick={() => navigate('/expenses')} />
-              <QuickAction icon={UserCircle} label="Add Customer" onClick={() => navigate('/clients')} />
-              <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/leads')} />
-              <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees?add=1')} />
-              <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/attendance')} />
-              
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <div>
-                      <QuickAction icon={Activity} label="More" onClick={() => {}} />
-                    </div>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/tally-sync')}>
-                        <Upload className="w-4 h-4 mr-2 text-blue-500" />
-                        Tally Master Sync
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
-                      <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
-                      <span>Purchase Invoice</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/vendors')}>
-                      <Building2 className="w-4 h-4 mr-2 text-slate-500" />
-                      <span>Add Vendor</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/items')}>
-                      <PackagePlus className="w-4 h-4 mr-2 text-slate-500" />
-                      <span>Add Item/Product</span>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/journal')}>
-                      <BookOpen className="w-4 h-4 mr-2 text-slate-500" />
-                      <span>Record Journal</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-
+      <div className="grid grid-cols-4 sm:grid-cols-4 md:grid-cols-8 gap-2 sm:gap-3">
+        <QuickAction icon={FilePlus2} label="Create Invoice" onClick={() => navigate('/invoices/new')} />
+        <QuickAction icon={CreditCard} label="Record Payment" onClick={() => navigate('/payments')} />
+        <QuickAction icon={Receipt} label="Add Expense" onClick={() => navigate('/expenses')} />
+        <QuickAction icon={UserCircle} label="Add Customer" onClick={() => navigate('/clients')} />
+        <QuickAction icon={UserPlus} label="Add Lead" onClick={() => navigate('/leads')} />
+        <QuickAction icon={Briefcase} label="Add Employee" onClick={() => navigate('/employees?add=1')} />
+        <QuickAction icon={CheckCircle2} label="Record Attendance" onClick={() => navigate('/attendance')} />
+        
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <div>
+              <QuickAction icon={Activity} label="More" onClick={() => {}} />
             </div>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/tally-sync')}>
+              <Upload className="w-4 h-4 mr-2 text-blue-500" />
+              Tally Master Sync
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
+              <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
+              <span>Purchase Invoice</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/vendors')}>
+              <Building2 className="w-4 h-4 mr-2 text-slate-500" />
+              <span>Add Vendor</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/items')}>
+              <PackagePlus className="w-4 h-4 mr-2 text-slate-500" />
+              <span>Add Item/Product</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/journal')}>
+              <BookOpen className="w-4 h-4 mr-2 text-slate-500" />
+              <span>Record Journal</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* 2. Top KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPICard title="Total Revenue" value={fmtCurrency(totalRevenue)} icon={IndianRupee} trend="+12.5% vs previous" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
-        <KPICard title="Payment Received" value={fmtCurrency(paymentReceived)} icon={Wallet} trend="+8.2% vs previous" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
-        <KPICard title="Total Expenses" value={fmtCurrency(totalExpenses)} icon={ShoppingCart} trend="-2.4% vs previous" isUp={false} color="text-rose-600" bg="bg-rose-100" />
-        <KPICard title="Outstanding (Pending)" value={fmtCurrency(totalOutstanding)} icon={FileText} trend="+5.1% vs previous" isUp={true} color="text-blue-600" bg="bg-blue-100" />
-        <KPICard title="Overdue Amount" value={fmtCurrency(overdueAmount)} icon={AlertTriangle} trend="-1.2% vs previous" isUp={false} color="text-red-600" bg="bg-red-100" />
-        <KPICard title="Net Cash Flow" value={fmtCurrency(netCashFlow)} icon={BarChartIcon} trend="+14.5% vs previous" isUp={true} color="text-purple-600" bg="bg-purple-100" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-3 sm:gap-4">
+        <KPICard title="Total Revenue" value={fmtCurrency(totalRevenue)} icon={IndianRupee} trend="+12.5%" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
+        <KPICard title="Payment Received" value={fmtCurrency(paymentReceived)} icon={Wallet} trend="+8.2%" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
+        <KPICard title="Total Expenses" value={fmtCurrency(totalExpenses)} icon={ShoppingCart} trend="-2.4%" isUp={false} color="text-rose-600" bg="bg-rose-100" />
+        <KPICard title="Outstanding (Pending)" value={fmtCurrency(totalOutstanding)} icon={FileText} trend="+5.1%" isUp={true} color="text-blue-600" bg="bg-blue-100" />
+        <KPICard title="Overdue Amount" value={fmtCurrency(overdueAmount)} icon={AlertTriangle} trend="-1.2%" isUp={false} color="text-red-600" bg="bg-red-100" />
+        <KPICard title="Net Cash Flow" value={fmtCurrency(netCashFlow)} icon={BarChartIcon} trend="+14.5%" isUp={true} color="text-purple-600" bg="bg-purple-100" />
       </div>
 
       {/* 3. Chart & Action Required Row */}
@@ -324,33 +324,35 @@ export default function DashboardPage() {
       </div>
 
       {/* 4. Four Analytics Cards Row */}
-      <div className="grid lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6">
         {/* Receivables */}
-        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-600">Outstanding Receivables</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{fmtCurrency(totalOutstanding)}</div>
-            <div className="mt-4 flex items-center gap-4">
-              <div className="h-[100px] w-[100px]">
+          <CardContent className="min-w-0">
+            <div className="text-slate-900 min-w-0 mb-1">
+              <AutoFitNumber value={fmtCurrency(totalOutstanding)} maxSize="2xl" />
+            </div>
+            <div className="mt-4 flex items-center gap-3 sm:gap-4 min-w-0">
+              <div className="h-[90px] w-[90px] sm:h-[100px] sm:w-[100px] shrink-0">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                      <RechartsTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                      <Pie data={pieData} innerRadius={35} outerRadius={50} dataKey="value" stroke="none">
+                    <RechartsTooltip formatter={(value) => [`₹${Number(value).toLocaleString('en-IN')}`, 'Amount']} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                    <Pie data={pieData} innerRadius={28} outerRadius={42} dataKey="value" stroke="none">
                       {pieData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                     </Pie>
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <div className="space-y-2 flex-1">
-                <div className="flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Current</div>
-                  <span className="font-semibold">{Math.round((currentOutstanding/totalOutstanding)*100) || 0}%</span>
+              <div className="space-y-2 flex-1 min-w-0">
+                <div className="flex justify-between items-center text-xs gap-1">
+                  <div className="flex items-center gap-1.5 truncate"><div className="w-2 h-2 rounded-full bg-blue-500 shrink-0"></div> <span className="truncate">Current</span></div>
+                  <span className="font-semibold shrink-0">{Math.round((currentOutstanding/totalOutstanding)*100) || 0}%</span>
                 </div>
-                <div className="flex justify-between items-center text-xs">
-                  <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Overdue</div>
-                  <span className="font-semibold">{Math.round((overdueAmount/totalOutstanding)*100) || 0}%</span>
+                <div className="flex justify-between items-center text-xs gap-1">
+                  <div className="flex items-center gap-1.5 truncate"><div className="w-2 h-2 rounded-full bg-red-500 shrink-0"></div> <span className="truncate">Overdue</span></div>
+                  <span className="font-semibold shrink-0">{Math.round((overdueAmount/totalOutstanding)*100) || 0}%</span>
                 </div>
               </div>
             </div>
@@ -358,13 +360,15 @@ export default function DashboardPage() {
         </Card>
 
         {/* Expenses */}
-        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
+        <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold text-slate-600">Purchases & Expenses</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-slate-900">{fmtCurrency(totalExpenses)}</div>
-            <div className="text-xs text-rose-600 font-medium mt-1">Expense vs Sales: {totalRevenue ? Math.round((totalExpenses/totalRevenue)*100) : 0}%</div>
+          <CardContent className="min-w-0">
+            <div className="text-slate-900 min-w-0">
+              <AutoFitNumber value={fmtCurrency(totalExpenses)} maxSize="2xl" />
+            </div>
+            <div className="text-xs text-rose-600 font-medium mt-1 truncate">Expense vs Sales: {totalRevenue ? Math.round((totalExpenses/totalRevenue)*100) : 0}%</div>
             <div className="h-[70px] w-full mt-4">
                <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={areaChartData.slice(-7)}>
@@ -459,21 +463,23 @@ export default function DashboardPage() {
 
 // Subcomponents
 const KPICard = ({ title, value, icon: Icon, trend, isUp, color, bg }: any) => (
-  <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-100 rounded-2xl overflow-hidden relative bg-white">
+  <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border border-slate-100 rounded-2xl overflow-hidden relative bg-white min-w-0">
     <div className={`absolute -right-6 -top-6 w-28 h-28 rounded-full ${bg} opacity-40 blur-3xl pointer-events-none`}></div>
-    <CardContent className="p-5 relative z-10">
-      <div className="flex justify-between items-start mb-3">
-        <div className={`p-3 rounded-xl ${bg} border border-white/50 shadow-sm`}>
-          <Icon className={`w-5 h-5 ${color}`} />
+    <CardContent className="p-4 sm:p-5 relative z-10 min-w-0">
+      <div className="flex justify-between items-start mb-3 gap-2">
+        <div className={`p-2.5 sm:p-3 rounded-xl ${bg} border border-white/50 shadow-sm shrink-0`}>
+          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${color}`} />
         </div>
-        <div className={`flex items-center text-xs font-semibold px-2 py-1 rounded-full ${isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
-          {isUp ? <TrendingUp className="w-3.5 h-3.5 mr-1" /> : <TrendingDown className="w-3.5 h-3.5 mr-1" />}
-          {trend}
+        <div className={`flex items-center text-[10px] sm:text-xs font-semibold px-2 py-0.5 sm:py-1 rounded-full shrink-0 ${isUp ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}>
+          {isUp ? <TrendingUp className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 shrink-0" /> : <TrendingDown className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-1 shrink-0" />}
+          <span className="truncate max-w-[85px] sm:max-w-none">{trend}</span>
         </div>
       </div>
-      <div className="mt-4">
-        <div className="text-[13px] font-medium text-slate-500 mb-1">{title}</div>
-        <div className="text-2xl font-bold text-slate-900 tracking-tight">{value}</div>
+      <div className="mt-3 sm:mt-4 min-w-0">
+        <div className="text-xs sm:text-[13px] font-medium text-slate-500 mb-1 truncate" title={title}>{title}</div>
+        <div className="text-slate-900 min-w-0">
+          <AutoFitNumber value={value} maxSize="2xl" />
+        </div>
       </div>
     </CardContent>
   </Card>
@@ -518,11 +524,13 @@ const ActivityRow = ({ icon: Icon, color, bg, title, amount, time }: any) => (
 const QuickAction = ({ icon: Icon, label, onClick }: any) => (
   <button 
     onClick={onClick}
-    className="group flex flex-col items-center justify-start p-2 hover:bg-slate-200/20 rounded-2xl transition-all gap-2"
+    className="group flex flex-col items-center justify-start p-1.5 sm:p-2 hover:bg-slate-200/20 rounded-2xl transition-all gap-1 sm:gap-2 w-full min-w-0"
   >
-    <div className="w-14 h-14 rounded-[1.25rem] bg-white shadow-sm border border-slate-100/80 flex items-center justify-center group-hover:scale-105 group-hover:shadow-md group-hover:border-orange-200 transition-all">
-      <Icon className="w-6 h-6 text-slate-700 group-hover:text-[#f97316] transition-colors" />
+    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-[1.1rem] sm:rounded-[1.25rem] bg-white shadow-sm border border-slate-100/80 flex items-center justify-center group-hover:scale-105 group-hover:shadow-md group-hover:border-orange-200 transition-all shrink-0">
+      <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-slate-700 group-hover:text-[#f97316] transition-colors" />
     </div>
-    <span className="text-[11px] font-medium text-slate-600 text-center leading-tight mt-1">{label}</span>
+    <span className="text-[10px] sm:text-[11px] font-medium text-slate-600 text-center leading-tight mt-0.5 max-w-full break-words line-clamp-2 px-0.5">
+      {label}
+    </span>
   </button>
 );

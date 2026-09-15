@@ -22,6 +22,7 @@ import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Targ
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
+import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
 const leadImportFields: ImportField[] = [
   { key: "name", label: "Lead Name", required: true },
@@ -263,35 +264,35 @@ export default function LeadsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1"><Users className="h-4 w-4" /><span className="text-xs font-medium">Total Leads</span></div>
-            <div className="text-2xl font-bold">{stats.total}</div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border-blue-500/20 min-w-0">
+          <CardContent className="p-3.5 sm:p-4 min-w-0">
+            <div className="flex items-center gap-2 text-blue-600 dark:text-blue-400 mb-1 truncate"><Users className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Total Leads</span></div>
+            <div className="text-slate-900 min-w-0"><AutoFitNumber value={stats.total} /></div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1"><TrendingUp className="h-4 w-4" /><span className="text-xs font-medium">New This Month</span></div>
-            <div className="text-2xl font-bold">{stats.newThisMonth}</div>
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-600/5 border-green-500/20 min-w-0">
+          <CardContent className="p-3.5 sm:p-4 min-w-0">
+            <div className="flex items-center gap-2 text-green-600 dark:text-green-400 mb-1 truncate"><TrendingUp className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">New This Month</span></div>
+            <div className="text-slate-900 min-w-0"><AutoFitNumber value={stats.newThisMonth} /></div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1"><Target className="h-4 w-4" /><span className="text-xs font-medium">Conversion Rate</span></div>
-            <div className="text-2xl font-bold">{stats.conversionRate}%</div>
+        <Card className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border-purple-500/20 min-w-0">
+          <CardContent className="p-3.5 sm:p-4 min-w-0">
+            <div className="flex items-center gap-2 text-purple-600 dark:text-purple-400 mb-1 truncate"><Target className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Conversion Rate</span></div>
+            <div className="text-slate-900 min-w-0"><AutoFitNumber value={`${stats.conversionRate}%`} /></div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1"><DollarSign className="h-4 w-4" /><span className="text-xs font-medium">Pipeline Value</span></div>
-            <div className="text-xl font-bold">{formatCurrency(stats.pipelineValue, currency)}</div>
+        <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20 min-w-0">
+          <CardContent className="p-3.5 sm:p-4 min-w-0">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1 truncate"><DollarSign className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Pipeline Value</span></div>
+            <div className="text-slate-900 min-w-0"><AutoFitNumber value={formatCurrency(stats.pipelineValue, currency)} /></div>
           </CardContent>
         </Card>
-        <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-1"><Flame className="h-4 w-4" /><span className="text-xs font-medium">Hot Leads</span></div>
-            <div className="text-2xl font-bold">{stats.hotLeads}</div>
+        <Card className="bg-gradient-to-br from-red-500/10 to-red-600/5 border-red-500/20 min-w-0">
+          <CardContent className="p-3.5 sm:p-4 min-w-0">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400 mb-1 truncate"><Flame className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Hot Leads</span></div>
+            <div className="text-slate-900 min-w-0"><AutoFitNumber value={stats.hotLeads} /></div>
           </CardContent>
         </Card>
       </div>

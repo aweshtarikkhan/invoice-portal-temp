@@ -550,30 +550,30 @@ export function HeroDashboardMockup() {
   };
 
   return (
-    <div className="relative w-full max-w-[700px] mx-auto select-none">
+    <div className="relative w-full max-w-[580px] mx-auto select-none">
       {/* Decorative background glow matching logo colors */}
-      <div className="absolute -top-10 -right-10 w-80 h-80 bg-[#28166f]/15 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-8 -left-8 w-72 h-72 bg-[#e77817]/15 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-8 -right-8 w-64 h-64 bg-[#28166f]/12 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-6 -left-6 w-56 h-56 bg-[#e77817]/12 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main SaaS Window Frame */}
-      <div className="relative rounded-2xl shadow-[0_20px_60px_-15px_rgba(40,22,111,0.22)] border border-[#28166f]/20 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_25px_70px_-12px_rgba(231,120,23,0.25)]">
+      <div className="relative rounded-2xl shadow-[0_16px_45px_-12px_rgba(40,22,111,0.20)] border border-[#28166f]/20 bg-white overflow-hidden transition-all duration-500 hover:shadow-[0_20px_55px_-10px_rgba(231,120,23,0.22)]">
         
         {/* Flex layout: Left Sidebar + Right Main App View */}
-        <div className="flex h-[475px] sm:h-[500px] text-xs">
+        <div className="flex h-[415px] sm:h-[435px] text-xs">
           
           {/* 1. LEFT SIDEBAR - Logo Blue (#28166f) Panel */}
-          <div className="w-12 sm:w-52 bg-[#28166f] text-white/80 flex flex-col justify-between py-3 px-1 sm:px-2 shrink-0 border-r border-[#1e1058]">
+          <div className="w-11 sm:w-44 bg-[#28166f] text-white/80 flex flex-col justify-between py-2.5 px-1 sm:px-1.5 shrink-0 border-r border-[#1e1058]">
             <div className="flex flex-col h-full overflow-hidden">
               
               {/* Real AssayBiz Logo on crisp container */}
-              <div className="mb-2.5 px-0 sm:px-1 shrink-0">
-                <div className="bg-white px-1 sm:px-3 py-1.5 rounded-lg shadow-sm w-full flex items-center justify-center border border-white/20">
-                  <img src={logoImg} alt="Assay Biz" className="h-4 sm:h-6.5 w-auto object-contain" />
+              <div className="mb-2 px-0 sm:px-0.5 shrink-0">
+                <div className="bg-white px-1 sm:px-2 py-1 rounded-md shadow-xs w-full flex items-center justify-center border border-white/20">
+                  <img src={logoImg} alt="Assay Biz" className="h-3.5 sm:h-5 w-auto object-contain" />
                 </div>
               </div>
 
               {/* Exact Parent Menu Options */}
-              <div className="hidden sm:block text-[9px] font-bold tracking-wider text-white/60 uppercase px-2 mb-1 shrink-0">
+              <div className="hidden sm:block text-[8px] font-bold tracking-wider text-white/60 uppercase px-1.5 mb-1 shrink-0">
                 Modules
               </div>
 
@@ -587,19 +587,19 @@ export function HeroDashboardMockup() {
                       type="button"
                       onClick={() => handleModuleSelect(item.id as ParentModuleKey)}
                       onMouseEnter={() => handleModuleSelect(item.id as ParentModuleKey)}
-                      className={`w-full flex items-center justify-center sm:justify-between p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg text-left transition-all duration-200 cursor-pointer ${
+                      className={`w-full flex items-center justify-center sm:justify-between p-1 sm:px-2 sm:py-1 rounded-md text-left transition-all duration-200 cursor-pointer ${
                         isActive
-                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-md shadow-orange-500/40 sm:translate-x-1"
+                          ? "bg-gradient-to-r from-[#e77817] to-[#ea580c] text-white font-bold shadow-sm shadow-orange-500/40 sm:translate-x-0.5"
                           : "text-white/80 hover:text-white hover:bg-white/15 hover:translate-x-0 sm:hover:translate-x-0.5"
                       }`}
                     >
-                      <div className="flex items-center justify-center sm:justify-start gap-2 min-w-0 w-full sm:w-auto">
-                        <Icon className={`w-4 h-4 sm:w-3.5 sm:h-3.5 shrink-0 mx-auto sm:mx-0 ${isActive ? "text-white" : "text-white/80"}`} />
-                        <span className="hidden sm:inline text-[11px] sm:text-xs truncate">{item.label}</span>
+                      <div className="flex items-center justify-center sm:justify-start gap-1.5 min-w-0 w-full sm:w-auto">
+                        <Icon className={`w-3.5 h-3.5 sm:w-3 sm:h-3 shrink-0 mx-auto sm:mx-0 ${isActive ? "text-white" : "text-white/80"}`} />
+                        <span className="hidden sm:inline text-[10.5px] truncate">{item.label}</span>
                       </div>
                       {item.isUpcoming && (
                         <span
-                          className={`hidden sm:inline text-[8px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
+                          className={`hidden sm:inline text-[7.5px] font-semibold px-1 py-0.2 rounded-full border whitespace-nowrap ml-1 shrink-0 ${
                             isActive
                               ? "bg-white/20 text-white border-white/30"
                               : "bg-amber-400/20 text-amber-200 border-amber-400/40"
@@ -614,7 +614,7 @@ export function HeroDashboardMockup() {
               </nav>
 
               {/* Bottom Quick Indicator */}
-              <div className="pt-2 mt-1 border-t border-white/15 shrink-0 px-1 sm:px-2 flex items-center justify-center sm:justify-between text-[9.5px] text-white/70">
+              <div className="pt-1.5 mt-1 border-t border-white/15 shrink-0 px-0.5 sm:px-1 flex items-center justify-center sm:justify-between text-[8.5px] text-white/70">
                 <span className="hidden sm:flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> AssayBiz v2.4
                 </span>
@@ -627,9 +627,9 @@ export function HeroDashboardMockup() {
           <div className="flex-1 bg-[#f8fafc] flex flex-col overflow-hidden">
             
             {/* Header Bar - Without Search Bar */}
-            <div className="h-9.5 px-3 sm:px-4 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="font-extrabold text-[#28166f] text-xs sm:text-[13px] tracking-tight">
+            <div className="h-8 px-2.5 sm:px-3 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="font-extrabold text-[#28166f] text-xs sm:text-[12.5px] tracking-tight">
                   AssayBiz
                 </span>
                 <span className="text-slate-300 text-xs">/</span>
@@ -638,13 +638,13 @@ export function HeroDashboardMockup() {
                 </span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   title="1 unread alert"
                   className="relative p-1 text-slate-500 hover:text-[#e77817] hover:bg-slate-100 rounded-md transition-colors"
                 >
-                  <Bell className="w-3.5 h-3.5" />
+                  <Bell className="w-3 h-3" />
                   <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-[#e77817] rounded-full ring-2 ring-white" />
                 </button>
                 <button
@@ -652,50 +652,50 @@ export function HeroDashboardMockup() {
                   title="Help & Support"
                   className="p-1 text-slate-500 hover:text-[#e77817] hover:bg-slate-100 rounded-md transition-colors hidden sm:inline-flex"
                 >
-                  <HelpCircle className="w-3.5 h-3.5" />
+                  <HelpCircle className="w-3 h-3" />
                 </button>
-                <div className="w-5.5 h-5.5 rounded-full bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white font-bold flex items-center justify-center text-[9.5px] ring-2 ring-[#e77817]/30 shadow-sm cursor-pointer hover:scale-105 transition-transform">
+                <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#28166f] to-[#e77817] text-white font-bold flex items-center justify-center text-[9px] ring-2 ring-[#e77817]/30 shadow-sm cursor-pointer hover:scale-105 transition-transform">
                   A
                 </div>
               </div>
             </div>
 
             {/* Scrollable Dashboard View */}
-            <div className="p-3 space-y-2 overflow-y-auto flex-1 scrollbar-none">
+            <div className="p-2 sm:p-2.5 space-y-1.5 overflow-y-auto flex-1 scrollbar-none">
               
               {/* Greetings & Active Module Header */}
               <div>
                 <div className="flex items-center justify-between">
-                  <h3 className="font-black text-slate-900 text-sm sm:text-base tracking-tight transition-all truncate">
+                  <h3 className="font-black text-slate-900 text-xs sm:text-sm tracking-tight transition-all truncate">
                     {currentData.title}
                   </h3>
                   {currentData.isUpcoming ? (
-                    <span className="text-[9px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                      <Clock className="w-3 h-3 text-amber-500" /> Upcoming Feature
+                    <span className="text-[8px] font-bold text-amber-600 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <Clock className="w-2.5 h-2.5 text-amber-500" /> Upcoming Feature
                     </span>
                   ) : (
-                    <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                    <span className="text-[8px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Live System
                     </span>
                   )}
                 </div>
-                <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                <p className="text-[9.5px] text-slate-500 mt-0.5 truncate">
                   {currentData.subtitle}
                 </p>
               </div>
 
               {/* INSIDE PAGES PILLS BAR */}
-              <div className="bg-white p-1.5 rounded-xl border border-slate-200/80 shadow-2xs">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                    <ArrowUpRight className="w-3 h-3 text-[#e77817]" /> Inside Modules:
+              <div className="bg-white p-1 rounded-lg border border-slate-200/80 shadow-2xs">
+                <div className="flex items-center justify-between mb-0.5 px-0.5">
+                  <span className="text-[8px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <ArrowUpRight className="w-2.5 h-2.5 text-[#e77817]" /> Inside Modules:
                   </span>
-                  <span className="text-[8.5px] text-[#e77817] font-semibold">
+                  <span className="text-[8px] text-[#e77817] font-semibold">
                     {currentData.subPages.length} Areas
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
                   {currentData.subPages.map((sub, i) => {
                     const isSelected = selectedSubPage === i;
                     return (
@@ -704,7 +704,7 @@ export function HeroDashboardMockup() {
                         type="button"
                         onClick={() => setSelectedSubPage(i)}
                         onMouseEnter={() => setSelectedSubPage(i)}
-                        className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold transition-all cursor-pointer shrink-0 ${
+                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-semibold transition-all cursor-pointer shrink-0 ${
                           isSelected
                             ? "bg-[#28166f] text-white shadow-xs"
                             : "bg-slate-50 hover:bg-orange-50/80 text-slate-700 border border-slate-200 hover:border-[#e77817]"
@@ -712,7 +712,7 @@ export function HeroDashboardMockup() {
                       >
                         <span>{sub.name}</span>
                         <span
-                          className={`text-[8px] px-1 py-0.2 rounded font-bold ${
+                          className={`text-[7.5px] px-1 py-0.2 rounded font-bold ${
                             isSelected
                               ? "bg-white/20 text-white"
                               : "bg-white text-[#e77817] border border-orange-200/60"
@@ -727,7 +727,7 @@ export function HeroDashboardMockup() {
               </div>
 
               {/* 4 KPI Metric Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1">
                 {currentData.metrics.map((m, idx) => {
                   const isHovered = hoveredKpi === idx;
                   return (
@@ -735,19 +735,19 @@ export function HeroDashboardMockup() {
                       key={idx}
                       onMouseEnter={() => setHoveredKpi(idx)}
                       onMouseLeave={() => setHoveredKpi(null)}
-                      className={`p-2 rounded-xl border transition-all duration-200 cursor-pointer ${
+                      className={`p-1.5 rounded-lg border transition-all duration-200 cursor-pointer ${
                         isHovered
-                          ? "bg-white border-[#e77817] shadow-sm -translate-y-0.5"
+                          ? "bg-white border-[#e77817] shadow-xs -translate-y-0.5"
                           : "bg-white/90 border-slate-200/80 hover:bg-white hover:border-slate-300 shadow-2xs"
                       }`}
                     >
-                      <div className="text-[9px] text-slate-500 font-medium truncate">{m.label}</div>
-                      <div className="text-xs sm:text-[13px] font-black text-slate-900 mt-0.5 tracking-tight truncate">
+                      <div className="text-[8.5px] text-slate-500 font-medium truncate">{m.label}</div>
+                      <div className="text-[11px] sm:text-xs font-black text-slate-900 mt-0.5 tracking-tight truncate">
                         {m.value}
                       </div>
                       <div className="flex items-center gap-1 mt-0.5">
                         <span
-                          className={`text-[8px] font-bold px-1 py-0.2 rounded ${
+                          className={`text-[7.5px] font-bold px-1 py-0.2 rounded ${
                             m.isPositive
                               ? "bg-emerald-50 text-emerald-600 border border-emerald-200/60"
                               : "bg-rose-50 text-rose-600 border border-rose-200/60"
@@ -763,17 +763,17 @@ export function HeroDashboardMockup() {
 
               {/* Middle Feature Highlights List */}
               {currentData.featureList && currentData.featureList.length > 0 && (
-                <div className="bg-white p-2 rounded-xl border border-slate-200/80 shadow-2xs">
-                  <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex items-center gap-1">
-                    <ShieldCheck className="w-3 h-3 text-emerald-600" /> Key Highlights & Functionality:
+                <div className="bg-white p-1.5 rounded-lg border border-slate-200/80 shadow-2xs">
+                  <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                    <ShieldCheck className="w-2.5 h-2.5 text-emerald-600" /> Key Highlights & Functionality:
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                     {currentData.featureList.map((f, fi) => (
-                      <div key={fi} className="flex items-start gap-1.5 p-1.5 rounded-lg bg-slate-50/70 border border-slate-100">
-                        <Check className="w-3 h-3 text-[#e77817] shrink-0 mt-0.5" />
+                      <div key={fi} className="flex items-start gap-1 p-1 rounded-md bg-slate-50/70 border border-slate-100">
+                        <Check className="w-2.5 h-2.5 text-[#e77817] shrink-0 mt-0.5" />
                         <div className="min-w-0">
-                          <span className="font-bold text-[10px] text-slate-800 block truncate">{f.title}</span>
-                          <span className="text-[8.5px] text-slate-500 leading-tight block line-clamp-1">{f.desc}</span>
+                          <span className="font-bold text-[9.5px] text-slate-800 block truncate">{f.title}</span>
+                          <span className="text-[8px] text-slate-500 leading-tight block line-clamp-1">{f.desc}</span>
                         </div>
                       </div>
                     ))}
@@ -782,19 +782,19 @@ export function HeroDashboardMockup() {
               )}
 
               {/* Bottom Cards: COMPACT Line Chart (Left) + COMPACT Donut Breakdown (Right) */}
-              <div className="grid grid-cols-1 sm:grid-cols-12 gap-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-12 gap-1">
                 
                 {/* Left: Compact Dynamic Line Chart */}
-                <div className="sm:col-span-7 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-slate-800 text-[10px] truncate">{currentData.chartTitle}</span>
-                    <span className="text-[8px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-1 py-0.2 rounded flex items-center gap-1">
+                <div className="sm:col-span-7 p-1.5 bg-white border border-slate-200/80 rounded-lg shadow-2xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-bold text-slate-800 text-[9px] truncate">{currentData.chartTitle}</span>
+                    <span className="text-[7.5px] font-semibold text-slate-500 bg-slate-50 border border-slate-200 px-1 py-0.2 rounded flex items-center gap-0.5">
                       {currentData.chartBadge} <ChevronDown className="w-2 h-2" />
                     </span>
                   </div>
 
                   {/* Compact SVG Chart */}
-                  <div className="relative h-14 sm:h-16 w-full">
+                  <div className="relative h-11 sm:h-12 w-full">
                     <svg className="w-full h-full overflow-visible" viewBox="0 0 280 50" preserveAspectRatio="none">
                       <defs>
                         <linearGradient id={`growthGrad-${activeModule}`} x1="0" y1="0" x2="0" y2="1">
@@ -870,12 +870,12 @@ export function HeroDashboardMockup() {
                 </div>
 
                 {/* Right: Compact Small Donut Chart */}
-                <div className="sm:col-span-5 p-2 bg-white border border-slate-200/80 rounded-xl shadow-2xs flex flex-col justify-between overflow-hidden">
-                  <div className="font-bold text-slate-800 text-[10px] mb-1 truncate">{currentData.donutTitle}</div>
+                <div className="sm:col-span-5 p-1.5 bg-white border border-slate-200/80 rounded-lg shadow-2xs flex flex-col justify-between overflow-hidden">
+                  <div className="font-bold text-slate-800 text-[9px] mb-0.5 truncate">{currentData.donutTitle}</div>
 
-                  <div className="flex items-center justify-between gap-2 my-auto">
-                    {/* Small SVG Donut (fixed 48px / 12rem) */}
-                    <div className="relative w-12 h-12 shrink-0">
+                  <div className="flex items-center justify-between gap-1.5 my-auto">
+                    {/* Small SVG Donut (fixed 40px) */}
+                    <div className="relative w-10 h-10 shrink-0">
                       <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="34" fill="none" stroke="#f1f5f9" strokeWidth="12" />
                         {currentData.donutSegments.map((seg, i) => (
@@ -896,12 +896,12 @@ export function HeroDashboardMockup() {
                         ))}
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                        <span className="font-black text-[8.5px] text-slate-900 leading-none">
+                        <span className="font-black text-[8px] text-slate-900 leading-none">
                           {activeExpenseIndex !== null
                             ? `${currentData.donutSegments[activeExpenseIndex]?.pct}%`
                             : currentData.donutCenter}
                         </span>
-                        <span className="text-[6px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[32px]">
+                        <span className="text-[5.5px] text-slate-400 font-medium leading-tight mt-0.5 truncate max-w-[28px]">
                           {activeExpenseIndex !== null
                             ? currentData.donutSegments[activeExpenseIndex]?.label
                             : currentData.donutCenterSub}

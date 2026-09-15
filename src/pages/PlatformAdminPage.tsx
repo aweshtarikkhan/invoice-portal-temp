@@ -128,6 +128,8 @@ export default function PlatformAdminPage() {
   const [adsList, setAdsList] = useState<any[]>([]);
   const [adTitle, setAdTitle] = useState("");
   const [adLink, setAdLink] = useState("");
+  const [adDuration, setAdDuration] = useState("5");
+  const [isSponsored, setIsSponsored] = useState(true);
   const [adFile, setAdFile] = useState<File | null>(null);
   const [adSlidesCount, setAdSlidesCount] = useState<number>(3);
   const [adLoading, setAdLoading] = useState(false);
@@ -156,9 +158,15 @@ export default function PlatformAdminPage() {
       
       const { data: { publicUrl } } = supabase.storage.from('portal-ads').getPublicUrl(`ads/${fileName}`);
       
+      const titlePayload = JSON.stringify({
+        text: adTitle,
+        duration: parseInt(adDuration) || 5,
+        isSponsored: isSponsored
+      });
+
       const { error: insertError } = await supabase.from('portal_ads').insert({
         image_url: publicUrl,
-        title: adTitle,
+        title: titlePayload,
         link_url: adLink,
         is_active: true,
         sort_order: adsList.length
@@ -167,6 +175,8 @@ export default function PlatformAdminPage() {
       
       setAdTitle("");
       setAdLink("");
+      setAdDuration("5");
+      setIsSponsored(true);
       setAdFile(null);
       await fetchAdsData();
     } catch (e: any) {
@@ -1889,8 +1899,31 @@ export default function PlatformAdminPage() {
                       <Input value={adLink} onChange={(e) => setAdLink(e.target.value)} className="bg-slate-100 border-slate-200 text-slate-800" placeholder="https://..." />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-slate-600">Ad Image (Max 2MB)</Label>
-                      <Input type="file" accept="image/*" onChange={(e) => setAdFile(e.target.files?.[0] || null)} className="bg-slate-100 border-slate-200 text-slate-600" />
+                      <div className="space-y-2">
+                        <Label className="text-slate-600">Ad Image (Max 2MB)</Label>
+                        <Input type="file" accept="image/*" onChange={(e) => setAdFile(e.target.files?.[0] || null)} className="bg-slate-100 border-slate-200 text-slate-600" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-slate-600">Duration</Label>
+                          <select 
+                            value={adDuration} 
+                            onChange={(e) => setAdDuration(e.target.value)} 
+                            className="flex h-10 w-full items-center justify-between rounded-md border border-slate-200 bg-slate-100 px-3 py-2 text-sm ring-offset-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-slate-950 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 text-slate-800"
+                          >
+                            <option value="3">3 Seconds</option>
+                            <option value="5">5 Seconds</option>
+                            <option value="10">10 Seconds</option>
+                            <option value="15">15 Seconds</option>
+                            <option value="20">20 Seconds</option>
+                            <option value="30">30 Seconds</option>
+                          </select>
+                        </div>
+                        <div className="flex items-center space-x-2 pt-8">
+                          <Switch id="sponsored" checked={isSponsored} onCheckedChange={setIsSponsored} className="data-[state=checked]:bg-indigo-500" />
+                          <Label htmlFor="sponsored" className="text-slate-600 cursor-pointer">Show "Sponsored" tag</Label>
+                        </div>
+                      </div>
                     </div>
                     <Button onClick={handleUploadAd} disabled={adLoading || !adFile} className="w-full bg-indigo-600 hover:bg-indigo-700">
                       {adLoading ? "Uploading..." : "Upload Ad"}
@@ -1920,7 +1953,16 @@ export default function PlatformAdminPage() {
                             )}
                           </div>
                           <div>
-                            <h4 className="font-medium text-slate-800">{ad.title || 'Untitled Ad'}</h4>
+                            <h4 className="font-medium text-slate-800">
+                              {(() => {
+                                try {
+                                  const parsed = JSON.parse(ad.title || '{}');
+                                  return parsed.text || ad.title || 'Untitled Ad';
+                                } catch(e) {
+                                  return ad.title || 'Untitled Ad';
+                                }
+                              })()}
+                            </h4>
                             <p className="text-xs text-slate-500 mt-1">{ad.link_url || 'No link'}</p>
                             <p className="text-[10px] text-slate-500 mt-1">Created: {new Date(ad.created_at).toLocaleDateString()}</p>
                           </div>

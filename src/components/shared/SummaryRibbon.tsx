@@ -1,4 +1,5 @@
 import { ReactNode } from "react";
+import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
 interface SummaryItem {
   label: string;
@@ -25,35 +26,37 @@ export function SummaryRibbon({ label, items }: SummaryRibbonProps) {
   const cols =
     items.length <= 2 ? "sm:grid-cols-2" :
     items.length === 3 ? "sm:grid-cols-3" :
-    items.length === 4 ? "sm:grid-cols-2 lg:grid-cols-4" :
-    "sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5";
+    items.length === 4 ? "grid-cols-2 lg:grid-cols-4" :
+    "grid-cols-2 sm:grid-cols-3 xl:grid-cols-5";
   return (
     <section className="space-y-3">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-      <div className={`grid grid-cols-1 ${cols} gap-4`}>
+      <div className={`grid ${cols} gap-3 sm:gap-4`}>
         {items.map((it, i) => {
           const content = (
-            <>
-              <p className="text-sm font-medium text-muted-foreground mb-2">{it.label}</p>
-              <p className={`text-2xl md:text-[28px] font-bold leading-tight ${accentClass[it.accent || "default"]}`}>
-                {it.value}
+            <div className="min-w-0 overflow-hidden">
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-1.5 truncate" title={it.label}>
+                {it.label}
               </p>
-              {it.hint && <p className="text-xs text-muted-foreground mt-1">{it.hint}</p>}
-            </>
+              <div className={`leading-tight min-w-0 ${accentClass[it.accent || "default"]}`}>
+                <AutoFitNumber value={it.value} maxSize="3xl" />
+              </div>
+              {it.hint && <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 truncate" title={it.hint}>{it.hint}</p>}
+            </div>
           );
           
           return it.onClick ? (
             <button
               key={i}
               onClick={it.onClick}
-              className="rounded-2xl bg-card border border-border/60 shadow-sm px-6 py-5 transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              className="rounded-2xl bg-card border border-border/60 shadow-sm px-4 py-3.5 sm:px-5 sm:py-4 xl:px-4 xl:py-4 2xl:px-6 2xl:py-5 transition-all hover:shadow-md hover:-translate-y-0.5 text-left cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 min-w-0 overflow-hidden"
             >
               {content}
             </button>
           ) : (
             <div
               key={i}
-              className="rounded-2xl bg-card border border-border/60 shadow-sm px-6 py-5 transition-all hover:shadow-md hover:-translate-y-0.5"
+              className="rounded-2xl bg-card border border-border/60 shadow-sm px-4 py-3.5 sm:px-5 sm:py-4 xl:px-4 xl:py-4 2xl:px-6 2xl:py-5 transition-all hover:shadow-md hover:-translate-y-0.5 min-w-0 overflow-hidden"
             >
               {content}
             </div>

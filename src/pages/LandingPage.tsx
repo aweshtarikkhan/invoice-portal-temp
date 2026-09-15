@@ -240,7 +240,7 @@ export default function LandingPage() {
         <div className="mx-auto max-w-7xl px-6 relative z-10 grid lg:grid-cols-12 gap-10 lg:gap-8 items-center">
           
           {/* Left Column: Headline, Copy & CTAs */}
-          <div className="lg:col-span-5 text-left flex flex-col justify-center items-start">
+          <div className="lg:col-span-6 text-left flex flex-col justify-center items-start">
             
             {/* Pill Eyebrow */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 shadow-xs">
@@ -248,10 +248,20 @@ export default function LandingPage() {
               <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
             </div>
 
-            {/* Main Headline */}
-            <h1 className="text-3xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
-              Simplify Your Business<br/>
-              Amplify Your Growth
+            {/* Main Headline: Exactly 2 lines with Blue-Orange Logo Gradient on Business & Growth */}
+            <h1 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[46px] font-black tracking-tight leading-[1.18] text-slate-900 mb-5">
+              <span className="block sm:whitespace-nowrap">
+                Simplify Your{" "}
+                <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
+                  Business
+                </span>
+              </span>
+              <span className="block sm:whitespace-nowrap">
+                Amplify Your{" "}
+                <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
+                  Growth
+                </span>
+              </span>
             </h1>
 
             {/* Subtitle description */}
@@ -296,7 +306,7 @@ export default function LandingPage() {
           </div>
 
           {/* Right Column: Interactive SaaS Software Dashboard Mockup */}
-          <div className="lg:col-span-7 flex justify-center lg:justify-end w-full mt-4 lg:mt-0 overflow-hidden sm:overflow-visible px-1 sm:px-0">
+          <div className="lg:col-span-6 flex justify-center lg:justify-end w-full mt-4 lg:mt-0 overflow-hidden sm:overflow-visible px-1 sm:px-0">
             <HeroDashboardMockup />
           </div>
 
