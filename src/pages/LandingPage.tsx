@@ -248,8 +248,8 @@ export default function LandingPage() {
               <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
             </div>
 
-            {/* Main Headline: Exactly 2 lines with Blue-Orange Logo Gradient on Business & Growth */}
-            <h1 className="text-3xl sm:text-4xl lg:text-[40px] xl:text-[46px] font-black tracking-tight leading-[1.18] text-slate-900 mb-5">
+            {/* Main Headline: Fluid dynamic responsive font sizing by screen size, exactly 2 lines with Blue-Orange Logo Gradient */}
+            <h1 className="text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.14] text-slate-900 mb-6">
               <span className="block sm:whitespace-nowrap">
                 Simplify Your{" "}
                 <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
@@ -265,25 +265,25 @@ export default function LandingPage() {
             </h1>
 
             {/* Subtitle description */}
-            <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl font-normal">
+            <p className="text-base sm:text-lg lg:text-xl text-slate-600 leading-relaxed mb-8 max-w-xl font-normal">
               Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, Ai Analysis and more — everything your business needs, in one powerful platform.
             </p>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-start gap-3.5 mb-7 w-full sm:w-auto">
+            {/* Enlarged Prominent CTA Buttons */}
+            <div className="flex flex-col sm:flex-row items-center justify-start gap-4 mb-8 w-full sm:w-auto">
               <Button
                 size="lg"
-                className="h-13 px-7 text-base font-bold bg-[#28166f] hover:bg-[#e77817] text-white shadow-lg shadow-[#28166f]/25 hover:shadow-[#e77817]/35 rounded-xl w-full sm:w-auto transition-all duration-300 hover:scale-[1.02]"
+                className="h-14 sm:h-15 px-8 sm:px-9 text-base sm:text-lg font-black bg-[#28166f] hover:bg-[#e77817] text-white shadow-xl shadow-[#28166f]/25 hover:shadow-[#e77817]/35 rounded-2xl w-full sm:w-auto transition-all duration-300 hover:scale-[1.03] cursor-pointer"
                 asChild
               >
                 <a href="#pricing">
-                  Get Started Free <ArrowRight className="ml-2 h-4 w-4" />
+                  Get Started Free <ArrowRight className="ml-2.5 h-5 w-5 stroke-[2.5]" />
                 </a>
               </Button>
               <Button
                 size="lg"
                 variant="outline"
-                className="h-13 px-6 text-base font-bold bg-white hover:bg-orange-50/80 text-[#28166f] hover:text-[#e77817] border-slate-300 hover:border-[#e77817] rounded-xl w-full sm:w-auto shadow-xs cursor-pointer transition-all duration-300 group"
+                className="h-14 sm:h-15 px-8 sm:px-9 text-base sm:text-lg font-black bg-white hover:bg-orange-50/80 text-[#28166f] hover:text-[#e77817] border-2 border-slate-300 hover:border-[#e77817] rounded-2xl w-full sm:w-auto shadow-sm cursor-pointer transition-all duration-300 hover:scale-[1.03] group"
                 onClick={() => setIsDemoDialogOpen(true)}
               >
                 Book a Demo
