@@ -245,22 +245,18 @@ export default function LandingPage() {
             {/* Pill Eyebrow */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 mx-auto lg:mx-0 w-fit shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#e77817]" />
-              <span>ALL-IN-ONE BUSINESS PLATFORM</span>
+              <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
             </div>
 
-            {/* Main Headline with Logo-matched A(orange) + assay(blue) + biz(orange) */}
+            {/* Main Headline */}
             <h1 className="text-4xl sm:text-5xl lg:text-[50px] font-black tracking-tight leading-[1.14] text-slate-900 mb-5">
-              Run Your Business Smarter with{" "}
-              <span className="inline-block whitespace-nowrap">
-                <span className="text-[#e77817]">A</span>
-                <span className="text-[#28166f]">assay</span>
-                <span className="text-[#e77817]">biz</span>
-              </span>
+              Simplify Your Business<br/>
+              Amplify Your Growth
             </h1>
 
             {/* Subtitle description */}
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 font-normal">
-              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis and more — everything your business needs, in one powerful platform.
+              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, Ai Analysis and more — everything your business needs, in one powerful platform.
             </p>
 
             {/* CTA Buttons */}
