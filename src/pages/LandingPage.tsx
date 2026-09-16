@@ -573,38 +573,12 @@ export default function LandingPage() {
 
 
       
+      
       {/* ── HR SECTION ── */}
-      <section className="w-full py-14 sm:py-16 bg-[#0f0b2e]">
+      <section className="w-full py-14 sm:py-16 bg-slate-50">
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
-          {/* LEFT: Copy */}
-          <div className="flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <UserCheck className="h-4 w-4" />
-              <span>HR & PAYROLL AUTOMATION</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
-              Track Attendance.<br />
-              <span className="text-[#ff9438]">Run Payroll in 60 Seconds.</span>
-            </h2>
-            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
-              Ditch the Excel sheets. Manage GPS attendance, biometric punch-in,
-              leave approvals, PF/ESI compliance, and WhatsApp payslip delivery
-              — all in one place.
-            </p>
-            {/* 6 Capability Pills */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
-              {hrBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
-                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </div>
-                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* RIGHT: Attendance Portal UI Illustration */}
-          <div className="flex items-center justify-center">
+          {/* LEFT: Attendance Portal UI Illustration */}
+          <div className="order-2 md:order-1 flex items-center justify-center">
             <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200/30">
               <div className="bg-[#28166f] px-5 py-4 flex items-center justify-between">
                 <div>
@@ -679,14 +653,67 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          {/* RIGHT: Copy */}
+          <div className="order-1 md:order-2 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <UserCheck className="h-4 w-4" />
+              <span>HR & PAYROLL AUTOMATION</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
+              Track Attendance.<br />
+              <span className="text-[#28166f]">Run Payroll in 60 Seconds.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
+              Ditch the Excel sheets. Manage GPS attendance, biometric punch-in,
+              leave approvals, PF/ESI compliance, and WhatsApp payslip delivery
+              — all in one place.
+            </p>
+            {/* 6 Capability Pills */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {hrBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100/80 border border-slate-200 hover:border-[#28166f]/40 hover:bg-[#28166f]/5 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-[#28166f]/15 border border-[#28166f]/30 text-[#28166f] grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-slate-800 font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
       {/* ── CRM SECTION ── */}
-      <section className="w-full py-14 sm:py-16 bg-slate-50">
+      <section className="w-full py-14 sm:py-16 bg-[#0f0b2e]">
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
-          {/* LEFT: CRM Pipeline Illustration */}
-          <div className="order-2 md:order-1 flex items-center justify-center">
+          {/* LEFT: Copy */}
+          <div className="flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <Target className="h-4 w-4" />
+              <span>CRM & SALES PIPELINE</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
+              Capture Every Lead.<br />
+              <span className="text-[#ff9438]">Close Deals 3x Faster.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
+              From inquiry to invoice — manage your entire sales funnel with
+              visual Kanban pipelines, automated WhatsApp follow-ups, and
+              1-tap quotation-to-billing conversion.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {crmBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* RIGHT: CRM Pipeline Illustration */}
+          <div className="flex items-center justify-center">
             <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200">
               <div className="bg-[#e77817] px-5 py-3.5 flex items-center justify-between">
                 <div>
@@ -750,66 +777,14 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-          {/* RIGHT: Copy */}
-          <div className="order-1 md:order-2 flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <Target className="h-4 w-4" />
-              <span>CRM & SALES PIPELINE</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
-              Capture Every Lead.<br />
-              <span className="text-[#28166f]">Close Deals 3x Faster.</span>
-            </h2>
-            <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
-              From inquiry to invoice — manage your entire sales funnel with
-              visual Kanban pipelines, automated WhatsApp follow-ups, and
-              1-tap quotation-to-billing conversion.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
-              {crmBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100/80 border border-slate-200 hover:border-[#28166f]/40 hover:bg-[#28166f]/5 transition-all duration-200 group">
-                  <div className="h-5 w-5 rounded-full bg-[#28166f]/15 border border-[#28166f]/30 text-[#28166f] grid place-items-center shrink-0">
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </div>
-                  <span className="text-slate-800 font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 
       {/* ── MARKETING SECTION ── */}
-      <section className="w-full py-14 sm:py-16 bg-[#0f0b2e]">
+      <section className="w-full py-14 sm:py-16 bg-slate-50">
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
-          {/* LEFT: Copy */}
-          <div className="flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <Megaphone className="h-4 w-4" />
-              <span>MARKETING & PROMOTION</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
-              Reach 10,000+ Customers.<br />
-              <span className="text-[#ff9438]">Boost Repeat Sales by 40%.</span>
-            </h2>
-            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
-              Turn your customer list into a revenue machine. Create branded
-              WhatsApp campaigns, auto-generate festive posters with your logo,
-              and launch coupon deals — no designer needed.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
-              {mktBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
-                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  </div>
-                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-          {/* RIGHT: Marketing Studio UI Illustration */}
-          <div className="flex items-center justify-center">
+          {/* LEFT: Marketing Studio UI Illustration */}
+          <div className="order-2 md:order-1 flex items-center justify-center">
             <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200/30">
               <div className="bg-gradient-to-r from-[#28166f] to-[#e77817] px-5 py-3.5 flex items-center justify-between">
                 <div>
@@ -876,11 +851,36 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
+          {/* RIGHT: Copy */}
+          <div className="order-1 md:order-2 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <Megaphone className="h-4 w-4" />
+              <span>MARKETING & PROMOTION</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
+              Reach 10,000+ Customers.<br />
+              <span className="text-[#28166f]">Boost Repeat Sales by 40%.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
+              Turn your customer list into a revenue machine. Create branded
+              WhatsApp campaigns, auto-generate festive posters with your logo,
+              and launch coupon deals — no designer needed.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {mktBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100/80 border border-slate-200 hover:border-[#28166f]/40 hover:bg-[#28166f]/5 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-[#28166f]/15 border border-[#28166f]/30 text-[#28166f] grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-slate-800 font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-
-      {/* Pricing */}
+{/* Pricing */}
       <section id="pricing" className="pt-24 pb-24 bg-[#fafbfc] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
