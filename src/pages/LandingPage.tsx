@@ -779,7 +779,9 @@ export default function LandingPage() {
                 <div className="grid grid-cols-3 gap-2.5">
                   {mktPosterColors.map((grad, i) => (
                     <div key={i} className={"rounded-xl overflow-hidden bg-gradient-to-br " + grad + " p-3 text-center relative cursor-pointer hover:scale-105 transition-transform shadow-md"}>
-                      <div className="text-[9px] font-black uppercase text-white/80 tracking-wider">Assay Biz Store</div>
+                      <div className="text-[9px] font-black uppercase text-white/80 tracking-wider">
+                        {i === 0 ? "Sharma Electronics" : i === 1 ? "Fashion Hub" : "Kapoor Textiles"}
+                      </div>
                       <div className="text-sm font-black text-white mt-0.5 leading-tight">{mktPosterTitles[i]}</div>
                       <div className="text-[10px] font-black text-white/90 mt-1 bg-black/20 rounded px-1.5 py-0.5">{mktPosterDisc[i]}</div>
                       {i === 0 && (
