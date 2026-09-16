@@ -351,36 +351,16 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Compliance badges - Built for India. Verified for GST. */}
-      <section className="pt-6 pb-16 bg-white border-b border-slate-100">
-        <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">
-            {L.badges_title}
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
-            {complianceBadges.map(b => (
-              <div
-                key={b.label}
-                className="group flex items-center gap-2.5 px-5 py-3.5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:bg-[#e77817] hover:border-[#e77817] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
-              >
-                <b.icon className="h-5 w-5 text-[#e77817] group-hover:text-white transition-colors shrink-0" />
-                <span className="font-semibold text-slate-700 group-hover:text-white transition-colors">{b.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* WhatsApp highlight */}
-      <section className="py-16 bg-navy relative overflow-hidden text-white">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#e77817]/10 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 items-center relative z-10">
+      {/* WhatsApp & Compliance highlight */}
+      <section className="py-10 sm:py-12 bg-navy relative overflow-hidden text-white">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e77817]/10 rounded-full blur-[100px] pointer-events-none"></div>
+        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-8 lg:gap-12 items-center relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 mb-5 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-wide shadow-xs">
-              <MessageCircle className="h-4 w-4 text-[#ff9438]" />
+            <div className="inline-flex items-center gap-2 mb-3.5 py-1 px-3.5 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-wide shadow-xs">
+              <MessageCircle className="h-3.5 w-3.5 text-[#ff9438]" />
               <span>{L.wa_eyebrow}</span>
             </div>
-            <h2 className="text-3xl md:text-[2.6rem] font-black tracking-tight text-white !text-white mb-5 leading-tight">
+            <h2 className="text-2xl sm:text-3xl md:text-[2.2rem] font-black tracking-tight text-white !text-white mb-3.5 leading-tight">
               {lang === "hi" ? (
                 <>
                   बिल भेजें।{" "}
@@ -393,25 +373,27 @@ export default function LandingPage() {
                 </>
               )}
             </h2>
-            <p className="text-base text-slate-200 leading-relaxed mb-6 font-normal">{L.wa_sub}</p>
-            <ul className="space-y-4">
-              {L.wa_bullets.map((b, i) => (
-                <li key={i} className="flex items-start gap-3">
-                  <div className="mt-0.5 h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-3 w-3 stroke-[3]" />
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed mb-5 font-normal">{L.wa_sub}</p>
+            
+            {/* 6 Compliance & GST Points */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {complianceBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200">
+                  <div className="h-4 w-4 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-2.5 w-2.5 stroke-[3]" />
                   </div>
-                  <span className="text-white font-medium text-sm leading-snug">{b}</span>
-                </li>
+                  <span className="text-white font-medium text-xs sm:text-[13px] leading-tight">{b.label}</span>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
-          {/* Real WhatsApp-style mobile mockup */}
-          <div className="relative mx-auto w-full max-w-[280px]">
-            <div className="rounded-[2.5rem] border-[10px] border-slate-900 bg-slate-900 overflow-hidden shadow-2xl shadow-black/60 relative" style={{aspectRatio: '9/19'}}>
+          {/* Real WhatsApp-style mobile mockup - 20% compact height */}
+          <div className="relative mx-auto w-full max-w-[225px] sm:max-w-[235px]">
+            <div className="rounded-[1.75rem] border-[7px] border-slate-900 bg-slate-900 overflow-hidden shadow-2xl shadow-black/60 relative" style={{aspectRatio: '9/16'}}>
               {/* Notch */}
-              <div className="absolute top-0 inset-x-0 h-5 bg-slate-900 z-30 flex items-end justify-center pb-1">
-                <div className="w-20 h-3 bg-slate-900 rounded-b-xl"></div>
+              <div className="absolute top-0 inset-x-0 h-4 bg-slate-900 z-30 flex items-end justify-center pb-0.5">
+                <div className="w-16 h-2 bg-slate-900 rounded-b-lg"></div>
               </div>
               {/* WhatsApp wallpaper bg */}
               <div className="absolute inset-0 bg-[#e5ddd5]">
@@ -420,83 +402,83 @@ export default function LandingPage() {
 
               <div className="absolute inset-0 flex flex-col">
                 {/* Status bar */}
-                <div className="bg-[#128C7E] pt-5 pb-0 z-20">
-                  <div className="flex items-center gap-2 px-3 py-2">
-                    <div className="h-8 w-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
-                      <span className="text-white font-black text-xs">A</span>
+                <div className="bg-[#128C7E] pt-3.5 pb-0 z-20">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5">
+                    <div className="h-6 w-6 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
+                      <span className="text-white font-black text-[10px]">A</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-white text-xs">Assay</div>
-                      <div className="text-[10px] text-white/80">online</div>
+                      <div className="font-bold text-white text-[10.5px] leading-none">Assay</div>
+                      <div className="text-[8px] text-white/80 mt-0.5">online</div>
                     </div>
-                    <div className="flex gap-2 text-white/80">
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
+                    <div className="flex gap-1.5 text-white/80">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
                     </div>
                   </div>
                 </div>
 
                 {/* Chat area — scrollable */}
-                <div className="flex-1 overflow-y-auto px-2 py-2 flex flex-col justify-end gap-1.5">
+                <div className="flex-1 overflow-y-auto px-1.5 py-1.5 flex flex-col justify-end gap-1">
                   {/* Date badge */}
-                  <div className="flex justify-center mb-1">
-                    <span className="bg-white/70 text-slate-500 text-[8px] px-2 py-0.5 rounded-full">TODAY</span>
+                  <div className="flex justify-center mb-0.5">
+                    <span className="bg-white/70 text-slate-500 text-[7px] px-1.5 py-0.5 rounded-full">TODAY</span>
                   </div>
 
                   {/* Incoming: greeting */}
-                  <div className="flex items-end gap-1 max-w-[82%]">
-                    <div className="bg-white rounded-xl rounded-tl-none shadow-sm px-2 py-1.5 text-[10px] text-slate-800 relative">
+                  <div className="flex items-end gap-1 max-w-[84%]">
+                    <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-1.5 py-1 text-[8.5px] text-slate-800 relative leading-snug">
                       Hi! Mera invoice ready hai kya? 🙏
-                      <span className="text-[8px] text-slate-400 ml-1 float-right mt-0.5">10:30</span>
+                      <span className="text-[7px] text-slate-400 ml-1 float-right mt-0.5">10:30</span>
                     </div>
                   </div>
 
                   {/* Outgoing: yes sharing now */}
                   <div className="flex justify-end">
-                    <div className="bg-[#dcf8c6] rounded-xl rounded-tr-none shadow-sm px-2 py-1.5 text-[10px] text-slate-800 max-w-[82%]">
+                    <div className="bg-[#dcf8c6] rounded-lg rounded-tr-none shadow-sm px-1.5 py-1 text-[8.5px] text-slate-800 max-w-[84%] leading-snug">
                       Ji bilkul! Abhi bhejta hoon 👇
                       <div className="flex justify-end items-center gap-0.5 mt-0.5">
-                        <span className="text-[8px] text-slate-400">10:31</span>
-                        <svg className="h-2.5 w-2.5 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.75.75 0 010 1.06L4.5 8.284 1.449 5.233a.75.75 0 00-1.06 1.06l3.64 3.641a.75.75 0 001.06 0l7.102-7.22a.75.75 0 000-1.061.75.75 0 00-1.12 0z"/><path d="M15.071.653a.75.75 0 010 1.06L8.5 8.284l-.53-.53 6.04-6.041a.75.75 0 011.06-.06z"/></svg>
+                        <span className="text-[7px] text-slate-400">10:31</span>
+                        <svg className="h-2 w-2 text-blue-500" viewBox="0 0 16 11" fill="currentColor"><path d="M11.071.653a.75.75 0 010 1.06L4.5 8.284 1.449 5.233a.75.75 0 00-1.06 1.06l3.64 3.641a.75.75 0 001.06 0l7.102-7.22a.75.75 0 000-1.061.75.75 0 00-1.12 0z"/><path d="M15.071.653a.75.75 0 010 1.06L8.5 8.284l-.53-.53 6.04-6.041a.75.75 0 011.06-.06z"/></svg>
                       </div>
                     </div>
                   </div>
 
                   {/* Outgoing: PDF invoice card */}
                   <div className="flex justify-end">
-                    <div className="bg-[#dcf8c6] rounded-xl rounded-tr-none shadow-sm text-[10px] max-w-[88%] overflow-hidden">
-                      <div className="bg-white/60 px-2 py-1.5 flex items-center gap-1.5">
-                        <div className="bg-red-500 p-1 rounded shrink-0"><FileText className="h-3 w-3 text-white" /></div>
+                    <div className="bg-[#dcf8c6] rounded-lg rounded-tr-none shadow-sm text-[8.5px] max-w-[90%] overflow-hidden">
+                      <div className="bg-white/60 px-1.5 py-1 flex items-center gap-1">
+                        <div className="bg-red-500 p-0.5 rounded shrink-0"><FileText className="h-2.5 w-2.5 text-white" /></div>
                         <div className="min-w-0">
-                          <div className="font-bold text-slate-700 text-[9px] truncate">INV-2026-0184.pdf</div>
-                          <div className="text-[8px] text-slate-400">2 Pages · 245 KB</div>
+                          <div className="font-bold text-slate-700 text-[8px] truncate">INV-2026-0184.pdf</div>
+                          <div className="text-[7px] text-slate-400">2 Pages · 245 KB</div>
                         </div>
                       </div>
-                      <div className="px-2 py-1.5">
-                        <div className="font-black text-slate-800 text-xs">₹24,750</div>
-                        <div className="bg-[#25D366] text-white text-[9px] font-bold text-center py-0.5 rounded mt-1">Pay via UPI ➜</div>
+                      <div className="px-1.5 py-1">
+                        <div className="font-black text-slate-800 text-[10.5px]">₹24,750</div>
+                        <div className="bg-[#25D366] text-white text-[7.5px] font-bold text-center py-0.5 rounded mt-0.5">Pay via UPI ➜</div>
                       </div>
-                      <div className="flex justify-end px-2 pb-1">
-                        <span className="text-[8px] text-slate-400">10:31</span>
+                      <div className="flex justify-end px-1.5 pb-0.5">
+                        <span className="text-[7px] text-slate-400">10:31</span>
                       </div>
                     </div>
                   </div>
 
                   {/* Incoming: payment done */}
-                  <div className="flex items-end gap-1 max-w-[82%]">
-                    <div className="bg-white rounded-xl rounded-tl-none shadow-sm px-2 py-1.5 text-[10px] text-slate-800">
+                  <div className="flex items-end gap-1 max-w-[84%]">
+                    <div className="bg-white rounded-lg rounded-tl-none shadow-sm px-1.5 py-1 text-[8.5px] text-slate-800 leading-snug">
                       Payment kar diya! Thanks ✅
-                      <span className="text-[8px] text-slate-400 ml-1 float-right mt-0.5">10:42</span>
+                      <span className="text-[7px] text-slate-400 ml-1 float-right mt-0.5">10:42</span>
                     </div>
                   </div>
                 </div>
 
                 {/* WhatsApp input bar */}
-                <div className="bg-[#f0f0f0] flex items-center gap-1.5 px-2 py-1.5 z-20">
-                  <div className="flex-1 bg-white rounded-full px-3 py-1 text-[9px] text-slate-400 flex items-center">
+                <div className="bg-[#f0f0f0] flex items-center gap-1 px-1.5 py-1 z-20">
+                  <div className="flex-1 bg-white rounded-full px-2.5 py-0.5 text-[8px] text-slate-400 flex items-center">
                     Type a message
                   </div>
-                  <div className="h-6 w-6 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                  <div className="h-5 w-5 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                   </div>
                 </div>
               </div>
