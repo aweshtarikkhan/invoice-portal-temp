@@ -94,57 +94,57 @@ const growthFeatures = [
     icon: FileText,
     title: "Invoicing",
     desc: "Create, send and track invoices easily.",
-    cardBg: "bg-blue-50/50 border-blue-100 hover:border-[#28166f]/40",
-    iconBg: "bg-blue-100/80 text-[#28166f]",
+    cardBg: "bg-blue-50/50 border-blue-100 hover:bg-blue-600 hover:border-blue-600",
+    iconBg: "bg-blue-100/80 text-blue-600 group-hover:bg-white group-hover:text-blue-600",
   },
   {
     icon: Calculator,
     title: "Accounting",
     desc: "Manage your finances with confidence.",
-    cardBg: "bg-emerald-50/40 border-emerald-100 hover:border-emerald-400",
-    iconBg: "bg-emerald-100/80 text-emerald-600",
+    cardBg: "bg-emerald-50/40 border-emerald-100 hover:bg-emerald-600 hover:border-emerald-600",
+    iconBg: "bg-emerald-100/80 text-emerald-600 group-hover:bg-white group-hover:text-emerald-600",
   },
   {
     icon: Users,
     title: "CRM",
     desc: "Build stronger customer relationships.",
-    cardBg: "bg-orange-50/50 border-orange-100 hover:border-[#e77817]/40",
-    iconBg: "bg-[#e77817]/15 text-[#e77817]",
+    cardBg: "bg-orange-50/50 border-orange-100 hover:bg-[#e77817] hover:border-[#e77817]",
+    iconBg: "bg-orange-100/80 text-[#e77817] group-hover:bg-white group-hover:text-[#e77817]",
   },
   {
     icon: UserCheck,
     title: "HRMS",
     desc: "Manage your team, attendance and payroll with ease.",
-    cardBg: "bg-purple-50/40 border-purple-100 hover:border-purple-400",
-    iconBg: "bg-purple-100/80 text-purple-600",
+    cardBg: "bg-purple-50/40 border-purple-100 hover:bg-purple-600 hover:border-purple-600",
+    iconBg: "bg-purple-100/80 text-purple-600 group-hover:bg-white group-hover:text-purple-600",
   },
   {
     icon: Megaphone,
     title: "Promotion",
     desc: "Grow your brand with built-in marketing tools.",
-    cardBg: "bg-rose-50/40 border-rose-100 hover:border-rose-400",
-    iconBg: "bg-rose-100/80 text-rose-500",
+    cardBg: "bg-rose-50/40 border-rose-100 hover:bg-rose-500 hover:border-rose-500",
+    iconBg: "bg-rose-100/80 text-rose-500 group-hover:bg-white group-hover:text-rose-500",
   },
   {
     icon: Star,
     title: "Business Feedback",
     desc: "Listen, analyze and improve with customer feedback.",
-    cardBg: "bg-amber-50/40 border-amber-100 hover:border-amber-400",
-    iconBg: "bg-amber-100/80 text-amber-500",
+    cardBg: "bg-amber-50/40 border-amber-100 hover:bg-amber-600 hover:border-amber-600",
+    iconBg: "bg-amber-100/80 text-amber-600 group-hover:bg-white group-hover:text-amber-600",
   },
   {
     icon: BrainCircuit,
     title: "AI Analysis",
     desc: "Get smart insights and predictions with AI.",
-    cardBg: "bg-cyan-50/40 border-cyan-100 hover:border-cyan-400",
-    iconBg: "bg-cyan-100/80 text-cyan-600",
+    cardBg: "bg-cyan-50/40 border-cyan-100 hover:bg-cyan-600 hover:border-cyan-600",
+    iconBg: "bg-cyan-100/80 text-cyan-600 group-hover:bg-white group-hover:text-cyan-600",
   },
   {
     icon: Link2,
     title: "Integrations",
     desc: "Connect with Email, WhatsApp and other tools seamlessly.",
-    cardBg: "bg-emerald-50/40 border-emerald-100 hover:border-emerald-400",
-    iconBg: "bg-emerald-100/80 text-emerald-600",
+    cardBg: "bg-teal-50/40 border-teal-100 hover:bg-teal-600 hover:border-teal-600",
+    iconBg: "bg-teal-100/80 text-teal-600 group-hover:bg-white group-hover:text-teal-600",
   },
 ];
 
@@ -331,16 +331,16 @@ export default function LandingPage() {
               return (
                 <div
                   key={i}
-                  className={`p-4 sm:p-5 rounded-2xl border ${f.cardBg} transition-all duration-300 hover:shadow-md hover:-translate-y-1 flex items-center gap-4 group cursor-default`}
+                  className={`p-4 sm:p-5 rounded-2xl border ${f.cardBg} transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex items-center gap-4 group cursor-pointer`}
                 >
-                  <div className={`w-12 h-12 rounded-full ${f.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform duration-200 shadow-2xs`}>
+                  <div className={`w-12 h-12 rounded-full ${f.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-all duration-300 shadow-2xs`}>
                     <Icon className="w-5 h-5 stroke-[2.2]" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="text-base font-bold text-slate-900 mb-0.5 group-hover:text-[#28166f] transition-colors">
+                    <h3 className="text-base font-bold text-slate-900 mb-0.5 group-hover:text-white transition-colors duration-300">
                       {f.title}
                     </h3>
-                    <p className="text-xs sm:text-[13px] text-slate-500 leading-snug">
+                    <p className="text-xs sm:text-[13px] text-slate-500 group-hover:text-white/95 leading-snug transition-colors duration-300">
                       {f.desc}
                     </p>
                   </div>
