@@ -106,6 +106,9 @@ const PamphletPage = lazy(() => import("./pages/PamphletPage"));
 const SocialLaunchPostsPage = lazy(() => import("./pages/SocialLaunchPostsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 const PartnerWithUsPage = lazy(() => import("./pages/PartnerWithUsPage"));
+const HRFeaturesPage = lazy(() => import("./pages/HRFeaturesPage"));
+const CRMFeaturesPage = lazy(() => import("./pages/CRMFeaturesPage"));
+const MarketingFeaturesPage = lazy(() => import("./pages/MarketingFeaturesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const TermsOfServicePage = lazy(() => import("./pages/TermsOfServicePage"));
 const RefundPolicyPage = lazy(() => import("./pages/RefundPolicyPage"));
@@ -290,6 +293,13 @@ const App = () => (
             >
               <Route index element={<PlatformAdminPage />} />
             </Route>
+
+            {/* Public feature pages */}
+            <Route path="/hr" element={<HRFeaturesPage />} />
+            <Route path="/hrms" element={<HRFeaturesPage />} />
+            <Route path="/crm" element={<CRMFeaturesPage />} />
+            <Route path="/marketing" element={<MarketingFeaturesPage />} />
+            <Route path="/promotion" element={<MarketingFeaturesPage />} />
 
             {/* Redirects */}
             <Route path="/" element={<LandingPage />} />

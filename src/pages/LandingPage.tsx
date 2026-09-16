@@ -110,6 +110,7 @@ const growthFeatures = [
     desc: "Build stronger customer relationships.",
     cardBg: "bg-orange-50/50 border-orange-100 hover:bg-[#e77817] hover:border-[#e77817]",
     iconBg: "bg-orange-100/80 text-[#e77817] group-hover:bg-white group-hover:text-[#e77817]",
+    route: "/crm",
   },
   {
     icon: UserCheck,
@@ -117,6 +118,7 @@ const growthFeatures = [
     desc: "Manage your team, attendance and payroll with ease.",
     cardBg: "bg-purple-50/40 border-purple-100 hover:bg-purple-600 hover:border-purple-600",
     iconBg: "bg-purple-100/80 text-purple-600 group-hover:bg-white group-hover:text-purple-600",
+    route: "/hr",
   },
   {
     icon: Megaphone,
@@ -124,6 +126,7 @@ const growthFeatures = [
     desc: "Grow your brand with built-in marketing tools.",
     cardBg: "bg-rose-50/40 border-rose-100 hover:bg-rose-500 hover:border-rose-500",
     iconBg: "bg-rose-100/80 text-rose-500 group-hover:bg-white group-hover:text-rose-500",
+    route: "/marketing",
   },
   {
     icon: Star,
@@ -331,6 +334,11 @@ export default function LandingPage() {
               return (
                 <div
                   key={i}
+                  onClick={() => {
+                    if (f.route) {
+                      navigate(f.route);
+                    }
+                  }}
                   className={`p-4 sm:p-5 rounded-2xl border ${f.cardBg} transition-all duration-300 hover:shadow-lg hover:-translate-y-1 flex items-center gap-4 group cursor-pointer`}
                 >
                   <div className={`w-12 h-12 rounded-full ${f.iconBg} flex items-center justify-center shrink-0 group-hover:scale-110 transition-all duration-300 shadow-2xs`}>
