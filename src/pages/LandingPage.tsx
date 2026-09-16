@@ -321,7 +321,7 @@ export default function LandingPage() {
               Everything You Need to Grow
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-              Assaybiz brings all essential business tools together, so you can save time, reduce complexity and focus on what matters most — your growth.
+              All essential business tools together, so you can save time, reduce complexity and focus on what matters most — your growth.
             </p>
           </div>
 
