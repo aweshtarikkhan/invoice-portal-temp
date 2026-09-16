@@ -349,7 +349,7 @@ export default function LandingPage() {
       </section>
 
       {/* Features - Everything You Need to Grow */}
-      <section id="features" className="py-24 bg-slate-50/40 border-y border-slate-100 relative overflow-hidden">
+      <section id="features" className="pt-20 pb-10 bg-slate-50/40 border-t border-slate-100 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-[#28166f]/5 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-[#e77817]/5 rounded-full blur-3xl pointer-events-none" />
 
@@ -393,9 +393,9 @@ export default function LandingPage() {
       </section>
 
       {/* Compliance badges - Built for India. Verified for GST. */}
-      <section className="py-16 bg-white border-b border-slate-100">
+      <section className="pt-6 pb-16 bg-white border-b border-slate-100">
         <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">
+          <p className="text-center text-sm font-bold text-slate-400 uppercase tracking-widest mb-6">
             {L.badges_title}
           </p>
           <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
