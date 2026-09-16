@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
-  Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
+  Fingerprint, Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
   MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
   Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users, Layers,
   Calculator, UserCheck, Megaphone, BrainCircuit, Link2,
