@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fingerprint,  useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -79,6 +79,81 @@ const t = {
     pricing_cta_free: "मुफ़्त शुरू करें",
   },
 };
+
+
+const hrBadges = [
+  "GPS & Selfie Attendance",
+  "Biometric Machine Sync",
+  "1-Click Payroll & Payslips",
+  "WhatsApp Slip Delivery",
+  "Auto PF / ESIC / TDS",
+  "Multi-Shift & Leave Roster",
+];
+const hrEmployees = [
+  { name: "Rahul Sharma",     role: "Store Manager",  status: "P",  time: "09:02", color: "bg-emerald-500" },
+  { name: "Priya Verma",      role: "Sales Executive", status: "P",  time: "09:14", color: "bg-emerald-500" },
+  { name: "Deepak Singh",     role: "Delivery Staff",  status: "A",  time: "—",     color: "bg-red-400" },
+  { name: "Ankita Patel",     role: "Accountant",      status: "HD", time: "10:30", color: "bg-amber-400" },
+  { name: "Ravi Kumar",       role: "Warehouse Staff", status: "P",  time: "08:55", color: "bg-emerald-500" },
+];
+const hrMonths = ["M","T","W","T","F","S","S"];
+const hrDays = Array.from({ length: 28 }, (_, i) => {
+  const s = ["P","P","P","A","P","P","HD","P","P","P","P","A","P","P","P","P","P","P","HD","P","P","A","P","P","P","P","P","P"];
+  return s[i] || "P";
+});
+
+const crmBadges = [
+  "Multi-Source Lead Capture",
+  "Visual Kanban Deal Stages",
+  "WhatsApp Quick Follow-up",
+  "1-Tap Quote to Invoice",
+  "Call Logs & Reminders",
+  "Client 360° History",
+];
+const crmPipeline = [
+  { stage: "New Leads",    count: 12, color: "bg-blue-500",    leads: [
+    { name: "Rajesh Ent.", val: "₹1.8L", hot: true },
+    { name: "Sharma Traders", val: "₹75K", hot: false },
+  ]},
+  { stage: "In Discussion", count: 8, color: "bg-amber-500",  leads: [
+    { name: "Patel & Sons", val: "₹3.2L", hot: true },
+    { name: "Krishna Corp", val: "₹90K", hot: false },
+  ]},
+  { stage: "Quote Sent",  count: 5,  color: "bg-purple-500",  leads: [
+    { name: "Mehta Bros", val: "₹2.1L", hot: false },
+    { name: "Gupta Retail", val: "₹1.4L", hot: true },
+  ]},
+  { stage: "Won 🏆",       count: 3,  color: "bg-emerald-500", leads: [
+    { name: "Singh Infra", val: "₹5.6L", hot: false },
+    { name: "Jain Exports", val: "₹3.8L", hot: false },
+  ]},
+];
+const crmUpcoming = [
+  { time: "10:30 AM", name: "Rajesh Enterprises", type: "Follow-up Call", tag: "High Priority", color: "border-red-400 bg-red-50" },
+  { time: "12:00 PM", name: "Patel & Sons",        type: "Demo Presentation", tag: "Scheduled",   color: "border-blue-400 bg-blue-50" },
+  { time: "03:00 PM", name: "Mehta Bros",           type: "Quotation Review", tag: "Pending",     color: "border-amber-400 bg-amber-50" },
+];
+
+const mktBadges = [
+  "Bulk WhatsApp Broadcasts",
+  "Auto Festive Poster Maker",
+  "Logo & QR Branded Creatives",
+  "Discount Coupons & Vouchers",
+  "Inactive Client Retargeting",
+  "Real-Time Campaign Analytics",
+];
+const mktCampaigns = [
+  { name: "Diwali Sale 2026",   sent: 1250, opened: 1156, orders: 87, revenue: "₹1,42,800", status: "Live",     badge: "bg-emerald-500" },
+  { name: "Flash Weekend Offer", sent: 840,  opened: 772,  orders: 54, revenue: "₹68,400",  status: "Completed",badge: "bg-blue-500" },
+  { name: "New Arrivals Aug",    sent: 620,  opened: 544,  orders: 38, revenue: "₹41,200",  status: "Completed",badge: "bg-slate-500" },
+];
+const mktPosterColors = [
+  "from-rose-500 via-orange-500 to-amber-400",
+  "from-purple-600 via-blue-500 to-cyan-400",
+  "from-emerald-500 via-teal-500 to-blue-500",
+];
+const mktPosterTitles = ["Diwali Offer 🪔", "New Stock In! 📦", "Year End Sale 🎉"];
+const mktPosterDisc   = ["FLAT 30% OFF", "Exclusive Deals", "Upto 50% OFF"];
 
 const complianceBadges = [
   { icon: ShieldCheck, label: "GST Ready" },
@@ -495,6 +570,314 @@ export default function LandingPage() {
         </div>
       </section>
 
+
+
+      
+      {/* ── HR SECTION ── */}
+      <section className="w-full py-14 sm:py-16 bg-[#0f0b2e]">
+        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
+          {/* LEFT: Copy */}
+          <div className="flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <UserCheck className="h-4 w-4" />
+              <span>HR & PAYROLL AUTOMATION</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
+              Track Attendance.<br />
+              <span className="text-[#ff9438]">Run Payroll in 60 Seconds.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
+              Ditch the Excel sheets. Manage GPS attendance, biometric punch-in,
+              leave approvals, PF/ESI compliance, and WhatsApp payslip delivery
+              — all in one place.
+            </p>
+            {/* 6 Capability Pills */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {hrBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* RIGHT: Attendance Portal UI Illustration */}
+          <div className="flex items-center justify-center">
+            <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200/30">
+              <div className="bg-[#28166f] px-5 py-4 flex items-center justify-between">
+                <div>
+                  <div className="text-white font-black text-base tracking-tight">Mark Your Attendance</div>
+                  <div className="text-blue-200 text-xs mt-0.5">Today · Tuesday, 16 Sep 2026</div>
+                </div>
+                <div className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live Tracking
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 border-b border-slate-200">
+                <div className="grid grid-cols-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-2">
+                  <span>Employee</span>
+                  <span className="text-center">Status</span>
+                  <span className="text-center">In Time</span>
+                  <span className="text-right">Method</span>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {hrEmployees.map((emp, i) => (
+                    <div key={i} className="grid grid-cols-4 items-center bg-white rounded-lg px-3 py-2.5 shadow-sm border border-slate-100">
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-800 text-xs truncate">{emp.name}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{emp.role}</div>
+                      </div>
+                      <div className="flex justify-center">
+                        <span className={"text-[10px] font-black text-white px-2 py-0.5 rounded-md " + emp.color}>{emp.status}</span>
+                      </div>
+                      <div className="text-center text-xs font-mono text-slate-600 font-semibold">{emp.time}</div>
+                      <div className="flex justify-end">
+                        {emp.status !== "A" ? (
+                          <div className="flex items-center gap-1 text-[10px] text-slate-500">
+                            <Fingerprint className="w-3 h-3 text-[#28166f]" /> GPS
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-red-400 font-semibold">Absent</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="px-4 py-3 bg-white border-b border-slate-100">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">February Attendance</span>
+                  <div className="flex items-center gap-3 text-[10px]">
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Present</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Absent</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Half</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-1">
+                  {hrMonths.map((d, i) => <div key={i} className="text-center text-[9px] font-bold text-slate-400">{d}</div>)}
+                  {hrDays.map((d, i) => (
+                    <div key={i} title={d === "P" ? "Present" : d === "A" ? "Absent" : "Half Day"} className={"h-5 w-full rounded text-[9px] font-bold flex items-center justify-center text-white " + (d === "P" ? "bg-emerald-500" : d === "A" ? "bg-red-400" : "bg-amber-400")}>{i + 1}</div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-slate-100 bg-white">
+                <div className="px-4 py-3 text-center">
+                  <div className="text-lg font-black text-emerald-600">24</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">Present Days</div>
+                </div>
+                <div className="px-4 py-3 text-center">
+                  <div className="text-lg font-black text-[#28166f]">₹42,500</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">Net Salary</div>
+                </div>
+                <div className="px-4 py-3 text-center">
+                  <div className="text-lg font-black text-[#e77817]">3</div>
+                  <div className="text-[10px] text-slate-500 font-semibold">Leaves Left</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── CRM SECTION ── */}
+      <section className="w-full py-14 sm:py-16 bg-slate-50">
+        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
+          {/* LEFT: CRM Pipeline Illustration */}
+          <div className="order-2 md:order-1 flex items-center justify-center">
+            <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200">
+              <div className="bg-[#e77817] px-5 py-3.5 flex items-center justify-between">
+                <div>
+                  <div className="text-white font-black text-base tracking-tight">Sales Pipeline</div>
+                  <div className="text-orange-100 text-xs mt-0.5">28 Active Deals · ₹24.8L in Pipeline</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white/70 text-[10px] font-semibold">This Month</div>
+                  <div className="text-white font-black text-base">₹9.4L Closed</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-0 divide-x divide-slate-100 border-b border-slate-100 bg-slate-50">
+                {crmPipeline.map((col, ci) => (
+                  <div key={ci} className="flex flex-col">
+                    <div className="px-2.5 py-2 border-b border-slate-100 bg-white flex items-center justify-between">
+                      <span className="text-[10px] font-black text-slate-700 leading-tight">{col.stage}</span>
+                      <span className={"text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full " + col.color}>{col.count}</span>
+                    </div>
+                    <div className="p-1.5 flex flex-col gap-1.5 bg-slate-50 min-h-[100px]">
+                      {col.leads.map((lead, li) => (
+                        <div key={li} className={"bg-white rounded-lg px-2 py-1.5 shadow-sm border " + (lead.hot ? "border-orange-300" : "border-slate-100")}>
+                          <div className="text-[9.5px] font-bold text-slate-800 leading-tight truncate">{lead.name}</div>
+                          <div className="text-[9px] text-slate-500 font-semibold">{lead.val}</div>
+                          {lead.hot && <div className="text-[8px] text-orange-500 font-bold mt-0.5">🔥 Hot</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="p-4 bg-white">
+                <div className="text-xs font-black text-slate-700 uppercase tracking-wider mb-2.5">Today's Meetings & Follow-ups</div>
+                <div className="flex flex-col gap-2">
+                  {crmUpcoming.map((item, i) => (
+                    <div key={i} className={"flex items-center gap-3 rounded-xl px-3 py-2 border-l-4 " + item.color}>
+                      <div className="shrink-0 text-center">
+                        <div className="text-[10px] font-black text-slate-700">{item.time}</div>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-bold text-slate-800 truncate">{item.name}</div>
+                        <div className="text-[10px] text-slate-500">{item.type}</div>
+                      </div>
+                      <span className="text-[9px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-full shrink-0">{item.tag}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50 border-t border-slate-100">
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-blue-600">28</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Active Leads</div>
+                </div>
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-emerald-600">3x</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Faster Closing</div>
+                </div>
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-[#e77817]">0%</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Missed Follow-ups</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* RIGHT: Copy */}
+          <div className="order-1 md:order-2 flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <Target className="h-4 w-4" />
+              <span>CRM & SALES PIPELINE</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
+              Capture Every Lead.<br />
+              <span className="text-[#28166f]">Close Deals 3x Faster.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
+              From inquiry to invoice — manage your entire sales funnel with
+              visual Kanban pipelines, automated WhatsApp follow-ups, and
+              1-tap quotation-to-billing conversion.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {crmBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100/80 border border-slate-200 hover:border-[#28166f]/40 hover:bg-[#28166f]/5 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-[#28166f]/15 border border-[#28166f]/30 text-[#28166f] grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-slate-800 font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── MARKETING SECTION ── */}
+      <section className="w-full py-14 sm:py-16 bg-[#0f0b2e]">
+        <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
+          {/* LEFT: Copy */}
+          <div className="flex flex-col justify-center">
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
+              <Megaphone className="h-4 w-4" />
+              <span>MARKETING & PROMOTION</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
+              Reach 10,000+ Customers.<br />
+              <span className="text-[#ff9438]">Boost Repeat Sales by 40%.</span>
+            </h2>
+            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
+              Turn your customer list into a revenue machine. Create branded
+              WhatsApp campaigns, auto-generate festive posters with your logo,
+              and launch coupon deals — no designer needed.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
+              {mktBadges.map((b, i) => (
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
+                  </div>
+                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* RIGHT: Marketing Studio UI Illustration */}
+          <div className="flex items-center justify-center">
+            <div className="w-full max-w-[520px] bg-white rounded-[1.75rem] shadow-2xl overflow-hidden border border-slate-200/30">
+              <div className="bg-gradient-to-r from-[#28166f] to-[#e77817] px-5 py-3.5 flex items-center justify-between">
+                <div>
+                  <div className="text-white font-black text-base tracking-tight">Promotion Studio</div>
+                  <div className="text-white/70 text-xs mt-0.5">1,250 customers · Last sent 2 hrs ago</div>
+                </div>
+                <div className="flex items-center gap-1.5 bg-white/20 border border-white/30 text-white text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                  Active
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 border-b border-slate-100">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">Festive Poster Templates</div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {mktPosterColors.map((grad, i) => (
+                    <div key={i} className={"rounded-xl overflow-hidden bg-gradient-to-br " + grad + " p-3 text-center relative cursor-pointer hover:scale-105 transition-transform shadow-md"}>
+                      <div className="text-[9px] font-black uppercase text-white/80 tracking-wider">Assay Biz Store</div>
+                      <div className="text-sm font-black text-white mt-0.5 leading-tight">{mktPosterTitles[i]}</div>
+                      <div className="text-[10px] font-black text-white/90 mt-1 bg-black/20 rounded px-1.5 py-0.5">{mktPosterDisc[i]}</div>
+                      {i === 0 && (
+                        <div className="absolute top-1 right-1 bg-white/20 border border-white/40 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">Live</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="px-4 pt-3 pb-2 bg-white">
+                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2.5">Recent Campaigns</div>
+                <div className="flex flex-col gap-1.5">
+                  {mktCampaigns.map((c, i) => (
+                    <div key={i} className="grid grid-cols-5 items-center gap-1 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100 text-[10px]">
+                      <div className="col-span-2 min-w-0">
+                        <div className="font-bold text-slate-800 truncate">{c.name}</div>
+                        <div className="text-slate-400 truncate">{c.sent} sent</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-slate-700">{Math.round(c.opened / c.sent * 100)}%</div>
+                        <div className="text-slate-400">Open</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="font-bold text-emerald-600">{c.revenue}</div>
+                        <div className="text-slate-400">Revenue</div>
+                      </div>
+                      <div className="flex justify-end">
+                        <span className={"text-white text-[8px] font-bold px-2 py-0.5 rounded-full " + c.badge}>{c.status}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50 border-t border-slate-100">
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-emerald-600">98%</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Open Rate</div>
+                </div>
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-[#e77817]">40%+</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Repeat Orders</div>
+                </div>
+                <div className="px-3 py-2.5 text-center">
+                  <div className="text-sm font-black text-[#28166f]">100+</div>
+                  <div className="text-[9px] text-slate-500 font-semibold">Poster Templates</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
 
       {/* Pricing */}
