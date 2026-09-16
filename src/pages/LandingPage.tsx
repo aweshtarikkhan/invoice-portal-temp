@@ -90,17 +90,12 @@ const hrBadges = [
   "Multi-Shift & Leave Roster",
 ];
 const hrEmployees = [
-  { name: "Rahul Sharma",     role: "Store Manager",  status: "P",  time: "09:02", color: "bg-emerald-500" },
-  { name: "Priya Verma",      role: "Sales Executive", status: "P",  time: "09:14", color: "bg-emerald-500" },
-  { name: "Deepak Singh",     role: "Delivery Staff",  status: "A",  time: "—",     color: "bg-red-400" },
-  { name: "Ankita Patel",     role: "Accountant",      status: "HD", time: "10:30", color: "bg-amber-400" },
-  { name: "Ravi Kumar",       role: "Warehouse Staff", status: "P",  time: "08:55", color: "bg-emerald-500" },
+  { name: "Rahul Sharma",     role: "Store Manager",  status: "P",  time: "09:02", color: "bg-[#28166f]" },
+  { name: "Priya Verma",      role: "Sales Executive", status: "P",  time: "09:14", color: "bg-[#28166f]" },
+  { name: "Ankita Patel",     role: "Accountant",      status: "HD", time: "10:30", color: "bg-slate-400" },
+  { name: "Deepak Singh",     role: "Delivery Staff",  status: "A",  time: "—",     color: "bg-[#e77817]" },
 ];
-const hrMonths = ["M","T","W","T","F","S","S"];
-const hrDays = Array.from({ length: 28 }, (_, i) => {
-  const s = ["P","P","P","A","P","P","HD","P","P","P","P","A","P","P","P","P","P","P","HD","P","P","A","P","P","P","P","P","P"];
-  return s[i] || "P";
-});
+// hrMonths and hrDays removed
 
 const crmBadges = [
   "Multi-Source Lead Capture",
@@ -111,27 +106,27 @@ const crmBadges = [
   "Client 360° History",
 ];
 const crmPipeline = [
-  { stage: "New Leads",    count: 12, color: "bg-blue-500",    leads: [
+  { stage: "New Leads",    count: 12, color: "bg-[#28166f]",    leads: [
     { name: "Rajesh Ent.", val: "₹1.8L", hot: true },
     { name: "Sharma Traders", val: "₹75K", hot: false },
   ]},
-  { stage: "In Discussion", count: 8, color: "bg-amber-500",  leads: [
+  { stage: "In Discussion", count: 8, color: "bg-[#e77817]",  leads: [
     { name: "Patel & Sons", val: "₹3.2L", hot: true },
     { name: "Krishna Corp", val: "₹90K", hot: false },
   ]},
-  { stage: "Quote Sent",  count: 5,  color: "bg-purple-500",  leads: [
+  { stage: "Quote Sent",  count: 5,  color: "bg-slate-700",  leads: [
     { name: "Mehta Bros", val: "₹2.1L", hot: false },
     { name: "Gupta Retail", val: "₹1.4L", hot: true },
   ]},
-  { stage: "Won 🏆",       count: 3,  color: "bg-emerald-500", leads: [
+  { stage: "Won 🏆",       count: 3,  color: "bg-[#28166f]", leads: [
     { name: "Singh Infra", val: "₹5.6L", hot: false },
     { name: "Jain Exports", val: "₹3.8L", hot: false },
   ]},
 ];
 const crmUpcoming = [
-  { time: "10:30 AM", name: "Rajesh Enterprises", type: "Follow-up Call", tag: "High Priority", color: "border-red-400 bg-red-50" },
-  { time: "12:00 PM", name: "Patel & Sons",        type: "Demo Presentation", tag: "Scheduled",   color: "border-blue-400 bg-blue-50" },
-  { time: "03:00 PM", name: "Mehta Bros",           type: "Quotation Review", tag: "Pending",     color: "border-amber-400 bg-amber-50" },
+  { time: "10:30 AM", name: "Rajesh Enterprises", type: "Follow-up Call", tag: "High Priority", color: "border-[#e77817] bg-[#e77817]/10" },
+  { time: "12:00 PM", name: "Patel & Sons",        type: "Demo Presentation", tag: "Scheduled",   color: "border-[#28166f] bg-[#28166f]/10" },
+  { time: "03:00 PM", name: "Mehta Bros",           type: "Quotation Review", tag: "Pending",     color: "border-slate-300 bg-slate-50" },
 ];
 
 const mktBadges = [
@@ -143,18 +138,17 @@ const mktBadges = [
   "Real-Time Campaign Analytics",
 ];
 const mktCampaigns = [
-  { name: "Diwali Sale 2026",   sent: 1250, opened: 1156, orders: 87, revenue: "₹1,42,800", status: "Live",     badge: "bg-emerald-500" },
-  { name: "Flash Weekend Offer", sent: 840,  opened: 772,  orders: 54, revenue: "₹68,400",  status: "Completed",badge: "bg-blue-500" },
+  { name: "Diwali Sale 2026",   sent: 1250, opened: 1156, orders: 87, revenue: "₹1,42,800", status: "Live",     badge: "bg-[#28166f]" },
+  { name: "Flash Weekend Offer", sent: 840,  opened: 772,  orders: 54, revenue: "₹68,400",  status: "Completed",badge: "bg-[#e77817]" },
   { name: "New Arrivals Aug",    sent: 620,  opened: 544,  orders: 38, revenue: "₹41,200",  status: "Completed",badge: "bg-slate-500" },
 ];
 const mktPosterColors = [
-  "from-rose-500 via-orange-500 to-amber-400",
-  "from-purple-600 via-blue-500 to-cyan-400",
-  "from-emerald-500 via-teal-500 to-blue-500",
+  "from-[#28166f] to-[#1e1055]",
+  "from-[#e77817] to-[#d56b10]",
+  "from-[#28166f] to-[#e77817]",
 ];
 const mktPosterTitles = ["Diwali Offer 🪔", "New Stock In! 📦", "Year End Sale 🎉"];
 const mktPosterDisc   = ["FLAT 30% OFF", "Exclusive Deals", "Upto 50% OFF"];
-
 const complianceBadges = [
   { icon: ShieldCheck, label: "GST Ready" },
   { icon: FileText, label: "GSTIN Supported" },
@@ -170,14 +164,14 @@ const growthFeatures = [
     title: "Invoicing",
     desc: "Create, send and track invoices easily.",
     cardBg: "bg-blue-50/50 border-blue-100 hover:bg-blue-600 hover:border-blue-600",
-    iconBg: "bg-blue-100/80 text-blue-600 group-hover:bg-white group-hover:text-blue-600",
+    iconBg: "bg-blue-100/80 text-[#28166f] group-hover:bg-white group-hover:text-[#28166f]",
   },
   {
     icon: Calculator,
     title: "Accounting",
     desc: "Manage your finances with confidence.",
     cardBg: "bg-emerald-50/40 border-emerald-100 hover:bg-emerald-600 hover:border-emerald-600",
-    iconBg: "bg-emerald-100/80 text-emerald-600 group-hover:bg-white group-hover:text-emerald-600",
+    iconBg: "bg-emerald-100/80 text-[#e77817] group-hover:bg-white group-hover:text-[#e77817]",
   },
   {
     icon: Users,
@@ -343,13 +337,13 @@ export default function LandingPage() {
             {/* Trust Badges */}
             <div className="flex flex-wrap items-center justify-start gap-x-5 gap-y-2 text-xs sm:text-sm font-semibold text-slate-600">
               <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> No Credit Card Required
+                <Check className="h-4 w-4 text-[#e77817] stroke-[2.5]" /> No Credit Card Required
               </span>
               <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> Easy Setup
+                <Check className="h-4 w-4 text-[#e77817] stroke-[2.5]" /> Easy Setup
               </span>
               <span className="flex items-center gap-1.5">
-                <Check className="h-4 w-4 text-emerald-600 stroke-[2.5]" /> Trusted by Growing Businesses
+                <Check className="h-4 w-4 text-[#e77817] stroke-[2.5]" /> Trusted by Growing Businesses
               </span>
             </div>
 
@@ -372,7 +366,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-y-0 text-center md:divide-x divide-white/10 relative z-10">
             {[
               { v: "100+", l: L.trust_users, c: "text-[#ffaa47]" },
-              { v: "₹23 Cr+", l: L.trust_invoices, c: "text-emerald-400" },
+              { v: "₹23 Cr+", l: L.trust_invoices, c: "text-[#e77817]" },
               { v: "4.8 ★", l: L.trust_rating, c: "text-amber-400" },
               { v: "99.99%", l: L.trust_uptime, c: "text-blue-400" },
             ].map((s, i) => (
@@ -461,8 +455,8 @@ export default function LandingPage() {
             {/* 6 Compliance & GST Points with increased font size */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
               {complianceBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200">
-                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-[#e77817]/40 hover:bg-white/10 transition-all duration-200">
+                  <div className="h-5 w-5 rounded-full bg-[#e77817]/20 border border-[#e77817]/30 text-[#e77817] grid place-items-center shrink-0">
                     <Check className="h-3 w-3 stroke-[3]" />
                   </div>
                   <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b.label}</span>
@@ -485,7 +479,7 @@ export default function LandingPage() {
 
               <div className="absolute inset-0 flex flex-col">
                 {/* Status bar */}
-                <div className="bg-[#128C7E] pt-3.5 pb-0 z-20">
+                <div className="bg-[#28166f] pt-3.5 pb-0 z-20">
                   <div className="flex items-center gap-1.5 px-2.5 py-1.5">
                     <div className="h-6 w-6 rounded-full bg-white/20 border border-white/30 flex items-center justify-center shrink-0">
                       <span className="text-white font-black text-[10px]">A</span>
@@ -517,7 +511,7 @@ export default function LandingPage() {
 
                   {/* Outgoing: yes sharing now */}
                   <div className="flex justify-end">
-                    <div className="bg-[#dcf8c6] rounded-lg rounded-tr-none shadow-sm px-1.5 py-1 text-[8.5px] text-slate-800 max-w-[84%] leading-snug">
+                    <div className="bg-[#e77817]/15 rounded-lg rounded-tr-none shadow-sm px-1.5 py-1 text-[8.5px] text-slate-800 max-w-[84%] leading-snug">
                       Ji bilkul! Abhi bhejta hoon 👇
                       <div className="flex justify-end items-center gap-0.5 mt-0.5">
                         <span className="text-[7px] text-slate-400">10:31</span>
@@ -528,9 +522,9 @@ export default function LandingPage() {
 
                   {/* Outgoing: PDF invoice card */}
                   <div className="flex justify-end">
-                    <div className="bg-[#dcf8c6] rounded-lg rounded-tr-none shadow-sm text-[8.5px] max-w-[90%] overflow-hidden">
+                    <div className="bg-[#e77817]/15 rounded-lg rounded-tr-none shadow-sm text-[8.5px] max-w-[90%] overflow-hidden">
                       <div className="bg-white/60 px-1.5 py-1 flex items-center gap-1">
-                        <div className="bg-red-500 p-0.5 rounded shrink-0"><FileText className="h-2.5 w-2.5 text-white" /></div>
+                        <div className="bg-[#e77817] p-0.5 rounded shrink-0"><FileText className="h-2.5 w-2.5 text-white" /></div>
                         <div className="min-w-0">
                           <div className="font-bold text-slate-700 text-[8px] truncate">INV-2026-0184.pdf</div>
                           <div className="text-[7px] text-slate-400">2 Pages · 245 KB</div>
@@ -538,7 +532,7 @@ export default function LandingPage() {
                       </div>
                       <div className="px-1.5 py-1">
                         <div className="font-black text-slate-800 text-[10.5px]">₹24,750</div>
-                        <div className="bg-[#25D366] text-white text-[7.5px] font-bold text-center py-0.5 rounded mt-0.5">Pay via UPI ➜</div>
+                        <div className="bg-[#e77817] text-white text-[7.5px] font-bold text-center py-0.5 rounded mt-0.5">Pay via UPI ➜</div>
                       </div>
                       <div className="flex justify-end px-1.5 pb-0.5">
                         <span className="text-[7px] text-slate-400">10:31</span>
@@ -560,7 +554,7 @@ export default function LandingPage() {
                   <div className="flex-1 bg-white rounded-full px-2.5 py-0.5 text-[8px] text-slate-400 flex items-center">
                     Type a message
                   </div>
-                  <div className="h-5 w-5 rounded-full bg-[#25D366] flex items-center justify-center shrink-0">
+                  <div className="h-5 w-5 rounded-full bg-[#e77817] flex items-center justify-center shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                   </div>
                 </div>
@@ -585,8 +579,8 @@ export default function LandingPage() {
                   <div className="text-white font-black text-base tracking-tight">Mark Your Attendance</div>
                   <div className="text-blue-200 text-xs mt-0.5">Today · Tuesday, 16 Sep 2026</div>
                 </div>
-                <div className="flex items-center gap-2 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <div className="flex items-center gap-2 bg-[#e77817]/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full">
+                  <div className="w-2 h-2 rounded-full bg-[#ffaa47] animate-pulse" />
                   Live Tracking
                 </div>
               </div>
@@ -614,7 +608,7 @@ export default function LandingPage() {
                             <Fingerprint className="w-3 h-3 text-[#28166f]" /> GPS
                           </div>
                         ) : (
-                          <span className="text-[10px] text-red-400 font-semibold">Absent</span>
+                          <span className="text-[10px] text-[#e77817] font-semibold">Absent</span>
                         )}
                       </div>
                     </div>
@@ -625,21 +619,21 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">February Attendance</span>
                   <div className="flex items-center gap-3 text-[10px]">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Present</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-400 inline-block" /> Absent</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#28166f] inline-block" /> Present</span>
+                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#e77817] inline-block" /> Absent</span>
                     <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Half</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-7 gap-1">
                   {hrMonths.map((d, i) => <div key={i} className="text-center text-[9px] font-bold text-slate-400">{d}</div>)}
                   {hrDays.map((d, i) => (
-                    <div key={i} title={d === "P" ? "Present" : d === "A" ? "Absent" : "Half Day"} className={"h-5 w-full rounded text-[9px] font-bold flex items-center justify-center text-white " + (d === "P" ? "bg-emerald-500" : d === "A" ? "bg-red-400" : "bg-amber-400")}>{i + 1}</div>
+                    <div key={i} title={d === "P" ? "Present" : d === "A" ? "Absent" : "Half Day"} className={"h-5 w-full rounded text-[9px] font-bold flex items-center justify-center text-white " + (d === "P" ? "bg-[#28166f]" : d === "A" ? "bg-[#e77817]" : "bg-amber-400")}>{i + 1}</div>
                   ))}
                 </div>
               </div>
               <div className="grid grid-cols-3 divide-x divide-slate-100 bg-white">
                 <div className="px-4 py-3 text-center">
-                  <div className="text-lg font-black text-emerald-600">24</div>
+                  <div className="text-lg font-black text-[#e77817]">24</div>
                   <div className="text-[10px] text-slate-500 font-semibold">Present Days</div>
                 </div>
                 <div className="px-4 py-3 text-center">
@@ -703,8 +697,8 @@ export default function LandingPage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
               {crmBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200 group">
-                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-[#e77817]/40 hover:bg-white/10 transition-all duration-200 group">
+                  <div className="h-5 w-5 rounded-full bg-[#e77817]/20 border border-[#e77817]/30 text-[#e77817] grid place-items-center shrink-0">
                     <Check className="h-3 w-3 stroke-[3]" />
                   </div>
                   <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b}</span>
@@ -763,11 +757,11 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50 border-t border-slate-100">
                 <div className="px-3 py-2.5 text-center">
-                  <div className="text-sm font-black text-blue-600">28</div>
+                  <div className="text-sm font-black text-[#28166f]">28</div>
                   <div className="text-[9px] text-slate-500 font-semibold">Active Leads</div>
                 </div>
                 <div className="px-3 py-2.5 text-center">
-                  <div className="text-sm font-black text-emerald-600">3x</div>
+                  <div className="text-sm font-black text-[#e77817]">3x</div>
                   <div className="text-[9px] text-slate-500 font-semibold">Faster Closing</div>
                 </div>
                 <div className="px-3 py-2.5 text-center">
@@ -825,7 +819,7 @@ export default function LandingPage() {
                         <div className="text-slate-400">Open</div>
                       </div>
                       <div className="text-center">
-                        <div className="font-bold text-emerald-600">{c.revenue}</div>
+                        <div className="font-bold text-[#e77817]">{c.revenue}</div>
                         <div className="text-slate-400">Revenue</div>
                       </div>
                       <div className="flex justify-end">
@@ -837,7 +831,7 @@ export default function LandingPage() {
               </div>
               <div className="grid grid-cols-3 divide-x divide-slate-100 bg-slate-50 border-t border-slate-100">
                 <div className="px-3 py-2.5 text-center">
-                  <div className="text-sm font-black text-emerald-600">98%</div>
+                  <div className="text-sm font-black text-[#e77817]">98%</div>
                   <div className="text-[9px] text-slate-500 font-semibold">Open Rate</div>
                 </div>
                 <div className="px-3 py-2.5 text-center">
@@ -981,37 +975,37 @@ export default function LandingPage() {
                       {/* Middle: 2 Columns of Features */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>100 Invoices Free / Year</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>Festival Posts Only</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>3 Employees Free</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>100 WhatsApp Msgs</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>50 Leads Free (Manual)</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
                           <span>No Admin Panel</span>
@@ -1021,7 +1015,7 @@ export default function LandingPage() {
                       {/* Right: Employee Limit & Price */}
                       <div className="flex items-center justify-between lg:justify-end gap-6 lg:border-l lg:border-slate-200 lg:pl-8">
                         <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 whitespace-nowrap">
-                          <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                           <span>Up to 3 employees</span>
                         </div>
                         <div className="border border-orange-200/90 bg-orange-50/50 rounded-xl px-4 py-2 flex items-baseline gap-1 shrink-0">
@@ -1059,7 +1053,7 @@ export default function LandingPage() {
 
                           {/* Header */}
                           <div className="flex items-start gap-3.5 mb-5">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 shadow-2xs">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-[#28166f] shadow-2xs">
                               <Calculator className="w-6 h-6" />
                             </div>
                             <div>
@@ -1108,7 +1102,7 @@ export default function LandingPage() {
                               <span>500 WhatsApp Msgs / Mo</span>
                             </div>
                             <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
-                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                               <span>Up to 10 employees</span>
                             </div>
                           </div>
@@ -1153,7 +1147,7 @@ export default function LandingPage() {
 
                           {/* Header */}
                           <div className="flex items-start gap-3.5 mb-5">
-                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-2xs">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-[#e77817] shadow-2xs">
                               <Users className="w-6 h-6" />
                             </div>
                             <div>
@@ -1198,7 +1192,7 @@ export default function LandingPage() {
                               <span>500 WhatsApp Msgs / Mo</span>
                             </div>
                             <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
-                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                               <span>Up to 10 employees</span>
                             </div>
                           </div>
@@ -1292,7 +1286,7 @@ export default function LandingPage() {
                               <span>500 WhatsApp Msgs / Mo</span>
                             </div>
                             <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
-                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                               <span>Up to 10 employees</span>
                             </div>
                           </div>
@@ -1382,7 +1376,7 @@ export default function LandingPage() {
                               <span>500 WhatsApp Msgs / Mo</span>
                             </div>
                             <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
-                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                               <span>Up to 10 employees</span>
                             </div>
                           </div>
@@ -1413,7 +1407,7 @@ export default function LandingPage() {
 
                       {/* Header */}
                       <div className="flex items-start gap-3.5 mb-4">
-                        <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 shadow-2xs">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-[#28166f] shadow-2xs">
                           <MessageSquare className="w-6 h-6" />
                         </div>
                         <div>
@@ -1428,7 +1422,7 @@ export default function LandingPage() {
                       <div className="my-8 py-4 flex flex-col items-center justify-center">
                         <div className="w-24 h-24 rounded-full bg-blue-50/70 border border-blue-100/60 flex items-center justify-center relative mb-4 shadow-inner">
                           <div className="relative">
-                            <div className="w-13 h-10 bg-blue-500 rounded-lg shadow-md flex items-center justify-center p-2">
+                            <div className="w-13 h-10 bg-[#28166f] rounded-lg shadow-md flex items-center justify-center p-2">
                               <div className="space-y-1 w-full">
                                 <div className="h-1 bg-white rounded-full w-full"></div>
                                 <div className="h-1 bg-white/70 rounded-full w-3/4"></div>
@@ -1560,37 +1554,37 @@ export default function LandingPage() {
                         {/* Middle: 2 Columns of Features */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>All Premium Features</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>Full Suite Admin</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>10 Employees Included</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>500 WhatsApp Msgs / Mo</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>+ ₹29 / Extra Employee</span>
                           </div>
                           <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                            <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
                             <span>Up to 10 employees</span>
                           </div>
                         </div>
