@@ -155,31 +155,7 @@ const features = [
   { icon: Smartphone, title: "Works offline, installs as app", desc: "PWA — install on phone or laptop. Use it even on a weak network." },
 ];
 
-type Cell = boolean | "partial";
-const comparison: { label: string; satah: Cell; vyapar: Cell; mybillbook: Cell; zoho: Cell; cleartax: Cell }[] = [
-  { label: "Instant share with UPI QR", satah: true, vyapar: "partial", mybillbook: "partial", zoho: false, cleartax: false },
-  { label: "Direct WhatsApp invoice & reminders", satah: true, vyapar: "partial", mybillbook: true, zoho: "partial", cleartax: false },
-  { label: "Send Email from custom domain (SES/SMTP)", satah: true, vyapar: false, mybillbook: false, zoho: true, cleartax: false },
-  { label: "GSTR-1 + 3B export", satah: true, vyapar: true, mybillbook: true, zoho: "partial", cleartax: true },
-  { label: "Multi-warehouse inventory", satah: true, vyapar: true, mybillbook: true, zoho: false, cleartax: false },
-  { label: "Built-in HRMS (Attendance & Payroll)", satah: true, vyapar: false, mybillbook: false, zoho: false, cleartax: false },
-  { label: "Business CRM (Leads & Pipeline)", satah: true, vyapar: false, mybillbook: false, zoho: false, cleartax: false },
-  { label: "Marketing Studio & Posters (Promotion)", satah: true, vyapar: false, mybillbook: "partial", zoho: false, cleartax: false },
-  { label: "Starts free, no card needed", satah: true, vyapar: false, mybillbook: false, zoho: true, cleartax: false },
-];
 
-const testimonials = [
-  { name: "Rajesh Sharma", role: "Owner, Sharma Hardware · Jaipur", quote: "Pehle Excel pe bill banata tha, ab seedha bhej deta hoon. Customer 5 minute mein UPI se paisa de deta hai.", rating: 5 },
-  { name: "Priya Mehta", role: "Founder, Mehta Textiles · Surat", quote: "GSTR-1 file karne mein pehle CA ko 3 din lagte the. Assay Biz se 10 minute mein JSON ready ho jata hai. Game changer.", rating: 5 },
-  { name: "Amit Patel", role: "CA, Patel & Associates · Ahmedabad", quote: "My 40+ clients moved from Tally + Vyapar to Assay Biz. The HSN summary and 3B export saves us hours every month.", rating: 5 },
-  { name: "Sneha Iyer", role: "Freelance Designer · Bengaluru", quote: "Clean, fast, no bloat. The portal link means clients pay without me chasing. Worth every rupee.", rating: 5 },
-];
-
-function Tick({ v }: { v: boolean | "partial" }) {
-  if (v === true) return <Check className="h-5 w-5 text-emerald-600 mx-auto" />;
-  if (v === "partial") return <span className="text-amber-600 text-sm font-medium">Partial</span>;
-  return <X className="h-5 w-5 text-muted-foreground/40 mx-auto" />;
-}
 
 export default function LandingPage() {
   const { session, loading } = useAuth();
@@ -525,49 +501,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Comparison */}
-      <section id="compare" className="py-24 bg-slate-50">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-navy mb-6">{L.cmp_title}</h2>
-            <p className="text-lg md:text-xl text-slate-500">{L.cmp_sub}</p>
-          </div>
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 min-w-[240px]">Feature</th>
-                    <th className="p-5 text-center bg-white border-l border-r border-slate-200 shadow-xs min-w-[150px]">
-                      <span className="font-black text-xl tracking-tight select-none inline-block">
-                        <span className="text-[#e77817]">A</span>
-                        <span className="text-[#28166f]">assay</span>
-                        <span className="text-[#e77817] ml-1">Biz</span>
-                      </span>
-                    </th>
-                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">Vyapar</th>
-                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">MyBillBook</th>
-                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[120px]">Zoho Invoice</th>
-                    <th className="p-5 font-bold text-slate-500 uppercase tracking-wider text-xs sm:text-sm bg-slate-50 text-center min-w-[110px]">ClearTax</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {comparison.map((row, idx) => (
-                    <tr key={row.label} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-4 sm:p-5 px-5 sm:px-6 font-semibold text-slate-700 text-sm sm:text-base">{row.label}</td>
-                      <td className="p-4 sm:p-5 text-center bg-white border-l border-r border-slate-200/80"><Tick v={row.satah} /></td>
-                      <td className="p-4 sm:p-5 text-center"><Tick v={row.vyapar} /></td>
-                      <td className="p-4 sm:p-5 text-center"><Tick v={row.mybillbook} /></td>
-                      <td className="p-4 sm:p-5 text-center"><Tick v={row.zoho} /></td>
-                      <td className="p-4 sm:p-5 text-center"><Tick v={row.cleartax} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </section>
+
 
       {/* Pricing */}
       <section id="pricing" className="pt-24 pb-20 bg-white relative overflow-hidden">

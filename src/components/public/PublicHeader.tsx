@@ -12,7 +12,6 @@ export function PublicHeader() {
         <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>
           <a href="/#features" className="hover:text-primary transition-colors">Features</a>
-          <a href="/#compare" className="hover:text-primary transition-colors">Compare</a>
           <Link to="/partner-with-us" className="hover:text-primary transition-colors">Partner With Us</Link>
         </nav>
         <div className="flex items-center gap-2 sm:gap-4 shrink-0">

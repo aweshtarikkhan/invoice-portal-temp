@@ -30,7 +30,7 @@ export function PublicFooter() {
                 Ready to streamline your business operations?
               </h2>
               <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                Join 500+ growing Indian businesses. Invoicing, accounting, inventory, and staff management — all in one place.
+                Join 100+ growing Indian businesses. Invoicing, accounting, inventory, and staff management — all in one place.
               </p>
             </div>
 
