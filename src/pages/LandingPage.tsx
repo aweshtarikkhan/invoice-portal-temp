@@ -292,20 +292,59 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats/Trust strip */}
-      <section className="bg-white border-b py-10 relative -mt-8 z-20 mx-4 sm:mx-8 lg:mx-auto max-w-6xl rounded-2xl shadow-xl">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 md:gap-y-0 px-6 text-center md:divide-x divide-slate-100">
-          {[
-            { v: "100+", l: L.trust_users, c: "text-primary" },
-            { v: "₹23 Cr+", l: L.trust_invoices, c: "text-emerald-500" },
-            { v: "4.8 ★", l: L.trust_rating, c: "text-amber-500" },
-            { v: "99.99%", l: L.trust_uptime, c: "text-blue-500" },
-          ].map((s, i) => (
-            <div key={i} className="flex flex-col items-center justify-center">
-              <div className={`text-3xl sm:text-4xl font-black tracking-tight mb-2 ${s.c}`}>{s.v}</div>
-              <div className="text-xs sm:text-sm font-semibold text-slate-500 uppercase tracking-wider">{s.l}</div>
+      {/* Merged Banner & Stats/Trust Section */}
+      <section className="relative -mt-10 sm:-mt-12 z-20 mx-4 sm:mx-8 lg:mx-auto max-w-6xl">
+        <div className="rounded-3xl bg-gradient-to-r from-[#211559] via-[#28166f] to-[#1c1248] border border-white/15 shadow-2xl overflow-hidden relative">
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-80 h-80 bg-[#e77817]/20 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Top CTA Row */}
+          <div className="p-8 sm:p-10 flex flex-col lg:flex-row items-center justify-between gap-8 relative z-10">
+            <div className="text-center lg:text-left max-w-2xl">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold uppercase tracking-wider mb-3">
+                <Sparkles className="w-3.5 h-3.5 text-[#ff9438]" />
+                <span>EXPERIENCE ASSAY BIZ TODAY</span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+                Ready to streamline your business operations?
+              </h2>
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+                Join 100+ growing Indian businesses. Invoicing, accounting, inventory, and staff management — all in one place.
+              </p>
             </div>
-          ))}
+
+            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3.5 shrink-0 w-full sm:w-auto">
+              <Link
+                to="/register"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#e77817] hover:bg-[#ff8a24] text-white font-bold text-sm shadow-lg shadow-[#e77817]/30 transition-all duration-300 hover:scale-[1.02]"
+              >
+                <span>Start Free Account</span>
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <a
+                href="/#pricing"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm border border-white/15 backdrop-blur-sm transition-all duration-300"
+              >
+                View Pricing & Plans
+              </a>
+            </div>
+          </div>
+
+          {/* Integrated Stats Row */}
+          <div className="border-t border-white/10 bg-black/25 backdrop-blur-xs py-7 px-6 relative z-10">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 md:gap-y-0 text-center md:divide-x divide-white/10">
+              {[
+                { v: "100+", l: L.trust_users, c: "text-[#ffaa47]" },
+                { v: "₹23 Cr+", l: L.trust_invoices, c: "text-emerald-400" },
+                { v: "4.8 ★", l: L.trust_rating, c: "text-amber-400" },
+                { v: "99.99%", l: L.trust_uptime, c: "text-blue-400" },
+              ].map((s, i) => (
+                <div key={i} className="flex flex-col items-center justify-center px-2">
+                  <div className={`text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight mb-1 ${s.c}`}>{s.v}</div>
+                  <div className="text-[11px] sm:text-xs font-semibold text-slate-300 uppercase tracking-wider">{s.l}</div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

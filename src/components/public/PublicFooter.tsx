@@ -17,39 +17,7 @@ export function PublicFooter() {
 
         <div className="mx-auto max-w-7xl px-6 relative z-10">
           
-          {/* Top Banner Card: Modern Elevated CTA */}
-          <div className="mb-16 p-8 sm:p-10 rounded-3xl bg-gradient-to-r from-[#211559] via-[#28166f] to-[#1c1248] border border-white/15 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-8 relative overflow-hidden">
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-80 h-80 bg-[#e77817]/20 rounded-full blur-3xl pointer-events-none" />
-            
-            <div className="relative z-10 text-center lg:text-left max-w-2xl">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold uppercase tracking-wider mb-3">
-                <Sparkles className="w-3.5 h-3.5 text-[#ff9438]" />
-                <span>EXPERIENCE ASSAY BIZ TODAY</span>
-              </div>
-              <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
-                Ready to streamline your business operations?
-              </h2>
-              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-                Join 100+ growing Indian businesses. Invoicing, accounting, inventory, and staff management — all in one place.
-              </p>
-            </div>
 
-            <div className="relative z-10 flex flex-col sm:flex-row items-center gap-3.5 shrink-0 w-full sm:w-auto">
-              <Link
-                to="/register"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-[#e77817] hover:bg-[#ff8a24] text-white font-bold text-sm shadow-lg shadow-[#e77817]/30 transition-all duration-300 hover:scale-[1.02]"
-              >
-                <span>Start Free Account</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-              <a
-                href="/#pricing"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-sm border border-white/15 backdrop-blur-sm transition-all duration-300"
-              >
-                View Pricing & Plans
-              </a>
-            </div>
-          </div>
 
           {/* Main 4-Column Balanced Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-14 border-b border-white/10">
