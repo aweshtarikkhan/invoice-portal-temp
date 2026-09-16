@@ -615,23 +615,6 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
-              <div className="px-4 py-3 bg-white border-b border-slate-100">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wide">February Attendance</span>
-                  <div className="flex items-center gap-3 text-[10px]">
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#28166f] inline-block" /> Present</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#e77817] inline-block" /> Absent</span>
-                    <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block" /> Half</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-7 gap-1">
-                  {hrMonths.map((d, i) => <div key={i} className="text-center text-[9px] font-bold text-slate-400">{d}</div>)}
-                  {hrDays.map((d, i) => (
-                    <div key={i} title={d === "P" ? "Present" : d === "A" ? "Absent" : "Half Day"} className={"h-5 w-full rounded text-[9px] font-bold flex items-center justify-center text-white " + (d === "P" ? "bg-[#28166f]" : d === "A" ? "bg-[#e77817]" : "bg-amber-400")}>{i + 1}</div>
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-slate-100 bg-white">
                 <div className="px-4 py-3 text-center">
                   <div className="text-lg font-black text-[#e77817]">24</div>
                   <div className="text-[10px] text-slate-500 font-semibold">Present Days</div>
