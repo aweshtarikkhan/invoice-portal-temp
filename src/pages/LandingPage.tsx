@@ -356,11 +356,11 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e77817]/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-3.5 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-wide shadow-xs">
-              <MessageCircle className="h-3.5 w-3.5 text-[#ff9438]" />
+            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs">
+              <MessageCircle className="h-4 w-4 text-[#ff9438]" />
               <span>{L.wa_eyebrow}</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl md:text-[2.25rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.25]">
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
               {lang === "hi" ? (
                 <>
                   बिल भेजें।{" "}
@@ -373,16 +373,16 @@ export default function LandingPage() {
                 </>
               )}
             </h2>
-            <p className="text-sm sm:text-base text-slate-200 leading-[1.7] mb-6 font-normal">{L.wa_sub}</p>
+            <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">{L.wa_sub}</p>
             
-            {/* 6 Compliance & GST Points */}
+            {/* 6 Compliance & GST Points with increased font size */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5">
               {complianceBadges.map((b, i) => (
-                <div key={i} className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200">
-                  <div className="h-4 w-4 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
-                    <Check className="h-2.5 w-2.5 stroke-[3]" />
+                <div key={i} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.06] border border-white/10 hover:border-emerald-400/40 hover:bg-white/10 transition-all duration-200">
+                  <div className="h-5 w-5 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-400 grid place-items-center shrink-0">
+                    <Check className="h-3 w-3 stroke-[3]" />
                   </div>
-                  <span className="text-white font-medium text-xs sm:text-[13px] leading-snug">{b.label}</span>
+                  <span className="text-white font-semibold text-sm sm:text-[15px] leading-snug">{b.label}</span>
                 </div>
               ))}
             </div>
