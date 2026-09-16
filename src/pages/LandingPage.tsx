@@ -228,7 +228,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Headline: Fluid dynamic responsive font sizing by screen size, exactly 2 lines with balanced line gap */}
-            <h1 className="flex flex-col gap-1 sm:gap-1.5 text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.22] text-slate-900 mb-6">
+            <h1 className="flex flex-col gap-2 sm:gap-3 lg:gap-3.5 text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.25] text-slate-900 mb-6">
               <span className="block sm:whitespace-nowrap">
                 Simplify Your{" "}
                 <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
