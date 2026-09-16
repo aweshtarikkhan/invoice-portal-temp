@@ -166,6 +166,7 @@ export default function LandingPage() {
   const [allowFreePlan, setAllowFreePlan] = useState(true);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
+  const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
   const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
   const { toast } = useToast();
@@ -552,7 +553,7 @@ export default function LandingPage() {
       <section id="pricing" className="pt-24 pb-24 bg-[#fafbfc] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <Badge className="mb-4 gap-2 py-1.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 border-0 rounded-full font-bold shadow-xs inline-flex">
               <Zap className="h-4 w-4" /> CHOOSE YOUR PLANS
             </Badge>
@@ -560,6 +561,37 @@ export default function LandingPage() {
             <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
               Select one or more plans for your business. Mix and match exactly what you need.
             </p>
+
+            {/* Monthly / Yearly Billing Toggle */}
+            <div className="mt-8 inline-flex items-center p-1.5 rounded-full bg-slate-100 border border-slate-200/80 shadow-inner">
+              <button
+                type="button"
+                onClick={() => setBillingCycle("monthly")}
+                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all duration-200 ${
+                  billingCycle === "monthly"
+                    ? "bg-white text-slate-900 shadow-sm border border-slate-200/60"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Monthly Billing
+              </button>
+              <button
+                type="button"
+                onClick={() => setBillingCycle("yearly")}
+                className={`px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold flex items-center gap-2 transition-all duration-200 ${
+                  billingCycle === "yearly"
+                    ? "bg-[#e77817] text-white shadow-md shadow-orange-500/25"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                <span>Yearly Billing</span>
+                <span className={`text-[10px] uppercase tracking-wider font-black px-2 py-0.5 rounded-full transition-colors ${
+                  billingCycle === "yearly" ? "bg-white text-[#e77817]" : "bg-emerald-600 text-white"
+                }`}>
+                  Save up to 17%
+                </span>
+              </button>
+            </div>
           </div>
 
           {(() => {
@@ -569,18 +601,19 @@ export default function LandingPage() {
               );
             };
 
+            const isYearly = billingCycle === "yearly";
             const isSuiteSelected = selectedPlans.includes("suite");
             const finalSelected = new Set(selectedPlans);
 
             // Calculate total based on fixed UI plan prices
-            let totalMonthly = 0;
+            let totalAmount = 0;
             if (finalSelected.has("suite")) {
-              totalMonthly = 1499;
+              totalAmount = isYearly ? 14999 : 1499;
             } else {
-              if (finalSelected.has("accounting")) totalMonthly += 599;
-              if (finalSelected.has("hr")) totalMonthly += 599;
-              if (finalSelected.has("crm")) totalMonthly += 349;
-              if (finalSelected.has("promotion")) totalMonthly += 349;
+              if (finalSelected.has("accounting")) totalAmount += isYearly ? 5999 : 599;
+              if (finalSelected.has("hr")) totalAmount += isYearly ? 5999 : 599;
+              if (finalSelected.has("crm")) totalAmount += isYearly ? 3499 : 349;
+              if (finalSelected.has("promotion")) totalAmount += isYearly ? 3499 : 349;
             }
 
             return (
@@ -662,7 +695,7 @@ export default function LandingPage() {
                         </div>
                         <div className="border border-orange-200/90 bg-orange-50/50 rounded-xl px-4 py-2 flex items-baseline gap-1 shrink-0">
                           <span className="text-3xl font-black text-[#e77817]">₹0</span>
-                          <span className="text-xs text-slate-500 font-semibold">/month</span>
+                          <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                         </div>
                       </div>
                     </div>
@@ -709,11 +742,11 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">₹599</span>
-                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              <span className="text-3xl font-black text-slate-900">{isYearly ? "₹5,999" : "₹599"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                             </div>
                             <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              Save 17% yearly
+                              {isYearly ? "Save ₹1,189 (17% OFF) · ₹500/mo" : "Save 17% yearly"}
                             </div>
                           </div>
 
@@ -753,7 +786,7 @@ export default function LandingPage() {
                         {/* Button */}
                         <div className="mt-auto pt-2 flex justify-end">
                           <Link
-                            to="/register?plan=accounting"
+                            to={`/register?plan=accounting&billing=${billingCycle}`}
                             onClick={(e) => e.stopPropagation()}
                             className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
                           >
@@ -803,11 +836,11 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">₹599</span>
-                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              <span className="text-3xl font-black text-slate-900">{isYearly ? "₹5,999" : "₹599"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                             </div>
                             <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              Save 17% yearly
+                              {isYearly ? "Save ₹1,189 (17% OFF) · ₹500/mo" : "Save 17% yearly"}
                             </div>
                           </div>
 
@@ -843,7 +876,7 @@ export default function LandingPage() {
                         {/* Button */}
                         <div className="mt-auto pt-2 flex justify-end">
                           <Link
-                            to="/register?plan=hr"
+                            to={`/register?plan=hr&billing=${billingCycle}`}
                             onClick={(e) => e.stopPropagation()}
                             className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
                           >
@@ -893,11 +926,11 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">₹349</span>
-                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              <span className="text-3xl font-black text-slate-900">{isYearly ? "₹3,499" : "₹349"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                             </div>
                             <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              Save 16% yearly
+                              {isYearly ? "Save ₹689 (16% OFF) · ₹291/mo" : "Save 16% yearly"}
                             </div>
                           </div>
 
@@ -937,7 +970,7 @@ export default function LandingPage() {
                         {/* Button */}
                         <div className="mt-auto pt-2 flex justify-end">
                           <Link
-                            to="/register?plan=crm"
+                            to={`/register?plan=crm&billing=${billingCycle}`}
                             onClick={(e) => e.stopPropagation()}
                             className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
                           >
@@ -987,11 +1020,11 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">₹349</span>
-                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              <span className="text-3xl font-black text-slate-900">{isYearly ? "₹3,499" : "₹349"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                             </div>
                             <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              Save 16% yearly
+                              {isYearly ? "Save ₹689 (16% OFF) · ₹291/mo" : "Save 16% yearly"}
                             </div>
                           </div>
 
@@ -1027,7 +1060,7 @@ export default function LandingPage() {
                         {/* Button */}
                         <div className="mt-auto pt-2 flex justify-end">
                           <Link
-                            to="/register?plan=promotion"
+                            to={`/register?plan=promotion&billing=${billingCycle}`}
                             onClick={(e) => e.stopPropagation()}
                             className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
                           >
@@ -1183,11 +1216,11 @@ export default function LandingPage() {
                             </p>
                             <div className="flex items-center gap-2.5 mt-2">
                               <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black text-[#e77817]">₹1,499</span>
-                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                                <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹14,999" : "₹1,499"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
                               </div>
                               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                Save 17% yearly
+                                {isYearly ? "Save ₹2,989 (17% OFF) · ₹1,250/mo" : "Save 17% yearly"}
                               </span>
                             </div>
                           </div>
@@ -1234,7 +1267,7 @@ export default function LandingPage() {
                         {/* Right: Solid Action Button */}
                         <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
                           <Link
-                            to="/register?plan=suite"
+                            to={`/register?plan=suite&billing=${billingCycle}`}
                             onClick={(e) => e.stopPropagation()}
                             className="bg-[#e77817] hover:bg-[#d46a0f] text-white font-bold px-6 py-3 rounded-xl shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all duration-200 text-sm whitespace-nowrap"
                           >
@@ -1257,11 +1290,11 @@ export default function LandingPage() {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-slate-300 uppercase tracking-wider">Total Selected</div>
-                          <div className="text-3xl font-black text-white">₹{totalMonthly.toLocaleString('en-IN')}<span className="text-lg font-medium text-slate-400">/mo</span></div>
+                          <div className="text-3xl font-black text-white">₹{totalAmount.toLocaleString('en-IN')}<span className="text-lg font-medium text-slate-400">{isYearly ? "/yr" : "/mo"}</span></div>
                         </div>
                       </div>
                       <Button size="lg" className="w-full md:w-auto h-14 px-10 text-lg font-bold bg-[#e77817] hover:bg-[#d46a0f] text-white rounded-full shadow-[0_0_20px_rgba(231,120,23,0.4)]" asChild>
-                        <Link to={`/register?plan=${Array.from(finalSelected).join(",")}`}>
+                        <Link to={`/register?plan=${Array.from(finalSelected).join(",")}&billing=${billingCycle}`}>
                           Proceed to Checkout <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
                       </Button>

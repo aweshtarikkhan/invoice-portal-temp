@@ -22,6 +22,10 @@ export default function RegisterPage() {
     if (plan) {
       sessionStorage.setItem("onboarding_plan", plan);
     }
+    const billing = params.get("billing");
+    if (billing) {
+      sessionStorage.setItem("onboarding_billing", billing);
+    }
   }, []);
   
   const [mobile, setMobile] = useState("");
