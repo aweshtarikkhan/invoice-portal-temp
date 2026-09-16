@@ -306,23 +306,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Compliance badges */}
-      <section className="py-16 bg-slate-50">
-        <div className="mx-auto max-w-7xl px-6">
-          <p className="text-center text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">
-            {L.badges_title}
-          </p>
-          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
-            {complianceBadges.map(b => (
-              <div key={b.label} className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-md transition-shadow hover:border-primary/30">
-                <b.icon className="h-5 w-5 text-primary shrink-0" />
-                <span className="font-semibold text-slate-700">{b.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Features - Everything You Need to Grow */}
       <section id="features" className="py-24 bg-slate-50/40 border-y border-slate-100 relative overflow-hidden">
         <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-[#28166f]/5 rounded-full blur-3xl pointer-events-none" />
@@ -363,6 +346,26 @@ export default function LandingPage() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* Compliance badges - Built for India. Verified for GST. */}
+      <section className="py-16 bg-white border-b border-slate-100">
+        <div className="mx-auto max-w-7xl px-6">
+          <p className="text-center text-sm font-bold text-slate-400 uppercase tracking-widest mb-8">
+            {L.badges_title}
+          </p>
+          <div className="flex flex-wrap justify-center gap-4 max-w-4xl mx-auto">
+            {complianceBadges.map(b => (
+              <div
+                key={b.label}
+                className="group flex items-center gap-2.5 px-5 py-3.5 rounded-xl border border-slate-200 bg-white shadow-sm hover:shadow-lg hover:bg-[#e77817] hover:border-[#e77817] hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+              >
+                <b.icon className="h-5 w-5 text-[#e77817] group-hover:text-white transition-colors shrink-0" />
+                <span className="font-semibold text-slate-700 group-hover:text-white transition-colors">{b.label}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
