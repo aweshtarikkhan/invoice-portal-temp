@@ -10,6 +10,7 @@ import {
   MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
   Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users, Layers,
   Calculator, UserCheck, Megaphone, BrainCircuit, Link2,
+  Gift, Crown, Bell, Target, MessageSquare, Clock,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { PublicHeader } from "@/components/public/PublicHeader";
@@ -18,6 +19,7 @@ import { HeroDashboardMockup } from "@/components/public/HeroDashboardMockup";
 import { BookDemoDialog } from "@/components/public/BookDemoDialog";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
+import { useToast } from "@/hooks/use-toast";
 
 type Lang = "en" | "hi";
 
@@ -166,6 +168,7 @@ export default function LandingPage() {
   const [selectedPlans, setSelectedPlans] = useState<string[]>([]);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
   const [isDemoDialogOpen, setIsDemoDialogOpen] = useState(false);
+  const { toast } = useToast();
   const { socials } = usePlatformSocials();
   const L = t[lang];
 
@@ -507,129 +510,707 @@ export default function LandingPage() {
 
 
       {/* Pricing */}
-      <section id="pricing" className="pt-24 pb-20 bg-white relative overflow-hidden">
+      <section id="pricing" className="pt-24 pb-24 bg-[#fafbfc] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="text-center mb-20">
-            <Badge className="mb-6 gap-2 py-1.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 border-0 rounded-full font-bold shadow-sm inline-flex">
-              <Zap className="h-4 w-4" /> Choose Your Plans
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <Badge className="mb-4 gap-2 py-1.5 px-4 bg-primary/10 text-primary hover:bg-primary/20 border-0 rounded-full font-bold shadow-xs inline-flex">
+              <Zap className="h-4 w-4" /> CHOOSE YOUR PLANS
             </Badge>
-            <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight text-navy mb-6">{L.pricing_title}</h2>
-            <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto">
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 mb-3">{L.pricing_title}</h2>
+            <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
               Select one or more plans for your business. Mix and match exactly what you need.
             </p>
           </div>
 
           {(() => {
-            const allPlans = dbPlans.filter(p => p.name !== "free" || allowFreePlan);
-
-            const planIcons: Record<string, { icon: string; color: string; bg: string; desc: string }> = {
-              free: { icon: "🆓", color: "text-slate-600", bg: "bg-slate-100", desc: "Basic invoicing features for small businesses at no cost." },
-              accounting: { icon: "📦", color: "text-blue-600", bg: "bg-blue-100", desc: "Full billing, sales, purchases & inventory management." },
-              hr: { icon: "👥", color: "text-indigo-600", bg: "bg-indigo-100", desc: "Complete HR solution — attendance, payroll, leaves & shifts." },
-              crm: { icon: "🎯", color: "text-emerald-600", bg: "bg-emerald-100", desc: "Manage leads, deals, sales pipeline and customer relationships." },
-              promotion: { icon: "📢", color: "text-rose-600", bg: "bg-rose-100", desc: "Festival posters, WhatsApp & broadcast marketing campaigns." },
-              suite: { icon: "🏢", color: "text-primary", bg: "bg-primary/10", desc: "Complete all-in-one business suite with full system access!" },
-            };
-
             const togglePlan = (planName: string) => {
               setSelectedPlans(prev => 
                 prev.includes(planName) ? prev.filter(n => n !== planName) : [...prev, planName]
               );
             };
 
-            const hasSuite = selectedPlans.includes("suite");
+            const isSuiteSelected = selectedPlans.includes("suite");
             const finalSelected = new Set(selectedPlans);
 
+            // Calculate total based on fixed UI plan prices
             let totalMonthly = 0;
-            finalSelected.forEach(name => {
-              const plan = allPlans.find((p) => p.name === name);
-              if (!plan) return;
-              totalMonthly += plan.price_monthly;
-            });
+            if (finalSelected.has("suite")) {
+              totalMonthly = 1499;
+            } else {
+              if (finalSelected.has("accounting")) totalMonthly += 599;
+              if (finalSelected.has("hr")) totalMonthly += 599;
+              if (finalSelected.has("crm")) totalMonthly += 349;
+              if (finalSelected.has("promotion")) totalMonthly += 349;
+            }
 
             return (
               <>
-                <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 ${finalSelected.size > 0 ? "mb-12" : "mb-0"}`}>
-                  {allPlans.map((p) => {
-                    const meta = planIcons[p.name] || { icon: "✨", color: "text-primary", bg: "bg-primary/10", desc: "" };
-                    const isIncludedFree = hasSuite && p.name !== "suite" && p.name !== "free";
-                    const isSelected = finalSelected.has(p.name);
-                    const isPopular = p.name === "suite";
-                    
+                {/* 1. TOP BANNER: Free Plan */}
+                {allowFreePlan && (
+                  <div
+                    onClick={() => togglePlan("free")}
+                    className={`mb-6 rounded-2xl bg-white border p-5 sm:p-6 transition-all duration-200 cursor-pointer shadow-xs ${
+                      selectedPlans.includes("free")
+                        ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                        : "border-orange-200/90 hover:border-orange-300"
+                    }`}
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      {/* Left: Icon & Description */}
+                      <div className="flex items-start gap-4 lg:w-[32%]">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-[#e77817] flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/25">
+                          <Gift className="w-7 h-7" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tight">Free Plan</h3>
+                            {selectedPlans.includes("free") && (
+                              <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1 leading-snug">
+                            Basic invoicing features for small businesses at no cost.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Middle: 2 Columns of Features */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>100 Invoices Free / Year</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>Festival Posts Only</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>3 Employees Free</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>100 WhatsApp Msgs</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>50 Leads Free (Manual)</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>No Admin Panel</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Employee Limit & Price */}
+                      <div className="flex items-center justify-between lg:justify-end gap-6 lg:border-l lg:border-slate-200 lg:pl-8">
+                        <div className="flex items-center gap-2 text-xs font-semibold text-slate-600 whitespace-nowrap">
+                          <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Up to 3 employees</span>
+                        </div>
+                        <div className="border border-orange-200/90 bg-orange-50/50 rounded-xl px-4 py-2 flex items-baseline gap-1 shrink-0">
+                          <span className="text-3xl font-black text-[#e77817]">₹0</span>
+                          <span className="text-xs text-slate-500 font-semibold">/month</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. MIDDLE 6 CARDS (3x2 GRID) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                  {/* Card 1: Business Accounting */}
+                  {(() => {
+                    const isSelected = finalSelected.has("accounting");
                     return (
-                      <div 
-                        key={p.id} 
-                        onClick={() => !isIncludedFree && togglePlan(p.name)}
-                        className={`relative flex flex-col bg-white rounded-3xl overflow-hidden transition-all duration-300 cursor-pointer ${isSelected ? "border-2 border-primary shadow-xl shadow-primary/10 ring-4 ring-primary/5 scale-105 z-10" : isIncludedFree ? "border-2 border-emerald-500/50 bg-emerald-50/30 opacity-90" : "border border-slate-200 hover:border-primary/40 hover:shadow-lg"}`}
+                      <div
+                        onClick={() => togglePlan("accounting")}
+                        className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                          isSelected
+                            ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
                       >
-                        {isPopular && (
-                          <div className="bg-primary text-white text-xs font-bold uppercase tracking-wider text-center py-1.5 shadow-sm">
-                            Most Popular Choice
-                          </div>
-                        )}
-                        {isIncludedFree && (
-                          <div className="absolute top-4 right-4 bg-emerald-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm z-10">
-                            Included in Suite
-                          </div>
-                        )}
-                        
-                        <div className="p-8 flex-1 flex flex-col">
-                          <div className="flex items-start gap-4 mb-6">
-                            <div className={`mt-1 h-6 w-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? "bg-primary border-primary text-white" : "border-slate-300 bg-white"}`}>
-                              {isSelected && <Check className="h-4 w-4" />}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                <div className={`h-12 w-12 rounded-2xl ${meta.bg} flex items-center justify-center text-2xl shadow-sm`}>
-                                  {meta.icon}
-                                </div>
-                                <h3 className="font-extrabold text-2xl text-navy">{p.display_name}</h3>
-                              </div>
+                        <div>
+                          {/* Checkbox at top-left */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                             </div>
                           </div>
-                          
-                          <p className="text-slate-500 mb-8 min-h-[48px]">{meta.desc}</p>
-                          
-                          <div className="mb-8">
-                            {isIncludedFree ? (
-                              <div className="text-3xl font-black text-emerald-500">Free</div>
-                            ) : (
-                              <div className="flex items-end gap-1">
-                                <span className="text-4xl font-black text-navy">{'₹'}{(p.price_monthly / 100).toLocaleString()}</span>
-                                <span className="text-slate-500 font-medium mb-1">/month</span>
-                              </div>
-                            )}
-                            {!isIncludedFree && p.price_monthly > 0 && (
-                              <div className="text-sm font-semibold text-emerald-600 mt-2 bg-emerald-50 inline-block px-3 py-1 rounded-full border border-emerald-100">
-                                Save {Math.round((1 - p.price_yearly / (p.price_monthly * 12)) * 100)}% yearly
-                              </div>
-                            )}
+
+                          {/* Header */}
+                          <div className="flex items-start gap-3.5 mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 shadow-2xs">
+                              <Calculator className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-black text-slate-900 leading-snug">Business Accounting</h4>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                Full billing, sales, purchases & inventory management.
+                              </p>
+                            </div>
                           </div>
-                          
-                          <div className="mt-auto pt-6 border-t border-slate-100 space-y-4">
-                            {Array.isArray(p.features) && p.features.map((f, i) => (
-                              <div key={i} className="flex gap-3 text-sm font-medium text-slate-600">
-                                <Check className="h-5 w-5 text-emerald-500 shrink-0" />
-                                <span>{f}</span>
-                              </div>
-                            ))}
-                            {p.employee_limit && (
-                              <div className="flex gap-3 text-sm font-medium text-slate-600">
-                                <Users className="h-5 w-5 text-emerald-500 shrink-0" />
-                                <span>Up to {p.employee_limit} employees</span>
-                              </div>
-                            )}
+
+                          {/* Price */}
+                          <div className="mb-5">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-black text-slate-900">₹599</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                            </div>
+                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Save 17% yearly
+                            </div>
                           </div>
+
+                          {/* Features */}
+                          <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Unlimited Invoices</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Estimates & POs</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Inventory Management</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>10 Employees Included</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>+ ₹29 / Extra Employee</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>500 WhatsApp Msgs / Mo</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Up to 10 employees</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Button */}
+                        <div className="mt-auto pt-2 flex justify-end">
+                          <Link
+                            to="/register?plan=accounting"
+                            onClick={(e) => e.stopPropagation()}
+                            className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                          >
+                            <span>Get Started</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
                         </div>
                       </div>
                     );
-                  })}
+                  })()}
+
+                  {/* Card 2: Business HR */}
+                  {(() => {
+                    const isSelected = finalSelected.has("hr");
+                    return (
+                      <div
+                        onClick={() => togglePlan("hr")}
+                        className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                          isSelected
+                            ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          {/* Checkbox at top-left */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+
+                          {/* Header */}
+                          <div className="flex items-start gap-3.5 mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-emerald-600 shadow-2xs">
+                              <Users className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-black text-slate-900 leading-snug">Business HR</h4>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                Complete HR solution — attendance, payroll, leaves & shifts.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="mb-5">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-black text-slate-900">₹599</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                            </div>
+                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Save 17% yearly
+                            </div>
+                          </div>
+
+                          {/* Features */}
+                          <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>10 Employees Included</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>+ ₹29 / Extra Employee</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Attendance & Payroll</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Shifts & Leaves</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>500 WhatsApp Msgs / Mo</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Up to 10 employees</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Button */}
+                        <div className="mt-auto pt-2 flex justify-end">
+                          <Link
+                            to="/register?plan=hr"
+                            onClick={(e) => e.stopPropagation()}
+                            className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                          >
+                            <span>Get Started</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Card 3: Business CRM */}
+                  {(() => {
+                    const isSelected = finalSelected.has("crm");
+                    return (
+                      <div
+                        onClick={() => togglePlan("crm")}
+                        className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                          isSelected
+                            ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          {/* Checkbox at top-left */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+
+                          {/* Header */}
+                          <div className="flex items-start gap-3.5 mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 text-rose-500 shadow-2xs">
+                              <Target className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-black text-slate-900 leading-snug">Business CRM</h4>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                Manage leads, deals, sales pipeline and customer relationships.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="mb-5">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-black text-slate-900">₹349</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                            </div>
+                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Save 16% yearly
+                            </div>
+                          </div>
+
+                          {/* Features */}
+                          <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Unlimited Leads</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>API Integrations</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Sales Pipeline</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>10 Employees Included</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>+ ₹29 / Extra Employee</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>500 WhatsApp Msgs / Mo</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Up to 10 employees</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Button */}
+                        <div className="mt-auto pt-2 flex justify-end">
+                          <Link
+                            to="/register?plan=crm"
+                            onClick={(e) => e.stopPropagation()}
+                            className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                          >
+                            <span>Get Started</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Card 4: Business Promotion */}
+                  {(() => {
+                    const isSelected = finalSelected.has("promotion");
+                    return (
+                      <div
+                        onClick={() => togglePlan("promotion")}
+                        className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                          isSelected
+                            ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                            : "border-slate-200 hover:border-slate-300"
+                        }`}
+                      >
+                        <div>
+                          {/* Checkbox at top-left */}
+                          <div className="flex items-start justify-between mb-4">
+                            <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                              isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                            }`}>
+                              {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                            </div>
+                          </div>
+
+                          {/* Header */}
+                          <div className="flex items-start gap-3.5 mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 text-pink-500 shadow-2xs">
+                              <Megaphone className="w-6 h-6" />
+                            </div>
+                            <div>
+                              <h4 className="text-lg font-black text-slate-900 leading-snug">Business Promotion</h4>
+                              <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                                Festival posters, WhatsApp & broadcast marketing campaigns.
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Price */}
+                          <div className="mb-5">
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-3xl font-black text-slate-900">₹349</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
+                            </div>
+                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Save 16% yearly
+                            </div>
+                          </div>
+
+                          {/* Features */}
+                          <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>All Poster Categories</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>Email Campaigns</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>10 Employees Included</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>+ ₹29 / Extra Employee</span>
+                            </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>500 WhatsApp Msgs / Mo</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                              <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span>Up to 10 employees</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Button */}
+                        <div className="mt-auto pt-2 flex justify-end">
+                          <Link
+                            to="/register?plan=promotion"
+                            onClick={(e) => e.stopPropagation()}
+                            className="border border-[#e77817] text-[#e77817] hover:bg-[#e77817] hover:text-white font-bold text-xs rounded-xl px-4 py-2 flex items-center gap-1 transition-all duration-200 shadow-2xs"
+                          >
+                            <span>Get Started</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* Card 5: Feedback Management (Coming Soon) */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between relative">
+                    <div>
+                      {/* Checkbox (inactive) */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-5 h-5 rounded border border-slate-200 bg-slate-50 cursor-not-allowed"></div>
+                      </div>
+
+                      {/* Header */}
+                      <div className="flex items-start gap-3.5 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-blue-600 shadow-2xs">
+                          <MessageSquare className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-black text-slate-900 leading-snug">Feedback Management</h4>
+                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                            Collect, manage and analyze customer feedback easily.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Center Graphic Illustration */}
+                      <div className="my-8 py-4 flex flex-col items-center justify-center">
+                        <div className="w-24 h-24 rounded-full bg-blue-50/70 border border-blue-100/60 flex items-center justify-center relative mb-4 shadow-inner">
+                          <div className="relative">
+                            <div className="w-13 h-10 bg-blue-500 rounded-lg shadow-md flex items-center justify-center p-2">
+                              <div className="space-y-1 w-full">
+                                <div className="h-1 bg-white rounded-full w-full"></div>
+                                <div className="h-1 bg-white/70 rounded-full w-3/4"></div>
+                                <div className="h-1 bg-white/50 rounded-full w-1/2"></div>
+                              </div>
+                            </div>
+                            <div className="absolute -bottom-2 -right-2 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center border-2 border-white shadow-sm">
+                              <Clock className="w-3.5 h-3.5" />
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-lg font-black text-slate-900">Coming Soon</div>
+                        <p className="text-xs text-slate-500 text-center max-w-[210px] mt-1">
+                          Be the first to know when this feature is available!
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Notify Me Button */}
+                    <div className="mt-auto pt-2">
+                      <button
+                        type="button"
+                        onClick={() => toast({ title: "Notification Request Received", description: "We will alert you as soon as Feedback Management launches!" })}
+                        className="w-full border border-orange-300 hover:border-orange-400 bg-white hover:bg-orange-50 text-[#e77817] font-bold text-xs rounded-xl py-2.5 flex items-center justify-center gap-2 transition-colors shadow-2xs"
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        <span>Notify Me</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Card 6: Business Analysis (Coming Soon) */}
+                  <div className="rounded-2xl border border-slate-200/80 bg-white p-6 shadow-xs flex flex-col justify-between relative">
+                    <div>
+                      {/* Checkbox (inactive) */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-5 h-5 rounded border border-slate-200 bg-slate-50 cursor-not-allowed"></div>
+                      </div>
+
+                      {/* Header */}
+                      <div className="flex items-start gap-3.5 mb-4">
+                        <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-purple-600 shadow-2xs">
+                          <BarChart3 className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="text-lg font-black text-slate-900 leading-snug">Business Analysis</h4>
+                          <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                            Get actionable insights to grow your business.
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Center Graphic Illustration */}
+                      <div className="my-8 py-4 flex flex-col items-center justify-center">
+                        <div className="w-24 h-24 rounded-full bg-purple-50/70 border border-purple-100/60 flex items-center justify-center relative mb-4 shadow-inner">
+                          <div className="flex items-end gap-1.5 h-10 px-1">
+                            <div className="w-2.5 bg-purple-300 rounded-t h-4"></div>
+                            <div className="w-2.5 bg-purple-400 rounded-t h-7"></div>
+                            <div className="w-2.5 bg-purple-600 rounded-t h-10"></div>
+                            <div className="w-4 h-4 rounded-full bg-indigo-500 ml-1 mb-0.5 shadow-xs"></div>
+                          </div>
+                        </div>
+                        <div className="text-lg font-black text-slate-900">Coming Soon</div>
+                        <p className="text-xs text-slate-500 text-center max-w-[210px] mt-1">
+                          Be the first to know when this feature is available!
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Notify Me Button */}
+                    <div className="mt-auto pt-2">
+                      <button
+                        type="button"
+                        onClick={() => toast({ title: "Notification Request Received", description: "We will alert you as soon as Business Analysis launches!" })}
+                        className="w-full border border-orange-300 hover:border-orange-400 bg-white hover:bg-orange-50 text-[#e77817] font-bold text-xs rounded-xl py-2.5 flex items-center justify-center gap-2 transition-colors shadow-2xs"
+                      >
+                        <Bell className="w-3.5 h-3.5" />
+                        <span>Notify Me</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                {/* 3. BOTTOM BANNER: Business Suite */}
+                {(() => {
+                  const isSelected = finalSelected.has("suite");
+                  return (
+                    <div
+                      onClick={() => togglePlan("suite")}
+                      className={`rounded-2xl border bg-white p-5 sm:p-6 transition-all duration-200 cursor-pointer shadow-xs ${
+                        isSelected
+                          ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                          : "border-slate-200/90 hover:border-slate-300"
+                      }`}
+                    >
+                      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        {/* Left: Checkbox + Icon + Details */}
+                        <div className="flex items-start gap-4 lg:w-[36%]">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-1 ${
+                            isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                          }`}>
+                            {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-[#e77817] flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/25">
+                            <Crown className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-xl font-black text-slate-900 tracking-tight">Business Suite</h3>
+                              {isSelected && (
+                                <span className="text-[10px] font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+                              Complete all-in-one business suite with full system access!
+                            </p>
+                            <div className="flex items-center gap-2.5 mt-2">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-black text-[#e77817]">₹1,499</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              </div>
+                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                Save 17% yearly
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Middle: 2 Columns of Features */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>All Premium Features</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>Full Suite Admin</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>10 Employees Included</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>500 WhatsApp Msgs / Mo</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                            <div className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>+ ₹29 / Extra Employee</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-slate-700 font-semibold">
+                            <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>Up to 10 employees</span>
+                          </div>
+                        </div>
+
+                        {/* Right: Solid Action Button */}
+                        <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
+                          <Link
+                            to="/register?plan=suite"
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-[#e77817] hover:bg-[#d46a0f] text-white font-bold px-6 py-3 rounded-xl shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all duration-200 text-sm whitespace-nowrap"
+                          >
+                            <span>Get Started</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Floating Checkout Bar */}
                 {finalSelected.size > 0 && (
-                  <div className="sticky bottom-6 z-40 animate-in slide-in-from-bottom-10 fade-in duration-300 mx-4 md:mx-auto max-w-4xl">
+                  <div className="sticky bottom-6 z-40 animate-in slide-in-from-bottom-10 fade-in duration-300 mx-4 md:mx-auto max-w-4xl mt-8">
                     <div className="bg-navy/95 backdrop-blur-xl border border-white/10 rounded-3xl md:rounded-full shadow-2xl shadow-navy/50 p-4 md:p-3 md:pl-8 flex flex-col md:flex-row items-center justify-between gap-5 md:gap-6 w-full">
                       <div className="flex items-center gap-6">
                         <div className="bg-white/10 h-12 w-12 rounded-full flex items-center justify-center">
@@ -637,10 +1218,10 @@ export default function LandingPage() {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-slate-300 uppercase tracking-wider">Total Selected</div>
-                          <div className="text-3xl font-black text-white">{'₹'}{(totalMonthly / 100).toLocaleString('en-IN')}<span className="text-lg font-medium text-slate-400">/mo</span></div>
+                          <div className="text-3xl font-black text-white">₹{totalMonthly.toLocaleString('en-IN')}<span className="text-lg font-medium text-slate-400">/mo</span></div>
                         </div>
                       </div>
-                      <Button size="lg" className="w-full md:w-auto h-14 px-10 text-lg font-bold bg-primary hover:bg-primary/90 text-white rounded-full shadow-[0_0_20px_rgba(249,115,22,0.4)]" asChild>
+                      <Button size="lg" className="w-full md:w-auto h-14 px-10 text-lg font-bold bg-[#e77817] hover:bg-[#d46a0f] text-white rounded-full shadow-[0_0_20px_rgba(231,120,23,0.4)]" asChild>
                         <Link to={`/register?plan=${Array.from(finalSelected).join(",")}`}>
                           Proceed to Checkout <ArrowRight className="ml-2 h-5 w-5" />
                         </Link>
