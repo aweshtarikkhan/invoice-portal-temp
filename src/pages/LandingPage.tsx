@@ -615,6 +615,7 @@ export default function LandingPage() {
                   ))}
                 </div>
               </div>
+              <div className="grid grid-cols-3 divide-x divide-slate-100 bg-white">
                 <div className="px-4 py-3 text-center">
                   <div className="text-lg font-black text-[#e77817]">24</div>
                   <div className="text-[10px] text-slate-500 font-semibold">Present Days</div>
