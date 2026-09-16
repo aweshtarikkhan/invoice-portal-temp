@@ -81,34 +81,37 @@ export default function PartnerWithUsPage() {
       <div className="max-w-4xl w-full grid grid-cols-1 md:grid-cols-2 gap-8 bg-white rounded-2xl shadow-xl overflow-hidden">
         
         {/* Left Side: Info */}
-        <div className="bg-gradient-to-br from-[#0a192f] to-[#112240] p-10 text-white flex flex-col justify-between">
-          <div>
-            <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-              <Handshake className="w-8 h-8 text-orange-400" />
+        <div className="bg-gradient-to-br from-[#28166f] via-[#21125d] to-[#180c45] p-10 text-white flex flex-col justify-between relative overflow-hidden">
+          {/* Subtle ambient light */}
+          <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/3 w-64 h-64 bg-[#e77817]/20 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-white/10 border border-white/15 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+              <Handshake className="w-8 h-8 text-[#ff9438]" />
             </div>
-            <h2 className="text-3xl font-black mb-4">Partner With Us</h2>
-            <p className="text-slate-300 leading-relaxed mb-8">
-              Join forces with Aassay BiZ. We are always looking for dynamic partners, resellers, and agencies to grow together. Provide your details and let's build something great.
+            <h2 className="text-3xl font-black text-white !text-white mb-4 tracking-tight">Partner With Us</h2>
+            <p className="text-slate-200 leading-relaxed mb-8 text-sm sm:text-base">
+              Join forces with Assay Biz. We are always looking for dynamic partners, resellers, and agencies to grow together. Provide your details and let's build something great.
             </p>
             
             <ul className="space-y-4">
-              <li className="flex items-center text-slate-300">
+              <li className="flex items-center text-white font-medium text-sm sm:text-base">
                 <CheckIcon className="w-5 h-5 text-emerald-400 mr-3 shrink-0" />
                 Exclusive Partner Benefits
               </li>
-              <li className="flex items-center text-slate-300">
+              <li className="flex items-center text-white font-medium text-sm sm:text-base">
                 <CheckIcon className="w-5 h-5 text-emerald-400 mr-3 shrink-0" />
                 Dedicated Support Team
               </li>
-              <li className="flex items-center text-slate-300">
+              <li className="flex items-center text-white font-medium text-sm sm:text-base">
                 <CheckIcon className="w-5 h-5 text-emerald-400 mr-3 shrink-0" />
                 Revenue Sharing & Margins
               </li>
             </ul>
           </div>
           
-          <div className="mt-12 text-sm text-slate-400">
-            © 2026 Aassay BiZ Platform
+          <div className="mt-12 text-sm text-slate-300/80 relative z-10">
+            © 2026 Assay Biz Platform
           </div>
         </div>
 
@@ -162,7 +165,7 @@ export default function PartnerWithUsPage() {
               <Textarea required placeholder="Tell us how we can collaborate..." className="min-h-[100px] resize-none" value={formData.message} onChange={e => setFormData({...formData, message: e.target.value})} />
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full h-11 bg-orange-500 hover:bg-orange-600 text-white font-bold mt-2">
+            <Button type="submit" disabled={loading} className="w-full h-11 bg-[#e77817] hover:bg-[#d46a0f] text-white font-bold mt-2 shadow-md shadow-[#e77817]/20 transition-all">
               {loading ? "Submitting..." : (
                 <>Submit Request <ArrowRight className="w-4 h-4 ml-2" /></>
               )}
