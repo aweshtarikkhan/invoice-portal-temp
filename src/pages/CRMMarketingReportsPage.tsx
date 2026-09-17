@@ -61,7 +61,7 @@ export default function CRMMarketingReportsPage() {
         (supabase as any).from("leads").select("*").eq("org_id", org.id),
         (supabase as any).from("opportunities").select("*").eq("org_id", org.id),
         (supabase as any).from("campaigns").select("*").eq("org_id", org.id),
-        (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("order_index", { ascending: true })
+        (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true })
       ]);
 
       // Metrics

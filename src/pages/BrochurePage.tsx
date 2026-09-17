@@ -289,7 +289,7 @@ export default function BrochurePage() {
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 100 Invoices / Year</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 3 Employees Free</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 3 Employee Attendance</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 50 Leads (Manual)</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Festival Posts Only</li>
                     </ul>
@@ -310,10 +310,10 @@ export default function BrochurePage() {
                       <p className="text-[10px] text-blue-600 font-medium mt-0.5">₹5,999/year (Save 17%)</p>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
+                      <li className="flex items-center gap-1.5 font-bold text-blue-900"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Everything in Free Plan</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> <strong>Unlimited</strong> Invoices & Bills</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Estimates, POs & Delivery Challans</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Multi-Warehouse Inventory</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> 10 Staff Included (+₹29/extra)</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> 500 WhatsApp Msgs / Mo</li>
                     </ul>
                   </div>
@@ -336,6 +336,7 @@ export default function BrochurePage() {
                       <p className="text-[10px] text-indigo-600 font-medium mt-0.5">₹14,999/year (Save 17%)</p>
                     </div>
                     <ul className="space-y-1.5 text-[11px] text-slate-700">
+                      <li className="flex items-center gap-1.5 font-bold text-indigo-900"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Everything in Free Plan</li>
                       <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> All Accounting & Invoicing</li>
                       <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Complete HR, Attendance & Payroll</li>
                       <li className="flex items-center gap-1.5 font-semibold"><Check className="w-3.5 h-3.5 text-indigo-600 shrink-0" /> Complete CRM & Sales Pipeline</li>
@@ -359,7 +360,7 @@ export default function BrochurePage() {
                     <span className="font-bold text-xs text-slate-900">Business HR</span>
                     <span className="text-xs font-black text-purple-600">₹599/mo</span>
                   </div>
-                  <p className="text-[10px] text-slate-500 mt-1">10 staff included (+₹29/extra). Attendance, payroll runs, leaves & shifts.</p>
+                  <p className="text-[10px] text-slate-500 mt-1">25 staff included (+₹29/extra). Attendance, payroll runs, leaves & shifts.</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">

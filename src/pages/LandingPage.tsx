@@ -990,7 +990,7 @@ export default function LandingPage() {
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
-                          <span>3 Employees Free</span>
+                          <span>3 Employee Attendance</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
@@ -1074,6 +1074,10 @@ export default function LandingPage() {
 
                           {/* Features */}
                           <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                              <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                              <span>Everything in Free Plan</span>
+                            </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>Unlimited Invoices</span>
@@ -1085,10 +1089,6 @@ export default function LandingPage() {
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>Inventory Management</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
-                              <span>10 Employee Attendance</span>
                             </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
@@ -1176,6 +1176,10 @@ export default function LandingPage() {
 
                           {/* Features */}
                           <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                              <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                              <span>Everything in Free Plan</span>
+                            </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>25 Employee Attendance</span>
@@ -1286,6 +1290,10 @@ export default function LandingPage() {
 
                           {/* Features */}
                           <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                              <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                              <span>Everything in Free Plan</span>
+                            </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>Unlimited Leads</span>
@@ -1297,10 +1305,6 @@ export default function LandingPage() {
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>Sales Pipeline</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
-                              <span>3 Employee Attendance</span>
                             </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
@@ -1388,6 +1392,10 @@ export default function LandingPage() {
 
                           {/* Features */}
                           <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                            <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                              <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                              <span>Everything in Free Plan</span>
+                            </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>All Poster Categories</span>
@@ -1395,10 +1403,6 @@ export default function LandingPage() {
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>Email & WhatsApp Campaign</span>
-                            </div>
-                            <div className="flex items-center gap-2.5">
-                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
-                              <span>3 Employee Attendance</span>
                             </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
@@ -1594,6 +1598,12 @@ export default function LandingPage() {
 
                         {/* Middle: 2 Columns of Features */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                          <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                            <div className="w-4 h-4 rounded-full bg-[#e77817] text-white flex items-center justify-center shrink-0">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                            <span>Everything in Free Plan</span>
+                          </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
                             <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
@@ -1610,7 +1620,7 @@ export default function LandingPage() {
                             <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
-                            <span>10 Employees Included</span>
+                            <span>25 Base Employees Included</span>
                           </div>
                           <div className="flex items-center gap-2.5 text-slate-700 font-medium">
                             <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
@@ -1623,10 +1633,6 @@ export default function LandingPage() {
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
                             <span>+ ₹29 / Extra Employee</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-slate-700 font-semibold">
-                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
-                            <span>Up to 10 employees</span>
                           </div>
                         </div>
 

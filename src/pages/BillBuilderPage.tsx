@@ -486,9 +486,9 @@ export default function BillBuilderPage() {
 
       // Auto-generate bill number from fresh DB value
       if (!id) {
-        const { data: freshOrg } = await supabase.from("organizations").select("bill_next_number, bill_prefix, payment_terms, default_notes, default_terms").eq("id", org.id).single();
-        const prefix = freshOrg?.bill_prefix || org.bill_prefix || "INV";
-        const num = freshOrg?.bill_next_number || org.bill_next_number || 1;
+        const { data: freshOrg } = await supabase.from("organizations").select("next_bill_number, bill_prefix, payment_terms, default_notes, default_terms").eq("id", org.id).single();
+        const prefix = freshOrg?.bill_prefix || (org as any)?.bill_prefix || "BILL";
+        const num = freshOrg?.next_bill_number || (org as any)?.next_bill_number || 1;
         setBillNumber(formatSequenceNumber(prefix, num, "BILL"));
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");

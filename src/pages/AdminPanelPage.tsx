@@ -34,35 +34,8 @@ export default function AdminPanelPage() {
   const navigate = useNavigate();
   const userRole = useAppStore((s) => s.userRole);
 
-  if (userRole === "staff") {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const { subscriptionPlan, subscriptionStatus, trialDaysLeft, isOnTrial } = useSubscription();
   const org = useAppStore((s) => s.organization);
-  const currentPlanStr = subscriptionPlan || org?.subscription_plan || 'free';
-  const isFreePlan = currentPlanStr.toLowerCase() === 'free';
-  const [showUpgrade, setShowUpgrade] = useState(false);
-
-  if (isFreePlan) {
-    return (
-      <div className="flex-1 bg-slate-50 min-h-[60vh] py-8">
-        <LockedFeature 
-          title="Admin Panel Locked"
-          description="The Admin Panel is available exclusively on our Premium plans. Upgrade to manage team members, advanced settings, and API integrations."
-          onUpgradeClick={() => setShowUpgrade(true)}
-        />
-        <UpgradeModal 
-          isOpen={showUpgrade} 
-          onClose={() => setShowUpgrade(false)} 
-          onSelectPlan={(plan, interval, price) => {
-            // Future: integrate with Razorpay
-            window.location.href = `/settings`; // Placeholder for real billing logic
-          }} 
-        />
-      </div>
-    );
-  }
 
   const { session } = useAuth();
   const {
@@ -204,40 +177,50 @@ export default function AdminPanelPage() {
     
     setIsCreatingBusiness(true);
     try {
-      // Create organization in Supabase
+      const userId = session?.user?.id;
+      // 1. Create organization in Supabase explicitly with free plan and owner_id
       const { data, error } = await supabase
         .from("organizations")
-        .insert([{ name: newBusinessName.trim() }])
+        .insert([{ 
+          name: newBusinessName.trim(),
+          subscription_plan: 'free',
+          owner_id: userId
+        }])
         .select()
         .single();
         
       if (error) throw error;
       
       // Update our local tracking
-      if (data) {
+      if (data && userId) {
         setNewBusinessName("");
         
-        // Let's also automatically switch the user to the new business
-        if (currentUserEmail) {
-          // Add the user to organization_members for this new business as Admin
-          const allFeatures = [...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS].map(g => g.key);
-          await supabase.from("organization_members").update({
-            email: currentUserEmail,
+        // 2. Add the user to organization_members for this new business as Owner
+        const allFeatures = [...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS].map(g => g.key);
+        const { error: memberError } = await supabase
+          .from("organization_members")
+          .insert({
+            org_id: data.id,
+            user_id: userId,
             role: "owner",
-            status: "active",
             permissions: allFeatures
-          }).eq("org_id", data.id).eq("user_id", session?.user?.id);
+          });
 
-          const { error: profileError } = await supabase
-            .from("profiles")
-            .update({ org_id: data.id })
-            .eq("id", session?.user?.id);
-            
-          if (!profileError) {
-            setNewOrgIdToUpgrade(data.id);
-            // Open the plan selector modal for payment
-            setShowPlanModal(true);
-          }
+        if (memberError) {
+          console.error("Failed to add owner to organization_members:", memberError);
+        }
+
+        // 3. Switch the user's active business in profiles
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ org_id: data.id })
+          .eq("user_id", userId);
+          
+        if (!profileError) {
+          addMyOrganization({ id: data.id, name: data.name });
+          setNewOrgIdToUpgrade(data.id);
+          // Open the plan selector modal for payment if they want to upgrade
+          setShowPlanModal(true);
         }
       }
     } catch (err: any) {
@@ -351,6 +334,31 @@ export default function AdminPanelPage() {
   const enabledCount = availableAdminFeatures.filter((g) =>
     enabledGroups.includes(g.key)
   ).length;
+
+  if (userRole === "staff") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const currentPlanStr = subscriptionPlan || org?.subscription_plan || 'free';
+  const isFreePlan = currentPlanStr.toLowerCase() === 'free';
+
+  if (isFreePlan) {
+    return (
+      <div className="space-y-8 max-w-6xl mx-auto pb-12">
+        <SEO title="Admin Panel Locked" />
+        <LockedFeature 
+          title="Admin Panel Locked"
+          description="The Admin Panel is available exclusively on our Premium plans. Upgrade to manage team members, advanced settings, and API integrations."
+          onUpgradeClick={() => setShowPlanModal(true)}
+        />
+        <PlanSelectorModal 
+          open={showPlanModal} 
+          onOpenChange={setShowPlanModal} 
+          orgId={currentOrg?.id}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">

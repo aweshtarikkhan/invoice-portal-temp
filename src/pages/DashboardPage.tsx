@@ -47,7 +47,7 @@ export default function DashboardPage() {
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("business_expenses").select("*").eq("org_id", org.id),
         supabase.from("bills").select("*").eq("org_id", org.id),
-        supabase.from("employees").select("*").eq("org_id", org.id).eq("status", "active"),
+        supabase.from("employees").select("*").eq("org_id", org.id).eq("is_active", true),
         supabase.from("attendance").select("*").eq("org_id", org.id),
         supabase.from("leads").select("*").eq("org_id", org.id),
         supabase.from("activities").select("*").eq("org_id", org.id),

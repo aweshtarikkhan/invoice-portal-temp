@@ -18,9 +18,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { hasModuleAccess, FREE_PLAN_LIMITS, PAID_PLAN_LIMITS } from "@/lib/subscription";
+import { hasModuleAccess, calculateEmployeeLimit, getPlanDisplayName } from "@/lib/subscription";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
+import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { useSubscription } from "@/hooks/use-subscription";
 import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, ExternalLink, Download, FileCheck, Loader2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -95,6 +96,24 @@ export default function EmployeesPage() {
   const [resetEmp, setResetEmp] = useState<any | null>(null);
   const [resetNewPassword, setResetNewPassword] = useState("");
   const [resetLoading, setResetLoading] = useState(false);
+
+  // Subscription plan & dynamic capacity limits
+  const { subscriptionPlan, employeeLimit } = useSubscription();
+  const effectivePlan = subscriptionPlan || org?.subscription_plan || 'free';
+  const planName = getPlanDisplayName(effectivePlan, employeeLimit);
+  const currentLimit = calculateEmployeeLimit(effectivePlan, employeeLimit);
+  const limitReached = rows.length >= currentLimit;
+
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
+
+  const handleAddEmployeeClick = () => {
+    if (limitReached) {
+      setShowLimitAlert(true);
+    } else {
+      openNew("monthly");
+    }
+  };
 
   const isImage = (name?: string) => /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(name || "");
   const isPdf = (name?: string) => /\.pdf$/i.test(name || "");
@@ -328,6 +347,26 @@ export default function EmployeesPage() {
     if (!org?.id) return;
     if (!form.name.trim()) { toast({ title: "Name is required", variant: "destructive" }); return; }
 
+    // Enforce plan-based employee limit on save (not just on button click)
+    // Always fetch live count from DB to prevent race conditions or stale state
+    if (!editId) {
+      const { data: currentEmps, error: countErr } = await (supabase as any)
+        .from("employees")
+        .select("id")
+        .eq("org_id", org.id);
+      const empCount = !countErr && currentEmps ? (currentEmps as any[]).length : rows.length;
+      if (empCount >= currentLimit) {
+        toast({
+          title: "Employee Limit Reached",
+          description: `In ${planName}, the Employee limit is ${currentLimit}. Please upgrade your plan to add more employees!`,
+          variant: "destructive"
+        });
+        setOpen(false);
+        setShowLimitAlert(true);
+        return;
+      }
+    }
+
     const wageType = form.wage_type || "monthly";
 
     // Auto-enable daily wages feature if adding a daily/hourly wager
@@ -545,17 +584,6 @@ export default function EmployeesPage() {
 
   const currency = (org as any)?.currency || "INR";
 
-  const { subscriptionPlan, employeeLimit, employeeCount } = useSubscription();
-  const effectivePlan = subscriptionPlan || org?.subscription_plan || 'free';
-  const isFreePlan = effectivePlan === 'free';
-  const [showUpgrade, setShowUpgrade] = useState(false);
-  const currentLimit = employeeLimit || (isFreePlan ? 3 : (effectivePlan.toLowerCase().includes('hr') || effectivePlan.toLowerCase().includes('suite') ? 25 : (effectivePlan.toLowerCase().includes('accounting') ? 10 : 3)));
-  const limitReached = rows.length >= currentLimit;
-
-  const handleAddEmployeeClick = () => {
-    openNew("monthly");
-  };
-
   if (!hasModuleAccess(effectivePlan as any, 'hr')) {
     return (
       <div className="flex-1 bg-slate-50 min-h-screen">
@@ -587,7 +615,7 @@ export default function EmployeesPage() {
 
           <Button
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-sm"
-            onClick={() => openNew("monthly")}
+            onClick={handleAddEmployeeClick}
             id="add-employee-btn"
           >
             <Plus className="h-4 w-4 mr-1.5" />Add Employee
@@ -597,9 +625,11 @@ export default function EmployeesPage() {
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
               onClick={() => {
-    if (limitReached) setShowUpgrade(true);
-    else openNew("daily");
-  }}
+              if (limitReached) {
+                setShowLimitAlert(true);
+              }
+              else openNew("daily");
+            }}
             >
               <HardHat className="h-4 w-4 mr-1.5" />+ Add Daily / Hourly Wager
             </Button>
@@ -674,7 +704,7 @@ export default function EmployeesPage() {
                         <p className="text-base font-semibold text-foreground">No staff members found</p>
                         <p className="text-xs text-muted-foreground mt-1">Get started by adding employees to track attendance and payroll.</p>
                       </div>
-                      <Button size="sm" onClick={() => openNew("monthly")} className="font-semibold shadow-sm mt-1">
+                      <Button size="sm" onClick={handleAddEmployeeClick} className="font-semibold shadow-sm mt-1">
                         <Plus className="h-4 w-4 mr-1.5" /> Add Employee
                       </Button>
                     </div>
@@ -1389,6 +1419,15 @@ export default function EmployeesPage() {
           </div>
         </DialogContent>
       </Dialog>
+    
+      <LimitReachedAlert 
+        isOpen={showLimitAlert} 
+        onClose={() => setShowLimitAlert(false)} 
+        onUpgrade={() => { setShowLimitAlert(false); setShowUpgrade(true); }} 
+        title="Employee Limit Reached" 
+        description={`In ${planName}, the Employee limit is ${currentLimit}. Want to add more employees? Please upgrade your plan!`} 
+      />
+      <UpgradeModal isOpen={showUpgrade} onClose={() => setShowUpgrade(false)} onSelectPlan={() => { window.location.href = '/settings'; }} />
     </div>
   );
 }

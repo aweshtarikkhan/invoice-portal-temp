@@ -152,13 +152,45 @@ serve(async (req) => {
 
       // Payment verified! Now activate the organization plan in Supabase DB
       const targetPlans = Array.isArray(plan_names) && plan_names.length > 0 ? plan_names : ["suite"];
+
+      // Server-side safety guard: employee_count must respect plan tier limits
+      let finalEmpCount = Number(employee_count || 0);
+      const isSuiteOrHr = targetPlans.includes("suite") || targetPlans.includes("hr");
+      const targetBase = isSuiteOrHr ? 25 : 3;
+
+      if (!isSuiteOrHr) {
+        // Business Accounting, Free, CRM, Promotion: strictly capped at 3 employees (no add-on allowed)
+        finalEmpCount = 3;
+      } else {
+        if (finalEmpCount <= 0) {
+          finalEmpCount = targetBase;
+        }
+
+        try {
+          const { data: existingSub } = await supabase
+            .from("subscriptions")
+            .select("employee_count")
+            .eq("org_id", org_id)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          // If remaining on Suite/HR, ensure capacity never regresses below previous purchased count
+          if (existingSub?.employee_count && existingSub.employee_count > finalEmpCount) {
+            finalEmpCount = existingSub.employee_count;
+          }
+        } catch (e) {
+          console.warn("Could not check existing subscription count:", e);
+        }
+      }
+
       const { data: actData, error: actError } = await supabase.rpc("activate_org_plans", {
         p_org_id: org_id,
         p_plan_names: targetPlans,
         p_billing_cycle: billing_cycle || "monthly",
         p_razorpay_order_id: razorpay_order_id,
         p_razorpay_payment_id: razorpay_payment_id,
-        p_employee_count: employee_count || 0
+        p_employee_count: finalEmpCount
       });
 
       if (actError) {

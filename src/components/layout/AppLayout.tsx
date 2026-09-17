@@ -14,6 +14,7 @@ import { TrialBanner } from "@/components/shared/TrialBanner";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
 import { useSubscription } from "@/hooks/use-subscription";
+import { normalizePlanKey } from "@/lib/subscription";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -151,25 +152,39 @@ export function AppLayout() {
     }
   }, [needsSetup, checking]);
 
-  const loadOrg = async () => {
-    if (!profile) return;
-    
-    setCurrentUserId(profile.user_id);
-    
-    // Check if platform admin first using reliable RPC function
-    const { data: isAdmin } = await supabase
-      .rpc("is_platform_admin", { check_user_id: profile.user_id });
+  useEffect(() => {
+    // Safety fallback: Never keep user stuck on loading spinner for more than 2.5 seconds
+    const fallbackTimer = setTimeout(() => {
+      setChecking(false);
+    }, 2500);
+    return () => clearTimeout(fallbackTimer);
+  }, []);
 
-    if (isAdmin === true) {
-      navigate("/platform-admin", { replace: true });
+  const loadOrg = async () => {
+    if (!profile) {
+      setChecking(false);
       return;
     }
+    
+    try {
+      setCurrentUserId(profile.user_id);
+      
+      // Query all organizations the user is a member of
+      const { data: memberOrgs, error: memberErr } = await supabase
+        .from("organization_members")
+        .select("org_id, role, permissions, organizations(id, name, logo_url)")
+        .eq("user_id", profile.user_id);
 
-    // Query all organizations the user is a member of
-    const { data: memberOrgs, error: memberErr } = await supabase
-      .from("organization_members")
-      .select("org_id, role, permissions, organizations(id, name, logo_url)")
-      .eq("user_id", profile.user_id);
+      // If user has no business organizations, check if platform admin and redirect to platform-admin
+      if (!memberOrgs || memberOrgs.length === 0) {
+        const { data: isAdmin } = await supabase
+          .rpc("is_platform_admin", { check_user_id: profile.user_id });
+
+        if (isAdmin === true) {
+          navigate("/platform-admin", { replace: true });
+          return;
+        }
+      }
 
     console.log("[loadOrg] memberOrgs:", memberOrgs, "error:", memberErr);
 
@@ -225,24 +240,46 @@ export function AppLayout() {
             if (!features.includes('crm')) features.push('crm');
             if (!features.includes('marketing')) features.push('marketing');
             
-            if (!subData.plan_name || subData.plan_name === 'free') {
+            let resolvedPlanName = normalizePlanKey(subData.plan_name || '');
+            let resolvedEmpLimit = 3;
+
+            if (resolvedPlanName === 'suite' || resolvedPlanName === 'hr') {
+              resolvedEmpLimit = 25;
+              // Only respect genuine purchased extra employees over base 25
+              if (subData.employee_count && subData.employee_count > 25) {
+                resolvedEmpLimit = subData.employee_count;
+              }
+            } else {
+              resolvedEmpLimit = 3;
+            }
+
+            if (resolvedPlanName === 'free') {
+              if (activeOrg && (activeOrg as any).subscription_plan && (activeOrg as any).subscription_plan !== 'free') {
+                resolvedPlanName = normalizePlanKey((activeOrg as any).subscription_plan);
+              }
+            }
+
+            // [REMOVED HARDCODED AE LOGIC HERE]
+
+            if (resolvedPlanName === 'free') {
                features = features.filter(f => f !== 'reports');
             }
             useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setSubscriptionMeta({
-              plan_name: subData.plan_name,
+              plan_name: resolvedPlanName,
               status: subData.status,
               trial_ends_at: subData.trial_ends_at,
-              employee_limit: subData.employee_limit,
+              employee_limit: resolvedEmpLimit,
               employee_count: subData.employee_count,
-                platform_employee_limit: subData.platform_employee_limit,
-                platform_employee_count: subData.platform_employee_count,
+              platform_employee_limit: subData.platform_employee_limit,
+              platform_employee_count: subData.platform_employee_count,
               current_period_end: subData.current_period_end,
             });
           }
         } catch (err) {
           console.error("Failed to load subscription features via RPC:", err);
         }
+            
 
         setNeedsSetup(false);
         setChecking(false);
@@ -281,15 +318,19 @@ export function AppLayout() {
                if (!features.includes('marketing')) features.push('marketing');
                features = features.filter(f => f !== 'reports');
             }
+            const isSuiteOrHr = subData.plan_name === 'suite' || subData.plan_name === 'hr';
+            const empLimit = isSuiteOrHr 
+              ? (Math.max(subData.employee_limit || 0, subData.employee_count || 0) || 25) 
+              : 3;
             useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setSubscriptionMeta({
               plan_name: subData.plan_name,
               status: subData.status,
               trial_ends_at: subData.trial_ends_at,
-              employee_limit: subData.employee_limit,
+              employee_limit: empLimit,
               employee_count: subData.employee_count,
-                platform_employee_limit: subData.platform_employee_limit,
-                platform_employee_count: subData.platform_employee_count,
+              platform_employee_limit: subData.platform_employee_limit,
+              platform_employee_count: subData.platform_employee_count,
               current_period_end: subData.current_period_end,
             });
           }
@@ -308,9 +349,13 @@ export function AppLayout() {
       return;
     }
 
-    // Truly no org at all — could be a pure employee or brand new user
-    await checkEmployeeAndBlock();
-    setChecking(false);
+      // Truly no org at all — could be a pure employee or brand new user
+      await checkEmployeeAndBlock();
+    } catch (err) {
+      console.error("[loadOrg] Uncaught error:", err);
+    } finally {
+      setChecking(false);
+    }
   };
 
   const [isEmployeeBlocked, setIsEmployeeBlocked] = useState(false);
@@ -359,12 +404,11 @@ export function AppLayout() {
       return;
     }
     loadOrg();
-  }, [profile?.org_id]);
+  }, [profile, profile?.org_id]); // <--- FIXED DEPENDENCIES HERE
 
   if (checking) {
     
-
-  return (
+    return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
@@ -548,8 +592,3 @@ export function AppLayout() {
     </SidebarProvider>
   );
 }
-
-
-
-
-

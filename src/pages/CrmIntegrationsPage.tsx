@@ -25,6 +25,23 @@ export default function CRMIntegrationsPage() {
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const isFreePlan = plan.toLowerCase() === 'free' || (!plan.toLowerCase().includes("suite") && !plan.toLowerCase().includes("crm"));
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [apiKeys, setApiKeys] = useState<any[]>([]);
+  const [webhooks, setWebhooks] = useState<any[]>([]);
+  
+  const [imConfig, setImConfig] = useState({ mobile: "", crm_key: "" });
+  const [imActive, setImActive] = useState(false);
+  const [imLoading, setImLoading] = useState(false);
+
+  const [jdActive, setJdActive] = useState(false);
+  const [guideOpen, setGuideOpen] = useState<"indiamart" | "justdial" | "meta" | null>(null);
+  
+  useEffect(() => {
+    if (org?.id && !isFreePlan) {
+      loadKeys();
+      loadWebhooks();
+      loadLeadIntegrations();
+    }
+  }, [org?.id, isFreePlan]);
 
   if (isFreePlan) {
     return (
@@ -42,23 +59,6 @@ export default function CRMIntegrationsPage() {
       </div>
     );
   }
-  const [apiKeys, setApiKeys] = useState<any[]>([]);
-  const [webhooks, setWebhooks] = useState<any[]>([]);
-  
-  const [imConfig, setImConfig] = useState({ mobile: "", crm_key: "" });
-  const [imActive, setImActive] = useState(false);
-  const [imLoading, setImLoading] = useState(false);
-
-  const [jdActive, setJdActive] = useState(false);
-  const [guideOpen, setGuideOpen] = useState<"indiamart" | "justdial" | "meta" | null>(null);
-  
-  useEffect(() => {
-    if (org?.id) {
-      loadKeys();
-      loadWebhooks();
-      loadLeadIntegrations();
-    }
-  }, [org?.id]);
 
   const loadKeys = async () => {
     const { data } = await (supabase as any).from("org_api_keys").select("*").eq("org_id", org!.id);

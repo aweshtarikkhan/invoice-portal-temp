@@ -1,0 +1,405 @@
+{
+  "totalRoutes": 85,
+  "passedCount": 75,
+  "failedCount": 10,
+  "failures": [
+    {
+      "route": "/",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/dashboard",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/invoices/new",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "[vite] Internal Server Error\n  × Unexpected token. Did you mean `{'}'}` or `&rbrace;`?\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:1]\n 2144 │       />\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      · ▲\n      ╰────\n  × Unexpected eof\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:4]\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      ╰────\n\n\nCaused by:\n    Syntax Error\n"
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "PAGE_ERROR",
+          "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+          "stack": ""
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "PAGE_ERROR",
+          "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+          "stack": ""
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "The above error occurred in one of your React components:\n\n    at Lazy\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789647834948:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "[vite] Internal Server Error\n  × Unexpected token. Did you mean `{'}'}` or `&rbrace;`?\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:1]\n 2144 │       />\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      · ▲\n      ╰────\n  × Unexpected eof\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:4]\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      ╰────\n\n\nCaused by:\n    Syntax Error\n"
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "PAGE_ERROR",
+          "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+          "stack": ""
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "PAGE_ERROR",
+          "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+          "stack": ""
+        },
+        {
+          "url": "http://localhost:8081/invoices/new",
+          "type": "CONSOLE_ERROR",
+          "message": "The above error occurred in one of your React components:\n\n    at Lazy\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789647834948:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+        }
+      ]
+    },
+    {
+      "route": "/inventory-valuation",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/inventory-valuation",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/bills/new",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/bills/new",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/tds",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/tds",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/crm-marketing-reports",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/crm-marketing-reports",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        }
+      ]
+    },
+    {
+      "route": "/crm-dashboard",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 400 ()"
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "PAGE_ERROR",
+          "message": "Button is not defined",
+          "stack": "ReferenceError: Button is not defined\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:1237:67)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)\n    at Object.invokeGuardedCallbackDev (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3699:24)\n    at invokeGuardedCallback (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3733:39)\n    at beginWork$1 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19765:15)\n    at performUnitOfWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19198:20)\n    at workLoopSync (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19137:13)"
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "PAGE_ERROR",
+          "message": "Button is not defined",
+          "stack": "ReferenceError: Button is not defined\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:1237:67)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)\n    at Object.invokeGuardedCallbackDev (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3699:24)\n    at invokeGuardedCallback (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3733:39)\n    at beginWork$1 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19765:15)\n    at performUnitOfWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19198:20)\n    at workLoopSync (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19137:13)"
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "CONSOLE_ERROR",
+          "message": "The above error occurred in the <CRMDashboardPage> component:\n\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:34:22)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789648273636:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+        },
+        {
+          "url": "http://localhost:8081/crm-dashboard",
+          "type": "REFERENCE_ERROR",
+          "message": "⚠️\nSomething went wrong\n\nAn unexpected error occurred while loading this page.\n\nReload Page\nReferenceError: Button is not defined"
+        }
+      ]
+    },
+    {
+      "route": "/crm/integrations",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/crm/integrations",
+          "type": "PAGE_ERROR",
+          "message": "Rendered more hooks than during the previous render.",
+          "stack": "Error: Rendered more hooks than during the previous render.\n    at updateWorkInProgressHook (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11678:21)\n    at updateReducer (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11727:22)\n    at updateState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12021:18)\n    at Object.useState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12753:24)\n    at useState (http://localhost:8081/node_modules/.vite/deps/chunk-VJA5E53X.js?v=a1acd06f:1066:29)\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:78:35)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)"
+        },
+        {
+          "url": "http://localhost:8081/crm/integrations",
+          "type": "PAGE_ERROR",
+          "message": "Rendered more hooks than during the previous render.",
+          "stack": "Error: Rendered more hooks than during the previous render.\n    at updateWorkInProgressHook (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11678:21)\n    at updateReducer (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11727:22)\n    at updateState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12021:18)\n    at Object.useState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12753:24)\n    at useState (http://localhost:8081/node_modules/.vite/deps/chunk-VJA5E53X.js?v=a1acd06f:1066:29)\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:78:35)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)"
+        },
+        {
+          "url": "http://localhost:8081/crm/integrations",
+          "type": "CONSOLE_ERROR",
+          "message": "The above error occurred in the <CRMIntegrationsPage> component:\n\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:42:17)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789648273636:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+        },
+        {
+          "url": "http://localhost:8081/crm/integrations",
+          "type": "CRASH_SCREEN",
+          "message": "⚠️\nSomething went wrong\n\nAn unexpected error occurred while loading this page.\n\nReload Page\nError: Rendered more hooks than during the previous render."
+        }
+      ]
+    },
+    {
+      "route": "/marketing/posters",
+      "status": "FAIL",
+      "issues": [
+        {
+          "url": "http://localhost:8081/marketing/posters",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "url": "http://localhost:8081/marketing/posters",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "url": "http://localhost:8081/marketing/posters",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "url": "http://localhost:8081/marketing/posters",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        },
+        {
+          "url": "http://localhost:8081/marketing/posters",
+          "type": "CONSOLE_ERROR",
+          "message": "Failed to load resource: the server responded with a status of 404 ()"
+        }
+      ]
+    }
+  ],
+  "allIssues": [
+    {
+      "url": "http://localhost:8081/dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "[vite] Internal Server Error\n  × Unexpected token. Did you mean `{'}'}` or `&rbrace;`?\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:1]\n 2144 │       />\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      · ▲\n      ╰────\n  × Unexpected eof\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:4]\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      ╰────\n\n\nCaused by:\n    Syntax Error\n"
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "PAGE_ERROR",
+      "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+      "stack": ""
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "PAGE_ERROR",
+      "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+      "stack": ""
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "The above error occurred in one of your React components:\n\n    at Lazy\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789647834948:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 500 (Internal Server Error)"
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "[vite] Internal Server Error\n  × Unexpected token. Did you mean `{'}'}` or `&rbrace;`?\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:1]\n 2144 │       />\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      · ▲\n      ╰────\n  × Unexpected eof\n      ╭─[C:/Users/awesh/Desktop/Satah Invoice - Copy/billflow-pro-94-22f845cd/src/pages/InvoiceBuilderPage.tsx:2147:4]\n 2145 │     </div>\n 2146 │   );\n 2147 │ }\n      ╰────\n\n\nCaused by:\n    Syntax Error\n"
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "PAGE_ERROR",
+      "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+      "stack": ""
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "PAGE_ERROR",
+      "message": "Failed to fetch dynamically imported module: http://localhost:8081/src/pages/InvoiceBuilderPage.tsx?t=1789626855233",
+      "stack": ""
+    },
+    {
+      "url": "http://localhost:8081/invoices/new",
+      "type": "CONSOLE_ERROR",
+      "message": "The above error occurred in one of your React components:\n\n    at Lazy\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789647834948:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+    },
+    {
+      "url": "http://localhost:8081/inventory-valuation",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/bills/new",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/tds",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/crm-marketing-reports",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 400 ()"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "PAGE_ERROR",
+      "message": "Button is not defined",
+      "stack": "ReferenceError: Button is not defined\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:1237:67)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)\n    at Object.invokeGuardedCallbackDev (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3699:24)\n    at invokeGuardedCallback (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3733:39)\n    at beginWork$1 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19765:15)\n    at performUnitOfWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19198:20)\n    at workLoopSync (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19137:13)"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "PAGE_ERROR",
+      "message": "Button is not defined",
+      "stack": "ReferenceError: Button is not defined\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:1237:67)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)\n    at Object.invokeGuardedCallbackDev (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3699:24)\n    at invokeGuardedCallback (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3733:39)\n    at beginWork$1 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19765:15)\n    at performUnitOfWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19198:20)\n    at workLoopSync (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:19137:13)"
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "CONSOLE_ERROR",
+      "message": "The above error occurred in the <CRMDashboardPage> component:\n\n    at CRMDashboardPage (http://localhost:8081/src/pages/CRMDashboardPage.tsx:34:22)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789648273636:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+    },
+    {
+      "url": "http://localhost:8081/crm-dashboard",
+      "type": "REFERENCE_ERROR",
+      "message": "⚠️\nSomething went wrong\n\nAn unexpected error occurred while loading this page.\n\nReload Page\nReferenceError: Button is not defined"
+    },
+    {
+      "url": "http://localhost:8081/crm/integrations",
+      "type": "PAGE_ERROR",
+      "message": "Rendered more hooks than during the previous render.",
+      "stack": "Error: Rendered more hooks than during the previous render.\n    at updateWorkInProgressHook (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11678:21)\n    at updateReducer (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11727:22)\n    at updateState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12021:18)\n    at Object.useState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12753:24)\n    at useState (http://localhost:8081/node_modules/.vite/deps/chunk-VJA5E53X.js?v=a1acd06f:1066:29)\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:78:35)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)"
+    },
+    {
+      "url": "http://localhost:8081/crm/integrations",
+      "type": "PAGE_ERROR",
+      "message": "Rendered more hooks than during the previous render.",
+      "stack": "Error: Rendered more hooks than during the previous render.\n    at updateWorkInProgressHook (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11678:21)\n    at updateReducer (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11727:22)\n    at updateState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12021:18)\n    at Object.useState (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:12753:24)\n    at useState (http://localhost:8081/node_modules/.vite/deps/chunk-VJA5E53X.js?v=a1acd06f:1066:29)\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:78:35)\n    at renderWithHooks (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:11548:26)\n    at updateFunctionComponent (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:14582:28)\n    at beginWork (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:15924:22)\n    at HTMLUnknownElement.callCallback2 (http://localhost:8081/node_modules/.vite/deps/chunk-XQLYTHWV.js?v=a1acd06f:3674:22)"
+    },
+    {
+      "url": "http://localhost:8081/crm/integrations",
+      "type": "CONSOLE_ERROR",
+      "message": "The above error occurred in the <CRMIntegrationsPage> component:\n\n    at CRMIntegrationsPage (http://localhost:8081/src/pages/CrmIntegrationsPage.tsx:42:17)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at FeatureGuard (http://localhost:8081/src/components/layout/FeatureGuard.tsx?t=1789647455321:34:32)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Outlet (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4494:26)\n    at main\n    at div\n    at div\n    at div\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at http://localhost:8081/src/components/ui/sidebar.tsx:50:72\n    at AppLayout (http://localhost:8081/src/components/layout/AppLayout.tsx?t=1789647834948:253:40)\n    at RequireAuth (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:105:31)\n    at RenderedRoute (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4088:5)\n    at Routes (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4558:5)\n    at Suspense\n    at AuthProvider (http://localhost:8081/src/lib/auth.tsx?t=1789615580228:33:32)\n    at Router (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:4501:15)\n    at BrowserRouter (http://localhost:8081/node_modules/.vite/deps/react-router-dom.js?v=a1acd06f:5247:5)\n    at Provider (http://localhost:8081/node_modules/.vite/deps/chunk-2M7HY3UG.js?v=a1acd06f:38:15)\n    at TooltipProvider (http://localhost:8081/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=a1acd06f:64:5)\n    at QueryClientProvider (http://localhost:8081/node_modules/.vite/deps/@tanstack_react-query.js?v=a1acd06f:2934:3)\n    at App\n    at ErrorBoundary (http://localhost:8081/src/main.tsx?t=1789648273636:179:9)\n    at O (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:23:25)\n    at z (http://localhost:8081/node_modules/.vite/deps/next-themes.js?v=a1acd06f:21:18)\n    at _a (http://localhost:8081/node_modules/.vite/deps/react-helmet-async.js?v=a1acd06f:624:5)\n\nReact will try to recreate this component tree from scratch using the error boundary you provided, ErrorBoundary."
+    },
+    {
+      "url": "http://localhost:8081/crm/integrations",
+      "type": "CRASH_SCREEN",
+      "message": "⚠️\nSomething went wrong\n\nAn unexpected error occurred while loading this page.\n\nReload Page\nError: Rendered more hooks than during the previous render."
+    },
+    {
+      "url": "http://localhost:8081/marketing/posters",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "url": "http://localhost:8081/marketing/posters",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "url": "http://localhost:8081/marketing/posters",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "url": "http://localhost:8081/marketing/posters",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    },
+    {
+      "url": "http://localhost:8081/marketing/posters",
+      "type": "CONSOLE_ERROR",
+      "message": "Failed to load resource: the server responded with a status of 404 ()"
+    }
+  ]
+}

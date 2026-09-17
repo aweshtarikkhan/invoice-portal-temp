@@ -236,7 +236,10 @@ export default function MarketingPostersPage() {
       
     let processedData: any[] = [];
     if (!error && data) {
-      processedData = data.map((t: any) => ({ ...t }));
+      processedData = data.map((t: any) => ({
+        ...t,
+        bg_image_url: t.bg_image_url?.includes("images.unsplash.com") ? "" : t.bg_image_url,
+      }));
     } else if (error) {
       toast.error("Failed to load templates");
     }

@@ -34,7 +34,7 @@ export default function InventoryValuationPage() {
       setLoading(true);
       const [m, it] = await Promise.all([
         (supabase as any).from("stock_movements").select("item_id, change_qty, unit_cost, batch_no, serial_no, expiry_date, created_at, items(name)").eq("org_id", org.id).order("created_at"),
-        (supabase as any).from("items").select("id,name,stock_quantity,purchase_price,sale_price,track_batches,track_serials,valuation_method").eq("org_id", org.id).eq("type", "product"),
+        (supabase as any).from("items").select("id,name,stock_quantity,purchase_price,unit_price,track_batches,track_serials,valuation_method").eq("org_id", org.id).eq("type", "product"),
       ]);
       setMovements((m.data || []).map((x: any) => ({ ...x, item_name: x.items?.name || "—" })));
       setItems(it.data || []);

@@ -26,12 +26,16 @@ serve(async (req) => {
       throw new Error('No authorization header')
     }
 
-    // Verify the user calling this function is authenticated
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(
-      authHeader.replace('Bearer ', '')
+    // Verify the user calling this function is authenticated using a user-scoped client
+    const supabaseClient = createClient(
+      supabaseUrl,
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     )
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
 
     if (authError || !user) {
+      console.error('Auth Error:', authError)
       throw new Error('Unauthorized')
     }
 

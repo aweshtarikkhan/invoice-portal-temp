@@ -5,8 +5,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useSubscription } from "@/hooks/use-subscription";
-import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { FREE_PLAN_LIMITS } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { FREE_PLAN_LIMITS, hasUnlimitedInvoices, normalizePlanKey } from "@/lib/subscription";
+import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { SummaryRibbon } from "@/components/shared/SummaryRibbon";
@@ -28,7 +29,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle, MoreHorizontal, Copy } from "lucide-react";
+import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle, MoreHorizontal, Copy, AlertCircle } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { differenceInDays, parseISO, isToday, isBefore, addDays } from "date-fns";
 import { format } from "date-fns";
@@ -83,7 +84,7 @@ export default function InvoicesPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { subscriptionPlan } = useSubscription();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
-  const invoicesLimitReached = isFreePlan && invoices.length >= 100;
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -103,25 +104,45 @@ export default function InvoicesPage() {
     if (!org?.id) return;
     const fetch = async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from("invoices")
-        .select("*, clients(display_name)")
-        .eq("org_id", org.id)
-        .order("created_at", { ascending: false });
-      setInvoices(data || []);
-      setLoading(false);
+      try {
+        const [{ data: invData }, { data: subData }] = await Promise.all([
+          supabase
+            .from("invoices")
+            .select("*, clients(display_name)")
+            .eq("org_id", org.id)
+            .order("created_at", { ascending: false }),
+          supabase.rpc("get_my_org_subscription", { p_org_id: org.id })
+        ]);
+        setInvoices(invData || []);
+        if (subData?.plan_name) {
+          const plans = subData.plan_name.split('+').map((s: string) => normalizePlanKey(s)).filter(Boolean);
+          setActiveOrgPlans(plans);
+        }
+      } catch (e) {
+        console.error("Failed to fetch invoices or subscription:", e);
+      } finally {
+        setLoading(false);
+      }
     };
     fetch();
   }, [org?.id]);
 
-  const isFreePlan = plan.toLowerCase() === 'free';
+  // Business Accounting and Business Suite have unlimited invoices;
+  // Free plan, Business HR, CRM, and Marketing/Promotion have a strict 100 limit.
+  const isUnlimited = useMemo(() => {
+    return hasUnlimitedInvoices(plan, activeOrgPlans);
+  }, [plan, activeOrgPlans]);
+
   const currentYear = new Date().getFullYear();
   const invoicesThisYear = invoices.filter(i => {
     if (!i.issue_date && !i.invoice_date && !i.created_at) return false;
     const d = i.issue_date || i.invoice_date || i.created_at;
     return new Date(d).getFullYear() === currentYear;
   });
-  const invoiceLimitReached = isFreePlan && invoicesThisYear.length >= FREE_PLAN_LIMITS.invoices;
+
+  const invoiceCount = invoicesThisYear.length;
+  const invoiceLimitReached = !isUnlimited && invoiceCount >= 100;
+  const remainingInvoices = isUnlimited ? Infinity : Math.max(0, 100 - invoiceCount);
 
   const handleNewInvoiceClick = () => {
     if (invoiceLimitReached) {
@@ -304,9 +325,24 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-4">
       {/* Top Bar */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
           <h1 className="text-lg font-bold">All Invoices</h1>
+          {isUnlimited ? (
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+              Unlimited Invoices
+            </Badge>
+          ) : (
+            <Badge 
+              variant="outline" 
+              className={invoiceLimitReached 
+                ? "bg-red-50 text-red-700 border-red-200 font-medium px-2.5 py-0.5" 
+                : "bg-blue-50 text-blue-700 border-blue-200 font-medium px-2.5 py-0.5"
+              }
+            >
+              {invoiceCount} / 100 Invoices Used ({remainingInvoices} Remaining)
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {selected.size > 0 && selectedHasDrafts && (
@@ -352,6 +388,25 @@ export default function InvoicesPage() {
           </Button>
         </div>
       </div>
+
+      {/* Invoice Limit Reached Alert Banner */}
+      {invoiceLimitReached && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-sm shadow-2xs">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-semibold">Invoice Limit Reached ({invoiceCount}/100 Used):</span> You have reached your limit of 100 invoices on this plan. Upgrade to Business Accounting or Business Suite for unlimited invoices.
+            </div>
+          </div>
+          <Button 
+            size="sm" 
+            onClick={() => setShowUpgrade(true)} 
+            className="bg-amber-600 hover:bg-amber-700 text-white shrink-0 self-start sm:self-auto"
+          >
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       {/* Payment Summary */}
       <SummaryRibbon
@@ -470,6 +525,8 @@ export default function InvoicesPage() {
         onTallyImport={parseTallyExcel}
         onImport={async (rows) => {
           let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
+          let remainingQuota = isUnlimited ? Infinity : Math.max(0, 100 - invoicesThisYear.length);
+          let quotaExceededHit = false;
           const { data: existingClients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           const clientMap = new Map<string, string>();
           existingClients?.forEach(c => clientMap.set(c.display_name.toLowerCase(), c.id));
@@ -503,6 +560,15 @@ export default function InvoicesPage() {
           for (const [invNum, groupRows] of invoiceGroups.entries()) {
             try {
             const row = groupRows[0]; // Primary invoice data from the first row
+            if (!isUnlimited && remainingQuota <= 0) {
+              errors++;
+              quotaExceededHit = true;
+              failedRows.push({
+                row,
+                reason: "In this plan you can only add 100 invoices maximum. Upgrade to Business Accounting or Business Suite for unlimited invoices."
+              });
+              continue;
+            }
             const name = String(row.client_name || "").trim();
             if (!name) { errors++; failedRows.push({ row, reason: "Missing required field (Client Name)" }); continue; }
             let clientId = clientMap.get(name.toLowerCase());
@@ -562,6 +628,7 @@ export default function InvoicesPage() {
               errors++; 
             } else { 
               success++;
+              remainingQuota--;
               
               // Now insert all line items for this invoice
               const lineItems = [];
@@ -623,6 +690,9 @@ export default function InvoicesPage() {
             const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
             await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cid);
           }
+          if (quotaExceededHit) {
+            setShowUpgrade(true);
+          }
           return { success, errors, failedRows };
         }}
       />
@@ -657,10 +727,10 @@ export default function InvoicesPage() {
           ));
         }}
       />
-      <UpgradeModal 
-        isOpen={showUpgrade} 
-        onClose={() => setShowUpgrade(false)} 
-        onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
+      <PlanSelectorModal 
+        open={showUpgrade} 
+        onOpenChange={setShowUpgrade} 
+        orgId={org?.id}
       />
     </div>
   );

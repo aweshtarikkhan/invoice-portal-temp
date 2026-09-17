@@ -15,6 +15,7 @@ import {
   downloadSubscriptionInvoicePDF,
 } from "@/lib/subscription-invoice-pdf";
 import { sendSubscriptionInvoiceEmail } from "@/lib/subscription-email-service";
+import { normalizePlanKey } from "@/lib/subscription";
 
 interface Plan {
   id: string;
@@ -116,29 +117,73 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
       // Parse current active plans from database
       let fetchedActivePlans: string[] = [];
-      let empLimit = 10;
 
       if (subData && subData.plan_name) {
         fetchedActivePlans = subData.plan_name
           .split("+")
-          .map((s: string) => s.trim().toLowerCase())
+          .map((s: string) => normalizePlanKey(s))
           .filter(Boolean);
-        if (subData.employee_limit) empLimit = subData.employee_limit;
       }
 
       // Fallback if RPC didn't return paid plans but org record has subscription_plan
       if (fetchedActivePlans.length === 0 || (fetchedActivePlans.length === 1 && fetchedActivePlans[0] === "free")) {
-        if (currentOrg?.subscription_plan && currentOrg.subscription_plan !== "free") {
-          fetchedActivePlans = [currentOrg.subscription_plan.toLowerCase()];
-        } else if (currentPlanName && currentPlanName !== "free") {
-          fetchedActivePlans = [currentPlanName.toLowerCase()];
+        if (orgId && orgId !== currentOrg?.id) {
+          // If a specific orgId was passed (e.g. newly created business), check ONLY that target org's record
+          const { data: targetOrg } = await supabase
+            .from("organizations")
+            .select("subscription_plan")
+            .eq("id", orgId)
+            .maybeSingle();
+          if (targetOrg?.subscription_plan && targetOrg.subscription_plan !== "free") {
+            fetchedActivePlans = [normalizePlanKey(targetOrg.subscription_plan)];
+          } else {
+            fetchedActivePlans = ["free"];
+          }
+        } else {
+          // Only check currentOrg if this modal is for currentOrg
+          if (currentOrg?.subscription_plan && currentOrg.subscription_plan !== "free") {
+            fetchedActivePlans = [normalizePlanKey(currentOrg.subscription_plan)];
+          } else if (currentPlanName && currentPlanName !== "free") {
+            fetchedActivePlans = [normalizePlanKey(currentPlanName)];
+          }
+        }
+      }
+
+      // Determine standard base limit for the active plan (NEVER SUMMED)
+      let planBaseLimit = 3;
+      if (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) {
+        planBaseLimit = 25;
+      } else {
+        planBaseLimit = 3;
+      }
+
+      let empLimit = planBaseLimit;
+
+      // Only respect genuine purchased extra employees (employee_count in subscriptions table)
+      // Never use subData.employee_limit as it sums multiple plans in old accounts
+      const purchasedCount = subData?.employee_count || 0;
+      if ((fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) && purchasedCount > 25) {
+        empLimit = purchasedCount;
+      }
+
+      // Direct query to subscriptions table to check if there is a purchased employee_count > 25
+      if (orgId && (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr"))) {
+        const { data: directSub } = await supabase
+          .from("subscriptions")
+          .select("employee_count")
+          .eq("org_id", orgId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (directSub?.employee_count && directSub.employee_count > empLimit) {
+          empLimit = directSub.employee_count;
         }
       }
 
       setActivePlanNames(fetchedActivePlans);
       setActiveEmployeeLimit(empLimit);
       setExtraEmployeesToAdd(0);
-      setNewHrEmployeeCount(25);
+      setNewHrEmployeeCount(Math.max(empLimit, 25));
       setSelectedPlanIds([]);
 
     } catch (error) {
@@ -160,6 +205,27 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   };
 
   const isHrActive = isPlanActive("hr") || isPlanActive("suite");
+
+  const getDisplayFeatures = (plan: Plan): string[] => {
+    if (plan.name === "free") {
+      return (plan.features || []).map((f) =>
+        f.toLowerCase().includes("3 employee") ? "3 Employee Attendance" : f
+      );
+    }
+
+    // For all other plans (Accounting, CRM, Promotion, HR, Suite):
+    // First line must be "Everything in Free Plan"
+    // Remove "3 Employee" or redundant employee lines from limited plans
+    const isHrOrSuite = plan.name === "hr" || plan.name === "suite";
+    const filtered = (plan.features || []).filter((f) => {
+      const lower = f.toLowerCase();
+      if (lower.includes("everything in free")) return false;
+      if (!isHrOrSuite && lower.includes("employee")) return false;
+      return true;
+    });
+
+    return ["Everything in Free Plan", ...filtered];
+  };
 
   const handleApplyPromo = async () => {
     if (!promoCode.trim()) return;
@@ -305,34 +371,114 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       let targetPlanNames: string[] = [];
 
       if (isOnlyAddingExtraEmployees) {
-        // Keep currently active plans
-        targetPlanNames = activePlanNames.length > 0 ? activePlanNames : ["hr"];
+        // Keep currently active plans (filter out 'free' if paid plans exist)
+        const paidActive = activePlanNames.filter(p => p !== "free");
+        targetPlanNames = paidActive.length > 0 ? paidActive : ["suite"];
       } else {
         targetPlanNames = Array.from(finalSelectedPlanIds)
           .map(id => plans.find(p => p.id === id)?.name)
           .filter(Boolean) as string[];
         
-        // Preserve any already active paid plans so they aren't lost
-        activePlanNames.forEach(p => {
-          if (p !== "free" && !targetPlanNames.includes(p)) {
-            targetPlanNames.push(p);
-          }
-        });
+        if (targetPlanNames.includes("free") && targetPlanNames.length === 1) {
+          // Explicitly chose free
+          targetPlanNames = ["free"];
+        } else {
+          // Preserve any already active paid plans so they aren't lost
+          activePlanNames.forEach(p => {
+            if (p !== "free" && !targetPlanNames.includes(p)) {
+              targetPlanNames.push(p);
+            }
+          });
+        }
       }
 
-      const totalEmployeesToSend = isOnlyAddingExtraEmployees
-        ? Math.max(activeEmployeeLimit, 25) + extraEmployeesToAdd
-        : (targetPlanNames.includes("hr") || targetPlanNames.includes("suite") ? newHrEmployeeCount : 0);
+      // If user is adding extra employees or HR/Suite was active, ensure suite or hr remains active
+      if (extraEmployeesToAdd > 0 || isHrActive) {
+        if (!targetPlanNames.includes("suite") && !targetPlanNames.includes("hr")) {
+          targetPlanNames.push(isSuiteActive || activePlanNames.includes("suite") ? "suite" : "hr");
+        }
+      }
+
+      // If any paid plan is present in targetPlanNames, strip "free"
+      if (targetPlanNames.some(p => p !== "free")) {
+        targetPlanNames = targetPlanNames.filter(p => p !== "free");
+      }
+
+      // Safeguard: if targetPlanNames is somehow still empty, fall back to active plans or free
+      if (targetPlanNames.length === 0) {
+        targetPlanNames = activePlanNames.length > 0 ? activePlanNames : ["free"];
+      }
+
+      // Determine base limit for the TARGET plan being checked out
+      const isSuiteOrHrTarget = targetPlanNames.includes("suite") || targetPlanNames.includes("hr");
+      const targetBaseLimit = isSuiteOrHrTarget ? 25 : 3;
+
+      let totalEmployeesToSend = targetBaseLimit;
+
+      if (isOnlyAddingExtraEmployees) {
+        // Adding extra employees to existing active plan
+        let currentLimit = Math.max(activeEmployeeLimit || targetBaseLimit, targetBaseLimit);
+        if (orgId) {
+          try {
+            const { data: latestSub } = await supabase
+              .from("subscriptions")
+              .select("employee_count")
+              .eq("org_id", orgId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (latestSub?.employee_count && latestSub.employee_count > currentLimit) {
+              currentLimit = latestSub.employee_count;
+            }
+          } catch (e) {
+            console.warn("Could not re-fetch latest sub:", e);
+          }
+        }
+        totalEmployeesToSend = currentLimit + extraEmployeesToAdd;
+      } else {
+        // Purchasing / upgrading to a new plan
+        if (extraEmployeesToAdd > 0) {
+          totalEmployeesToSend = targetBaseLimit + extraEmployeesToAdd;
+        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 25) {
+          totalEmployeesToSend = newHrEmployeeCount;
+        } else if (isSuiteOrHrTarget && activeEmployeeLimit > 25) {
+          // If already on Suite/HR and had purchased extra capacity, preserve it
+          totalEmployeesToSend = activeEmployeeLimit;
+        } else {
+          totalEmployeesToSend = targetBaseLimit;
+        }
+      }
 
       // If total amount is 0 (e.g. Free plan selected or 100% coupon)
       if (finalAmountPaise <= 0) {
+        const plansToActivate = targetPlanNames.length > 0 ? targetPlanNames : ["free"];
         const { error } = await supabase.rpc("activate_org_plans", {
           p_org_id: orgId,
-          p_plan_names: targetPlanNames.length > 0 ? targetPlanNames : ["free"],
+          p_plan_names: plansToActivate,
           p_billing_cycle: billingCycle,
           p_employee_count: totalEmployeesToSend
         });
         if (error) throw error;
+
+        const resolvedPlan = plansToActivate.includes('free') && plansToActivate.length === 1 
+          ? 'free' 
+          : (plansToActivate.includes('suite') ? 'suite' : plansToActivate[0] || 'free');
+
+        // Also update the organizations table subscription_plan so it doesn't stay 'free'
+        await supabase.from('organizations').update({ 
+          subscription_plan: resolvedPlan 
+        }).eq('id', orgId);
+
+        if (!orgId || orgId === currentOrg?.id) {
+          useFeatureStore.getState().setSubscriptionMeta({
+            plan_name: resolvedPlan,
+            status: 'active',
+            trial_ends_at: null,
+            employee_limit: totalEmployeesToSend,
+            employee_count: totalEmployeesToSend,
+            current_period_end: null
+          });
+        }
         
         // Generate zero-value invoice and send email
         const now = new Date();
@@ -516,6 +662,23 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
             setCompletedInvoice(invoicePayload);
             setShowSuccessModal(true);
+
+            // Update org subscription_plan in DB so it doesn't stay 'free'
+            await supabase.from('organizations').update({ 
+              subscription_plan: targetPlanNames.includes('suite') ? 'suite' : targetPlanNames[0] || 'suite' 
+            }).eq('id', orgId);
+
+            if (!orgId || orgId === currentOrg?.id) {
+              // Update in-memory subscription meta so limit is reflected immediately
+              useFeatureStore.getState().setSubscriptionMeta({
+                plan_name: targetPlanNames[0] || 'suite',
+                status: 'active',
+                trial_ends_at: null,
+                employee_limit: totalEmployeesToSend,
+                employee_count: totalEmployeesToSend,
+                current_period_end: null
+              });
+            }
 
             // Automatically dispatch the invoice email with PDF attachment
             if (invoicePayload.customerEmail) {
@@ -778,7 +941,13 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                               </Badge>
                             </div>
                             <span className="text-xs text-slate-500 mt-1">
-                              {plan.name === "hr" ? "10 Base Employees Included" : "Active for Business"}
+                              {plan.name === "hr" 
+                                ? `${activeEmployeeLimit || 25} Employees Active` 
+                                : plan.name === "suite"
+                                ? `Active for Business (${activeEmployeeLimit || 25} Employees Quota)`
+                                : plan.name === "accounting"
+                                ? `Active for Business (${activeEmployeeLimit || 3} Employees Quota)`
+                                : "Active for Business"}
                             </span>
                           </div>
                         ) : isIncludedInNewlySelectedSuite ? (
@@ -816,7 +985,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                 </Badge>
                               </div>
                               <p className="text-xs text-slate-600 mb-2.5">
-                                Base 10 employees active. Add extra slots at ₹29 each:
+                                Current limit: {activeEmployeeLimit || 25} employees active. Add extra slots at ₹29 each:
                               </p>
                               
                               <div className="flex items-center justify-between bg-white p-1.5 rounded-lg border border-emerald-300/80 shadow-sm">
@@ -835,7 +1004,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                     +{extraEmployeesToAdd} Extra
                                   </span>
                                   <div className="text-[10px] text-slate-500 font-medium">
-                                    Total: {25 + extraEmployeesToAdd} Employees
+                                    Total: {(activeEmployeeLimit || 25) + extraEmployeesToAdd} Employees
                                   </div>
                                 </div>
                                 
@@ -929,12 +1098,22 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
                       {/* Features List */}
                       <div className="flex-1 space-y-2 mt-auto pt-4 border-t border-slate-100">
-                        {plan.features.map((featureKey) => (
-                          <div key={featureKey} className="flex items-center gap-2 text-xs text-slate-600">
-                            <Check className="h-3.5 w-3.5 text-primary shrink-0" />
-                            <span className="capitalize">{featureKey.replace(/-/g, " ")}</span>
-                          </div>
-                        ))}
+                        {getDisplayFeatures(plan).map((featureText, idx) => {
+                          const isEverythingInFree = featureText.toLowerCase().includes("everything in free");
+                          return (
+                            <div 
+                              key={idx} 
+                              className={`flex items-center gap-2 text-xs ${
+                                isEverythingInFree ? "font-semibold text-[#28166f]" : "text-slate-600"
+                              }`}
+                            >
+                              <Check className={`h-3.5 w-3.5 shrink-0 ${
+                                isEverythingInFree ? "text-[#e77817] stroke-[2.5]" : "text-primary"
+                              }`} />
+                              <span>{featureText.replace(/-/g, " ")}</span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );

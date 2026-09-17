@@ -50,7 +50,7 @@ export default function TdsTcsReportsPage() {
         .eq("org_id", org.id)
         .eq("tds_tcs_applicable", true)
         .gt("tds_tcs_amount", 0)
-        .neq("status", "void")
+        .neq("status", "cancelled")
         .neq("status", "draft");
 
       setInvoices(invData || []);

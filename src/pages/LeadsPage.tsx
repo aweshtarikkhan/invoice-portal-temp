@@ -15,10 +15,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { hasModuleAccess, FREE_PLAN_LIMITS } from "@/lib/subscription";
+import { hasModuleAccess, hasUnlimitedLeads, getLeadLimit, normalizePlanKey, FREE_PLAN_LIMITS } from "@/lib/subscription";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
@@ -53,6 +54,52 @@ const PRIORITIES = [
 
 const LEAD_SOURCES = ["Website", "Referral", "Social Media", "Cold Call", "Advertisement", "Other"];
 
+
+const normalizeLeadPriority = (val: any): "hot" | "warm" | "cold" => {
+  if (!val) return "warm";
+  const s = String(typeof val === "object" ? (val.text || val.value || "") : val).toLowerCase().trim();
+  if (s.includes("hot") || s.includes("high") || s.includes("urgent") || s.includes("critical")) return "hot";
+  if (s.includes("cold") || s.includes("low") || s.includes("minor")) return "cold";
+  return "warm";
+};
+
+const normalizeLeadStatus = (val: any): "new" | "contacted" | "qualified" | "converted" | "lost" => {
+  if (!val) return "new";
+  const s = String(typeof val === "object" ? (val.text || val.value || "") : val).toLowerCase().trim();
+  if (s.includes("won") || s.includes("convert") || s.includes("deal") || s.includes("client")) return "converted";
+  if (s.includes("qualif") || s.includes("negotiat") || s.includes("proposal") || s.includes("review") || s.includes("pitch")) return "qualified";
+  if (s.includes("contact") || s.includes("demo") || s.includes("call") || s.includes("progress") || s.includes("outreach") || s.includes("meeting")) return "contacted";
+  if (s.includes("lost") || s.includes("drop") || s.includes("reject") || s.includes("junk")) return "lost";
+  return "new";
+};
+
+const parseLeadValue = (val: any): number => {
+  if (val == null) return 0;
+  if (typeof val === "number") return isNaN(val) ? 0 : val;
+  const str = String(typeof val === "object" ? (val.text || val.value || val.result || "") : val);
+  const clean = str.replace(/[^0-9.-]+/g, "");
+  const num = parseFloat(clean);
+  return isNaN(num) ? 0 : num;
+};
+
+const cleanLeadField = (val: any): string | null => {
+  if (val == null) return null;
+  let str = "";
+  if (typeof val === "object") {
+    if (val.text != null) str = String(val.text);
+    else if (val.value != null) str = String(val.value);
+    else if (val.result != null) str = String(val.result);
+    else if (val.hyperlink != null) str = String(val.text || val.hyperlink).replace(/^tel:/i, "").replace(/^mailto:/i, "");
+    else if (Array.isArray(val.richText)) str = val.richText.map((rt: any) => (rt && rt.text) || "").join("");
+    else str = String(val);
+  } else {
+    str = String(val);
+  }
+  str = String(str).trim();
+  if (str === "[object Object]" || str === "undefined" || str === "null" || !str) return null;
+  return str;
+};
+
 const emptyForm = { name: "", company: "", email: "", phone: "", source: "", status: "new", estimated_value: "0", notes: "", tags: "", priority: "warm" };
 
 export default function LeadsPage() {
@@ -71,15 +118,21 @@ export default function LeadsPage() {
   const [editId, setEditId] = useState<string | null>(null);
 
   const { subscriptionPlan } = useSubscription();
-  const plan = subscriptionPlan || org?.subscription_plan || 'free';
-  const isFreePlan = plan.toLowerCase() === 'free';
+  const plan = subscriptionPlan || org?.subscription_plan || "free";
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const hasCrm = plan.toLowerCase().includes('crm') || plan.toLowerCase().includes('suite');
-  const limitReached = !hasCrm && rows.length >= 50;
+  const [showLimitAlert, setShowLimitAlert] = useState(false);
+
+  // Business Suite and Business CRM have unlimited leads; all other plans are capped at 50
+  const isUnlimited = useMemo(() => {
+    return hasUnlimitedLeads(plan, activeOrgPlans);
+  }, [plan, activeOrgPlans]);
+
+  const limitReached = !isUnlimited && rows.length >= 50;
 
   const handleAddLeadClick = () => {
     if (limitReached) {
-      setShowUpgrade(true);
+      setShowLimitAlert(true);
     } else {
       setForm(emptyForm);
       setEditId(null);
@@ -91,14 +144,35 @@ export default function LeadsPage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data, error } = await (supabase as any).from("leads").select("*").eq("org_id", org.id).order("created_at", { ascending: false });
-    if (error) toast({ title: "Load failed", description: error.message, variant: "destructive" });
-    setRows(data || []);
-    setLoading(false);
+    try {
+      const [{ data: leadsData, error: leadsErr }, { data: subsData }] = await Promise.all([
+        (supabase as any).from("leads").select("*").eq("org_id", org.id).order("created_at", { ascending: false }),
+        supabase.from("subscriptions").select("plan_id, status").eq("org_id", org.id).eq("status", "active")
+      ]);
+      if (leadsErr) toast({ title: "Load failed", description: leadsErr.message, variant: "destructive" });
+      setRows(leadsData || []);
+      if (subsData && Array.isArray(subsData)) {
+        setActiveOrgPlans(subsData.map((s: any) => s.plan_id));
+      }
+    } catch (e: any) {
+      console.error("Failed to load leads or subscriptions:", e);
+    } finally {
+      setLoading(false);
+    }
   };
+
   useEffect(() => { load(); }, [org?.id]);
 
-  const openNew = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
+  const openNew = () => {
+    if (limitReached) {
+      setShowLimitAlert(true);
+      return;
+    }
+    setEditId(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
   const openEdit = (l: any) => {
     setEditId(l.id);
     setForm({
@@ -121,6 +195,18 @@ export default function LeadsPage() {
       return;
     }
     if (!org?.id || !form.name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+
+    // Enforce 50 leads cap for non-CRM / non-Suite plans
+    if (!editId && !isUnlimited && rows.length >= 50) {
+      setShowLimitAlert(true);
+      toast({
+        title: "Lead Limit Reached (50 Max)",
+        description: "In this plan you can only add 50 leads maximum. Upgrade to Business Suite or add CRM to your existing plan for unlimited leads.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const payload: any = {
       org_id: org.id,
       name: form.name.trim(), company: form.company || null, email: cleanEmail || null, phone: cleanPhone || null,
@@ -149,10 +235,10 @@ export default function LeadsPage() {
           .eq("action_type", "send_email")
           .eq("is_active", true)
           .single()
-          .then(({ data: autoData }) => {
+          .then(({ data: autoData }: any) => {
             if (autoData) {
-              const subject = `Welcome ${payload.first_name}!`;
-              const html = `<p>Hi ${payload.first_name},</p><p>Thank you for your interest in our services. A representative will be in touch with you shortly.</p>`;
+              const subject = `Welcome ${payload.name}!`;
+              const html = `<p>Hi ${payload.name},</p><p>Thank you for your interest in our services. A representative will be in touch with you shortly.</p>`;
               supabase.functions.invoke("send-custom-email", {
                 body: { to: payload.email, subject, html }
               });
@@ -161,10 +247,10 @@ export default function LeadsPage() {
               (supabase as any).from("activities").insert({
                 org_id: payload.org_id,
                 lead_id: null,
-                activity_type: 'email',
-                title: 'Sent Welcome Email (Automated)',
-                notes: 'Automatically sent welcome email based on CRM Automations rule.',
-                status: 'completed',
+                activity_type: "email",
+                title: "Sent Welcome Email (Automated)",
+                notes: "Automatically sent welcome email based on CRM Automations rule.",
+                status: "completed",
                 created_by: payload.owner_id
               }).then();
             }
@@ -219,7 +305,7 @@ export default function LeadsPage() {
     return { total, newThisMonth, conversionRate, pipelineValue, hotLeads };
   }, [rows]);
 
-  if (!hasModuleAccess(plan, 'crm')) {
+  if (!hasModuleAccess(plan, "crm")) {
     return (
       <div className="flex-1 bg-slate-50 min-h-screen">
         <LockedFeature 
@@ -230,7 +316,8 @@ export default function LeadsPage() {
         <UpgradeModal 
           isOpen={showUpgrade} 
           onClose={() => setShowUpgrade(false)} 
-          onSelectPlan={(p, i, price) => { window.location.href = `/settings`; }} 
+          currentPlanName={plan}
+          forceOrgId={org?.id}
         />
       </div>
     );
@@ -249,12 +336,28 @@ export default function LeadsPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header and Action Buttons */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Leads</h1>
           <p className="text-sm text-muted-foreground">Capture prospects, qualify and convert them into clients or deals.</p>
         </div>
         <div className="flex items-center gap-2">
+          {isUnlimited ? (
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 gap-1 text-xs py-1 px-2.5 font-medium">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-500" /> Unlimited Leads
+            </Badge>
+          ) : (
+            <Badge 
+              variant="outline" 
+              className={rows.length >= 50 
+                ? "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs py-1 px-2.5 font-medium" 
+                : "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-800 text-xs py-1 px-2.5 font-medium"
+              }
+            >
+              {rows.length} / 50 Leads Used
+            </Badge>
+          )}
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4 mr-2" />Import
           </Button>
@@ -263,6 +366,25 @@ export default function LeadsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Quota limit warning banner for non-CRM/Suite plans */}
+      {!isUnlimited && rows.length >= 50 && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3.5 flex items-center justify-between gap-3 text-sm">
+          <div className="flex items-center gap-2.5 text-amber-900 dark:text-amber-200">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+            <span>
+              In this plan you can only add <strong>50 leads maximum</strong>. Upgrade to <strong>Business Suite</strong> or add-on <strong>Business CRM</strong> to your existing plan to add unlimited leads.
+            </span>
+          </div>
+          <Button 
+            size="sm" 
+            onClick={() => setShowUpgrade(true)} 
+            className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white shadow-sm"
+          >
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-3">
@@ -380,7 +502,7 @@ export default function LeadsPage() {
               </Select>
             </div>
             <div><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-            <div><Label>Mobile No.</Label><Input maxLength={10} placeholder="10-digit mobile number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, '') })} /></div>
+            <div><Label>Mobile No.</Label><Input maxLength={10} placeholder="10-digit mobile number" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value.replace(/\D/g, "") })} /></div>
             <div>
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
@@ -403,44 +525,149 @@ export default function LeadsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Import Dialog */}
+      {/* Import Dialog with 50-lead quota guard */}
       <ImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
         fields={leadImportFields}
         entityName="Leads"
-        onImport={async (rows) => {
-          let success = 0, errors = 0; const failedRows: any[] = [];
-          for (const row of rows) {
-            if (!row.name || !String(row.name).trim()) {
+        onImport={async (importedRows) => {
+          const validRows = importedRows.filter((r) => r.name && String(r.name).trim());
+          const currentCount = rows.length;
+
+          let rowsToInsert = validRows;
+          let skippedDueToLimitCount = 0;
+          const failedRows: any[] = [];
+
+          // Entries missing a name fail immediately
+          importedRows.forEach((r) => {
+            if (!r.name || !String(r.name).trim()) {
+              failedRows.push({ row: r, reason: "Lead Name is required." });
+            }
+          });
+
+          if (!isUnlimited) {
+            const remainingQuota = Math.max(0, 50 - currentCount);
+
+            if (remainingQuota === 0) {
+              toast({
+                title: "50 Leads Limit Reached",
+                description: "In this plan you can only add 50 leads maximum. You have already reached your 50 lead quota. Please upgrade to Business Suite or add CRM to your existing plan.",
+                variant: "destructive",
+              });
+              setShowLimitAlert(true);
+              return {
+                success: 0,
+                errors: importedRows.length,
+                failedRows: importedRows.map((r) => ({
+                  row: r,
+                  reason: "Quota limit reached: In this plan you can only add 50 leads maximum. Upgrade to Business Suite or add CRM to existing plan."
+                }))
+              };
+            }
+
+            if (validRows.length > remainingQuota) {
+              rowsToInsert = validRows.slice(0, remainingQuota);
+              const skippedRows = validRows.slice(remainingQuota);
+              skippedDueToLimitCount = skippedRows.length;
+
+              skippedRows.forEach((r) => {
+                failedRows.push({
+                  row: r,
+                  reason: "In this plan you can only add 50 leads maximum. Upgrade to Business Suite or add CRM to your existing plan for unlimited leads."
+                });
+              });
+            }
+          }
+
+          let success = 0;
+          let errors = 0;
+
+          for (const row of rowsToInsert) {
+            const cleanName = cleanLeadField(row.name) || String(row.name || "").trim();
+            if (!cleanName) {
               errors++;
+              failedRows.push({ row, reason: "Lead Name is required." });
               continue;
             }
+
+            const cleanCompany = cleanLeadField(row.company);
+            const cleanEmail = cleanLeadField(row.email);
+            const cleanPhone = cleanLeadField(row.phone);
+            const cleanSource = cleanLeadField(row.source) || "Other";
+            const cleanNotes = cleanLeadField(row.notes);
+            const normalizedStatus = normalizeLeadStatus(row.status);
+            const normalizedPriority = normalizeLeadPriority(row.priority);
+            const cleanEstimatedValue = parseLeadValue(row.estimated_value);
+            
+            let tags: string[] = [];
+            if (Array.isArray(row.tags)) {
+              tags = row.tags.map((t: any) => cleanLeadField(t)).filter(Boolean) as string[];
+            } else if (row.tags) {
+              tags = String(row.tags).split(",").map((t: string) => cleanLeadField(t)).filter(Boolean) as string[];
+            }
+
             const { error } = await (supabase as any).from("leads").insert({
               org_id: org!.id,
-              name: String(row.name).trim(),
-              company: row.company ? String(row.company).trim() : null,
-              email: row.email ? String(row.email).trim() : null,
-              phone: row.phone ? String(row.phone).trim() : null,
-              source: row.source ? String(row.source).trim() : "Other",
-              status: row.status ? String(row.status).toLowerCase().trim() : "new",
-              priority: row.priority ? String(row.priority).toLowerCase().trim() : "warm",
-              estimated_value: parseFloat(row.estimated_value) || 0,
-              notes: row.notes ? String(row.notes).trim() : null,
-              tags: row.tags ? String(row.tags).split(",").map((t: string) => t.trim()).filter(Boolean) : [],
+              name: cleanName,
+              company: cleanCompany,
+              email: cleanEmail,
+              phone: cleanPhone,
+              source: cleanSource,
+              status: normalizedStatus,
+              priority: normalizedPriority,
+              estimated_value: cleanEstimatedValue,
+              notes: cleanNotes,
+              tags,
             });
             if (error) {
               console.error("Lead import error:", error);
               errors++;
+              failedRows.push({ row, reason: error.message || "Database insert error" });
             } else {
               success++;
             }
           }
-          load();
-          return { success, errors, failedRows };
+
+          await load();
+
+          if (skippedDueToLimitCount > 0) {
+            toast({
+              title: "50 Leads Limit Reached",
+              description: `In this plan you can only add 50 leads maximum. ${success} leads were imported to reach your 50 lead quota, and ${skippedDueToLimitCount} leads were skipped. Please upgrade to Business Suite or add CRM to your existing plan for unlimited leads!`,
+              duration: 9000,
+            });
+            setTimeout(() => {
+              setShowLimitAlert(true);
+            }, 1000);
+          } else if (success > 0) {
+            toast({
+              title: "Import Complete",
+              description: `Successfully imported ${success} leads.`,
+            });
+          }
+
+          return {
+            success,
+            errors: errors + skippedDueToLimitCount + (importedRows.length - validRows.length),
+            failedRows
+          };
         }}
+      />
+    
+      <LimitReachedAlert 
+        isOpen={showLimitAlert} 
+        onClose={() => setShowLimitAlert(false)} 
+        onUpgrade={() => { setShowLimitAlert(false); setShowUpgrade(true); }} 
+        title="50 Leads Limit Reached" 
+        description="In this plan you can only add 50 leads maximum. Upgrade to Business Suite or add the Business CRM plan to your existing plan to add unlimited leads!" 
+      />
+      <UpgradeModal 
+        isOpen={showUpgrade} 
+        onClose={() => setShowUpgrade(false)} 
+        currentPlanName={plan}
+        forceOrgId={org?.id}
       />
     </div>
   );
 }
-

@@ -105,7 +105,18 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
             let hasValue = false;
             keys.forEach((k, idx) => {
               const cell = rowVals[idx + 1];
-              let val = cell && typeof cell === "object" && "text" in cell ? (cell as any).text : cell;
+              let val: any = cell;
+              if (cell && typeof cell === "object" && !(cell instanceof Date)) {
+                if (cell.text != null) val = cell.text;
+                else if (cell.value != null) val = cell.value;
+                else if (cell.result != null) val = cell.result;
+                else if (cell.hyperlink != null) val = String(cell.text || cell.hyperlink).replace(/^tel:/i, "").replace(/^mailto:/i, "");
+                else if (Array.isArray(cell.richText)) val = cell.richText.map((rt: any) => (rt && rt.text) || "").join("");
+                else {
+                  const str = String(cell).trim();
+                  val = str !== "[object Object]" ? str : "";
+                }
+              }
               if (val instanceof Date) {
                  if (!isNaN(val.getTime())) {
                    val = new Date(val.getTime() - val.getTimezoneOffset() * 60000).toISOString().split('T')[0];

@@ -322,11 +322,15 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
   currentPeriodEnd: null,
 
   setSubscriptionMeta: (meta) => {
+    // employee_limit = plan's base limit (e.g. 10 for suite)
+    // employee_count = purchased capacity (e.g. 27 = base + extras purchased)
+    // Effective limit = max of both, so purchased extras are respected
+    const effectiveLimit = Math.max(meta.employee_limit || 0, meta.employee_count || 0) || meta.employee_limit;
     set({
       subscriptionPlan: meta.plan_name,
       subscriptionStatus: meta.status,
       trialEndsAt: meta.trial_ends_at,
-      employeeLimit: meta.employee_limit,
+      employeeLimit: effectiveLimit,
       platformEmployeeLimit: meta.platform_employee_limit || null,
       employeeCount: meta.employee_count,
       platformEmployeeCount: meta.platform_employee_count || 0,

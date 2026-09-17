@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { postInvoiceJournal } from "@/lib/accounting";
 import { useAppStore } from "@/store/app-store";
 import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedInvoices, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { useAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { logStockMovements, detectNegativeStock } from "@/lib/stock";
@@ -418,6 +420,10 @@ export default function InvoiceBuilderPage() {
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { subscriptionPlan } = useSubscription();
+  const plan = subscriptionPlan || org?.subscription_plan || 'free';
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const [clients, setClients] = useState<any[]>([]);
@@ -500,14 +506,19 @@ export default function InvoiceBuilderPage() {
   useEffect(() => {
     if (!org?.id) return;
     const fetchData = async () => {
-      const [c, i, t] = await Promise.all([
+      const [c, i, t, subRes] = await Promise.all([
         supabase.from("clients").select("*").eq("org_id", org.id).eq("status", "active").order("display_name"),
         supabase.from("items").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
         supabase.from("tax_rates").select("*").eq("org_id", org.id),
+        supabase.rpc("get_my_org_subscription", { p_org_id: org.id })
       ]);
       setClients(c.data || []);
       setCatalogItems(i.data || []);
       setTaxRates(t.data || []);
+      if (subRes?.data?.plan_name) {
+        const plans = subRes.data.plan_name.split('+').map((s: string) => normalizePlanKey(s)).filter(Boolean);
+        setActiveOrgPlans(plans);
+      }
 
       // Auto-generate invoice number from fresh DB value
       if (!id) {
@@ -915,6 +926,29 @@ export default function InvoiceBuilderPage() {
     if (!clientId) {
       toast({ title: "Select a client", variant: "destructive" });
       return;
+    }
+
+    if (!id) {
+      const isUnlimited = hasUnlimitedInvoices(plan, activeOrgPlans);
+      if (!isUnlimited) {
+        const currentYear = new Date().getFullYear();
+        const startOfYear = `${currentYear}-01-01T00:00:00.000Z`;
+        const { count } = await supabase
+          .from("invoices")
+          .select("*", { count: "exact", head: true })
+          .eq("org_id", org!.id)
+          .gte("created_at", startOfYear);
+
+        if ((count || 0) >= 100) {
+          toast({
+            title: "Invoice Limit Reached (100/100)",
+            description: "In this plan you can only create up to 100 invoices. Upgrade to Business Accounting or Business Suite for unlimited invoices.",
+            variant: "destructive"
+          });
+          setShowUpgradeModal(true);
+          return;
+        }
+      }
     }
     // Auto-remove empty/blank lines before saving
     const validLines = lines.filter((l) => l.name.trim() || l.rate > 0 || l.quantity > 0);
@@ -2105,6 +2139,11 @@ export default function InvoiceBuilderPage() {
         </div>
       </div>
 
+      <PlanSelectorModal 
+        open={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        forceOrgId={org?.id}
+      />
     </div>
   );
 }

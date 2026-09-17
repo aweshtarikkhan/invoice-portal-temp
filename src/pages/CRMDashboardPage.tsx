@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function CRMDashboardPage() {
   const navigate = useNavigate();
@@ -61,13 +62,15 @@ export default function CRMDashboardPage() {
       const { data: opportunities } = await (supabase as any).from("opportunities").select("*").eq("org_id", org.id);
 
       // Fetch Pipeline Stages
-      const { data: pipelineStages } = await (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("order_index", { ascending: true });
+      const { data: pipelineStages } = await (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true });
 
       // Fetch Activities
-      const { data: activities } = await (supabase as any).from("activities").select("*, leads(first_name, last_name, company)").eq("org_id", org.id);
+      const { data: activities } = await (supabase as any).from("activities").select("*, leads(name, company)").eq("org_id", org.id);
       
       // Fetch Org Members for Team Metrics
-      const { data: members } = await (supabase as any).from("org_members").select("user_id, role, users(full_name, email)").eq("org_id", org.id);
+      const { data: members } = await supabase.from("organization_members").select("user_id, role").eq("org_id", org.id);
+      const { data: memberProfiles } = await supabase.from("profiles").select("user_id, full_name, email").eq("org_id", org.id);
+      const profileMap = new Map((memberProfiles || []).map((p: any) => [p.user_id, p]));
 
       // Process Leads
       const totalLeads = leads?.length || 0;
@@ -172,8 +175,9 @@ export default function CRMDashboardPage() {
         const uActs = activities?.filter((a: any) => a.created_by === userId && a.status === "completed").length || 0;
         const rev = opportunities?.filter((o: any) => o.owner_id === userId && o.status === "won").reduce((sum: number, o: any) => sum + (o.amount || 0), 0) || 0;
         
+        const prof = profileMap.get(userId);
         return {
-           name: m.users?.full_name || m.users?.email?.split("@")[0] || "Unknown",
+           name: prof?.full_name || prof?.email?.split("@")[0] || "Team Member",
            leads: uLeads,
            wonDeals: uOpps,
            activities: uActs,
