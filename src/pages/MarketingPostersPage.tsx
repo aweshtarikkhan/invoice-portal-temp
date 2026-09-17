@@ -810,15 +810,28 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
             const count = templates.filter(t => t.festival_name === category).length;
             const categoryTemplate = templates.find(t => t.festival_name === category);
             const isCustom = category === "Custom Posts";
+            const isLocked = !hasFullMarketing && !FESTIVAL_CATEGORIES.includes(category);
+            
             return (
               <div
                 key={category}
-                className="group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300 hover:scale-[1.02]"
+                className={"group cursor-pointer rounded-2xl overflow-hidden border-2 border-transparent hover:border-primary/50 hover:shadow-xl transition-all duration-300 hover:scale-[1.02] relative" + (isLocked ? " opacity-75" : "")}
                 onClick={() => {
+                  if (isLocked) {
+                    toast.error("Premium Feature: Upgrade to Business Promotion or Suite to access this category.");
+                    return;
+                  }
                   setSelectedCategory(category);
                   setView("gallery");
                 }}
               >
+                {isLocked && (
+                  <div className="absolute inset-0 bg-slate-900/40 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                    <div className="bg-white text-slate-900 px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl">
+                      <span>Locked</span>
+                    </div>
+                  </div>
+                )}
                 <div className="aspect-[4/5] relative flex flex-col justify-end p-6 bg-muted">
                   {categoryTemplate?.bg_image_url && (
                     <img

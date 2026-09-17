@@ -9,7 +9,8 @@ import {
   Printer, ArrowLeft, ShieldCheck, CheckCircle2, Zap,
   FileText, Package, ShoppingCart, Landmark, Users, BarChart3,
   Share2, Sparkles, Phone, Mail, Globe, Check, Star,
-  QrCode, Award, Layers, ArrowRight, Smartphone, Monitor
+  QrCode, Award, Layers, ArrowRight, Smartphone, Monitor,
+  Plus, Minus,
 } from "lucide-react";
 
 export default function PamphletPage() {
@@ -345,10 +346,13 @@ export default function PamphletPage() {
                         <p className="text-[10px] font-bold text-emerald-600">₹5,999/yr (Save ₹1,189)</p>
                       </div>
                       <ul className="space-y-1.5 text-[11px] text-slate-700">
-                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Unlimited GST Invoices</li>
-                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Estimates & Delivery Challans</li>
-                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Multi-Godown Stock & Barcode</li>
-                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Customer Ledgers & Receipts</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Everything in free plan</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Unlimited Invoice</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Unlimited Quotation & POS</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Inventory Management</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 500 WhatsApp messages</li>
+                        <li className="flex items-center gap-1.5 text-indigo-700 font-semibold"><Users className="w-3.5 h-3.5 shrink-0" /> Platform access up to 3 employees</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> +₹99 / Extra platform employee</li>
                       </ul>
                     </div>
                     <div className="mt-3 pt-2 border-t border-slate-200 text-center text-[10px] font-bold text-indigo-700">

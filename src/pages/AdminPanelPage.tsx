@@ -105,6 +105,13 @@ export default function AdminPanelPage() {
   const totalGlobalUsers = fetchedTeamMembers.length;
   const currentOrgId = currentOrg?.id || "default";
 
+  const currentPlan = useFeatureStore(s => s.subscriptionPlan);
+  const platformLimitBase = useFeatureStore(s => s.platformEmployeeLimit) ?? (currentPlan === 'suite' ? 5 : (currentPlan === 'free' ? 0 : 3));
+  const platformExtra = useFeatureStore(s => s.platformEmployeeCount) || 0;
+  const platformEmployeeLimit = platformLimitBase + platformExtra;
+
+  const globalLimitReached = totalGlobalUsers >= platformEmployeeLimit;
+
   const loadTeamMembers = async () => {
     const targetOrgId = selectedTeamOrgId || currentOrgId;
     if (targetOrgId === "default" || !targetOrgId) return;
@@ -147,7 +154,7 @@ export default function AdminPanelPage() {
 
   useEffect(() => { loadTeamMembers(); }, [selectedTeamOrgId, currentOrgId]);
 
-  const globalLimitReached = totalGlobalUsers >= 5;
+
 
   const handleAddAdmin = () => {
     if (newAdminEmail && newAdminEmail.includes("@")) {

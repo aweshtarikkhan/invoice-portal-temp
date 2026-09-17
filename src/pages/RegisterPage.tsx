@@ -21,6 +21,10 @@ export default function RegisterPage() {
     const plan = params.get("plan");
     if (plan) {
       sessionStorage.setItem("onboarding_plan", plan);
+      const hr = params.get("hr");
+      if (hr) sessionStorage.setItem("onboarding_hr", hr);
+      const plat = params.get("plat");
+      if (plat) sessionStorage.setItem("onboarding_plat", plat);
     }
     const billing = params.get("billing");
     if (billing) {

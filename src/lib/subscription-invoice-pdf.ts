@@ -133,7 +133,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   doc.text("India's Smartest Business Operating & GST Billing Platform", margin, 27);
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184); // slate-400
-  doc.text("CIN: U73200MP2025PTC074472 • Emerging Thoughts Pvt. Ltd.", margin, 33);
+  doc.text("Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)", margin, 33);
 
   // Right Header: TAX INVOICE & Details
   doc.setFont("helvetica", "bold");
@@ -209,19 +209,21 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(15, 23, 42);
-  doc.text("Assay Biz Technologies Pvt. Ltd.", margin + 4, byY);
+  doc.text("Emerging Thoughts Pvt. Ltd.", margin + 4, byY);
   byY += 5;
 
   doc.setFontSize(8);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(71, 85, 105);
-  doc.text("GSTIN: 23AABCS1429B1Z8", margin + 4, byY);
+  doc.text("GSTIN - 23AAICE6101F1Z6", margin + 4, byY);
   byY += 4.5;
-  doc.text("Corporate Office: Commercial Hub, Bhopal, MP 462001", margin + 4, byY);
+  doc.text("Phone - +91 78060 25875", margin + 4, byY);
   byY += 4.5;
-  doc.text("Email: billing@assaybiz.com • Support: +91 94248 25919", margin + 4, byY);
+  doc.text("Email - support@aassaybiz.com", margin + 4, byY);
   byY += 4.5;
-  doc.text("Website: https://assaybiz.com", margin + 4, byY);
+  doc.text("Website - www.aassaybiz.com", margin + 4, byY);
+  byY += 4.5;
+  doc.text("address - Bhopal, Madhya Pradesh", margin + 4, byY);
 
   // Column 2: Billed To (Customer)
   const toX = margin + colWidth + 6;
@@ -271,7 +273,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   tableRows.push([
     "1",
     `${data.planDisplayName}\nIncludes GST Invoicing, Inventory, Analytics & Cloud Backup\nService Period: ${data.periodStart} to ${data.periodEnd}`,
-    "998313",
+    "998315",
     "1",
     formatINR(taxable),
     data.discount ? formatINR(data.discount) : formatINR(0),
@@ -285,7 +287,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
     tableRows.push([
       "2",
       `Additional HRMS Staff Slots (${data.employeeCount} Total Employees Active)\nManaged under active subscription cycle`,
-      "998313",
+      "998315",
       "1",
       "Included",
       formatINR(0),
@@ -449,7 +451,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(15, 23, 42);
-  doc.text("For Assay Biz Technologies Pvt. Ltd.", signX, y + 2);
+  doc.text("For Emerging Thoughts Pvt. Ltd.", signX, y + 2);
 
   doc.setFontSize(7.5);
   doc.setFont("helvetica", "normal");
@@ -468,15 +470,17 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   doc.setFont("helvetica", "normal");
   doc.setTextColor(148, 163, 184); // slate-400
   doc.text(
-    "Terms: This is a computer-generated tax invoice for software subscription services. SAC Code: 998313. No physical signature required.",
+    "Terms: This is a computer-generated tax invoice for software subscription services. SAC Code: 998315. No physical signature required.",
     margin,
     footY
   );
-  doc.text(
-    "Assay Biz • https://assaybiz.com • billing@assaybiz.com • +91 94248 25919",
-    margin,
-    footY + 4
-  );
+  doc.setFont("helvetica", "bold");
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      "Emerging Thoughts Pvt. Ltd. | www.aassaybiz.com | support@aassaybiz.com | +91 78060 25875",
+      margin,
+      footY + 4
+    );
 
   return doc;
 }

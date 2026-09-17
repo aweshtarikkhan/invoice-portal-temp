@@ -46,6 +46,7 @@ export const FREE_PLAN_LIMITS = {
 };
 
 export const PAID_PLAN_LIMITS = {
-  employees: 10,
+  employees: 25,
   outreach_messages: 500,
 };
+

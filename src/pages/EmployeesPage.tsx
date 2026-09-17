@@ -549,9 +549,7 @@ export default function EmployeesPage() {
   const effectivePlan = subscriptionPlan || org?.subscription_plan || 'free';
   const isFreePlan = effectivePlan === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const currentLimit = isFreePlan 
-    ? FREE_PLAN_LIMITS.employees 
-    : Math.max(employeeCount || 0, employeeLimit || 10, PAID_PLAN_LIMITS.employees || 10);
+  const currentLimit = employeeLimit || (isFreePlan ? 3 : (effectivePlan.toLowerCase().includes('hr') || effectivePlan.toLowerCase().includes('suite') ? 25 : (effectivePlan.toLowerCase().includes('accounting') ? 10 : 3)));
   const limitReached = rows.length >= currentLimit;
 
   const handleAddEmployeeClick = () => {

@@ -74,7 +74,8 @@ export default function LeadsPage() {
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const isFreePlan = plan.toLowerCase() === 'free';
   const [showUpgrade, setShowUpgrade] = useState(false);
-  const limitReached = isFreePlan && rows.length >= FREE_PLAN_LIMITS.leads;
+  const hasCrm = plan.toLowerCase().includes('crm') || plan.toLowerCase().includes('suite');
+  const limitReached = !hasCrm && rows.length >= 50;
 
   const handleAddLeadClick = () => {
     if (limitReached) {

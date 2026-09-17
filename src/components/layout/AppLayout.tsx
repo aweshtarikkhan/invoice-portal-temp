@@ -1,5 +1,7 @@
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { useLocation } from "react-router-dom";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/lib/auth";
 import { useEffect, useState } from "react";
@@ -33,6 +35,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
     const navigate = useNavigate();
+  const location = useLocation();
 
   const handleCreate = async () => {
     if (!name.trim() || !profile) return;
@@ -86,6 +89,7 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
     navigate("/login", { replace: true });
   };
 
+  
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
       <Card className="w-full max-w-md">
@@ -213,15 +217,26 @@ export function AppLayout() {
           });
           
           if (subData) {
-            if (Array.isArray(subData.enabled_features)) {
-              useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+            let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
+            
+            // All plans should at least have basic access to HR, CRM, and Marketing 
+            // (limits are handled inside the respective pages)
+            if (!features.includes('people')) features.push('people');
+            if (!features.includes('crm')) features.push('crm');
+            if (!features.includes('marketing')) features.push('marketing');
+            
+            if (!subData.plan_name || subData.plan_name === 'free') {
+               features = features.filter(f => f !== 'reports');
             }
+            useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setSubscriptionMeta({
               plan_name: subData.plan_name,
               status: subData.status,
               trial_ends_at: subData.trial_ends_at,
               employee_limit: subData.employee_limit,
               employee_count: subData.employee_count,
+                platform_employee_limit: subData.platform_employee_limit,
+                platform_employee_count: subData.platform_employee_count,
               current_period_end: subData.current_period_end,
             });
           }
@@ -259,15 +274,22 @@ export function AppLayout() {
         try {
           const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: profile.org_id });
           if (subData) {
-            if (Array.isArray(subData.enabled_features)) {
-              useFeatureStore.getState().setPlatformFeatures(subData.enabled_features);
+            let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
+            if (!subData.plan_name || subData.plan_name === 'free') {
+               if (!features.includes('people')) features.push('people');
+               if (!features.includes('crm')) features.push('crm');
+               if (!features.includes('marketing')) features.push('marketing');
+               features = features.filter(f => f !== 'reports');
             }
+            useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setSubscriptionMeta({
               plan_name: subData.plan_name,
               status: subData.status,
               trial_ends_at: subData.trial_ends_at,
               employee_limit: subData.employee_limit,
               employee_count: subData.employee_count,
+                platform_employee_limit: subData.platform_employee_limit,
+                platform_employee_count: subData.platform_employee_count,
               current_period_end: subData.current_period_end,
             });
           }
@@ -340,7 +362,9 @@ export function AppLayout() {
   }, [profile?.org_id]);
 
   if (checking) {
-    return (
+    
+
+  return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
@@ -380,6 +404,53 @@ export function AppLayout() {
   if (needsSetup) {
     return <OrgSetup onComplete={() => window.location.reload()} />;
   }
+
+  const effectivePlan = subscriptionPlan || (org as any)?.subscription_plan || 'free';
+  const isFreePlan = effectivePlan.toLowerCase() === 'free';
+  const isMarketingPlan = effectivePlan.toLowerCase().includes('promotion') || effectivePlan.toLowerCase().includes('suite') || effectivePlan.toLowerCase().includes('marketing') || effectivePlan.toLowerCase().includes('plan_6');
+  
+  const REPORTS_ROUTES = [
+    "/reports",
+    "/sales-reports",
+    "/purchase-accounting-reports",
+    "/inventory-reports",
+    "/accounting-reports",
+    "/business-report",
+    "/profit-loss",
+    "/gst-returns",
+    "/tds",
+    "/inventory-valuation",
+    "/aging-details",
+    "/statements",
+    "/hr-reports",
+    "/crm-marketing-reports"
+  ];
+  
+  const MARKETING_ROUTES = [
+    "/campaigns",
+    "/marketing/templates",
+    "/journeys",
+    "/message-logs",
+    "/promotion-reports"
+  ];
+  
+  let isRouteRestricted = false;
+  if (isFreePlan && REPORTS_ROUTES.includes(location.pathname)) {
+    isRouteRestricted = true;
+  }
+  if (!isMarketingPlan && MARKETING_ROUTES.includes(location.pathname)) {
+    isRouteRestricted = true;
+  }
+
+  const mainContent = isRouteRestricted ? (
+    <LockedFeature 
+      title="Feature Locked"
+      description="This feature is not available on the Free plan. Please upgrade to a premium plan to access it."
+      onUpgradeClick={() => setShowPlanModal(true)}
+    />
+  ) : (
+    <Outlet />
+  );
 
   return (
     <SidebarProvider>
@@ -464,7 +535,7 @@ export function AppLayout() {
           </header>
           <TrialBanner onUpgrade={() => setShowPlanModal(true)} />
           <main className="flex-1 overflow-auto px-6 py-6">
-            <Outlet />
+            {mainContent}
           </main>
         </div>
       </div>
