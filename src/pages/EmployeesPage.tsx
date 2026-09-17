@@ -596,7 +596,10 @@ export default function EmployeesPage() {
           {dailyWagesEnabled && (
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white font-semibold shadow-sm"
-              onClick={() => openNew("daily")}
+              onClick={() => {
+    if (limitReached) setShowUpgrade(true);
+    else openNew("daily");
+  }}
             >
               <HardHat className="h-4 w-4 mr-1.5" />+ Add Daily / Hourly Wager
             </Button>

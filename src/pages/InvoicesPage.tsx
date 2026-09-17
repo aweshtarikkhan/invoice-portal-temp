@@ -83,6 +83,7 @@ export default function InvoicesPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const { subscriptionPlan } = useSubscription();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
+  const invoicesLimitReached = isFreePlan && invoices.length >= 100;
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);

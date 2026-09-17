@@ -113,6 +113,8 @@ const FONT_FAMILIES = [
 
 export default function MarketingPostersPage() {
   const org = useAppStore((s) => s.organization);
+  const plan = org?.subscription_plan || 'free';
+  const hasFullMarketing = plan.toLowerCase().includes('promotion') || plan.toLowerCase().includes('suite') || plan.toLowerCase().includes('marketing') || plan.toLowerCase().includes('plan_6');
   const { profile, user } = useAuth();
   const [templates, setTemplates] = useState<PosterTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -810,7 +812,7 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
             const count = templates.filter(t => t.festival_name === category).length;
             const categoryTemplate = templates.find(t => t.festival_name === category);
             const isCustom = category === "Custom Posts";
-            const isLocked = !hasFullMarketing && !FESTIVAL_CATEGORIES.includes(category);
+            const isLocked = !hasFullMarketing && !FESTIVAL_ORDER.includes(category);
             
             return (
               <div

@@ -234,16 +234,7 @@ export function AppSidebar() {
         label: g.label,
         isUpcoming: g.isUpcoming,
         isLocked: !isOutreachUnlocked && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key)),
-        items: g.items.filter(i => {
-          if (g.key === 'marketing') {
-            const plan = subscriptionPlan || 'free';
-            const isMarketingPlan = plan.toLowerCase().includes('promotion') || plan.toLowerCase().includes('suite') || plan.toLowerCase().includes('marketing') || plan.toLowerCase().includes('plan_6');
-            if (!isMarketingPlan) {
-              return i.key === 'festival-posters';
-            }
-          }
-          return true;
-        }).map(i => {
+        items: g.items.map(i => {
           let itemIcon = ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
           if (i.icon === "ClipboardList") itemIcon = ClipboardList;
