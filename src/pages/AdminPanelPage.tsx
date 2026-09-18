@@ -73,6 +73,12 @@ export default function AdminPanelPage() {
 
   // Subscription state
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [allOrgsWithPlans, setAllOrgsWithPlans] = useState<Array<{
+    id: string; 
+    name: string; 
+    plans: Array<{plan: string; planDisplay: string; status: string; isPaid: boolean; planColor: string}>; 
+    isActive: boolean
+  }>>([]);
 
   // Logic for global team members limit across ALL businesses
   const totalGlobalUsers = fetchedTeamMembers.length;
@@ -266,12 +272,6 @@ export default function AdminPanelPage() {
   const [orgToDelete, setOrgToDelete] = useState<{id: string; name: string; plan: string} | null>(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [isDeletingOrg, setIsDeletingOrg] = useState(false);
-  const [allOrgsWithPlans, setAllOrgsWithPlans] = useState<Array<{
-    id: string; 
-    name: string; 
-    plans: Array<{plan: string; planDisplay: string; status: string; isPaid: boolean; planColor: string}>; 
-    isActive: boolean
-  }>>([]);
 
   const loadAllOrgsWithPlans = async () => {
     if (!session?.user?.id) return;
