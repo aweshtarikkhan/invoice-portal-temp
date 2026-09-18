@@ -84,20 +84,25 @@ export default function AdminPanelPage() {
   const platformExtra = useFeatureStore(s => s.platformEmployeeCount) || 0;
 
   // Derive max users allowed:
-  // - Free / Accounting / CRM / Promotion: 3 base users
+  // - Free: 0 users (cannot invite users on Free plan)
+  // - Accounting / CRM / Promotion / HR: 3 base users
   // - Business Suite: 5 base users
-  // - HR plan: 5 base users for portal access (employees are separate)
   // - Any plan + 99rs add-on: base + purchased extra slots
   const getMaxUsers = (plan: string | null, extraSlots: number, dbLimit: number | null): number => {
     const p = (plan || 'free').toLowerCase();
+    if (p === 'free') return 0;
     let base = 3;
-    if (p.includes('suite') || p.includes('hr')) base = 5;
+    if (p.includes('suite')) base = 5;
     // If DB has a platform_employee_limit set (from 99rs add-on purchases), use it
     if (dbLimit && dbLimit > base) return dbLimit;
     return base + extraSlots;
   };
 
-  const maxUsersAllowed = getMaxUsers(currentPlan, platformExtra, platformLimitBase);
+  const selectedOrgObj = allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId));
+  const activePlanForSelectedOrg = selectedOrgObj?.plans?.[0]?.plan || currentPlan || 'free';
+
+  const maxUsersAllowed = getMaxUsers(activePlanForSelectedOrg, platformExtra, platformLimitBase);
+  const remainingInvites = Math.max(0, maxUsersAllowed - totalGlobalUsers);
   const globalLimitReached = totalGlobalUsers >= maxUsersAllowed;
 
   const loadTeamMembers = async () => {
@@ -159,7 +164,8 @@ export default function AdminPanelPage() {
       const currentCount = Array.isArray(freshMembers) ? freshMembers.length : fetchedTeamMembers.length;
       
       if (currentCount >= maxUsersAllowed) {
-        alert(`User limit reached! Your plan allows ${maxUsersAllowed} users. Purchase additional user slots (₹99/user/month) to add more.`);
+        alert("Limit exceed! Purchase extra employee to proceed.");
+        setShowPlanModal(true);
         return;
       }
 
@@ -454,14 +460,22 @@ export default function AdminPanelPage() {
               <Users className="h-4 w-4 text-emerald-600" />
               Organization Users (Team)
             </h2>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
                 globalLimitReached 
                   ? "bg-red-50 text-red-700 border-red-200" 
                   : "bg-emerald-50 text-emerald-700 border-emerald-200"
               }`}>
-                 Total Users Used: {totalGlobalUsers} / {maxUsersAllowed} (Across all businesses)
+                Total Users Used: {totalGlobalUsers} / {maxUsersAllowed} ({remainingInvites} Invites Remaining)
               </span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowPlanModal(true)}
+                className="h-7 text-xs font-semibold border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 shadow-2xs"
+              >
+                + Buy User Slots (₹99/mo)
+              </Button>
             </div>
           </div>
           <Card className="bg-white border-slate-200/80 shadow-2xs">
@@ -470,27 +484,42 @@ export default function AdminPanelPage() {
                 <div className="flex-1 space-y-5 lg:border-r lg:border-slate-200 lg:pr-8">
                   <div>
                     <h3 className="text-base font-semibold text-slate-900 mb-1">Invite Employee</h3>
-                    <p className="text-xs text-slate-500">Add a new user to {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}.</p>
+                    <p className="text-xs text-slate-500">
+                      Add a new user to {allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId))?.name || "this business"}.
+                      {maxUsersAllowed > 0 && ` (You can invite ${remainingInvites} more employee${remainingInvites === 1 ? '' : 's'})`}
+                    </p>
                   </div>
                   
-                  {globalLimitReached ? (
-                    <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
-                      <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                      <div>
-                        <h4 className="text-red-900 text-sm font-semibold">Plan User Limit Reached</h4>
-                        <p className="text-xs text-red-700 mt-1">You have reached the limit of {maxUsersAllowed} users. Purchase additional user slots (₹99/user/month) to add more.</p>
+                  {globalLimitReached && (
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-300 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-amber-900 text-sm font-semibold">Limit Exceeded</h4>
+                          <p className="text-xs text-amber-800 mt-0.5">
+                            Limit exceed! Purchase extra employee to proceed. (Plan limit: {maxUsersAllowed} users)
+                          </p>
+                        </div>
                       </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowPlanModal(true)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold shrink-0 shadow-xs"
+                      >
+                        Buy Extra Slots (₹99/user)
+                      </Button>
                     </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {allOrgsWithPlans.length > 1 && (
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-slate-700">Select Business</label>
-                          <select
-                            value={selectedTeamOrgId || currentOrgId}
-                            onChange={(e) => setSelectedTeamOrgId(e.target.value)}
-                            className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
-                          >
+                  )}
+
+                  <div className="space-y-4">
+                    {allOrgsWithPlans.length > 1 && (
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-700">Select Business</label>
+                        <select
+                          value={selectedTeamOrgId || currentOrgId}
+                          onChange={(e) => setSelectedTeamOrgId(e.target.value)}
+                          className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                        >
                             {allOrgsWithPlans.map(org => (
                               <option key={org.id} value={org.id}>{org.name}</option>
                             ))}
@@ -566,7 +595,6 @@ export default function AdminPanelPage() {
                         Add User
                       </Button>
                     </div>
-                  )}
                 </div>
                 
                 <div className="flex-1">
