@@ -93,62 +93,68 @@ export default function PartnerWithUsPage() {
       <main className="flex-grow">
 
         {/* ═══════════ PARTNER FORM SECTION (ONLY SECTION) ═══════════ */}
-        <section id="partner-form" className="py-20 sm:py-28 bg-[#fafbfc]">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-5 gap-10 lg:gap-16 items-start">
+        <section id="partner-form" className="min-h-screen bg-white">
+          <div className="mx-auto max-w-7xl">
+            <div className="grid lg:grid-cols-5 min-h-screen items-stretch">
 
-              {/* Left Column */}
-              <div className="lg:col-span-2 lg:sticky lg:top-28">
-                <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#28166f] bg-[#28166f]/10 border border-[#28166f]/20 px-4 py-1.5 rounded-full mb-4">
-                  BECOME A PARTNER
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight mb-4">
-                  Let's Build Something{" "}
-                  <span className="text-[#e77817]">Great Together</span>
-                </h2>
-                <p className="text-base text-slate-500 leading-relaxed mb-8">
-                  Whether you're an independent consultant, a growing agency, or a chartered accountant managing multiple businesses — our partnership program is designed for you. Share your details and our team will reach out within 24 hours.
-                </p>
+              {/* Left Column — Dark Blue */}
+              <div className="lg:col-span-2 bg-gradient-to-b from-[#1a0e4f] via-[#28166f] to-[#1c1050] px-8 sm:px-12 py-16 flex flex-col justify-center relative overflow-hidden">
+                {/* Ambient glow */}
+                <div className="absolute top-0 right-0 w-72 h-72 bg-[#e77817]/10 rounded-full blur-[80px] -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#28166f]/60 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/3 pointer-events-none" />
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                  {STATS.map((stat, i) => (
-                    <div
-                      key={i}
-                      className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col gap-1 hover:shadow-md transition-shadow duration-200"
-                    >
-                      <stat.icon className={`w-5 h-5 ${stat.color} mb-1`} />
-                      <div className={`text-2xl font-black ${stat.color}`}>{stat.value}</div>
-                      <div className="text-xs text-slate-500 font-medium">{stat.label}</div>
-                    </div>
-                  ))}
-                </div>
+                <div className="relative z-10">
+                  <span className="inline-block text-xs font-bold uppercase tracking-widest text-[#ffaa47] bg-[#e77817]/20 border border-[#e77817]/30 px-4 py-1.5 rounded-full mb-6">
+                    BECOME A PARTNER
+                  </span>
+                  <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight mb-4 leading-tight">
+                    Let's Build Something{" "}
+                    <span className="text-[#e77817]">Great Together</span>
+                  </h2>
+                  <p className="text-base text-slate-300 leading-relaxed mb-10">
+                    Whether you're an independent consultant, a growing agency, or a chartered accountant managing multiple businesses — our partnership program is designed for you. Share your details and our team will reach out within 24 hours.
+                  </p>
 
-                {/* Testimonial */}
-                <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
-                  <div className="flex items-center gap-1 mb-2">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-2 gap-4 mb-10">
+                    {STATS.map((stat, i) => (
+                      <div
+                        key={i}
+                        className="bg-white/[0.08] backdrop-blur-sm rounded-2xl border border-white/10 p-4 flex flex-col gap-1 hover:bg-white/[0.13] transition-colors duration-200"
+                      >
+                        <stat.icon className={`w-5 h-5 ${stat.color} mb-1`} />
+                        <div className={`text-2xl font-black ${stat.color}`}>{stat.value}</div>
+                        <div className="text-xs text-slate-400 font-medium">{stat.label}</div>
+                      </div>
                     ))}
                   </div>
-                  <p className="text-sm text-slate-600 italic leading-relaxed mb-3">
-                    "Partnering with Assay Biz has been a game-changer for our CA practice. We onboarded 15 clients in 2 months and the recurring commission model means steady income."
-                  </p>
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#28166f] to-[#e77817] flex items-center justify-center text-white text-xs font-bold">
-                      RK
+
+                  {/* Testimonial */}
+                  <div className="bg-white/[0.07] backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                    <div className="flex items-center gap-1 mb-2">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      ))}
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900">Rajesh Kumar</div>
-                      <div className="text-xs text-slate-500">CA Partner, Delhi</div>
+                    <p className="text-sm text-slate-300 italic leading-relaxed mb-3">
+                      "Partnering with Assay Biz has been a game-changer for our CA practice. We onboarded 15 clients in 2 months and the recurring commission model means steady income."
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#e77817] to-[#ff9438] flex items-center justify-center text-white text-xs font-bold">
+                        RK
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-white">Rajesh Kumar</div>
+                        <div className="text-xs text-slate-400">CA Partner, Delhi</div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Right Column: Form */}
-              <div className="lg:col-span-3">
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-lg p-8 sm:p-10">
+              <div className="lg:col-span-3 flex items-center justify-center px-6 sm:px-12 py-16 bg-[#fafbfc]">
+                <div className="w-full max-w-xl bg-white rounded-3xl border border-slate-200 shadow-lg p-8 sm:p-10">
                   <div className="flex items-center gap-3 mb-8">
                     <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#28166f] to-[#3a1f9e] flex items-center justify-center shadow-md shadow-[#28166f]/20">
                       <Handshake className="w-6 h-6 text-white" />
