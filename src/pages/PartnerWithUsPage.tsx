@@ -93,12 +93,12 @@ export default function PartnerWithUsPage() {
       <main className="flex-grow">
 
         {/* ═══════════ PARTNER FORM SECTION (ONLY SECTION) ═══════════ */}
-        <section id="partner-form" className="min-h-screen bg-white">
+        <section id="partner-form" className="bg-white mb-12">
           <div className="mx-auto max-w-7xl">
-            <div className="grid lg:grid-cols-5 min-h-screen items-stretch">
+            <div className="grid lg:grid-cols-5 items-stretch">
 
               {/* Left Column — Dark Blue */}
-              <div className="lg:col-span-2 bg-gradient-to-b from-[#1a0e4f] via-[#28166f] to-[#1c1050] px-8 sm:px-12 py-16 flex flex-col justify-center relative overflow-hidden">
+              <div className="lg:col-span-2 bg-gradient-to-b from-[#1a0e4f] via-[#28166f] to-[#1c1050] px-8 sm:px-10 py-12 flex flex-col justify-center relative overflow-hidden">
                 {/* Ambient glow */}
                 <div className="absolute top-0 right-0 w-72 h-72 bg-[#e77817]/10 rounded-full blur-[80px] -translate-y-1/3 translate-x-1/3 pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-[#28166f]/60 rounded-full blur-[80px] translate-y-1/3 -translate-x-1/3 pointer-events-none" />
