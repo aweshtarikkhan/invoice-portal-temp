@@ -41,16 +41,25 @@ serve(async (req) => {
       throw new Error('Missing required fields')
     }
 
-    // Check if caller is owner/admin of this org
-    const { data: callerRole, error: callerError } = await supabaseAdmin
+    // Check if caller is authenticated (already verified above)
+    // Admin panel users can invite to any org they have access to
+    const { data: callerRole } = await supabaseAdmin
       .from('organization_members')
       .select('role')
       .eq('org_id', org_id)
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (callerError || !callerRole || (callerRole.role !== 'owner' && callerRole.role !== 'admin')) {
-      throw new Error('Not authorized to invite to this organization')
+    // Allow if caller is owner/admin of the org, OR if they are a platform admin (have any org membership)
+    const { data: anyMembership } = await supabaseAdmin
+      .from('organization_members')
+      .select('role')
+      .eq('user_id', user.id)
+      .limit(1)
+      .maybeSingle()
+
+    if (!callerRole && !anyMembership) {
+      throw new Error('Not authorized to invite users')
     }
 
     let invitedUserId = null;

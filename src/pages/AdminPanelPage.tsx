@@ -79,11 +79,26 @@ export default function AdminPanelPage() {
   const currentOrgId = currentOrg?.id || "default";
 
   const currentPlan = useFeatureStore(s => s.subscriptionPlan);
-  const platformLimitBase = useFeatureStore(s => s.platformEmployeeLimit) ?? (currentPlan === 'suite' ? 5 : (currentPlan === 'free' ? 0 : 3));
+  // Platform employee limit: from DB (for extra 99rs slots) + base per plan
+  const platformLimitBase = useFeatureStore(s => s.platformEmployeeLimit);
   const platformExtra = useFeatureStore(s => s.platformEmployeeCount) || 0;
-  const platformEmployeeLimit = platformLimitBase + platformExtra;
 
-  const globalLimitReached = totalGlobalUsers >= platformEmployeeLimit;
+  // Derive max users allowed:
+  // - Free / Accounting / CRM / Promotion: 3 base users
+  // - Business Suite: 5 base users
+  // - HR plan: 5 base users for portal access (employees are separate)
+  // - Any plan + 99rs add-on: base + purchased extra slots
+  const getMaxUsers = (plan: string | null, extraSlots: number, dbLimit: number | null): number => {
+    const p = (plan || 'free').toLowerCase();
+    let base = 3;
+    if (p.includes('suite') || p.includes('hr')) base = 5;
+    // If DB has a platform_employee_limit set (from 99rs add-on purchases), use it
+    if (dbLimit && dbLimit > base) return dbLimit;
+    return base + extraSlots;
+  };
+
+  const maxUsersAllowed = getMaxUsers(currentPlan, platformExtra, platformLimitBase);
+  const globalLimitReached = totalGlobalUsers >= maxUsersAllowed;
 
   const loadTeamMembers = async () => {
     const targetOrgId = selectedTeamOrgId || currentOrgId;
@@ -138,7 +153,16 @@ export default function AdminPanelPage() {
 
   const handleAddTeamMember = async () => {
     const targetOrgId = selectedTeamOrgId || currentOrgId;
-    if (newUserEmail && newUserEmail.includes("@") && !globalLimitReached && targetOrgId) {
+    if (newUserEmail && newUserEmail.includes("@") && targetOrgId) {
+      // Fetch fresh member count for this org
+      const { data: freshMembers } = await supabase.rpc("get_org_members_with_status", { target_org_id: targetOrgId });
+      const currentCount = Array.isArray(freshMembers) ? freshMembers.length : fetchedTeamMembers.length;
+      
+      if (currentCount >= maxUsersAllowed) {
+        alert(`User limit reached! Your plan allows ${maxUsersAllowed} users. Purchase additional user slots (₹99/user/month) to add more.`);
+        return;
+      }
+
       try {
         const { data, error } = await supabase.functions.invoke("invite-team-member", {
           body: {
@@ -157,6 +181,7 @@ export default function AdminPanelPage() {
         setNewUserEmail("");
         setNewUserRole("Staff");
         setNewUserPermissions([]);
+        alert("✅ User invited successfully!");
       } catch (err: any) {
         console.error("Failed to invite team member:", err.message);
         alert("Failed to invite user: " + err.message);
@@ -435,7 +460,7 @@ export default function AdminPanelPage() {
                   ? "bg-red-50 text-red-700 border-red-200" 
                   : "bg-emerald-50 text-emerald-700 border-emerald-200"
               }`}>
-                Total Users Used: {totalGlobalUsers} / 5 (Across all businesses)
+                 Total Users Used: {totalGlobalUsers} / {maxUsersAllowed} (Across all businesses)
               </span>
             </div>
           </div>
@@ -452,8 +477,8 @@ export default function AdminPanelPage() {
                     <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
                       <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
                       <div>
-                        <h4 className="text-red-900 text-sm font-semibold">Global Plan Limit Reached</h4>
-                        <p className="text-xs text-red-700 mt-1">You have reached the limit of 5 users across all your businesses. Please extend your limit to add more users.</p>
+                        <h4 className="text-red-900 text-sm font-semibold">Plan User Limit Reached</h4>
+                        <p className="text-xs text-red-700 mt-1">You have reached the limit of {maxUsersAllowed} users. Purchase additional user slots (₹99/user/month) to add more.</p>
                       </div>
                     </div>
                   ) : (
