@@ -61,6 +61,7 @@ export default function AdminPanelPage() {
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [selectedTeamOrgId, setSelectedTeamOrgId] = useState<string>("");
   const [selectedOrgFeatures, setSelectedOrgFeatures] = useState<string[]>([]);
+  const [selectedOrgPlan, setSelectedOrgPlan] = useState<string | null>(null);
   
   const [isCreatingBusiness, setIsCreatingBusiness] = useState(false);
   const [newOrgIdToUpgrade, setNewOrgIdToUpgrade] = useState<string | null>(null);
@@ -104,8 +105,33 @@ export default function AdminPanelPage() {
     return base + extraSlots;
   };
 
-  const selectedOrgObj = allOrgsWithPlans.find(o => o.id === (selectedTeamOrgId || currentOrgId));
-  const activePlanForSelectedOrg = selectedOrgObj?.plans?.[0]?.plan || currentPlan || 'free';
+  const targetTeamOrgId = selectedTeamOrgId || currentOrgId;
+  const isCurrentOrg = !selectedTeamOrgId || selectedTeamOrgId === currentOrgId;
+  const currentPlanNameLower = String(subscriptionPlan || currentPlan || currentOrg?.subscription_plan || '').toLowerCase();
+
+  const selectedOrgObj = allOrgsWithPlans.find(o => o.id === targetTeamOrgId);
+
+  let activePlanForSelectedOrg = 'free';
+
+  if (isCurrentOrg && currentPlanNameLower) {
+    activePlanForSelectedOrg = currentPlanNameLower;
+  } else if (selectedOrgPlan) {
+    activePlanForSelectedOrg = selectedOrgPlan.toLowerCase();
+  } else if (selectedOrgObj?.plans?.length) {
+    const hasSuite = selectedOrgObj.plans.find(p => p.plan.toLowerCase().includes('suite'));
+    activePlanForSelectedOrg = hasSuite ? 'suite' : selectedOrgObj.plans[0].plan.toLowerCase();
+  } else {
+    activePlanForSelectedOrg = currentPlanNameLower || 'free';
+  }
+
+  // Any indicator of suite gives Suite access (5 employees)
+  if (
+    activePlanForSelectedOrg.includes('suite') ||
+    (isCurrentOrg && currentPlanNameLower.includes('suite')) ||
+    selectedOrgObj?.plans?.some(p => p.plan.toLowerCase().includes('suite'))
+  ) {
+    activePlanForSelectedOrg = 'suite';
+  }
 
   const maxUsersAllowed = getMaxUsers(activePlanForSelectedOrg, platformExtra, platformLimitBase);
   const remainingInvites = Math.max(0, maxUsersAllowed - totalGlobalUsers);
@@ -131,11 +157,16 @@ export default function AdminPanelPage() {
       if (!targetOrgId || targetOrgId === "default") return;
       
       try {
-        const { data } = await supabase.rpc('get_my_org_subscription', { p_org_id: targetOrgId });
-        if (data && data.enabled_features) {
-          setSelectedOrgFeatures(data.enabled_features);
-        } else {
-          setSelectedOrgFeatures([]);
+        const [{ data: subData }, { data: orgData }] = await Promise.all([
+          supabase.rpc('get_my_org_subscription', { p_org_id: targetOrgId }),
+          supabase.from('organizations').select('subscription_plan').eq('id', targetOrgId).maybeSingle()
+        ]);
+        if (subData) {
+          if (subData.enabled_features) setSelectedOrgFeatures(subData.enabled_features);
+          if (subData.plan_name) setSelectedOrgPlan(subData.plan_name);
+        }
+        if (orgData?.subscription_plan) {
+          setSelectedOrgPlan(orgData.subscription_plan);
         }
       } catch (err) {
         console.error("Failed to fetch features for org:", err);
@@ -310,7 +341,10 @@ export default function AdminPanelPage() {
       
       const list = Array.from(orgMap.values());
       list.forEach(org => {
-         if (org.plans.length > 1) {
+         // If org has suite, suite takes precedence over all other plans
+         if (org.plans.some((p: any) => p.plan.toLowerCase().includes("suite"))) {
+            org.plans = org.plans.filter((p: any) => p.plan.toLowerCase().includes("suite"));
+         } else if (org.plans.length > 1) {
             org.plans = org.plans.filter((p: any) => p.plan !== "free");
          }
          if (org.plans.length === 0) {
