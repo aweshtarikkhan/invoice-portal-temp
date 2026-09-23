@@ -43,7 +43,7 @@ const dictionary: Record<string, string> = {
   "Delivery Challans": "डिलीवरी चालान",
   "Delivery Challan": "डिलीवरी चालान",
   "Recurring Invoices": "आवर्ती चालान",
-  "Catalog": "सूची (Catalog)",
+  "Catalog": "इन्वेंटरी मैनेजमेंट",
   "Items": "सामग्री (Items)",
   "Inventory": "माल-सूची (Inventory)",
   "Purchases": "खरीद (Purchases)",

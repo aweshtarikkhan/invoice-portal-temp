@@ -126,12 +126,14 @@ function SortableLine({ line, index, taxRates, items, onChange, onRemove, onAddI
         </div>
         <div className="col-span-1">
           <Input placeholder="1" type="number" className="h-9 text-xs text-center" onFocus={(e) => e.target.select()} onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} value={line.quantity}
-            onChange={(e) => onChange(index, "quantity", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onChange={(e) => onChange(index, "quantity", e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           <span className="text-[10px] text-muted-foreground">Qty</span>
         </div>
         <div className="col-span-2">
           <Input placeholder="0" type="number" className="h-9 text-xs" value={line.rate}
-            onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           <span className="text-[10px] text-muted-foreground">Rate</span>
         </div>
         <div className="col-span-1">
@@ -315,7 +317,7 @@ export default function EstimateBuilderPage() {
 
   const subtotal = lines.reduce((s, l) => s + l.amount, 0);
   const totalDiscount = discountType === "percentage" ? subtotal * (discount / 100) : discount;
-  const discountedSubtotal = subtotal - totalDiscount;
+  const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
   let maxTaxRate = 0;
   lines.forEach(line => {
     if (line.tax_id) {
@@ -392,16 +394,16 @@ export default function EstimateBuilderPage() {
       if (postAction === "email") {
         const client = clients.find(c => c.id === clientId);
         if (client?.email) {
-          navigate(`/estimates/${estimateId}?sendEmail=true`);
+          navigate(`/quotations/${estimateId}?sendEmail=true`);
           toast({ title: "Saving and generating PDF..." });
           setSaving(false);
           return;
         }
       } else {
-        toast({ title: status === "sent" ? "Estimate saved!" : "Estimate saved as draft!" });
+        toast({ title: status === "sent" ? "Quotation saved!" : "Quotation saved as draft!" });
       }
 
-      navigate("/estimates");
+      navigate("/quotations");
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     }
@@ -424,15 +426,15 @@ export default function EstimateBuilderPage() {
       />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{id ? "Edit Estimate" : "New Estimate"}</h1>
+        <h1 className="text-2xl font-bold">{id ? "Edit Quotation" : "New Quotation"}</h1>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate("/estimates")}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate("/quotations")}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
             <Save className="mr-1.5 h-4 w-4" /> Save Draft
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Estimate
+              <Save className="mr-1.5 h-4 w-4" /> Save Quotation
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -459,7 +461,7 @@ export default function EstimateBuilderPage() {
                     }
                     if (token) {
                       await navigator.clipboard.writeText(`${window.location.origin}/portal/${token}`);
-                      toast({ title: "Estimate saved & portal link copied!" });
+                      toast({ title: "Quotation saved & portal link copied!" });
                     }
                   }
                 }}>
@@ -499,7 +501,7 @@ export default function EstimateBuilderPage() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label>Estimate #</Label>
+                  <Label>Quotation #</Label>
                   <Input value={estimateNumber} onChange={(e) => setEstimateNumber(e.target.value)} />
                 </div>
                 <div className="space-y-2">
@@ -553,13 +555,28 @@ export default function EstimateBuilderPage() {
             <div className="flex justify-between text-sm"><span>Subtotal</span><span className="font-medium">{fmt(subtotal)}</span></div>
             <div className="flex items-center gap-2">
               <span className="text-sm flex-1">Discount</span>
-              <Input type="number" className="w-20 h-8 text-xs" value={discount}
+              <Input
+                type="number"
+                min={0}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                className="w-20 h-8 text-xs text-right"
+                value={discount}
                 onChange={(e) => {
-                    let val = parseFloat(e.target.value) || 0;
-                    if (discountType === "percentage" && val > 100) val = 100;
-                    setDiscount(val);
-                  }} />
-              <Select value={discountType} onValueChange={(v: any) => setDiscountType(v)}>
+                  let val = parseFloat(e.target.value) || 0;
+                  val = Math.max(0, val);
+                  if (discountType === "percentage" && val > 100) val = 100;
+                  setDiscount(val);
+                }}
+              />
+              <Select
+                value={discountType}
+                onValueChange={(v: any) => {
+                  setDiscountType(v);
+                  if (v === "percentage" && discount > 100) setDiscount(100);
+                }}
+              >
                 <SelectTrigger className="w-20 h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">%</SelectItem>
@@ -570,8 +587,16 @@ export default function EstimateBuilderPage() {
             </div>
             <div className="flex items-center gap-2">
               <span className="text-sm flex-1">Shipping</span>
-              <Input type="number" className="w-24 h-8 text-xs" value={shippingCharge}
-                onChange={(e) => setShippingCharge(parseFloat(e.target.value) || 0)} />
+              <Input
+                type="number"
+                min={0}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                className="w-24 h-8 text-xs text-right"
+                value={shippingCharge}
+                onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
+              />
             </div>
             <div className="flex justify-between text-sm"><span>Tax</span><span className="font-medium">{fmt(totalTax)}</span></div>
             <div className="flex items-center gap-2">

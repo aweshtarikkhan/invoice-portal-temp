@@ -9,17 +9,25 @@ import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
 interface AutoEmailProps {
   entityType: "invoice" | "estimate" | "po" | "bill";
   entityData: any;
+  lines?: any[];
+  isDataReady?: boolean;
   generatePDFBlob: () => Promise<Blob | null>;
 }
 
-export function useAutoEmailPDF({ entityType, entityData, generatePDFBlob }: AutoEmailProps) {
+export function useAutoEmailPDF({ entityType, entityData, lines, isDataReady = true, generatePDFBlob }: AutoEmailProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
 
   useEffect(() => {
     const sendEmailAuto = async () => {
-      if (searchParams.get("sendEmail") === "true" && entityData && org) {
+      // Must wait until isDataReady is true and entityData and org exist
+      if (searchParams.get("sendEmail") === "true" && entityData && (org || entityData?.org_id) && isDataReady) {
+        // If lines prop is supplied, ensure lines have been populated
+        if (lines !== undefined && lines.length === 0) {
+          return;
+        }
+
         // Clear param immediately to prevent loops
         setSearchParams((params) => {
           params.delete("sendEmail");
@@ -29,6 +37,9 @@ export function useAutoEmailPDF({ entityType, entityData, generatePDFBlob }: Aut
         try {
           toast({ title: "Generating PDF for email..." });
           
+          // Allow DOM to settle and render all line items completely
+          await new Promise((resolve) => setTimeout(resolve, 400));
+
           // Generate PDF Blob
           const pdfBlob = await generatePDFBlob();
           if (!pdfBlob) throw new Error("Could not generate PDF");
@@ -87,12 +98,20 @@ export function useAutoEmailPDF({ entityType, entityData, generatePDFBlob }: Aut
 
           const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
+          const isValidHttpUrl = (url?: string | null) => {
+            if (!url) return false;
+            const t = url.trim();
+            return (t.startsWith("http://") || t.startsWith("https://")) && !t.includes("blob:");
+          };
+          const companyLogo = isValidHttpUrl(org?.logo_url) ? org.logo_url!.trim() : "https://aassaybiz.com/logo.png";
+
           const vars = {
             "{{client_name}}": getClientName(),
             "{{vendor_name}}": getClientName(),
             "{{client_email}}": getClientEmail() || "",
             "{{company_name}}": org.name || "Our Company",
             "{{company_email}}": org.email || "",
+            "{{company_logo}}": companyLogo,
             "{{invoice_number}}": getNumber(),
             "{{estimate_number}}": getNumber(),
             "{{po_number}}": getNumber(),
@@ -110,6 +129,17 @@ export function useAutoEmailPDF({ entityType, entityData, generatePDFBlob }: Aut
           for (const [key, val] of Object.entries(vars)) {
              compiledHtml = compiledHtml.replace(new RegExp(key, 'g'), val);
              compiledSubject = compiledSubject.replace(new RegExp(key, 'g'), val);
+          }
+
+          const snapshot = (entityData?.metadata as any) || {};
+          const hasGst = snapshot.has_gst !== undefined
+            ? Boolean(snapshot.has_gst)
+            : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
+
+          if (!hasGst && entityType === "invoice") {
+            compiledSubject = compiledSubject.replace(/Tax Invoice/gi, "Invoice");
+            compiledHtml = compiledHtml.replace(/Tax Invoice/gi, "Invoice");
+            compiledHtml = compiledHtml.replace(/Official GST Tax Invoice/gi, "Official Invoice");
           }
           
           const recipientEmail = getClientEmail();

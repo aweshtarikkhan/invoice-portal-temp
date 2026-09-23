@@ -204,9 +204,12 @@ export default function SettingsPage() {
 
     const { data: { publicUrl } } = supabase.storage.from("org-logos").getPublicUrl(path);
     
+    // Immediately save logo to database and update state
+    await supabase.from("organizations").update({ logo_url: publicUrl }).eq("id", org.id);
+    setOrganization({ ...org, logo_url: publicUrl } as any);
     setOrgForm(prev => ({ ...prev, logo_url: publicUrl }));
     setIsUploadingLogo(false);
-    toast({ title: "Logo uploaded!", description: "Click 'Save Changes' below to apply." });
+    toast({ title: "Logo updated!", description: "Your business logo has been saved and applied to all invoices." });
   };
 
 
@@ -384,7 +387,7 @@ export default function SettingsPage() {
                       {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Upload Logo"}
                     </Label>
                     <input id="org-logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
-                    <p className="text-xs text-muted-foreground max-w-[200px]">This logo will appear on your Invoices, Estimates, Bills, POs, and Posters. Recommended: 400x400 PNG/JPG.</p>
+                    <p className="text-xs text-muted-foreground max-w-[200px]">This logo will appear on your Invoices, Quotations, Bills, POs, and Posters. Recommended: 400x400 PNG/JPG.</p>
                   </div>
                 </div>
               </div>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown, MessageCircle } from "lucide-react";
+import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown, MessageCircle, Mail, Loader2, Download } from "lucide-react";
 import { format } from "date-fns";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -17,6 +17,7 @@ import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -78,7 +79,7 @@ export default function EstimateDetailPage() {
 
   const updateStatus = async (status: any, extra: Record<string, any> = {}) => {
     await supabase.from("estimates").update({ status, ...extra }).eq("id", id);
-    toast({ title: `Estimate marked as ${status}` });
+    toast({ title: `Quotation marked as ${status}` });
     fetchData();
   };
 
@@ -112,7 +113,7 @@ export default function EstimateDetailPage() {
     await supabase.from("estimates").update({ status: "converted", converted_invoice_id: inv.id }).eq("id", id);
     await supabase.from("organizations").update({ invoice_next_number: num + 1 }).eq("id", org.id);
 
-    toast({ title: "Estimate converted to invoice!" });
+    toast({ title: "Quotation converted to invoice!" });
     navigate(`/invoices/${inv.id}`);
   };
 
@@ -181,19 +182,115 @@ export default function EstimateDetailPage() {
     return estimate && client ? { ...estimate, clients: client } : null;
   }, [estimate, client]);
 
-  useAutoEmailPDF({ entityType: "estimate", entityData: fullEstimateData, generatePDFBlob });
+  useAutoEmailPDF({ entityType: "estimate", entityData: fullEstimateData, lines, generatePDFBlob });
 
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!estimate || !org || !client) return;
+    const recipientEmail = client.email;
+    if (!recipientEmail) {
+      toast({
+        title: "No email address",
+        description: "This client does not have an email address specified.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    toast({ title: "Generating estimate PDF for email..." });
+
+    try {
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) throw new Error("Could not generate estimate PDF");
+
+      const base64data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(pdfBlob);
+        reader.onloadend = () => {
+          resolve((reader.result as string).split(",")[1]);
+        };
+      });
+
+      let pLink = "";
+      const token = await getOrCreatePortalToken(org.id, "estimate", estimate.id);
+      if (token) pLink = portalUrl(token);
+
+      const subject = `Quotation #${estimate.estimate_number} from ${org.name || "Aassay Biz"}`;
+      const details: Array<{ label: string; value: string; isHighlight?: boolean }> = [
+        { label: "Quotation Number", value: estimate.estimate_number },
+        { label: "Date", value: estimate.date || new Date().toISOString().split("T")[0] },
+      ];
+      if (estimate.expiry_date) {
+        details.push({ label: "Valid Until", value: estimate.expiry_date, isHighlight: true });
+      }
+
+      const html = buildBrandedEmailHtml({
+        logoUrl: org.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: org.name || "Aassay Biz",
+        companyEmail: org.email || "support@aassaybiz.com",
+        badgeText: "OFFICIAL QUOTATION",
+        title: `Quotation #${estimate.estimate_number}`,
+        subtitle: `Provided by ${org.name || "Aassay Biz"}`,
+        recipientName: client.display_name || "Valued Customer",
+        introText: `Thank you for your interest. Please review our quotation details below along with the attached official PDF document:`,
+        amountLabel: "Quoted Total Amount",
+        amountValue: fmt(Number(estimate.total)),
+        details,
+        actionButton: pLink ? { label: "Review & Approve Quotation Online", url: pLink } : undefined,
+        attachmentNote: `Official Quotation PDF (${estimate.estimate_number}.pdf) is attached to this email.`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("send-custom-email", {
+        body: {
+          to: recipientEmail,
+          subject,
+          html,
+          orgId: org.id,
+          attachments: [
+            {
+              filename: `${estimate.estimate_number}.pdf`,
+              content: base64data,
+              content_type: "application/pdf",
+            },
+          ],
+        },
+      });
+
+      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+
+      if (estimate.status === "draft") {
+        await updateStatus("sent", { sent_at: new Date().toISOString() });
+      }
+
+      toast({
+        title: "Email Sent Successfully! ✉️",
+        description: `Quotation PDF was successfully sent to ${recipientEmail}.`,
+      });
+    } catch (err: any) {
+      console.error("Error emailing estimate:", err);
+      toast({
+        title: "Failed to send email",
+        description: err.message || "An error occurred while emailing quotation.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   const printCSS = getPrintPageCSS(org?.template_paper_size);
 
   if (!estimate) return <div className="p-6">Loading...</div>;
-  return (
+
+  return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/estimates")}>
+          <Button variant="ghost" size="icon" onClick={() => navigate("/quotations")}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
@@ -204,9 +301,13 @@ export default function EstimateDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
+            {isSendingEmail ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Mail className="mr-1 h-4 w-4" />}
+            {isSendingEmail ? "Sending..." : "Email Quotation"}
+          </Button>
           {estimate.status === "draft" && (
             <>
-              <Button variant="outline" onClick={() => navigate(`/estimates/${id}/edit`)}>
+              <Button variant="outline" onClick={() => navigate(`/quotations/${id}/edit`)}>
                 <Edit className="mr-1 h-4 w-4" /> Edit
               </Button>
               <Button variant="outline" onClick={() => updateStatus("sent", { sent_at: new Date().toISOString() })}>

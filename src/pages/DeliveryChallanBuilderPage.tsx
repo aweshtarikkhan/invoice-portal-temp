@@ -471,11 +471,13 @@ export default function DeliveryChallanBuilderPage() {
                     <TableCell className="p-2">
                       <Input
                         type="number"
+                        min={0}
                         className="h-8 text-xs font-mono font-semibold"
                         value={l.quantity}
+                        onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
                         onChange={(e) => {
                           const x = [...lines];
-                          x[i].quantity = e.target.value;
+                          x[i].quantity = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
                           setLines(x);
                         }}
                       />

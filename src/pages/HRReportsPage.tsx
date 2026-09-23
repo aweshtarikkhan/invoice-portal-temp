@@ -377,7 +377,7 @@ export default function HRReportsPage() {
     fetchData();
   }, [org?.id]);
 
-  const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
+  const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
   return (
     <div className="space-y-6" id="hr-report-page">

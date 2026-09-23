@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download, Mail, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 import { useCallback } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
@@ -231,14 +232,106 @@ export default function BillDetailPage() {
     return bill && vendor ? { ...bill, vendors: vendor } : null;
   }, [bill, vendor]);
 
-  useAutoEmailPDF({ entityType: "bill", entityData: fullBillData, generatePDFBlob });
+  useAutoEmailPDF({ entityType: "bill", entityData: fullBillData, lines: enhancedLines, generatePDFBlob });
+
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!bill || !org || !vendor) return;
+    const recipientEmail = vendor.email;
+    if (!recipientEmail) {
+      toast({
+        title: "No email address",
+        description: "This vendor does not have an email address specified.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    toast({ title: "Generating Purchase Invoice PDF for email..." });
+
+    try {
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) throw new Error("Could not generate Purchase Invoice PDF");
+
+      const base64data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(pdfBlob);
+        reader.onloadend = () => {
+          resolve((reader.result as string).split(",")[1]);
+        };
+      });
+
+      const subject = `Purchase Invoice #${bill.bill_number} from ${org.name || "Aassay Biz"}`;
+      const details = [
+        { label: "Bill Number", value: bill.bill_number },
+        { label: "Bill Date", value: bill.bill_date || bill.date || new Date().toISOString().split("T")[0] },
+      ];
+      if (bill.due_date) {
+        details.push({ label: "Due Date", value: bill.due_date, isHighlight: true });
+      }
+
+      const html = buildBrandedEmailHtml({
+        logoUrl: org.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: org.name || "Aassay Biz",
+        companyEmail: org.email || "support@aassaybiz.com",
+        badgeText: "PURCHASE INVOICE",
+        title: `Purchase Invoice #${bill.bill_number}`,
+        subtitle: `Vendor Bill for ${org.name || "Aassay Biz"}`,
+        recipientName: vendor.display_name || vendor.name || "Vendor Partner",
+        introText: `Please find attached our recorded Purchase Invoice / Bill from <strong>${org.name || "Aassay Biz"}</strong>:`,
+        amountLabel: "Total Bill Amount",
+        amountValue: fmt(Number(bill.total)),
+        details,
+        attachmentNote: `Purchase Invoice PDF (${bill.bill_number}.pdf) is attached to this email for your accounts and payment reconciliation.`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("send-custom-email", {
+        body: {
+          to: recipientEmail,
+          subject,
+          html,
+          orgId: org.id,
+          attachments: [
+            {
+              filename: `${bill.bill_number}.pdf`,
+              content: base64data,
+              content_type: "application/pdf",
+            },
+          ],
+        },
+      });
+
+      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+
+      toast({
+        title: "Email Sent Successfully! ✉️",
+        description: `Purchase Invoice PDF was successfully emailed to ${recipientEmail}.`,
+      });
+    } catch (err: any) {
+      console.error("Error emailing bill:", err);
+      toast({
+        title: "Failed to send email",
+        description: err.message || "An error occurred while emailing bill.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   if (!bill) return <div className="p-6">Loading...</div>;
-  return (
+
+  return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Purchase Invoices</Button>
         <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
+            {isSendingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+            {isSendingEmail ? "Sending..." : "Email Bill"}
+          </Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Print</Button>
           <Button variant="outline" onClick={async () => {
             const blob = await generatePDFBlob();

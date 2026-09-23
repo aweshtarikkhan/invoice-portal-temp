@@ -15,7 +15,7 @@ import { Package, AlertTriangle, ArrowRightLeft, DollarSign, Download, FileText 
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--chart-2))", "hsl(var(--chart-3))", "hsl(var(--chart-4))", "hsl(var(--chart-5))", "#94a3b8"];
+const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 export default function InventoryReportsPage() {
   const org = useAppStore((s) => s.organization);

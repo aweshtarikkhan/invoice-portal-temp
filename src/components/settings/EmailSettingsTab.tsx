@@ -13,6 +13,7 @@ import { Loader2, Mail, Globe, Server, CheckCircle2, AlertCircle, Copy, Send, He
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 
 export function EmailSettingsTab() {
   const org = useAppStore((s) => s.organization);
@@ -20,8 +21,8 @@ export function EmailSettingsTab() {
   const queryClient = useQueryClient();
 
   const [providerType, setProviderType] = useState<"default" | "resend_domain" | "smtp" | "gmail">("default");
-  const [fromName, setFromName] = useState("Assay Biz");
-  const [fromEmail, setFromEmail] = useState("no-reply@satahinvoice.com");
+  const [fromName, setFromName] = useState("Aassay Biz");
+  const [fromEmail, setFromEmail] = useState("no-reply@aassaybiz.com");
 
   // Resend Domain states
   const [domainName, setDomainName] = useState("");
@@ -75,8 +76,8 @@ export function EmailSettingsTab() {
   useEffect(() => {
     if (settings) {
       setProviderType(settings.provider_type as any || "default");
-      setFromName(settings.from_name || org?.name || "Assay Biz");
-      setFromEmail(settings.from_email || "no-reply@satahinvoice.com");
+      setFromName(settings.from_name || org?.name || "Aassay Biz");
+      setFromEmail(settings.from_email || "no-reply@aassaybiz.com");
       
       setDomainName(settings.domain_name || "");
       setResendDomainId(settings.resend_domain_id || "");
@@ -89,7 +90,7 @@ export function EmailSettingsTab() {
       setSmtpPass(settings.smtp_pass || "");
       setSmtpSecure(settings.smtp_secure ?? false);
     } else if (org) {
-      setFromName(org.name || "Assay Biz");
+      setFromName(org.name || "Aassay Biz");
     }
   }, [settings, org]);
 
@@ -116,7 +117,7 @@ export function EmailSettingsTab() {
           ? `no-reply@${domainName.trim().toLowerCase()}`
           : (providerType === "smtp" || providerType === "gmail") && smtpUser.trim()
           ? smtpUser.trim()
-          : "no-reply@test.satahinvoice.com";
+          : "no-reply@test.aassaybiz.com";
 
       const payload: any = {
         org_id: org.id,
@@ -274,9 +275,28 @@ export function EmailSettingsTab() {
           ? `no-reply@${domainName.trim().toLowerCase()}`
           : (providerType === "smtp" || providerType === "gmail") && smtpUser.trim()
           ? smtpUser.trim()
-          : "no-reply@test.satahinvoice.com";
+          : "no-reply@test.aassaybiz.com";
 
-      const effectiveFromName = fromName || org?.name || "Assay Biz";
+      const effectiveFromName = fromName || org?.name || "Aassay Biz";
+
+      const testEmailHtml = buildBrandedEmailHtml({
+        logoUrl: org?.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: org?.name || "Aassay Biz",
+        companyEmail: effectiveFromEmail,
+        badgeText: "EMAIL SYSTEM TEST",
+        title: "Test Email Successful! 🎉",
+        subtitle: `Dispatched from ${org?.name || "Aassay Biz"}`,
+        introText: `Congratulations! Your email system is working properly and ready to send invoices, quotations, purchase orders, and campaigns.`,
+        customBodyHtml: `
+          <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Active Sending Method:</p>
+            <p style="margin: 0 0 12px 0; font-size: 15px; font-weight: 700; color: #0f172a;">${providerType.toUpperCase()}</p>
+            <p style="margin: 0 0 6px 0; font-size: 13px; color: #64748b;">Sender Identity:</p>
+            <p style="margin: 0; font-size: 14px; font-weight: 600; color: #2563eb;">${effectiveFromName} &lt;${effectiveFromEmail}&gt;</p>
+          </div>
+          <p style="font-size: 12px; color: #64748b; margin-top: 16px;">Timestamp: ${new Date().toLocaleString()}</p>
+        `,
+      });
 
       // Try EC2 native email dispatcher first (supports AWS SES & Custom SMTP reliably)
       let sentSuccessfully = false;
@@ -289,15 +309,8 @@ export function EmailSettingsTab() {
             fromEmail: effectiveFromEmail,
             fromName: effectiveFromName,
             to: testEmailAddress.trim(),
-            subject: "Test Email from Assay Biz",
-            html: `
-              <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-                <h2 style="color: #2563eb;">Test Email Successful! 🎉</h2>
-                <p>Hello,</p>
-                <p>This is a test email sent from your application using your configured email sending method (<strong>${providerType}</strong>).</p>
-                <p style="font-size: 12px; color: #64748b; margin-top: 20px;">Sent at: ${new Date().toLocaleString()}</p>
-              </div>
-            `,
+            subject: "Test Email from Aassay Biz",
+            html: testEmailHtml,
           }),
         });
         const respData = await resp.json();
@@ -317,15 +330,8 @@ export function EmailSettingsTab() {
             fromEmail: effectiveFromEmail,
             fromName: effectiveFromName,
             to: testEmailAddress.trim(),
-            subject: "Test Email from Assay Biz",
-            html: `
-              <div style="font-family: sans-serif; padding: 20px; max-width: 500px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-                <h2 style="color: #2563eb;">Test Email Successful! 🎉</h2>
-                <p>Hello,</p>
-                <p>This is a test email sent from your application using your configured email sending method (<strong>${providerType}</strong>).</p>
-                <p style="font-size: 12px; color: #64748b; margin-top: 20px;">Sent at: ${new Date().toLocaleString()}</p>
-              </div>
-            `,
+            subject: "Test Email from Aassay Biz",
+            html: testEmailHtml,
           },
         });
 
@@ -388,7 +394,7 @@ export function EmailSettingsTab() {
                 <Input 
                   value={fromName} 
                   onChange={(e) => setFromName(e.target.value)} 
-                  placeholder="e.g. Assay Biz Billing or Your Business Name"
+                  placeholder="e.g. Aassay Biz Billing or Your Business Name"
                 />
                 <p className="text-xs text-muted-foreground">
                   The business name clients will see in their Inbox (e.g. "Acme Corp Billing").
@@ -410,7 +416,7 @@ export function EmailSettingsTab() {
                         ? `no-reply@${domainName.trim()}`
                         : (providerType === "smtp" || providerType === "gmail") && smtpUser
                         ? smtpUser
-                        : "no-reply@test.satahinvoice.com"}
+                        : "no-reply@test.aassaybiz.com"}
                     </span>
                   </div>
                   <Badge 
@@ -453,7 +459,7 @@ export function EmailSettingsTab() {
                 <RadioGroupItem value="default" id="default" />
               </div>
               <p className="text-xs text-muted-foreground mb-3">
-                Send instantly using platform verified domain (`no-reply@satahinvoice.com`). Zero setup required.
+                Send instantly using platform verified domain (`no-reply@aassaybiz.com`). Zero setup required.
               </p>
               <Badge variant="secondary" className="text-[10px]">Instant • 100% Ready</Badge>
             </div>

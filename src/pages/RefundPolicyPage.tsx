@@ -4,6 +4,7 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { LegalNavTabs } from "@/components/public/LegalNavTabs";
 import { RefreshCw } from "lucide-react";
 import { SEO } from "@/components/shared/SEO";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export default function RefundPolicyPage() {
   useEffect(() => {
@@ -13,8 +14,8 @@ export default function RefundPolicyPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       <SEO 
-        title="Cancellation & Refund Policy | Assay Biz" 
-        description="Understand Assay Biz's 7-day money-back guarantee, plan cancellation rules, and subscription refund guidelines."
+        title="Cancellation & Refund Policy | Aassay Biz" 
+        description="Understand Aassay Biz's 7-day money-back guarantee, plan cancellation rules, and subscription refund guidelines."
       />
       <PublicHeader />
 
@@ -40,7 +41,7 @@ export default function RefundPolicyPage() {
                 1. Free Trial & Free Forever Tier
               </h2>
               <p>
-                Assay Biz provides a comprehensive <strong>Free Forever plan</strong> and interactive online product demos. We encourage all prospective business users to thoroughly test our invoicing, inventory, HR attendance, and CRM modules before upgrading to any paid plan.
+                <AassayBizBrand /> provides a comprehensive <strong>Free Forever plan</strong> and interactive online product demos. We encourage all prospective business users to thoroughly test our invoicing, inventory, HR attendance, and CRM modules before upgrading to any paid plan.
               </p>
             </section>
 
@@ -94,9 +95,9 @@ export default function RefundPolicyPage() {
                 To request a cancellation or refund, simply send an email or WhatsApp message with your registered business email and invoice ID:
               </p>
               <div className="mt-3 p-4 bg-slate-100 rounded-xl space-y-1 text-slate-700">
-                <p className="font-semibold text-slate-900">Assay Biz Billing Support</p>
-                <p>Email: <a href="mailto:support@assaybiz.com" className="text-primary hover:underline">support@assaybiz.com</a></p>
-                <p>WhatsApp / Call: +91 94248 25919</p>
+                <p className="font-semibold text-slate-900 flex items-center gap-1.5"><AassayBizBrand /> Billing Support</p>
+                <p>Email: <a href="mailto:support@aassaybiz.com" className="text-primary hover:underline">support@aassaybiz.com</a></p>
+                <p>WhatsApp / Call: +91 7806025875</p>
                 <p className="text-xs text-slate-500 mt-1">Response time: Within 4 business hours.</p>
               </div>
             </section>

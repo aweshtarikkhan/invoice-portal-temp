@@ -100,7 +100,7 @@ export default function RegisterPage() {
       }
 
       if (authData.session) {
-        toast({ title: "Account created!", description: "Welcome to Assay Biz Invoices" });
+        toast({ title: "Account created!", description: "Welcome to Aassay Biz Invoices" });
         navigate("/dashboard", { replace: true });
       } else {
         toast({ title: "OTP Sent", description: "Please enter the 6-digit OTP sent to your email." });
@@ -127,7 +127,7 @@ export default function RegisterPage() {
     if (error) {
       toast({ title: "Verification failed", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Account verified!", description: "Welcome to Assay Biz Invoices" });
+      toast({ title: "Account verified!", description: "Welcome to Aassay Biz Invoices" });
       sessionStorage.removeItem("reg_email");
       sessionStorage.removeItem("reg_otpSent");
       navigate("/dashboard", { replace: true });
@@ -144,7 +144,7 @@ export default function RegisterPage() {
 
   return (
     <>
-      <SEO title="Create Account" description="Create your free Assay Biz Invoices account and start sending professional GST invoices in minutes." path="/register" />
+      <SEO title="Create Account" description="Create your free Aassay Biz Invoices account and start sending professional GST invoices in minutes." path="/register" />
       <div className="flex min-h-screen items-center justify-center bg-muted/30 px-4">
         {emailExistsDialog && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm px-4">
@@ -203,7 +203,7 @@ export default function RegisterPage() {
         )}
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <img src={logoImg} alt="Assay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
+          <img src={logoImg} alt="Aassay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
           <CardTitle className="text-2xl">Create your account</CardTitle>
           <CardDescription>Start managing invoices in minutes</CardDescription>
         </CardHeader>

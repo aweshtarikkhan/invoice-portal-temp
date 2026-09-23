@@ -252,7 +252,8 @@ export default function BankAccountDetailPage() {
 
 
   if (!acct) return <div className="p-6 text-muted-foreground">Loading…</div>;
-  return (
+
+  return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

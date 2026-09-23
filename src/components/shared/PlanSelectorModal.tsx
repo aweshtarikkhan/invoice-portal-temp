@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Check, Loader2, Minus, Plus, Users, Sparkles, Download, CheckCircle2, Mail, FileText } from "lucide-react";
+import { Check, Loader2, Minus, Plus, Users, Sparkles, Download, CheckCircle2, AlertCircle, Mail, FileText } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureStore } from "@/store/feature-store";
@@ -44,6 +44,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [promoCode, setPromoCode] = useState("");
   const [validCoupon, setValidCoupon] = useState<{ id: string; amount: number; type: string } | null>(null);
   const [couponLoading, setCouponLoading] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
   const [processingPlan, setProcessingPlan] = useState<boolean>(false);
   
   // Selection state for NEW plans to purchase
@@ -125,28 +127,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
           .filter(Boolean);
       }
 
-      // Fallback if RPC didn't return paid plans but org record has subscription_plan
-      if (fetchedActivePlans.length === 0 || (fetchedActivePlans.length === 1 && fetchedActivePlans[0] === "free")) {
-        if (orgId && orgId !== currentOrg?.id) {
-          // If a specific orgId was passed (e.g. newly created business), check ONLY that target org's record
-          const { data: targetOrg } = await supabase
-            .from("organizations")
-            .select("subscription_plan")
-            .eq("id", orgId)
-            .maybeSingle();
-          if (targetOrg?.subscription_plan && targetOrg.subscription_plan !== "free") {
-            fetchedActivePlans = [normalizePlanKey(targetOrg.subscription_plan)];
-          } else {
-            fetchedActivePlans = ["free"];
-          }
-        } else {
-          // Only check currentOrg if this modal is for currentOrg
-          if (currentOrg?.subscription_plan && currentOrg.subscription_plan !== "free") {
-            fetchedActivePlans = [normalizePlanKey(currentOrg.subscription_plan)];
-          } else if (currentPlanName && currentPlanName !== "free") {
-            fetchedActivePlans = [normalizePlanKey(currentPlanName)];
-          }
-        }
+      if (fetchedActivePlans.length === 0) {
+        fetchedActivePlans = ["free"];
       }
 
       // Determine standard base limit for the active plan (NEVER SUMMED)
@@ -228,11 +210,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   };
 
   const handleApplyPromo = async () => {
-    if (!promoCode.trim()) return;
+    const trimmed = promoCode.trim().toUpperCase();
+    if (!trimmed) {
+      setPromoError("Please enter a promo code");
+      return;
+    }
     setCouponLoading(true);
+    setPromoError(null);
+    setPromoSuccess(null);
     try {
       const { data, error } = await supabase.rpc("validate_coupon", {
-        p_code: promoCode,
+        p_code: trimmed,
         p_billing_cycle: billingCycle,
       });
       if (error) throw error;
@@ -242,13 +230,16 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
           type: data.discount_type,
           amount: data.discount_value
         });
+        setPromoSuccess(data.description || "Promo code applied successfully!");
+        setPromoError(null);
         toast({ title: "Promo code applied!", description: data.description });
       } else {
         setValidCoupon(null);
-        toast({ title: "Invalid code", description: data?.error, variant: "destructive" });
+        setPromoError(data?.error || "Invalid promo code");
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      setValidCoupon(null);
+      setPromoError(err.message || "Invalid promo code");
     }
     setCouponLoading(false);
   };
@@ -452,13 +443,34 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       // If total amount is 0 (e.g. Free plan selected or 100% coupon)
       if (finalAmountPaise <= 0) {
         const plansToActivate = targetPlanNames.length > 0 ? targetPlanNames : ["free"];
+        const appliedCode = validCoupon && promoCode.trim() ? promoCode.trim().toUpperCase() : null;
+        const zeroOrderId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
+        const zeroPaymentId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
+
         const { error } = await supabase.rpc("activate_org_plans", {
           p_org_id: orgId,
           p_plan_names: plansToActivate,
           p_billing_cycle: billingCycle,
-          p_employee_count: totalEmployeesToSend
+          p_employee_count: totalEmployeesToSend,
+          p_razorpay_order_id: zeroOrderId,
+          p_razorpay_payment_id: zeroPaymentId,
+          p_coupon_code: appliedCode
         });
         if (error) throw error;
+
+        // Ensure coupon usage count is incremented in DB
+        if (appliedCode) {
+          try {
+            await supabase.rpc("redeem_coupon", {
+              p_code: appliedCode,
+              p_org_id: orgId,
+              p_discount_applied: validCoupon?.amount || 0,
+              p_order_id: zeroOrderId
+            });
+          } catch (couponErr) {
+            console.warn("Coupon redeem error:", couponErr);
+          }
+        }
 
         const resolvedPlan = plansToActivate.includes('free') && plansToActivate.length === 1 
           ? 'free' 
@@ -497,7 +509,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         }).join(" + ");
 
         if (targetPlanNames.includes("suite")) {
-          planDisplay = "Assay Biz - Flagship Business Suite";
+          planDisplay = "Aassay Biz - Flagship Business Suite";
         } else if (isOnlyAddingExtraEmployees) {
           planDisplay = `HRMS Capacity Expansion (+${extraEmployeesToAdd} Staff Slots)`;
         }
@@ -555,7 +567,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       }
 
       // Create Razorpay order via Edge Function
-      const amountInRupees = Math.round(finalAmountPaise / 100);
+      const amountInRupees = Number((finalAmountPaise / 100).toFixed(2));
       const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
         body: {
           action: "create",
@@ -580,14 +592,15 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         key: orderData.razorpay_key_id,
         amount: orderData.amount,
         currency: orderData.currency || "INR",
-        name: "Assay Biz",
+        name: "Aassay Biz",
         description: isOnlyAddingExtraEmployees 
           ? `Add ${extraEmployeesToAdd} Extra Employee Slots`
-          : `Assay Biz Software Subscription`,
+          : `Aassay Biz Software Subscription`,
         order_id: orderData.order_id,
         handler: async function (response: any) {
           try {
             setProcessingPlan(true);
+            const appliedCode = validCoupon && promoCode.trim() ? promoCode.trim().toUpperCase() : undefined;
             const { data: verifyData, error: verifyError } = await supabase.functions.invoke("create_razorpay_order", {
               body: {
                 action: "verify",
@@ -601,11 +614,27 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 customer_email: user?.email || currentOrg?.email || "",
                 customer_name: user?.user_metadata?.full_name || currentOrg?.name || "",
                 total_amount: amountInRupees,
+                coupon_code: appliedCode,
+                discount_amount: validCoupon?.amount || 0
               }
             });
 
             if (verifyError || verifyData?.error) {
               throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
+            }
+
+            // Guaranteed client-side redemption logging if coupon was used
+            if (appliedCode) {
+              try {
+                await supabase.rpc("redeem_coupon", {
+                  p_code: appliedCode,
+                  p_org_id: orgId,
+                  p_discount_applied: validCoupon?.amount || 0,
+                  p_order_id: response.razorpay_order_id
+                });
+              } catch (couponErr) {
+                console.warn("Client-side coupon redeem check:", couponErr);
+              }
             }
             
             // Generate official subscription invoice details
@@ -631,7 +660,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               .join(" + ");
 
             if (targetPlanNames.includes("suite")) {
-              planDisplay = "Assay Biz - Flagship Business Suite";
+              planDisplay = "Aassay Biz - Flagship Business Suite";
             } else if (isOnlyAddingExtraEmployees) {
               planDisplay = `HRMS Capacity Expansion (+${extraEmployeesToAdd} Staff Slots)`;
             }
@@ -650,9 +679,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               organizationName: currentOrg?.name || "My Business",
               customerGstin: currentOrg?.tax_number || undefined,
               billingAddress: currentOrg?.billing_address || undefined,
-              totalAmount: amountInRupees,
-              subtotal: Math.round(totalAmountPaise / 100),
-              taxAmount: Math.round(gstAmountPaise / 100),
+              totalAmount: Number((finalAmountPaise / 100).toFixed(2)),
+              subtotal: Number((totalAmountPaise / 100).toFixed(2)),
+              taxAmount: Number((gstAmountPaise / 100).toFixed(2)),
               discount: validCoupon?.amount || 0,
               paymentMethod: "Razorpay Online (UPI/Cards/NetBanking)",
               razorpayPaymentId: response.razorpay_payment_id,
@@ -778,7 +807,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               <div className="flex items-center justify-between text-slate-600">
                 <span>Amount Paid</span>
                 <span className="font-extrabold text-emerald-700 text-base">
-                  ₹{completedInvoice.totalAmount.toLocaleString("en-IN")}
+                  ₹{Number(completedInvoice.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex items-center justify-between text-slate-600">
@@ -955,14 +984,21 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                         ) : plan.name === "free" ? (
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold text-slate-900">₹0</span>
-                            <span className="text-sm text-slate-500">/free forever</span>
+                            <span className="text-sm text-slate-500">/6 months free</span>
                           </div>
                         ) : (
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900">
-                              ₹{(price / 100).toLocaleString('en-IN')}
-                            </span>
-                            <span className="text-sm text-slate-500">/{billingCycle === "monthly" ? "mo" : "yr"}</span>
+                          <div>
+                            <div className="flex items-baseline gap-1">
+                              <span className="text-2xl font-bold text-slate-900">
+                                ₹{billingCycle === "yearly" ? Math.floor((price / 100) / 12).toLocaleString('en-IN') : (price / 100).toLocaleString('en-IN')}
+                              </span>
+                              <span className="text-sm text-slate-500">/mo</span>
+                            </div>
+                            {billingCycle === "yearly" && (
+                              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                                Billed ₹{(price / 100).toLocaleString('en-IN')}/yr upfront
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -1177,22 +1213,55 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             <div className="border-t border-slate-200 pt-6 mt-6">
               <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 {/* Coupon input */}
-                <div className="flex w-full max-w-sm gap-2">
-                  <Input 
-                    placeholder="Enter Promo Code" 
-                    value={promoCode} 
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    disabled={!!validCoupon}
-                    className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400"
-                  />
-                  {validCoupon ? (
-                    <Button variant="outline" className="border-slate-300 hover:bg-slate-100" onClick={() => { setValidCoupon(null); setPromoCode(""); }}>
-                      Remove
-                    </Button>
-                  ) : (
-                    <Button onClick={handleApplyPromo} disabled={!promoCode || couponLoading}>
-                      {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
-                    </Button>
+                <div className="flex flex-col w-full max-w-sm">
+                  <div className="flex w-full gap-2">
+                    <Input 
+                      placeholder="Enter Promo Code" 
+                      value={promoCode} 
+                      onChange={(e) => {
+                        setPromoCode(e.target.value.toUpperCase());
+                        if (promoError) setPromoError(null);
+                        if (promoSuccess) setPromoSuccess(null);
+                      }}
+                      disabled={!!validCoupon}
+                      className={`bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 ${
+                        promoError ? "border-red-500 focus-visible:ring-red-500" : ""
+                      }`}
+                    />
+                    {validCoupon ? (
+                      <Button 
+                        variant="outline" 
+                        className="border-slate-300 hover:bg-slate-100" 
+                        onClick={() => { 
+                          setValidCoupon(null); 
+                          setPromoCode(""); 
+                          setPromoError(null); 
+                          setPromoSuccess(null); 
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    ) : (
+                      <Button onClick={handleApplyPromo} disabled={!promoCode || couponLoading}>
+                        {couponLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Error message right below promo code input */}
+                  {promoError && (
+                    <p className="text-xs font-semibold text-red-500 mt-1.5 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{promoError}</span>
+                    </p>
+                  )}
+
+                  {/* Success message right below promo code input */}
+                  {validCoupon && promoSuccess && (
+                    <p className="text-xs font-semibold text-emerald-600 mt-1.5 flex items-center gap-1 animate-in fade-in">
+                      <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span>{promoSuccess}</span>
+                    </p>
                   )}
                 </div>
 
@@ -1203,15 +1272,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                       {isOnlyAddingExtraEmployees ? "Addon Subtotal" : "Subtotal"}
                     </div>
                     <div className="text-sm font-semibold text-slate-900 mb-1">
-                      ₹{(totalAmountPaise / 100).toLocaleString('en-IN')}
+                      ₹{(totalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     {totalAmountPaise > 0 && (
                       <>
                         <div className="text-[10px] text-slate-500 font-medium mt-1">+ GST (18%)</div>
-                        <div className="text-xs font-semibold text-slate-700">₹{(gstAmountPaise / 100).toLocaleString('en-IN')}</div>
+                        <div className="text-xs font-semibold text-slate-700">
+                          ₹{(gstAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
                         <div className="text-xs text-slate-500 font-medium mt-1.5 pt-1.5 border-t">Total Payable</div>
                         <div className="text-2xl font-bold text-slate-900">
-                          ₹{(finalAmountPaise / 100).toLocaleString('en-IN')}
+                          ₹{(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </>
                     )}
@@ -1228,9 +1299,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     ) : !hasAnyActionToCheckout ? (
                       "Select a plan or add employees"
                     ) : isOnlyAddingExtraEmployees ? (
-                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN')} & Add ${extraEmployeesToAdd} Slot${extraEmployeesToAdd > 1 ? 's' : ''}`
+                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Add ${extraEmployeesToAdd} Slot${extraEmployeesToAdd > 1 ? 's' : ''}`
                     ) : (
-                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN')} & Activate`
+                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Activate`
                     )}
                   </Button>
                 </div>

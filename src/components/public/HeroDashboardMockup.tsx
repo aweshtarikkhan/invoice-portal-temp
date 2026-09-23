@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Check,
 } from "lucide-react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export type ParentModuleKey =
   | "dashboard"
@@ -176,7 +177,7 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Bank Reserve", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20 200", offset: "-180" },
     ],
     featureList: [
-      { title: "Sales & Invoicing", desc: "GST invoices, estimates, credit notes, client ledger & delivery challans." },
+      { title: "Sales & Invoicing", desc: "GST invoices, quotations, credit notes, client ledger & delivery challans." },
       { title: "Purchases & Expenses", desc: "Vendor orders, 3-way GRN match, supplier purchase bills & expense tracking." },
       { title: "Inventory & Warehouses", desc: "Real-time stock quantities across multi-warehouses with auto re-order alerts." },
       { title: "Double-Entry Banking", desc: "Live bank account feed, automated reconciliation, and GSTR-1/3B export." },
@@ -318,7 +319,7 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     donutCenterSub: "Delivered",
     donutSegments: [
       { label: "WhatsApp Blast", pct: 60, color: "bg-[#e77817]", stroke: "#e77817", dash: "120 200", offset: "0" },
-      { label: "SMS Broadcast", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "50 200", offset: "-120" },
+      { label: "App Notifications", pct: 25, color: "bg-[#28166f]", stroke: "#28166f", dash: "50 200", offset: "-120" },
       { label: "Email Dispatch", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-170" },
     ],
     featureList: [
@@ -372,7 +373,7 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
     ],
     featureList: [
       { title: "Integrate WhatsApp", desc: "Send invoices, receipts, payment reminders & festival posters directly to customer WhatsApp." },
-      { title: "Integrate Email (SES)", desc: "Dispatch GST invoices and estimates directly from your business domain with zero spam." },
+      { title: "Integrate Email (SES)", desc: "Dispatch GST invoices and quotations directly from your business domain with zero spam." },
       { title: "UPI QR & Payment Links", desc: "Dynamic UPI QR codes printed on invoices; client scans to pay and bill auto-marks paid." },
       { title: "External Webhooks", desc: "Connect with WooCommerce, Shopify, Zoho, or your custom inventory software in seconds." },
     ],
@@ -568,7 +569,7 @@ export function HeroDashboardMockup() {
               {/* Real AssayBiz Logo on crisp container */}
               <div className="mb-2 px-0 sm:px-0.5 shrink-0">
                 <div className="bg-white px-1 sm:px-2 py-1 rounded-md shadow-xs w-full flex items-center justify-center border border-white/20">
-                  <img src={logoImg} alt="Assay Biz" className="h-3.5 sm:h-5 w-auto object-contain" />
+                  <img src={logoImg} alt="Aassay Biz" className="h-3.5 sm:h-5 w-auto object-contain" />
                 </div>
               </div>
 
@@ -616,7 +617,7 @@ export function HeroDashboardMockup() {
               {/* Bottom Quick Indicator */}
               <div className="pt-1.5 mt-1 border-t border-white/15 shrink-0 px-0.5 sm:px-1 flex items-center justify-center sm:justify-between text-[8.5px] text-white/70">
                 <span className="hidden sm:flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> AssayBiz v2.4
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" /> <AassayBizBrand theme="dark" className="text-[8.5px]" suffix="v2.4" />
                 </span>
                 <span className="text-orange-300 font-bold hidden sm:inline">100% GST</span>
               </div>
@@ -629,9 +630,7 @@ export function HeroDashboardMockup() {
             {/* Header Bar - Without Search Bar */}
             <div className="h-8 px-2.5 sm:px-3 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-extrabold text-[#28166f] text-xs sm:text-[12.5px] tracking-tight">
-                  AssayBiz
-                </span>
+                <AassayBizBrand className="text-xs sm:text-[12.5px]" />
                 <span className="text-slate-300 text-xs">/</span>
                 <span className="text-slate-700 font-semibold text-xs truncate">
                   {currentData.title}

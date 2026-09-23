@@ -24,6 +24,7 @@ import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 
 const leadImportFields: ImportField[] = [
   { key: "name", label: "Lead Name", required: true },
@@ -237,10 +238,29 @@ export default function LeadsPage() {
           .single()
           .then(({ data: autoData }: any) => {
             if (autoData) {
-              const subject = `Welcome ${payload.name}!`;
-              const html = `<p>Hi ${payload.name},</p><p>Thank you for your interest in our services. A representative will be in touch with you shortly.</p>`;
+              const subject = `Welcome to ${org?.name || "Aassay Biz"}, ${payload.name}!`;
+              const html = buildBrandedEmailHtml({
+                logoUrl: org?.logo_url || "https://aassaybiz.com/logo.png",
+                companyName: org?.name || "Aassay Biz",
+                companyEmail: org?.email || "support@aassaybiz.com",
+                badgeText: "CRM WELCOME",
+                title: `Welcome, ${payload.name}!`,
+                subtitle: `Thank you for connecting with ${org?.name || "Aassay Biz"}`,
+                recipientName: payload.name,
+                introText: `Thank you for your interest in our solutions and services. A dedicated representative from our team will review your requirements and reach out to you shortly.`,
+                customBodyHtml: `
+                  <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                    <p style="margin: 0 0 8px; font-weight: 600; color: #0f172a;">What happens next?</p>
+                    <ul style="margin: 0; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.6;">
+                      <li>Our team is reviewing your information.</li>
+                      <li>We will connect via phone or email to discuss how we can help.</li>
+                      <li>In the meantime, feel free to explore our offerings or reply to this email.</li>
+                    </ul>
+                  </div>
+                `,
+              });
               supabase.functions.invoke("send-custom-email", {
-                body: { to: payload.email, subject, html }
+                body: { to: payload.email, subject, html, orgId: payload.org_id }
               });
               
               // Log activity

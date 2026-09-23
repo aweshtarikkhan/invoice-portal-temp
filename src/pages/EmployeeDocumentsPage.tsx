@@ -265,8 +265,8 @@ export default function EmployeeDocumentsPage() {
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) {
-                    if (f.size > 10 * 1024 * 1024) {
-                      toast({ title: "File too large", description: "Maximum file size is 10MB", variant: "destructive" });
+                    if (f.size > 25 * 1024 * 1024) {
+                      toast({ title: "File too large", description: "Maximum file size is 25MB", variant: "destructive" });
                       e.target.value = "";
                       setFile(null);
                     } else {
@@ -277,7 +277,7 @@ export default function EmployeeDocumentsPage() {
                   }
                 }} 
               />
-              <p className="text-[11px] text-muted-foreground mt-1">Supports PDF, JPG, PNG, WEBP, DOC up to 10MB.</p>
+              <p className="text-[11px] text-muted-foreground mt-1">Supports PDF, JPG, PNG, WEBP, DOC up to 25MB.</p>
             </div>
           </div>
           <DialogFooter>

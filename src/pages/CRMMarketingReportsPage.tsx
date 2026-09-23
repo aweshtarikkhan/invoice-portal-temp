@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 export default function CRMMarketingReportsPage() {
   const org = useAppStore((s) => s.organization);

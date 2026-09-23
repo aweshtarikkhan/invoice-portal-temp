@@ -75,7 +75,7 @@ export default function AuditLogsPage() {
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             <SelectItem value="invoice">Invoices</SelectItem>
-            <SelectItem value="estimate">Estimates</SelectItem>
+            <SelectItem value="estimate">Quotations</SelectItem>
             <SelectItem value="credit_note">Credit Notes</SelectItem>
             <SelectItem value="client">Clients</SelectItem>
             <SelectItem value="item">Items</SelectItem>

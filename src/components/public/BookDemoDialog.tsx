@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 import {
   Dialog,
   DialogContent,
@@ -343,8 +344,10 @@ export function BookDemoDialog({ open, onOpenChange }: BookDemoDialogProps) {
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-orange-200 text-xs font-semibold backdrop-blur-md">
                   <Sparkles className="w-3.5 h-3.5 text-[#e77817]" /> Free 1-on-1 Interactive Demo
                 </div>
-                <DialogTitle className="text-2xl sm:text-2xl font-black tracking-tight text-white">
-                  Experience Assay Biz in Action
+                <DialogTitle className="text-2xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-2 flex-wrap">
+                  <span>Experience</span>
+                  <AassayBizBrand theme="dark" />
+                  <span>in Action</span>
                 </DialogTitle>
                 <DialogDescription className="text-orange-100/90 text-xs sm:text-sm">
                   Get a personalized walkthrough tailored to your business workflow with our product specialist.

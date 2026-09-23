@@ -11,7 +11,9 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
   const formattedAmount = new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-  }).format(data.totalAmount);
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(Number(data.totalAmount) || 0);
 
   return `
 <!DOCTYPE html>
@@ -19,7 +21,7 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Your Assay Biz Subscription & Tax Invoice</title>
+  <title>Your Aassay Biz Subscription & Tax Invoice</title>
 </head>
 <body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #0f172a; padding: 40px 16px;">
@@ -28,22 +30,22 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
         <!-- Main Email Container -->
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 620px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);">
           
-          <!-- Top Navy Header with Assay Biz Brand Colors -->
+          <!-- Top Navy Header with Aassay Biz Brand Colors -->
           <tr>
-            <td style="background: linear-gradient(135deg, #160e3d 0%, #28166f 100%); padding: 36px 36px 30px; text-align: left; border-bottom: 4px solid #e77817;">
+            <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 32px 28px; text-align: left; border-bottom: 4px solid #e77817;">
               <table width="100%" cellpadding="0" cellspacing="0">
                 <tr>
                   <td>
-                    <!-- Assay Biz Styled Logo -->
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 900; letter-spacing: -0.5px; line-height: 1.1;">
-                      <span style="color: #e77817;">A</span><span style="color: #ffffff;">ssay</span> <span style="color: #e77817;">Biz</span>
-                    </h1>
-                    <p style="margin: 6px 0 0; color: #cbd5e1; font-size: 12px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">
-                      GST Invoicing & Business OS
+                    <!-- Real Aassay Biz Logo -->
+                    <div style="background-color: #ffffff; display: inline-block; padding: 6px 16px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+                      <img src="https://aassaybiz.com/logo.png" alt="Aassay Biz" style="height: 36px; max-height: 36px; width: auto; max-width: 180px; display: block; object-fit: contain;" />
+                    </div>
+                    <p style="margin: 8px 0 0; color: #bfdbfe; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;">
+                      Everything you need. One smart platform
                     </p>
                   </td>
                   <td align="right" style="vertical-align: top;">
-                    <span style="display: inline-block; background-color: rgba(231, 120, 23, 0.2); border: 1px solid rgba(231, 120, 23, 0.5); color: #ffaa47; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 6px 12px; rounded: 9999px; border-radius: 20px;">
+                    <span style="display: inline-block; background-color: rgba(255, 255, 255, 0.2); border: 1px solid rgba(255, 255, 255, 0.4); color: #ffffff; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 6px 12px; border-radius: 20px;">
                       ✓ Payment Verified
                     </span>
                   </td>
@@ -68,7 +70,7 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
                 Dear <strong>${data.customerName || "Customer"}</strong>,
               </p>
               <p style="margin: 0 0 24px; color: #475569; font-size: 14px; line-height: 1.6;">
-                Thank you for subscribing to <strong>Assay Biz</strong> for <strong>${data.organizationName || "your business"}</strong>. We are thrilled to partner with you to automate your invoicing, inventory, staff management, and business accounting.
+                Thank you for subscribing to <span style="font-weight: 700;"><span style="color: #e77817;">A</span><span style="color: #28166f;">assay</span> <span style="color: #e77817;">Biz</span></span> for <strong>${data.organizationName || "your business"}</strong>. We are thrilled to partner with you to automate your invoicing, inventory, staff management, and business accounting.
               </p>
 
               <!-- Plan Details Summary Card -->
@@ -117,8 +119,8 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
               <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 32px;">
                 <tr>
                   <td align="center">
-                    <a href="https://satahinvoice.com/dashboard" target="_blank" style="display: inline-block; background-color: #e77817; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(231, 120, 23, 0.4); text-align: center;">
-                      Open Assay Biz Dashboard &rarr;
+                    <a href="https://aassaybiz.com/dashboard" target="_blank" style="display: inline-block; background-color: #e77817; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: 700; padding: 14px 32px; border-radius: 12px; box-shadow: 0 4px 14px rgba(231, 120, 23, 0.4); text-align: center;">
+                      Open Aassay Biz Dashboard &rarr;
                     </a>
                   </td>
                 </tr>
@@ -129,14 +131,14 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
                 Have questions or need assistance setting up your team? We are here to help:
               </p>
               <ul style="margin: 0 0 24px; padding-left: 20px; color: #475569; font-size: 13px; line-height: 1.7;">
-                <li><strong>Priority Support:</strong> +91 94248 25919 (Mon &ndash; Sat, 9:30 AM &ndash; 7:00 PM IST)</li>
-                <li><strong>Billing Helpline:</strong> billing@assaybiz.com</li>
+                <li><strong>Priority Support:</strong> +91 7806025875 (Mon &ndash; Sat, 9:30 AM &ndash; 7:00 PM IST)</li>
+                <li><strong>Billing Helpline:</strong> billing@aassaybiz.com</li>
                 <li><strong>WhatsApp Assistance:</strong> Directly from your web dashboard</li>
               </ul>
 
               <p style="margin: 0; color: #334155; font-size: 14px; font-weight: 600;">
                 Warm regards,<br />
-                <span style="color: #e77817;">Team Assay Biz</span>
+                <span style="font-weight: 700;">Team <span style="color: #e77817;">A</span><span style="color: #28166f;">assay</span> <span style="color: #e77817;">Biz</span></span>
               </p>
             </td>
           </tr>
@@ -144,11 +146,14 @@ export function buildSubscriptionEmailHTML(data: SubscriptionInvoiceData): strin
           <!-- Footer -->
           <tr>
             <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 24px 36px; text-align: center;">
+              <p style="margin: 0 0 6px; color: #64748b; font-size: 11px; font-weight: 600;">
+                Everything you need. One smart platform
+              </p>
               <p style="margin: 0 0 6px; color: #94a3b8; font-size: 11px;">
-                Assay Biz Technologies Pvt. Ltd. • GSTIN: 23AABCS1429B1Z8 • SAC Code: 998313
+                Aassay Biz Technologies Pvt. Ltd. • GSTIN: 23AABCS1429B1Z8 • SAC Code: 998313
               </p>
               <p style="margin: 0; color: #94a3b8; font-size: 11px;">
-                &copy; ${new Date().getFullYear()} Assay Biz. All rights reserved. 100% Made in India.
+                &copy; ${new Date().getFullYear()} <span style="font-weight: 700;"><span style="color: #e77817;">A</span><span style="color: #28166f;">assay</span> <span style="color: #e77817;">Biz</span></span>. All rights reserved. 100% Made in India.
               </p>
             </td>
           </tr>
@@ -184,7 +189,7 @@ export async function sendSubscriptionInvoiceEmail(
   }
 
   const invoiceNumber = invoiceData.invoiceNumber || `AB-SUB-${Date.now().toString().slice(-6)}`;
-  const subject = `🎉 Subscription Activated: Assay Biz Tax Invoice #${invoiceNumber}`;
+  const subject = `🎉 Subscription Activated: Aassay Biz Tax Invoice #${invoiceNumber}`;
   const htmlContent = buildSubscriptionEmailHTML({
     ...invoiceData,
     invoiceNumber,
@@ -204,7 +209,7 @@ export async function sendSubscriptionInvoiceEmail(
   const attachments = pdfBase64
     ? [
         {
-          filename: `AssayBiz_Invoice_${invoiceNumber}.pdf`,
+          filename: `AassayBiz_Invoice_${invoiceNumber}.pdf`,
           content: pdfBase64,
           content_type: "application/pdf",
         },
@@ -242,7 +247,7 @@ export async function sendSubscriptionInvoiceEmail(
   // 3. Fallback Pathway: Direct EC2 / VPS API proxy (/api/email/send -> AWS SES Outbound SMTP)
   try {
     console.log(`[Email Dispatch] Attempting direct API fallback dispatch to ${recipientEmail}...`);
-    let apiUrl = "http://13.201.228.83/api/email/send";
+    let apiUrl = "https://aassaybiz.com/api/email/send";
     if (typeof window !== "undefined" && window.location.origin) {
       if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
         apiUrl = "http://localhost:3010/api/email/send";
@@ -259,7 +264,7 @@ export async function sendSubscriptionInvoiceEmail(
         to: recipientEmail,
         subject,
         html: htmlContent,
-        text: `Your Assay Biz subscription (${invoiceData.planDisplayName}) has been activated. Amount Paid: Rs ${invoiceData.totalAmount}. Payment ID: ${invoiceData.razorpayPaymentId}.`,
+        text: `Your Aassay Biz subscription (${invoiceData.planDisplayName}) has been activated. Amount Paid: Rs ${(Number(invoiceData.totalAmount) || 0).toFixed(2)}. Payment ID: ${invoiceData.razorpayPaymentId}.`,
         attachments,
       }),
     });

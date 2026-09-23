@@ -55,8 +55,8 @@ export const DEFAULT_TEMPLATES: Record<string, string[]> = {
     "Hi {{client_name}},\n\nYour invoice {{document_no}} for the amount of {{total}} has been generated. \nItems:\n{{items}}\n\nSubtotal: {{subtotal}}\nTax: {{tax}}\nDiscount: {{discount}}\nTDS: {{tds}}\nAdjustment: {{adjustment}}\n*Total: {{total}}*\n\nYou can view or download it here: {{portal_link}}\n\nRegards,\n{{org_name}}"
   ],
   estimate: [
-    "Hello {{client_name}},\n\nPlease find your estimate *{{document_no}}* for {{total}}.\n\nView online: {{portal_link}}\n\nThank you,\n{{org_name}}",
-    "Hi {{client_name}},\n\nWe have created an estimate {{document_no}} for you. The estimated total is {{total}}.\n\nYou can review it here: {{portal_link}}\n\nRegards,\n{{org_name}}"
+    "Hello {{client_name}},\n\nPlease find your quotation *{{document_no}}* for {{total}}.\n\nView online: {{portal_link}}\n\nThank you,\n{{org_name}}",
+    "Hi {{client_name}},\n\nWe have created a quotation {{document_no}} for you. The quoted total is {{total}}.\n\nYou can review it here: {{portal_link}}\n\nRegards,\n{{org_name}}"
   ],
   purchase_order: [
     "Hello {{client_name}},\n\nPlease find our Purchase Order *{{document_no}}* for {{total}}.\n\nView online: {{portal_link}}\n\nThank you,\n{{org_name}}",
@@ -96,6 +96,7 @@ export function compileWhatsappMessage(template: string, data: Record<string, an
     '[Client Name]': data.client_name,
     '[Invoice Number]': data.document_no,
     '[Estimate Number]': data.document_no,
+    '[Quotation Number]': data.document_no,
     '[PO Number]': data.document_no,
     '[Bill Number]': data.document_no,
     '[Total Amount]': data.total,

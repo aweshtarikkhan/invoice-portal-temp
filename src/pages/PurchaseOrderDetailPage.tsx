@@ -5,8 +5,7 @@ import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle } from "lucide-react";
-import { formatCurrency } from "@/lib/currency";
+import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle, Mail, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
@@ -17,6 +16,7 @@ import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 
 export default function PurchaseOrderDetailPage() {
   const org = useAppStore((s) => s.organization);
@@ -33,11 +33,53 @@ export default function PurchaseOrderDetailPage() {
   useEffect(() => {
     (async () => {
       const { data: p } = await (supabase as any).from("purchase_orders").select("*, vendors(*), branches(name), warehouses(name)").eq("id", id).maybeSingle();
-      const { data: l } = await (supabase as any).from("purchase_order_lines").select("*").eq("po_id", id).order("sort_order");
+      const { data: l } = await (supabase as any).from("purchase_order_lines").select("*, items(name, sku, hsn_code, unit)").eq("po_id", id).order("sort_order");
       const { data: g } = await (supabase as any).from("grns").select("id,grn_number,grn_date,status").eq("po_id", id).order("grn_date", { ascending: false });
       setPo(p); setLines(l || []); setGrns(g || []);
     })();
   }, [id]);
+
+  const mappedLines = useMemo(() => {
+    return (lines || []).map((l) => {
+      const q = Number(l.quantity) || 0;
+      const r = Number(l.rate) || 0;
+      const tr = Number(l.tax_rate) || 0;
+      const baseAmt = q * r;
+      const taxAmt = l.tax_amount != null && !isNaN(Number(l.tax_amount)) && Number(l.tax_amount) > 0
+        ? Number(l.tax_amount)
+        : (baseAmt * (tr / 100));
+      const totalAmt = baseAmt + taxAmt;
+      const hsnVal = l.hsn || l.hsn_code || l.items?.hsn_code || "";
+
+      return {
+        ...l,
+        hsn: hsnVal,
+        hsn_code: hsnVal,
+        hsn_sac: hsnVal,
+        item: {
+          ...(l.items || l.item || {}),
+          hsn_code: hsnVal,
+          unit: l.unit || l.items?.unit || "PCS",
+        },
+        items: l.items || {
+          name: l.name || l.description || "Item",
+          hsn_code: hsnVal,
+          unit: l.unit || "PCS",
+        },
+        name: l.items?.name || l.name || l.description || "Item",
+        description: (l.items?.name || l.name) && l.description && (l.items?.name || l.name) !== l.description
+          ? l.description
+          : (l.item_id ? (l.description !== (l.items?.name || l.name) ? l.description : "") : l.description),
+        tax_rate: { rate: tr, name: `GST ${tr}%` },
+        tax_percent: tr,
+        tax_amount: taxAmt,
+        rate: r,
+        quantity: q,
+        amount: totalAmt,
+        unit: l.unit || l.items?.unit || "PCS",
+      };
+    });
+  }, [lines]);
 
   const mappedPoForTemplate = useMemo(() => {
     if (!po) return null;
@@ -176,7 +218,94 @@ export default function PurchaseOrderDetailPage() {
     return pdf.output('blob');
   }, [po, org]);
 
-  useAutoEmailPDF({ entityType: "po", entityData: po, generatePDFBlob });
+  useAutoEmailPDF({ entityType: "po", entityData: po, lines: mappedLines, generatePDFBlob });
+
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!po || !org || !po.vendors) return;
+    const recipientEmail = po.vendors.email;
+    if (!recipientEmail) {
+      toast({
+        title: "No email address",
+        description: "This vendor does not have an email address specified.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    toast({ title: "Generating Purchase Order PDF for email..." });
+
+    try {
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) throw new Error("Could not generate Purchase Order PDF");
+
+      const base64data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(pdfBlob);
+        reader.onloadend = () => {
+          resolve((reader.result as string).split(",")[1]);
+        };
+      });
+
+      const subject = `Purchase Order #${po.po_number} from ${org.name || "Aassay Biz"}`;
+      const details: Array<{ label: string; value: string; isHighlight?: boolean }> = [
+        { label: "PO Number", value: po.po_number },
+        { label: "Order Date", value: po.order_date || po.date || new Date().toISOString().split("T")[0] },
+      ];
+      if (po.delivery_date) {
+        details.push({ label: "Expected Delivery Date", value: po.delivery_date, isHighlight: true });
+      }
+
+      const html = buildBrandedEmailHtml({
+        logoUrl: org.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: org.name || "Aassay Biz",
+        companyEmail: org.email || "support@aassaybiz.com",
+        badgeText: "OFFICIAL PURCHASE ORDER",
+        title: `Purchase Order #${po.po_number}`,
+        subtitle: `Issued by ${org.name || "Aassay Biz"}`,
+        recipientName: po.vendors.name || "Vendor Partner",
+        introText: `Please find attached our official Purchase Order from <strong>${org.name || "Aassay Biz"}</strong>:`,
+        amountLabel: "Total Order Amount",
+        amountValue: fmt(Number(po.total)),
+        details,
+        attachmentNote: `Purchase Order PDF (${po.po_number}.pdf) is attached to this email. Please review and confirm acceptance and fulfillment schedule.`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("send-custom-email", {
+        body: {
+          to: recipientEmail,
+          subject,
+          html,
+          orgId: org.id,
+          attachments: [
+            {
+              filename: `${po.po_number}.pdf`,
+              content: base64data,
+              content_type: "application/pdf",
+            },
+          ],
+        },
+      });
+
+      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+
+      toast({
+        title: "Email Sent Successfully! ✉️",
+        description: `Purchase Order PDF was successfully emailed to ${recipientEmail}.`,
+      });
+    } catch (err: any) {
+      console.error("Error emailing PO:", err);
+      toast({
+        title: "Failed to send email",
+        description: err.message || "An error occurred while emailing PO.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   if (!po) return <div className="p-6 text-muted-foreground">Loading...</div>;
 
@@ -192,31 +321,35 @@ export default function PurchaseOrderDetailPage() {
           <Badge variant="outline" className={statusColor[po.status] || ""}>{po.status}</Badge>
         </div>
         <div className="flex gap-2">
-            <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
-              if (!org || !po || !po.vendors) return;
-              
-              const template = await getWhatsappTemplate(org.id, "purchase_order");
-              const txt = compileWhatsappMessage(template, {
-                client_name: po.vendors.name,
-                document_no: po.po_number,
-                total: fmt(Number(po.total)),
-                due_date: po.delivery_date || "",
-                subtotal: fmt(Number(po.subtotal)),
-                tax: fmt(Number(po.tax_total)),
-                discount: fmt(Number(po.discount_total)),
-                tds: "0.00",
-                adjustment: po.adjustment ? fmt(Number(po.adjustment)) : "0.00",
-                items: lines.map(l => `- ${l.item_name || 'Item'} x${l.quantity}`).join('\n'),
-                portal_link: "",
-                org_name: org.name
-              });
+          <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
+            {isSendingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
+            {isSendingEmail ? "Sending..." : "Email PO"}
+          </Button>
+          <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
+            if (!org || !po || !po.vendors) return;
+            
+            const template = await getWhatsappTemplate(org.id, "purchase_order");
+            const txt = compileWhatsappMessage(template, {
+              client_name: po.vendors.name,
+              document_no: po.po_number,
+              total: fmt(Number(po.total)),
+              due_date: po.delivery_date || "",
+              subtotal: fmt(Number(po.subtotal)),
+              tax: fmt(Number(po.tax_total)),
+              discount: fmt(Number(po.discount_total)),
+              tds: "0.00",
+              adjustment: po.adjustment ? fmt(Number(po.adjustment)) : "0.00",
+              items: lines.map(l => `- ${l.item_name || 'Item'} x${l.quantity}`).join('\n'),
+              portal_link: "",
+              org_name: org.name
+            });
 
-              await openWhatsappShare({
-                phone: po.vendors.phone,
-                message: txt,
-                orgId: org.id
-              });
-            }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
+            await openWhatsappShare({
+              phone: po.vendors.phone,
+              message: txt,
+              orgId: org.id
+            });
+          }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Print / Download PDF</Button>
           <Button variant="outline" onClick={() => navigate(`/purchase-orders/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
@@ -227,7 +360,7 @@ export default function PurchaseOrderDetailPage() {
       <div ref={invoiceRef} className="print:m-0 print:shadow-none print:border-none">
           {mappedPoForTemplate && (
             <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-              <StyledInvoiceTemplate org={org} invoice={mappedPoForTemplate} lines={lines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
+              <StyledInvoiceTemplate org={org} invoice={mappedPoForTemplate} lines={mappedLines} fmt={fmt} type="po" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
             </div>
           )}
       </div>

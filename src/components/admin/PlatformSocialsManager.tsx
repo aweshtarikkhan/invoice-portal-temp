@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePlatformSocials, savePlatformSocials, formatSocialUrl, DEFAULT_PLATFORM_SOCIALS } from "@/hooks/use-platform-socials";
 import { YoutubeIcon, FacebookIcon, InstagramIcon, SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import { Loader2, Save, ExternalLink, RotateCcw, Share2, Phone, CheckCircle2, FileText, Printer, Layers, Sparkles, MessageSquare } from "lucide-react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export function PlatformSocialsManager() {
   const { socials: currentSocials, loading } = usePlatformSocials();
@@ -67,7 +68,7 @@ export function PlatformSocialsManager() {
             <div>
               <CardTitle className="text-xl flex items-center gap-2">
                 <Share2 className="w-5 h-5 text-indigo-400" />
-                Official AssayBiz Social Media Handles
+                Official <AassayBizBrand /> Social Media Handles
               </CardTitle>
               <CardDescription className="text-slate-500 mt-1">
                 Configure official social media channels and support contact information. These links are displayed on the public Landing Page, Employee Attendance Portal, and Navigation.
@@ -215,8 +216,8 @@ export function PlatformSocialsManager() {
               <span className="text-[11px] text-slate-500">Rendered in footers & headers</span>
             </div>
             <div className="p-4 bg-white rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4 border border-slate-200">
-              <div className="text-sm text-slate-600">
-                Follow AssayBiz on official channels:
+              <div className="text-sm text-slate-600 flex items-center gap-1.5">
+                Follow <AassayBizBrand /> on official channels:
               </div>
               <div className="flex items-center gap-2">
                 {previewYoutube && (
@@ -286,10 +287,10 @@ export function PlatformSocialsManager() {
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
                 <FileText className="w-5 h-5 text-indigo-400" />
-                Official AssayBiz Product & Pricing Brochure
+                Official <AassayBizBrand /> Product & Pricing Brochure
               </CardTitle>
               <CardDescription className="text-slate-500 mt-1">
-                A4 multi-page printable collateral updated with official AssayBiz logo, packages, pricing matrix, and core module names.
+                A4 multi-page printable collateral updated with official <AassayBizBrand /> logo, packages, pricing matrix, and core module names.
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -320,8 +321,8 @@ export function PlatformSocialsManager() {
                 <FileText className="w-6 h-6" />
               </div>
               <div>
-                <h5 className="font-semibold text-sm text-slate-800">AssayBiz Official Brochure 2026 Edition (A4)</h5>
-                <p className="text-xs text-slate-500">Includes Sales, Catalog, Purchases, Banking, HR, CRM, Promotion & Pricing.</p>
+                <h5 className="font-semibold text-sm text-slate-800 flex items-center gap-1.5"><AassayBizBrand /> Official Brochure 2026 Edition (A4)</h5>
+                <p className="text-xs text-slate-500">Includes Sales, Inventory Management, Purchases, Banking, HR, CRM, Promotion & Pricing.</p>
               </div>
             </div>
             <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
@@ -338,7 +339,7 @@ export function PlatformSocialsManager() {
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Layers className="w-5 h-5 text-indigo-400" />
-                AssayBiz Promotional Pamphlets & Handouts (6.5)
+                <AassayBizBrand /> Promotional Pamphlets & Handouts (6.5)
               </CardTitle>
               <CardDescription className="text-slate-500 mt-1">
                 Printable double-sided (A5/A4 front & back) and single-sheet handouts for client meetings, trade shows, and field sales.
@@ -372,7 +373,7 @@ export function PlatformSocialsManager() {
                 <Layers className="w-6 h-6" />
               </div>
               <div>
-                <h5 className="font-semibold text-sm text-slate-800">AssayBiz Double-Sided & Single-Sheet Pamphlets</h5>
+                <h5 className="font-semibold text-sm text-slate-800 flex items-center gap-1.5"><AassayBizBrand /> Double-Sided & Single-Sheet Pamphlets</h5>
                 <p className="text-xs text-slate-500">Includes core module highlights, ₹0 to ₹999 package pricing, 20% discount offer, and demo QR code.</p>
               </div>
             </div>

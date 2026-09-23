@@ -29,29 +29,35 @@ export function FeatureGuard({ children, featureKey, featureName }: FeatureGuard
 
   const { subscriptionPlan, getPlanForFeature } = useSubscription();
 
+  const userRole = useAppStore((s) => s.userRole);
+  const globalPermissions = useAppStore((s) => s.userPermissions);
+
   const currentUserEmail = session?.user?.email?.toLowerCase().trim();
   const isUserAdmin = isAdmin(currentUserEmail);
+  const isOrgAdmin = userRole === 'owner' || userRole === 'admin' || isUserAdmin;
   const currentOrgId = org?.id || "default";
   
-  const currentTeamMember = !isUserAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
-  const userPermissions = currentTeamMember?.permissions || [];
+  const currentTeamMember = !isOrgAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
+  const effectivePermissions = [...(currentTeamMember?.permissions || []), ...globalPermissions];
 
   const isAccessible = () => {
     // System settings are always available
     if (["system"].includes(featureKey)) return true;
     
-    // Feature must be enabled in org subscription
-    const isEnabledForOrg = isGroupEnabled(featureKey);
-    
-    // Admins always have access to org-enabled features
-    if (isUserAdmin) return isEnabledForOrg;
-    
-    // User must have permission (if they are a team member)
-    const hasPermission = isUserAdmin || 
-      !teamMembers[currentOrgId]?.length || 
-      userPermissions.includes(featureKey);
+    // Check if feature is enabled in org subscription
+    const isSuite = subscriptionPlan?.toLowerCase().trim() === 'suite' || 
+                    subscriptionPlan?.toLowerCase().trim() === 'plan_3' || 
+                    subscriptionPlan?.toLowerCase().includes('suite') ||
+                    subscriptionPlan?.toLowerCase().includes('flagship');
 
-    return isEnabledForOrg && hasPermission;
+    const isEnabledForOrg = isSuite || isGroupEnabled(featureKey);
+    if (!isEnabledForOrg) return false;
+    
+    // Business Owners & Admins always have access to org-enabled features
+    if (isOrgAdmin) return true;
+    
+    // Regular invited team members MUST have explicit permission
+    return effectivePermissions.includes(featureKey);
   };
 
   if (isAccessible()) {

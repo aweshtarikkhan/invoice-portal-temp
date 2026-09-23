@@ -12,9 +12,9 @@ const badges = [
   "Bulk WhatsApp Broadcasts",
   "Auto Festive Poster Maker",
   "Logo & QR Branded Creatives",
-  "Discount Coupons & Vouchers",
+  "Printable Brochure & Pamphlet Maker",
   "Inactive Client Retargeting",
-  "Real-Time Campaign Analytics",
+  "Multi-Channel WhatsApp & Email Campaigns",
 ];
 
 const campaigns = [
@@ -49,7 +49,7 @@ export default function MarketingFeaturesPage() {
                 MARKETING & PROMOTION
               </div>
 
-              <h1 className="text-3xl sm:text-4xl xl:text-[2.8rem] font-black tracking-tight text-white leading-[1.18] mb-4">
+              <h1 className="text-3xl sm:text-4xl xl:text-[2.8rem] font-black tracking-tight text-white leading-[1.65] mb-4">
                 Reach 10,000+ Customers.<br />
                 <span className="bg-gradient-to-r from-[#ff9438] to-amber-300 bg-clip-text text-transparent">
                   Boost Repeat Sales by 40%.
@@ -59,7 +59,7 @@ export default function MarketingFeaturesPage() {
               <p className="text-slate-300 text-base leading-relaxed mb-7 max-w-lg">
                 Turn your customer list into a revenue machine. Create branded
                 WhatsApp campaigns, auto-generate festive posters with your logo,
-                and launch coupon deals — no designer needed.
+                and launch promotional campaigns — no designer needed.
               </p>
 
               {/* 6 Capability Pills */}
@@ -106,7 +106,7 @@ export default function MarketingFeaturesPage() {
                   <div className="grid grid-cols-3 gap-2.5">
                     {posterColors.map((grad, i) => (
                       <div key={i} className={"rounded-xl overflow-hidden bg-gradient-to-br " + grad + " p-3 text-center relative cursor-pointer hover:scale-105 transition-transform shadow-md"}>
-                        <div className="text-[9px] font-black uppercase text-white/80 tracking-wider">Assay Biz Store</div>
+                        <div className="text-[9px] font-black uppercase text-white/80 tracking-wider">Aassay Biz Store</div>
                         <div className="text-sm font-black text-white mt-0.5 leading-tight">{posterTitles[i]}</div>
                         <div className="text-[10px] font-black text-white/90 mt-1 bg-black/20 rounded px-1.5 py-0.5">{posterDisc[i]}</div>
                         {i === 0 && (

@@ -63,7 +63,7 @@ export function WhatsAppTemplatesTab() {
         def = `Hello [Client Name],\n\nPlease find attached your invoice [Invoice Number] for [Total Amount].\nDue date: [Due Date]\n\nView & pay online: [Portal Link]\n\nThank you for your business!\n[Company Name]`;
         break;
       case 'estimate':
-        def = `Hello [Client Name],\n\nPlease find attached our estimate [Estimate Number] for [Total Amount].\n\nView online: [Portal Link]\n\nLet us know if you have any questions!\n[Company Name]`;
+        def = `Hello [Client Name],\n\nPlease find attached our quotation [Quotation Number] for [Total Amount].\n\nView online: [Portal Link]\n\nLet us know if you have any questions!\n[Company Name]`;
         break;
       case 'payment':
         def = `Hello [Client Name],\n\nThank you for your payment of [Total Amount] towards invoice [Invoice Number].\n\nYour payment has been successfully recorded.\n\n[Company Name]`;
@@ -82,14 +82,14 @@ export function WhatsAppTemplatesTab() {
           <h2 className="text-xl font-semibold mb-2">Message Templates</h2>
           <p className="text-muted-foreground text-sm mb-6">
             Customize the default messages sent to your clients via WhatsApp. 
-            Available placeholders: <code className="bg-slate-100 px-1 rounded">[Client Name]</code>, <code className="bg-slate-100 px-1 rounded">[Invoice Number]</code>, <code className="bg-slate-100 px-1 rounded">[Total Amount]</code>, <code className="bg-slate-100 px-1 rounded">[Due Date]</code>, <code className="bg-slate-100 px-1 rounded">[Portal Link]</code>, <code className="bg-slate-100 px-1 rounded">[Company Name]</code>.
+            Available placeholders: <code className="bg-slate-100 px-1 rounded">[Client Name]</code>, <code className="bg-slate-100 px-1 rounded">[Invoice Number]</code>, <code className="bg-slate-100 px-1 rounded">[Quotation Number]</code>, <code className="bg-slate-100 px-1 rounded">[Total Amount]</code>, <code className="bg-slate-100 px-1 rounded">[Due Date]</code>, <code className="bg-slate-100 px-1 rounded">[Portal Link]</code>, <code className="bg-slate-100 px-1 rounded">[Company Name]</code>.
           </p>
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TemplateType)}>
           <TabsList className="mb-4">
             <TabsTrigger value="invoice"><FileText className="w-4 h-4 mr-2" /> Invoices</TabsTrigger>
-            <TabsTrigger value="estimate"><FileText className="w-4 h-4 mr-2" /> Estimates</TabsTrigger>
+            <TabsTrigger value="estimate"><FileText className="w-4 h-4 mr-2" /> Quotations</TabsTrigger>
             <TabsTrigger value="payment"><FileText className="w-4 h-4 mr-2" /> Payments</TabsTrigger>
             <TabsTrigger value="po"><FileText className="w-4 h-4 mr-2" /> POs</TabsTrigger>
           </TabsList>

@@ -30,13 +30,46 @@ export default function GrnsPage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data } = await (supabase as any)
-      .from("grns")
-      .select("*, vendors(name), purchase_orders(po_number)")
-      .eq("org_id", org.id)
-      .order("grn_date", { ascending: false });
-    setRows(data || []);
-    setLoading(false);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("grns")
+        .select("*, vendors(name), purchase_orders(po_number)")
+        .eq("org_id", org.id)
+        .order("grn_date", { ascending: false });
+
+      if (error) {
+        console.warn("Could not query GRNs with join, falling back to manual enrichment:", error);
+        const { data: rawGrns } = await (supabase as any)
+          .from("grns")
+          .select("*")
+          .eq("org_id", org.id)
+          .order("grn_date", { ascending: false });
+
+        if (rawGrns && rawGrns.length > 0) {
+          const [vRes, pRes] = await Promise.all([
+            (supabase as any).from("vendors").select("id, name").eq("org_id", org.id),
+            (supabase as any).from("purchase_orders").select("id, po_number").eq("org_id", org.id),
+          ]);
+          const vMap = new Map((vRes.data || []).map((v: any) => [v.id, v.name]));
+          const pMap = new Map((pRes.data || []).map((p: any) => [p.id, p.po_number]));
+          const enriched = rawGrns.map((g: any) => ({
+            ...g,
+            vendors: g.vendor_id ? { name: vMap.get(g.vendor_id) } : null,
+            purchase_orders: g.po_id ? { po_number: pMap.get(g.po_id) } : null,
+          }));
+          setRows(enriched);
+        } else {
+          setRows([]);
+        }
+      } else {
+        setRows(data || []);
+      }
+    } catch (err) {
+      console.error("Error loading GRNs:", err);
+      setRows([]);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(() => { load(); }, [org?.id]);
 

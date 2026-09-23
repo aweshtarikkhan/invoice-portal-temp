@@ -2,11 +2,12 @@ import { Link } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export function PublicFooter() {
   const { data: socials } = usePlatformSocials();
-  const phone = (socials?.phone ? socials.phone.replace(/[^0-9]/g, "") : "") || "919424825919";
-  const formattedPhone = socials?.phone || "+91 94248 25919";
+  const phone = (socials?.phone ? socials.phone.replace(/[^0-9]/g, "") : "") || "917806025875";
+  const formattedPhone = socials?.phone || "+91 7806025875";
 
   return (
     <>
@@ -25,10 +26,10 @@ export function PublicFooter() {
             {/* Column 1: Brand, Tagline & Helpline (4 cols) */}
             <div className="lg:col-span-4 flex flex-col items-start">
               <Link to="/" className="inline-block p-2.5 px-3.5 bg-white rounded-xl shadow-md mb-5 hover:opacity-95 transition-opacity">
-                <img src={logoImg} alt="Assay Biz" className="h-8 w-auto object-contain" />
+                <img src={logoImg} alt="Aassay Biz" className="h-8 w-auto object-contain" />
               </Link>
-              <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-sm">
-                India's smartest GST billing and business operating platform. We help shopkeepers, freelancers, and growing enterprises automate invoicing, stock, HRMS, and CRM.
+              <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-sm text-justify">
+                The unified operating system built for modern Indian enterprises. Powering effortless GST compliance, financial accounting, workforce payroll, and customer growth from a single intelligent workspace.
               </p>
 
 
@@ -111,15 +112,15 @@ export function PublicFooter() {
                     </a>
                   </li>
                   <li>
-                    <a href="mailto:support@assaybiz.com" className="flex items-start gap-3 text-slate-300 hover:text-[#ff9438] transition-colors">
+                    <a href="mailto:support@aassaybiz.com" className="flex items-start gap-3 text-slate-300 hover:text-[#ff9438] transition-colors">
                       <Mail className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
-                      <span>support@assaybiz.com</span>
+                      <span>support@aassaybiz.com</span>
                     </a>
                   </li>
                   <li>
                     <div className="flex items-start gap-3 text-slate-300">
                       <MapPin className="w-4 h-4 mt-0.5 text-[#ff9438] shrink-0" />
-                      <span>Bhopal, India</span>
+                      <span>Indore, India</span>
                     </div>
                   </li>
                 </ul>
@@ -137,8 +138,8 @@ export function PublicFooter() {
                 <div className="flex items-start gap-2.5">
                   <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <div>
-                    <div className="font-bold text-white">Bank-Grade 256-bit SSL</div>
-                    <div className="text-slate-400 text-[11px]">End-to-end encrypted daily backups</div>
+                    <div className="font-bold text-white">Enterprise Cloud Security</div>
+                    <div className="text-slate-400 text-[11px]">256-bit SSL encryption & multi-tenant data protection</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-2.5">
@@ -155,8 +156,10 @@ export function PublicFooter() {
 
           {/* Bottom Copyright & Legal Links Bar */}
           <div className="pt-8 flex flex-col xl:flex-row items-center justify-between gap-4 text-xs sm:text-sm">
-            <p className="text-slate-400 text-center xl:text-left md:whitespace-nowrap">
-              &copy; {new Date().getFullYear()} Aassay Biz, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)
+            <p className="text-slate-400 text-center xl:text-left md:whitespace-nowrap flex items-center justify-center xl:justify-start gap-1 flex-wrap">
+              <span>&copy; {new Date().getFullYear()}</span>
+              <AassayBizBrand theme="dark" />
+              <span>, All Rights Reserved Emerging Thoughts Pvt. Ltd. (CIN - U73200MP2025PTC074472)</span>
             </p>
             <div className="flex flex-wrap lg:flex-nowrap items-center justify-center gap-2 sm:gap-2.5 pr-0 lg:pr-20">
               <Link 
@@ -189,7 +192,7 @@ export function PublicFooter() {
           Chat on WhatsApp
         </span>
         <a
-          href={`https://wa.me/${phone}?text=Hello%20Assay%20Biz,%20I%20would%20like%20to%20know%20more%20about%20your%20software.`}
+          href={`https://wa.me/${phone}?text=Hello%20Aassay%20Biz,%20I%20would%20like%20to%20know%20more%20about%20your%20software.`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Contact support on WhatsApp"

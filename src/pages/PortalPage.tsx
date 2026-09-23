@@ -85,7 +85,7 @@ export default function PortalPage() {
   const currency = entity.currency_code || org.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
-  const entityLabel = portalData.entity_type === "invoice" ? "Invoice" : portalData.entity_type === "estimate" ? "Estimate" : "Credit Note";
+  const entityLabel = portalData.entity_type === "invoice" ? "Invoice" : portalData.entity_type === "estimate" ? "Quotation" : "Credit Note";
   const entityNumber = entity.invoice_number || entity.estimate_number || entity.credit_note_number;
 
   return (
@@ -182,6 +182,9 @@ export default function PortalPage() {
               )}
               {Number(entity.shipping_charge || 0) > 0 && (
                 <div className="flex justify-between"><span className="text-muted-foreground">Shipping</span><span>+{fmt(Number(entity.shipping_charge))}</span></div>
+              )}
+              {Number((entity as any).expenses || 0) > 0 && (
+                <div className="flex justify-between"><span className="text-muted-foreground">Expenses (Fixed Cost)</span><span>+{fmt(Number((entity as any).expenses))}</span></div>
               )}
               <div className="flex justify-between border-t pt-1 font-bold text-base">
                 <span>Total</span><span>{fmt(Number(entity.total))}</span>

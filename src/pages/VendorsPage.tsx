@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, Search, Download } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Download, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { useNavigate } from "react-router-dom";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
@@ -159,15 +159,33 @@ export default function VendorsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map(v => (
-                  <TableRow key={v.id}>
-                    <TableCell className="font-medium">{v.name}</TableCell>
+                  <TableRow
+                    key={v.id}
+                    className="cursor-pointer hover:bg-muted/50 transition-colors group"
+                    onClick={() => navigate(`/vendors/${v.id}`)}
+                  >
+                    <TableCell className="font-semibold text-primary hover:underline">{v.name}</TableCell>
                     <TableCell className="font-mono text-xs">{v.gstin || "—"}</TableCell>
-                    <TableCell className="text-sm">{v.email || v.phone || "—"}</TableCell>
-                    <TableCell>Net {v.payment_terms}</TableCell>
+                    <TableCell className="text-sm">{v.phone || v.email || "—"}</TableCell>
+                    <TableCell>Net {v.payment_terms || 30} Days</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(Number(v.balance_due) || 0, (org as any)?.currency || "INR")}</TableCell>
-                    <TableCell className="text-right">
-                      <Button size="icon" variant="ghost" onClick={() => edit(v)}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(v.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-2"
+                          onClick={() => navigate(`/vendors/${v.id}`)}
+                        >
+                          <Eye className="h-4 w-4 mr-1 text-muted-foreground" /> View
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => edit(v)} title="Edit Vendor">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => remove(v.id)} title="Delete Vendor">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

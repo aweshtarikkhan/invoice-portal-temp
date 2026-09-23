@@ -101,7 +101,7 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent className="space-y-4 pt-4 text-center">
             <a
-              href="https://attendance.Assay Bizinvoice.com/"
+              href="https://attendance.aassaybiz.com/"
               target="_blank"
               rel="noreferrer"
               className="block w-full"
@@ -128,13 +128,13 @@ export default function LoginPage() {
 
 return (
     <>
-      <SEO title="Sign In" description="Sign in to Assay Biz Invoices to manage your invoices, clients and payments." path="/login" />
+      <SEO title="Sign In" description="Sign in to Aassay Biz Invoices to manage your invoices, clients and payments." path="/login" />
       <div className="min-h-screen flex flex-col">
         <PublicHeader />
         <main className="flex-grow flex items-center justify-center bg-muted/30 px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
-            <img src={logoImg} alt="Assay Biz Invoices" width={80} height={80} fetchPriority="high" decoding="async" className="mx-auto mb-2 h-20 w-20 object-contain" />
+            <img src={logoImg} alt="Aassay Biz Invoices" width={80} height={80} fetchPriority="high" decoding="async" className="mx-auto mb-2 h-20 w-20 object-contain" />
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>Sign in to your invoice management account</CardDescription>
           </CardHeader>

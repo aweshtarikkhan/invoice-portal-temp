@@ -40,7 +40,10 @@ export function CorporateBlueInvoiceTemplate({
   const darkNavy = "#002060";
   const lightBlueBg = "#eef4ff";
   const lightBorder = "#c7d2fe";
-  const hasGst = Boolean(org?.gst_number);
+  const snapshot = (invoice?.metadata as any) || {};
+  const hasGst = snapshot.has_gst !== undefined
+    ? Boolean(snapshot.has_gst)
+    : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
   const clientName = (invoice.clients as any)?.display_name || (invoice.vendors as any)?.name || (invoice.vendors as any)?.display_name || invoice.client_name || "Client Name";
   const clientGst = (invoice.clients as any)?.tax_number || (invoice.vendors as any)?.tax_number || invoice.client_gst;
@@ -60,14 +63,16 @@ export function CorporateBlueInvoiceTemplate({
       if (a?.country) res.push(a.country);
       return res;
     } catch {
-      return [String(org.address)];
+      return [];
     }
   }, [org?.address]);
 
-  const billToAddressLines: string[] = useMemo(() => {
-    if (!invoice?.billing_address) return [];
+  // Billing address parsing
+  const billingAddressLines: string[] = useMemo(() => {
+    const raw = invoice.billing_address || (invoice.clients as any)?.address || (invoice.vendors as any)?.address;
+    if (!raw) return [];
     try {
-      const a = typeof invoice.billing_address === "string" ? JSON.parse(invoice.billing_address) : invoice.billing_address;
+      const a = typeof raw === "string" ? JSON.parse(raw) : raw;
       const res: string[] = [];
       if (a?.street) res.push(a.street);
       const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
@@ -75,7 +80,7 @@ export function CorporateBlueInvoiceTemplate({
       if (a?.country) res.push(a.country);
       return res;
     } catch {
-      return [String(invoice.billing_address)];
+      return [];
     }
   }, [invoice?.billing_address]);
 
@@ -106,10 +111,10 @@ export function CorporateBlueInvoiceTemplate({
 
   const totalQty = useMemo(() => lines.reduce((acc, l) => acc + Number(l.quantity || 0), 0), [lines]);
   const totalTax = useMemo(() => Number(invoice.total_tax || 0), [invoice.total_tax]);
-  const subtotal = useMemo(() => Number(invoice.subtotal || invoice.total), [invoice.subtotal, invoice.total]);
+  const subtotal = useMemo(() => (!hasGst && totalTax === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0) ? Number(invoice.total) : Number(invoice.subtotal || invoice.total)), [invoice.subtotal, invoice.total, hasGst, totalTax]);
   const grandTotal = useMemo(() => Number(invoice.total || 0), [invoice.total]);
 
-  const titleText = type === "estimate" ? "ESTIMATE" : (type === "po" ? "PURCHASE ORDER" : (type === "bill" ? "PURCHASE INVOICE" : "TAX INVOICE"));
+  const titleText = type === "estimate" ? "QUOTATION" : (type === "po" ? "PURCHASE ORDER" : (type === "bill" ? "PURCHASE INVOICE" : (hasGst ? "TAX INVOICE" : "INVOICE")));
 
   return (
     <div
@@ -194,7 +199,7 @@ export function CorporateBlueInvoiceTemplate({
               <div style={{ background: lightBlueBg, color: primaryBlue, padding: 4, borderRadius: 4 }}>
                 <FileText style={{ width: 14, height: 14 }} />
               </div>
-              <span style={{ fontWeight: 700, width: 100, textAlign: "left" }}>Invoice No.</span>
+              <span style={{ fontWeight: 700, width: 100, textAlign: "left" }}>{type === "estimate" ? "Quotation No." : (type === "po" ? "PO No." : "Invoice No.")}</span>
               <span style={{ fontWeight: 600, color: "#0f172a" }}>: {number}</span>
             </div>
 
@@ -202,7 +207,7 @@ export function CorporateBlueInvoiceTemplate({
               <div style={{ background: lightBlueBg, color: primaryBlue, padding: 4, borderRadius: 4 }}>
                 <Calendar style={{ width: 14, height: 14 }} />
               </div>
-              <span style={{ fontWeight: 700, width: 100, textAlign: "left" }}>Invoice Date</span>
+              <span style={{ fontWeight: 700, width: 100, textAlign: "left" }}>{type === "estimate" ? "Quotation Date" : (type === "po" ? "PO Date" : "Invoice Date")}</span>
               <span style={{ fontWeight: 600, color: "#0f172a" }}>: {invoice.issue_date || invoice.bill_date || invoice.date || "-"}</span>
             </div>
 
@@ -293,7 +298,7 @@ export function CorporateBlueInvoiceTemplate({
           <tr style={{ background: primaryBlue, color: "#ffffff", fontSize: 11, fontWeight: 700 }}>
             <th style={{ padding: "8px 6px", textAlign: "center", width: 36, borderRight: "1px solid #2563eb" }}>#</th>
             <th style={{ padding: "8px 10px", textAlign: "left", borderRight: "1px solid #2563eb" }}>DESCRIPTION</th>
-            <th style={{ padding: "8px 6px", textAlign: "center", width: 90, borderRight: "1px solid #2563eb" }}>HSN / SAC</th>
+            {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 90, borderRight: "1px solid #2563eb" }}>HSN / SAC</th>}
             <th style={{ padding: "8px 6px", textAlign: "center", width: 50, borderRight: "1px solid #2563eb" }}>QTY</th>
             <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: hasGst ? "1px solid #2563eb" : "none" }}>RATE (₹)</th>
             {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 70, borderRight: "1px solid #2563eb" }}>GST %</th>}
@@ -305,7 +310,7 @@ export function CorporateBlueInvoiceTemplate({
           {lines.map((line, idx) => {
             const taxAmt = Number(line.tax_amount || 0);
             const lineAmt = Number(line.amount || 0);
-            const gstRate = line.tax_rate || line.gst_rate || (taxAmt > 0 && lineAmt > 0 ? Math.round((taxAmt / (lineAmt - taxAmt || lineAmt)) * 100) : 0);
+            const gstRate = typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : (line.tax_rate || line.gst_rate || (taxAmt > 0 && lineAmt > 0 ? Math.round((taxAmt / (lineAmt - taxAmt || lineAmt)) * 100) : 0));
             // line.amount already includes tax_amount, so amount without GST = line.amount - tax_amount
             const lineTaxableAmt = lineAmt - taxAmt;
 
@@ -316,7 +321,7 @@ export function CorporateBlueInvoiceTemplate({
                   <div style={{ fontWeight: 700, color: "#0f172a" }}>{line.name}</div>
                   {line.description && <div style={{ fontSize: 10, color: "#64748b", marginTop: 2, whiteSpace: "pre-wrap" }}>{line.description}</div>}
                 </td>
-                <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0", color: "#475569" }}>{line.hsn_code || "-"}</td>
+                {hasGst && <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0", color: "#475569" }}>{line.hsn_code || line.hsn || line.hsn_sac || line.item?.hsn_code || "-"}</td>}
                 <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0", fontWeight: 600 }}>
                   <div>{line.quantity} {line.unit && <span style={{ fontSize: 10, color: "#64748b" }}>{line.unit}</span>}</div>
                   {invoice?.show_sub_units !== false && line.sub_unit && line.sub_unit_conversion_rate && Number(line.sub_unit_conversion_rate) > 1 && line.unit?.toLowerCase() !== line.sub_unit?.toLowerCase() && (

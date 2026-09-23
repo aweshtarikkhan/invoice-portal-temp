@@ -122,6 +122,7 @@ function SortableLineItem({
   currency: string;
   org: any;
 }) {
+  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: line.id });
   const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
 
@@ -161,9 +162,10 @@ function SortableLineItem({
         .join("\n");
     }
     onChange(index, "description", item.description ? (extraDesc ? `${item.description}\n${extraDesc}` : item.description) : extraDesc);
-        let __rate = Number(item.unit_price) || 0;
+    let __rate = Number(item.unit_price) || 0;
+    const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
     const __priceType = window.location.pathname.includes("bill") || window.location.pathname.includes("purchase") || window.location.pathname.includes("grn") ? (item.purchase_price_type || "without_tax") : (item.sales_price_type || "without_tax");
-    if (__priceType === "with_tax" && item.tax_id) {
+    if (hasGst && __priceType === "with_tax" && item.tax_id) {
       const __tax = taxRates.find((t: any) => t.id === item.tax_id);
       if (__tax && Number(__tax.rate) > 0) {
         __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
@@ -175,8 +177,8 @@ function SortableLineItem({
     onChange(index, "unit", item.unit || "pcs");
     onChange(index, "primary_unit", item.unit || "pcs");
     onChange(index, "base_unit_price", Number(item.unit_price) || 0);
-    onChange(index, "hsn_code", item.hsn_code || "");
-    onChange(index, "tax_id", item.tax_id || null);
+    onChange(index, "hsn_code", hasGst ? (item.hsn_code || "") : "");
+    onChange(index, "tax_id", hasGst ? (item.tax_id || null) : null);
     onChange(index, "sub_unit", item.sub_unit || "");
     onChange(index, "sub_unit_conversion_rate", Number(item.sub_unit_conversion_rate) || 1);
     setItemDropdownOpen(false);
@@ -283,6 +285,7 @@ function SortableLineItem({
             onFocus={(e) => e.target.select()} 
             onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} 
             value={line.quantity} 
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
             onChange={(e) => {
               let val = e.target.value;
               if (val !== "") {
@@ -292,7 +295,7 @@ function SortableLineItem({
                   val = String(Math.floor(parseFloat(val) || 0));
                 }
               }
-              onChange(index, "quantity", val === "" ? "" : (parseFloat(val) || 0));
+              onChange(index, "quantity", val === "" ? "" : Math.max(0, parseFloat(val) || 0));
             }} 
             min={0} 
             step={["pcs", "pieces", "box", "boxes", "nos"].includes((line.unit || "").toLowerCase()) ? "1" : "0.01"} 
@@ -352,7 +355,9 @@ function SortableLineItem({
         </div>
         {/* Rate */}
         <div className="col-span-2 space-y-0.5">
-          <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+          <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate}
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           {Number(line.discount) > 0 && (
             <div className="flex flex-col items-end mt-1 text-[10px]">
               <span className="text-emerald-600 font-semibold">{line.discount_type === 'percentage' ? `${line.discount}%` : `₹${line.discount}`} discount</span>
@@ -361,7 +366,7 @@ function SortableLineItem({
           )}
         </div>
         {/* Tax */}
-        {org?.gst_number && (
+        {hasGst && (
           <div className="col-span-2">
             <Select 
               value={
@@ -401,8 +406,8 @@ function SortableLineItem({
         </div>
         )}
         {/* Amount */}
-        <div className={`text-right pt-1 ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>
-          <span className="text-sm font-bold">{fmt(org?.gst_number ? line.amount - (line.tax_amount || 0) : line.amount)}</span>
+        <div className={`text-right pt-1 ${!hasGst ? 'col-span-4' : 'col-span-2'}`}>
+          <span className="text-sm font-bold">{fmt(hasGst ? line.amount - (line.tax_amount || 0) : line.amount)}</span>
         </div>
       </div>
       <button onClick={() => onRemove(index)} className="text-muted-foreground hover:text-destructive shrink-0 mt-2 ml-1">
@@ -418,6 +423,7 @@ export default function InvoiceBuilderPage() {
   const [searchParams] = useSearchParams();
   const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
+  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
   const { toast } = useToast();
   const { user } = useAuth();
   const { subscriptionPlan } = useSubscription();
@@ -443,8 +449,12 @@ export default function InvoiceBuilderPage() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [shippingSameAsBilling, setShippingSameAsBilling] = useState(true);
   const [shippingName, setShippingName] = useState("");
-  const [shippingAddressText, setShippingAddressText] = useState("");
-  const [shippingContact, setShippingContact] = useState("");
+  const [shippingStreet, setShippingStreet] = useState("");
+  const [shippingCity, setShippingCity] = useState("");
+  const [shippingState, setShippingState] = useState("");
+  const [shippingZip, setShippingZip] = useState("");
+  const [shippingPhone, setShippingPhone] = useState("");
+  const [shippingGst, setShippingGst] = useState("");
   const [issueDate, setIssueDate] = useState(new Date().toISOString().split("T")[0]);
   const [dueDate, setDueDate] = useState("");
   const [paymentTerms, setPaymentTerms] = useState(30);
@@ -587,20 +597,32 @@ export default function InvoiceBuilderPage() {
       const matchedClient = clients.find((c) => c.id === inv.client_id);
       if (matchedClient) setClientSearch(matchedClient.display_name);
       
+      if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) {
+        setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
+      }
+      if (inv.shipping_address) {
+        try {
+          const parsed = typeof inv.shipping_address === "string" ? JSON.parse(inv.shipping_address) : inv.shipping_address;
+          if (parsed && typeof parsed === "object") {
+            setShippingName(parsed.name || parsed.shipping_name || "");
+            setShippingStreet(parsed.street || parsed.address || "");
+            setShippingCity(parsed.city || "");
+            setShippingState(parsed.state || "");
+            setShippingZip(parsed.zip || parsed.pincode || "");
+            setShippingPhone(parsed.phone || parsed.contact || "");
+            setShippingGst(parsed.gstin || parsed.tax_number || "");
+          } else {
+            setShippingStreet(String(inv.shipping_address));
+          }
+        } catch {
+          setShippingStreet(String(inv.shipping_address));
+        }
+      }
+
       if (!duplicateId) {
         setInvoiceNumber(inv.invoice_number);
-        if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
         setIssueDate(inv.issue_date);
         setDueDate(inv.due_date);
-        // removed extra brace
-        if (inv.shipping_address) {
-          try {
-             const parsed = typeof inv.shipping_address === "string" ? JSON.parse(inv.shipping_address) : inv.shipping_address;
-             setShippingAddress(parsed?.street || String(inv.shipping_address));
-          } catch {
-             setShippingAddress(String(inv.shipping_address));
-          }
-        }
       }
       
       setNotes(inv.notes || "");
@@ -742,25 +764,26 @@ export default function InvoiceBuilderPage() {
     
     let tax_amount = 0;
     let computedAmount = afterDiscount;
-    const hasGst = Boolean(org?.gst_number);
+    const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
 
-    if (line.tax_id) {
+    if (hasGst && line.tax_id) {
       const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
       const taxRateObj = taxRates.find((t: any) => t.id === line.tax_id);
       const rate = slab ? slab.rate : (taxRateObj ? Number(taxRateObj.rate) : 0);
       const computedTax = afterDiscount * (rate / 100);
       
-      if (!hasGst) {
-        computedAmount += computedTax;
-        tax_amount = 0; // absorb tax into item amount
-      } else {
-        tax_amount = computedTax;
-        computedAmount += tax_amount;
-      }
+      tax_amount = computedTax;
+      computedAmount += tax_amount;
     }
     
-    return { ...line, tax_amount, amount: computedAmount };
-  }, [taxRates, org?.gst_number]);
+    return { 
+      ...line, 
+      tax_amount: hasGst ? tax_amount : 0, 
+      tax_id: hasGst ? line.tax_id : null,
+      hsn_code: hasGst ? (line.hsn_code || "") : "",
+      amount: computedAmount 
+    };
+  }, [taxRates, org?.gst_number, (org as any)?.gst_enabled]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
     setLines((prev) => {
@@ -791,12 +814,15 @@ export default function InvoiceBuilderPage() {
     return null;
   }, [org]);
 
+  const selectedClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
+
   const baseClientState = useMemo(() => {
-    const client = clients.find(c => c.id === clientId);
-    if (client?.tax_number) return stateCodeFromGstin(client.tax_number);
-    if (client?.billing_address && typeof client.billing_address === 'object' && (client.billing_address as any).state) return String((client.billing_address as any).state);
+    if (selectedClient?.tax_number) return stateCodeFromGstin(selectedClient.tax_number);
+    if (selectedClient?.billing_address && typeof selectedClient.billing_address === 'object' && (selectedClient.billing_address as any).state) {
+      return String((selectedClient.billing_address as any).state);
+    }
     return null;
-  }, [clientId, clients]);
+  }, [selectedClient]);
 
   const clientState = clientStateOverride || baseClientState;
 
@@ -865,14 +891,15 @@ export default function InvoiceBuilderPage() {
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
 
-  // Gross total before TDS/TCS
-  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + (autoRoundOff ? 0 : adjustment) - expenses;
+  // Gross total before TDS/TCS (Fixed cost expenses & shipping are added, not subtracted)
+  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + expenses + (autoRoundOff ? 0 : adjustment);
 
-  // TDS is calculated BEFORE GST on Subtotal (taxable value) and DEDUCTED (-)
-  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + adjustment) and ADDED (+)
+  // TDS is calculated BEFORE GST on Subtotal (taxable value: subtotal + expenses) and DEDUCTED (-)
+  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + expenses + adjustment) and ADDED (+)
+  const taxableSubtotal = Math.max(0, subtotal + expenses);
   const tdsTcsAmount = tdsTcsApplicable
     ? tdsTcsType === "tds"
-      ? (subtotal * Math.max(0, tdsTcsRate)) / 100
+      ? (taxableSubtotal * Math.max(0, tdsTcsRate)) / 100
       : (baseTotalBeforeTdsTcs * Math.max(0, tdsTcsRate)) / 100
     : 0;
   
@@ -995,17 +1022,29 @@ export default function InvoiceBuilderPage() {
     const invoicePayload = {
       org_id: org!.id,
       client_id: clientId,
+      billing_address: selectedClient?.billing_address || null,
+      shipping_address: shippingSameAsBilling
+        ? (selectedClient?.shipping_address || selectedClient?.billing_address || null)
+        : {
+            name: shippingName.trim(),
+            street: shippingStreet.trim(),
+            city: shippingCity.trim(),
+            state: shippingState.trim(),
+            zip: shippingZip.trim(),
+            phone: shippingPhone.trim(),
+            gstin: shippingGst.trim(),
+          },
       metadata: {
         template_style: org?.template_style,
         template_accent_color: org?.template_accent_color,
         template_font: org?.template_font,
         template_paper_size: org?.template_paper_size,
-        has_gst: Boolean(org?.gst_number),
-          shipping_same_as_billing: shippingSameAsBilling,
-          auto_round_off: autoRoundOff,
-          show_bank_details: showBankDetails,
-          show_terms: showTerms,
-          show_notes: showNotes,
+        has_gst: Boolean(org?.gst_number?.trim() && org?.gst_enabled !== false),
+        shipping_same_as_billing: shippingSameAsBilling,
+        auto_round_off: autoRoundOff,
+        show_bank_details: showBankDetails,
+        show_terms: showTerms,
+        show_notes: showNotes,
       },
       invoice_number: invoiceNumber,
       issue_date: issueDate,
@@ -1028,7 +1067,7 @@ export default function InvoiceBuilderPage() {
       eway_transport_mode: generateEway ? ewayTransportMode : null,
       eway_distance_km: generateEway && ewayDistanceKm ? parseInt(ewayDistanceKm) : null,
       subtotal,
-      total_tax: totalTax,
+      total_tax: hasGst ? totalTax : 0,
       total_discount: totalDiscount,
       tds_tcs_applicable: tdsTcsApplicable,
       tds_tcs_type: tdsTcsType,
@@ -1097,24 +1136,26 @@ export default function InvoiceBuilderPage() {
 
       // Ensure tax rate records exist in DB for any slab selected
       const slabMap: Record<string, string> = {};
-      for (const l of calculatedLines) {
-        if (l.tax_id && INDIAN_GST_SLABS.some(s => s.id === l.tax_id)) {
-          const slab = INDIAN_GST_SLABS.find(s => s.id === l.tax_id)!;
-          if (slab.rate === 0) {
-            slabMap[slab.id] = "";
-          } else if (!slabMap[slab.id]) {
-            const existing = taxRates.find(t => Number(t.rate) === slab.rate);
-            if (existing) {
-              slabMap[slab.id] = existing.id;
-            } else {
-              const { data: newTax } = await supabase.from("tax_rates").insert({
-                org_id: org!.id,
-                name: slab.name,
-                rate: slab.rate,
-              }).select().single();
-              if (newTax) {
-                slabMap[slab.id] = newTax.id;
-                setTaxRates(prev => [...prev, newTax]);
+      if (hasGst) {
+        for (const l of calculatedLines) {
+          if (l.tax_id && INDIAN_GST_SLABS.some(s => s.id === l.tax_id)) {
+            const slab = INDIAN_GST_SLABS.find(s => s.id === l.tax_id)!;
+            if (slab.rate === 0) {
+              slabMap[slab.id] = "";
+            } else if (!slabMap[slab.id]) {
+              const existing = taxRates.find(t => Number(t.rate) === slab.rate);
+              if (existing) {
+                slabMap[slab.id] = existing.id;
+              } else {
+                const { data: newTax } = await supabase.from("tax_rates").insert({
+                  org_id: org!.id,
+                  name: slab.name,
+                  rate: slab.rate,
+                }).select().single();
+                if (newTax) {
+                  slabMap[slab.id] = newTax.id;
+                  setTaxRates(prev => [...prev, newTax]);
+                }
               }
             }
           }
@@ -1125,7 +1166,7 @@ export default function InvoiceBuilderPage() {
       const linePayloads = calculatedLines
         .filter((l) => l.name.trim() || l.rate > 0)
         .map((l, i) => {
-          let resolvedTaxId = l.tax_id;
+          let resolvedTaxId = hasGst ? l.tax_id : null;
           if (resolvedTaxId && slabMap[resolvedTaxId] !== undefined) {
             resolvedTaxId = slabMap[resolvedTaxId] || null;
           }
@@ -1139,11 +1180,11 @@ export default function InvoiceBuilderPage() {
             rate: Number(l.rate) || 0,
             discount: Number(l.discount) || 0,
             discount_type: l.discount_type,
-            tax_id: resolvedTaxId,
-            tax_amount: l.tax_amount || 0,
+            tax_id: hasGst ? resolvedTaxId : null,
+            tax_amount: hasGst ? (l.tax_amount || 0) : 0,
             amount: l.amount,
             sort_order: i,
-            hsn_code: l.hsn_code?.trim() || null,
+            hsn_code: hasGst ? (l.hsn_code?.trim() || null) : null,
             sub_unit: l.sub_unit,
             sub_unit_conversion_rate: l.sub_unit_conversion_rate
           };
@@ -1407,30 +1448,10 @@ export default function InvoiceBuilderPage() {
                     >
                       <ChevronDown className="h-4 w-4" />
                     </button>
-                  </div>
-                </div>
-                  <div className="flex items-center space-x-2 mt-2">
-                    <Checkbox id="same_as_billing" checked={shippingSameAsBilling} onCheckedChange={(c) => setShippingSameAsBilling(!!c)} />
-                    <label htmlFor="same_as_billing" className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                      Bill To and Ship To are same
-                    </label>
-                  </div>
-                  {!shippingSameAsBilling && (
-                    <div className="mt-2">
-                       <Textarea 
-                         placeholder="Enter Shipping Address..." 
-                         value={shippingAddress} 
-                         onChange={(e) => setShippingAddress(e.target.value)} 
-                         className="h-20 resize-none text-sm"
-                       />
-                    </div>
-                  )}
-                  <div className="flex gap-2 relative">
-                  <div className="relative flex-1">
                     {clientDropdownOpen && (
                       <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
                         {clients
-                          .filter((c) => !clientSearch.trim() || c.display_name.toLowerCase().includes(clientSearch.toLowerCase()))
+                          .filter((c) => !clientSearch.trim() || c.display_name.toLowerCase().includes(clientSearch.toLowerCase()) || (c.company_name && c.company_name.toLowerCase().includes(clientSearch.toLowerCase())))
                           .map((c) => (
                             <button
                               key={c.id}
@@ -1443,7 +1464,8 @@ export default function InvoiceBuilderPage() {
                                 setClientDropdownOpen(false);
                               }}
                             >
-                              {c.display_name}
+                              <div className="font-medium">{c.display_name}</div>
+                              {c.company_name && <div className="text-xs text-muted-foreground">{c.company_name}</div>}
                             </button>
                           ))}
                         {clients.filter((c) => !clientSearch.trim() || c.display_name.toLowerCase().includes(clientSearch.toLowerCase())).length === 0 && (
@@ -1455,6 +1477,151 @@ export default function InvoiceBuilderPage() {
                   <Button type="button" variant="outline" size="icon" onClick={() => setAddClientOpen(true)} title="Add New Client">
                     <Plus className="h-4 w-4" />
                   </Button>
+                </div>
+
+                {/* Bill To Card (Fed Client Data) */}
+                {selectedClient && (
+                  <div className="rounded-lg border border-border/80 bg-muted/30 p-3 text-xs space-y-1.5 mt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-xs uppercase tracking-wider text-muted-foreground">Bill To (Client Details)</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded bg-primary/10 text-primary font-medium">From Client Profile</span>
+                    </div>
+                    <div className="font-semibold text-foreground text-sm">
+                      {selectedClient.company_name ? `${selectedClient.display_name} (${selectedClient.company_name})` : selectedClient.display_name}
+                    </div>
+                    <div className="text-muted-foreground leading-relaxed">
+                      {(() => {
+                        const addr = selectedClient.billing_address;
+                        if (!addr) return <span className="italic">No billing address saved for this client</span>;
+                        if (typeof addr === "string") return addr;
+                        const parts = [(addr as any).street, (addr as any).city, (addr as any).state, (addr as any).zip].filter(Boolean);
+                        return parts.length > 0 ? parts.join(", ") : <span className="italic">No billing address saved</span>;
+                      })()}
+                    </div>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 pt-1 text-muted-foreground">
+                      {selectedClient.tax_number && (
+                        <div><strong className="text-foreground">GSTIN:</strong> {selectedClient.tax_number}</div>
+                      )}
+                      {(selectedClient.phone || (selectedClient as any).mobile) && (
+                        <div><strong className="text-foreground">Phone:</strong> {selectedClient.phone || (selectedClient as any).mobile}</div>
+                      )}
+                      {selectedClient.email && (
+                        <div><strong className="text-foreground">Email:</strong> {selectedClient.email}</div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Ship To Section */}
+                <div className="pt-2 border-t border-border/50 space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="same_as_billing"
+                      checked={shippingSameAsBilling}
+                      onCheckedChange={(c) => {
+                        const val = !!c;
+                        setShippingSameAsBilling(val);
+                        if (!val && selectedClient) {
+                          const sAddr = selectedClient.shipping_address as any;
+                          if (sAddr && typeof sAddr === "object") {
+                            if (!shippingName && sAddr.name) setShippingName(sAddr.name);
+                            if (!shippingStreet && sAddr.street) setShippingStreet(sAddr.street);
+                            if (!shippingCity && sAddr.city) setShippingCity(sAddr.city);
+                            if (!shippingState && sAddr.state) setShippingState(sAddr.state);
+                            if (!shippingZip && sAddr.zip) setShippingZip(sAddr.zip);
+                            if (!shippingPhone && sAddr.phone) setShippingPhone(sAddr.phone);
+                            if (!shippingGst && sAddr.gstin) setShippingGst(sAddr.gstin);
+                          } else if (!shippingName) {
+                            setShippingName(selectedClient.company_name || selectedClient.display_name || "");
+                          }
+                        }
+                      }}
+                    />
+                    <label htmlFor="same_as_billing" className="text-xs font-medium leading-none cursor-pointer">
+                      Bill To and Ship To are same
+                    </label>
+                  </div>
+
+                  {!shippingSameAsBilling && (
+                    <div className="rounded-lg border border-border bg-card p-3 space-y-3 mt-2">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <span className="text-xs font-semibold text-foreground uppercase tracking-wider">Ship To (Shipping Details)</span>
+                        <span className="text-[10px] text-muted-foreground">Enter delivery address details</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs">Shipping Name / Consignee</Label>
+                          <Input
+                            placeholder="Recipient / Company / Branch Name"
+                            value={shippingName}
+                            onChange={(e) => setShippingName(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs">Street / Address</Label>
+                          <Input
+                            placeholder="Plot No., Building, Street address..."
+                            value={shippingStreet}
+                            onChange={(e) => setShippingStreet(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">City</Label>
+                          <Input
+                            placeholder="City"
+                            value={shippingCity}
+                            onChange={(e) => setShippingCity(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">State</Label>
+                          <Input
+                            placeholder="State"
+                            value={shippingState}
+                            onChange={(e) => setShippingState(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Pincode</Label>
+                          <Input
+                            placeholder="Pincode / ZIP"
+                            value={shippingZip}
+                            onChange={(e) => setShippingZip(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <Label className="text-xs">Phone Number</Label>
+                          <Input
+                            placeholder="Contact phone number"
+                            value={shippingPhone}
+                            onChange={(e) => setShippingPhone(e.target.value)}
+                            className="h-8 text-xs"
+                          />
+                        </div>
+
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-xs">Shipping GSTIN (Optional)</Label>
+                          <Input
+                            placeholder="GSTIN if shipping to different GST branch"
+                            value={shippingGst}
+                            onChange={(e) => setShippingGst(e.target.value.toUpperCase())}
+                            className="h-8 text-xs uppercase"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <AddClientDialog open={addClientOpen} onOpenChange={setAddClientOpen} onClientAdded={(c) => { setClients(prev => [...prev, c]); setClientId(c.id); setClientSearch(c.display_name); }} />
                 <ItemFormDialog open={addItemOpen} onOpenChange={setAddItemOpen} onItemSaved={(item) => { if(item) setCatalogItems(prev => [...prev, item]); }} />
@@ -1570,8 +1737,8 @@ export default function InvoiceBuilderPage() {
             <div className="col-span-4">Item Details</div>
             <div className="col-span-2 text-center">Quantity</div>
             <div className="col-span-2 text-right">Rate</div>
-            {org?.gst_number && <div className="col-span-2 text-left pl-2">Tax</div>}
-            <div className={`text-right ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>Amount</div>
+            {hasGst && <div className="col-span-2 text-left pl-2">Tax</div>}
+            <div className={`text-right ${!hasGst ? 'col-span-4' : 'col-span-2'}`}>Amount</div>
           </div>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={lines.map((l) => l.id)} strategy={verticalListSortingStrategy}>
@@ -1600,8 +1767,8 @@ export default function InvoiceBuilderPage() {
               </div>
               <div className="col-span-2 text-center text-xs">1.00</div>
               <div className="col-span-2 text-right text-xs">0.00</div>
-              {org?.gst_number && <div className="col-span-3 text-right text-xs">0.00</div>}
-              {!org?.gst_number && <div className="col-span-3 text-right text-xs">0.00</div>}
+              {hasGst && <div className="col-span-3 text-right text-xs">0.00</div>}
+              {!hasGst && <div className="col-span-3 text-right text-xs">0.00</div>}
             </div>
           </div>
           {/* Live Calculation Totals Row */}
@@ -1621,10 +1788,10 @@ export default function InvoiceBuilderPage() {
                     </div>
                   )}
                 </div>
-                {org?.gst_number && <div className="col-span-2 text-left pl-2 text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + l.tax_amount, 0), org?.currency_code || "INR")}</div>}
-                <div className={`text-right text-sm font-bold ${!org?.gst_number ? 'col-span-4' : 'col-span-2'}`}>
+                {hasGst && <div className="col-span-2 text-left pl-2 text-sm font-semibold text-slate-600">{formatCurrency(calculatedLines.reduce((s, l) => s + l.tax_amount, 0), org?.currency_code || "INR")}</div>}
+                <div className={`text-right text-sm font-bold ${!hasGst ? 'col-span-4' : 'col-span-2'}`}>
                   {/* Amount = discounted price WITHOUT GST */}
-                  {formatCurrency(calculatedLines.reduce((s, l) => s + (org?.gst_number ? l.amount - l.tax_amount : l.amount), 0), org?.currency_code || "INR")}
+                  {formatCurrency(calculatedLines.reduce((s, l) => s + (hasGst ? l.amount - l.tax_amount : l.amount), 0), org?.currency_code || "INR")}
                 </div>
               </div>
             </div>
@@ -1923,10 +2090,15 @@ export default function InvoiceBuilderPage() {
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
+                  min={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault();
+                  }}
                   className="h-7 w-16 text-xs text-right"
                   value={discount}
                   onChange={(e) => {
                     let val = parseFloat(e.target.value) || 0;
+                    val = Math.max(0, val);
                     if (discountType === "percentage" && val > 100) val = 100;
                     setDiscount(val);
                   }}
@@ -1948,9 +2120,13 @@ export default function InvoiceBuilderPage() {
               <span className="text-muted-foreground">Shipping</span>
               <Input
                 type="number"
+                min={0}
                 className="h-7 w-24 text-xs text-right"
                 value={shippingCharge}
-                onChange={(e) => setShippingCharge(parseFloat(e.target.value) || 0)}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
               />
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
@@ -1958,25 +2134,31 @@ export default function InvoiceBuilderPage() {
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
+                  min={0}
                   className="h-7 w-24 text-xs text-right"
                   value={expenses}
-                  onChange={(e) => setExpenses(parseFloat(e.target.value) || 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault();
+                  }}
+                  onChange={(e) => setExpenses(Math.max(0, parseFloat(e.target.value) || 0))}
                 />
-                {expenses > 0 && <span className="text-destructive">-{fmt(expenses)}</span>}
+                {expenses > 0 && <span className="text-foreground font-medium">+{fmt(expenses)}</span>}
               </div>
             </div>
-            <div className="space-y-1">
-              <div className="flex items-center justify-between text-sm gap-2">
-                <span className="text-muted-foreground">Tax</span>
-              </div>
-              {taxBreakdown.length === 0 && <span className="text-xs text-muted-foreground">No taxes applied</span>}
-              {taxBreakdown.map((tb) => (
-                <div key={tb.id} className="flex items-center justify-between text-xs pl-4 text-muted-foreground">
-                  <span>{tb.name} ({tb.rate}%)</span>
-                  <span>+{fmt(tb.amount)}</span>
+            {hasGst && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-sm gap-2">
+                  <span className="text-muted-foreground">Tax</span>
                 </div>
-              ))}
-            </div>
+                {taxBreakdown.length === 0 && <span className="text-xs text-muted-foreground">No taxes applied</span>}
+                {taxBreakdown.map((tb) => (
+                  <div key={tb.id} className="flex items-center justify-between text-xs pl-4 text-muted-foreground">
+                    <span>{tb.name} ({tb.rate}%)</span>
+                    <span>+{fmt(tb.amount)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* TDS/TCS Section */}
             <div className="space-y-2 border-y py-3 my-2">
               <label className="flex items-center justify-between cursor-pointer">

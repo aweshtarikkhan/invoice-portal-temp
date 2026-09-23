@@ -243,7 +243,7 @@ export default function PaymentsPage() {
   const modeMap: Record<string, number> = {};
   payments.forEach((p) => { const mode = (p.payment_mode || "other").replace(/_/g, " "); modeMap[mode] = (modeMap[mode] || 0) + Number(p.amount); });
   const modeData = Object.entries(modeMap).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })).sort((a, b) => b.value - a.value);
-  const PIE_COLORS = ["hsl(201, 96%, 32%)", "hsl(142, 71%, 45%)", "hsl(32, 95%, 44%)", "hsl(0, 72%, 51%)", "hsl(262, 83%, 58%)", "hsl(215, 16%, 47%)"];
+  const PIE_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
   const topClients = Object.entries(
     payments.reduce<Record<string, number>>((acc, p) => { const name = (p.clients as any)?.display_name || "Unknown"; acc[name] = (acc[name] || 0) + Number(p.amount); return acc; }, {})

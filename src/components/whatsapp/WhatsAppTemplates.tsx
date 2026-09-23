@@ -36,7 +36,7 @@ export function WhatsAppTemplates() {
 
   const docTypes = [
     { id: "invoice", label: "Invoices" },
-    { id: "estimate", label: "Estimates" },
+    { id: "estimate", label: "Quotations" },
     { id: "purchase_order", label: "Purchase Orders" },
     { id: "bill", label: "Bills" }
   ];
@@ -161,7 +161,7 @@ export function WhatsAppTemplates() {
       <p className="font-semibold mb-2 text-slate-800">Supported Placeholders:</p>
       <div className="grid grid-cols-2 gap-2">
         <div><code>{`{{client_name}}`}</code> - Client/Vendor Name</div>
-        <div><code>{`{{document_no}}`}</code> - Invoice/Estimate No</div>
+        <div><code>{`{{document_no}}`}</code> - Invoice/Quotation No</div>
         <div><code>{`{{total}}`}</code> - Total Amount</div>
         <div><code>{`{{due_date}}`}</code> - Due Date</div>
         <div><code>{`{{subtotal}}`}</code> - Subtotal</div>

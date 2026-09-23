@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { SEO } from "@/components/shared/SEO";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import {
@@ -249,8 +250,8 @@ export default function DemoAutoLoginPage() {
   return (
     <>
       <SEO
-        title="Book a Free Demo - Assay Biz"
-        description="Schedule a free 1-on-1 personalized product demo of Assay Biz. Learn how to streamline your billing, inventory, and staff management."
+        title="Book a Free Demo - Aassay Biz"
+        description="Schedule a free 1-on-1 personalized product demo of Aassay Biz. Learn how to streamline your billing, inventory, and staff management."
         path="/demo"
       />
       <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
@@ -263,8 +264,10 @@ export default function DemoAutoLoginPage() {
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 border border-indigo-200 text-indigo-800 text-xs font-bold">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" /> Free 1-on-1 Personalized Session
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight">
-                See How Assay Biz Transforms Your Business
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-slate-900 tracking-tight flex items-center justify-center gap-2 flex-wrap">
+                <span>See How</span>
+                <AassayBizBrand />
+                <span>Transforms Your Business</span>
               </h1>
               <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
                 Connect with our product specialists for a live interactive demo tailored to your exact industry workflows.

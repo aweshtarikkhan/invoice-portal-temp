@@ -16,15 +16,38 @@ export default function GrnDetailPage() {
 
   useEffect(() => {
     (async () => {
-      const { data } = await (supabase as any).from("grns").select("*, vendors(name), purchase_orders(po_number), warehouses(name)").eq("id", id).maybeSingle();
+      try {
+        const { data, error } = await (supabase as any).from("grns").select("*, vendors(name), purchase_orders(po_number), warehouses(name)").eq("id", id).maybeSingle();
+        if (error || !data) {
+          const { data: rawG } = await (supabase as any).from("grns").select("*").eq("id", id).maybeSingle();
+          if (rawG) {
+            const [v, p, w] = await Promise.all([
+              rawG.vendor_id ? (supabase as any).from("vendors").select("name").eq("id", rawG.vendor_id).maybeSingle() : { data: null },
+              rawG.po_id ? (supabase as any).from("purchase_orders").select("po_number").eq("id", rawG.po_id).maybeSingle() : { data: null },
+              rawG.warehouse_id ? (supabase as any).from("warehouses").select("name").eq("id", rawG.warehouse_id).maybeSingle() : { data: null },
+            ]);
+            setG({
+              ...rawG,
+              vendors: v.data,
+              purchase_orders: p.data,
+              warehouses: w.data,
+            });
+          }
+        } else {
+          setG(data);
+        }
+      } catch (err) {
+        console.error("Error loading GRN details:", err);
+      }
       const { data: l } = await (supabase as any).from("grn_lines").select("*, items(name)").eq("grn_id", id).order("sort_order");
-      setG(data); setLines(l || []);
+      setLines(l || []);
     })();
   }, [id]);
 
 
   if (!g) return <div className="p-6 text-muted-foreground">Loading…</div>;
-  return (
+
+  return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -74,6 +97,11 @@ export default function GrnDetailPage() {
               ))}
             </TableBody>
           </Table>
+          <div className="mt-4 flex justify-end">
+            <div className="text-sm font-medium">
+              Total Value: <span className="font-bold text-base text-emerald-700 ml-1">₹{lines.reduce((s, l) => s + Number(l.amount || 0), 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

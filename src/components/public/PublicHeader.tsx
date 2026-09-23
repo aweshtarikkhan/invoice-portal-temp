@@ -7,7 +7,7 @@ export function PublicHeader() {
     <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-md shadow-xs">
       <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link to="/" className="flex items-center gap-2 shrink-0">
-          <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-6 sm:h-8 w-auto object-contain" />
+          <img src={`${logoImg}?v=${Date.now()}`} alt="Aassay Biz" className="h-6 sm:h-8 w-auto object-contain" />
         </Link>
         <nav className="hidden md:flex items-center gap-7 text-sm font-semibold text-slate-600">
           <Link to="/" className="hover:text-primary transition-colors">Home</Link>

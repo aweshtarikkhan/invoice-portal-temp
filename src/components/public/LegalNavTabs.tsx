@@ -1,4 +1,4 @@
-﻿import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { ShieldCheck, FileText, RefreshCw, ArrowLeft } from "lucide-react";
 
 export function LegalNavTabs() {

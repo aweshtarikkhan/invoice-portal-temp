@@ -73,27 +73,41 @@ export default function ItemsPage() {
   const fetchItems = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data } = await supabase
-      .from("items")
-      .select("*, tax_rates(name, rate)")
-      .eq("org_id", org.id)
-      .order("name");
-    setItems(data || []);
-    const { data: taxes } = await supabase
-      .from("tax_rates")
-      .select("*")
-      .eq("org_id", org.id);
-    setTaxRates(taxes || []);
+    try {
+      const [itemsRes, taxesRes, cfsRes] = await Promise.all([
+        supabase
+          .from("items")
+          .select("*")
+          .eq("org_id", org.id)
+          .order("name"),
+        supabase
+          .from("tax_rates")
+          .select("*")
+          .eq("org_id", org.id),
+        supabase
+          .from("custom_field_definitions")
+          .select("*")
+          .eq("org_id", org.id)
+          .eq("entity_type", "item")
+          .order("sort_order"),
+      ]);
 
-    const { data: cfs } = await supabase
-      .from("custom_field_definitions")
-      .select("*")
-      .eq("org_id", org.id)
-      .eq("entity_type", "item")
-      .order("sort_order");
-    setCustomFieldDefs(cfs || []);
+      const taxList = taxesRes.data || [];
+      const taxMap = new Map(taxList.map((t: any) => [t.id, t]));
+      const itemsList = (itemsRes.data || []).map((item: any) => ({
+        ...item,
+        tax_rates: item.tax_id ? taxMap.get(item.tax_id) || null : null,
+      }));
 
-    setLoading(false);
+      setItems(itemsList);
+      setTaxRates(taxList);
+      setCustomFieldDefs(cfsRes.data || []);
+    } catch (err: any) {
+      console.error("Failed to load items:", err);
+      toast({ title: "Failed to load items", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchItems(); }, [org?.id]);
@@ -177,8 +191,23 @@ export default function ItemsPage() {
 
   const filtered = useMemo(() => {
     let result = items.filter((i) => {
-      const matchSearch = [i.name, i.sku, i.description].filter(Boolean).some((f) => f.toLowerCase().includes(search.toLowerCase()));
-      const matchCategory = categoryFilter === "all" || (i.category || "") === categoryFilter;
+      const matchSearch = [i.name, i.sku, i.description, i.category, i.type]
+        .filter(Boolean)
+        .some((f) => f.toLowerCase().includes(search.toLowerCase()));
+
+      let matchCategory = true;
+      if (categoryFilter === "all") {
+        matchCategory = true;
+      } else if (categoryFilter === "product" || categoryFilter === "type_product") {
+        matchCategory = i.type === "product";
+      } else if (categoryFilter === "service" || categoryFilter === "type_service") {
+        matchCategory = i.type === "service";
+      } else if (categoryFilter.startsWith("cat_")) {
+        matchCategory = (i.category || "") === categoryFilter.replace("cat_", "");
+      } else {
+        matchCategory = (i.category || "") === categoryFilter || i.type === categoryFilter;
+      }
+
       return matchSearch && matchCategory;
     });
 
@@ -278,23 +307,68 @@ export default function ItemsPage() {
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-3">
-        <div className="relative">
+      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+        <div className="relative flex-1">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search items..."
+            placeholder="Search items, SKU, category..."
             className="pl-10 h-11 rounded-xl bg-card border-border/60 shadow-sm"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
+
+        {/* Quick Type Filter Tabs */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl border border-border/50 overflow-x-auto">
+          <Button
+            type="button"
+            variant={categoryFilter === "all" ? "default" : "ghost"}
+            size="sm"
+            className="h-9 px-3 rounded-lg text-xs font-semibold"
+            onClick={() => setCategoryFilter("all")}
+          >
+            All Items ({items.length})
+          </Button>
+          <Button
+            type="button"
+            variant={categoryFilter === "product" ? "default" : "ghost"}
+            size="sm"
+            className={`h-9 px-3 rounded-lg text-xs font-semibold ${categoryFilter === "product" ? "bg-blue-600 text-white hover:bg-blue-700" : ""}`}
+            onClick={() => setCategoryFilter("product")}
+          >
+            <Package className="w-3.5 h-3.5 mr-1.5 text-blue-500" />
+            Products ({items.filter((i) => i.type === "product").length})
+          </Button>
+          <Button
+            type="button"
+            variant={categoryFilter === "service" ? "default" : "ghost"}
+            size="sm"
+            className={`h-9 px-3 rounded-lg text-xs font-semibold ${categoryFilter === "service" ? "bg-purple-600 text-white hover:bg-purple-700" : ""}`}
+            onClick={() => setCategoryFilter("service")}
+          >
+            <Settings className="w-3.5 h-3.5 mr-1.5 text-purple-500" />
+            Services ({items.filter((i) => i.type === "service").length})
+          </Button>
+        </div>
+
         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="h-11 rounded-xl bg-card border-border/60 shadow-sm">
+          <SelectTrigger className="h-11 w-full md:w-[220px] rounded-xl bg-card border-border/60 shadow-sm font-medium">
             <SelectValue placeholder="All Categories" />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+          <SelectContent className="rounded-xl shadow-lg">
+            <SelectItem value="all">All Categories & Types</SelectItem>
+            <SelectItem value="product">📦 Products (Goods)</SelectItem>
+            <SelectItem value="service">🛠️ Services</SelectItem>
+            {categories.length > 0 && (
+              <>
+                <div className="px-2 py-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider border-t my-1">
+                  Custom Categories
+                </div>
+                {categories.map((c) => (
+                  <SelectItem key={c} value={`cat_${c}`}>{c}</SelectItem>
+                ))}
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -333,9 +407,22 @@ export default function ItemsPage() {
                         onCheckedChange={() => toggleSelect(item.id)}
                       />
                     </TableCell>
-                    <TableCell className="font-medium">{item.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{item.name}</div>
+                      {item.category && (
+                        <div className="text-[11px] text-muted-foreground font-normal">{item.category}</div>
+                      )}
+                    </TableCell>
                     <TableCell>
-                      <Badge variant="secondary">{item.type}</Badge>
+                      {item.type === "product" ? (
+                        <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 text-[11px] font-semibold gap-1 px-2 py-0.5">
+                          <Package className="w-3 h-3 text-blue-600" /> Product
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800 text-[11px] font-semibold gap-1 px-2 py-0.5">
+                          <Settings className="w-3 h-3 text-purple-600" /> Service
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       {item.has_expiry ? (

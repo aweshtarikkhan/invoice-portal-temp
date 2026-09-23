@@ -23,7 +23,7 @@ import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, ExternalLink, Download, FileCheck, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, EyeOff, ExternalLink, Download, FileCheck, Loader2, Copy, Check, Share2, ShieldCheck, MailCheck } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
 import { NavLink } from "@/components/NavLink";
@@ -77,13 +77,36 @@ export default function EmployeesPage() {
   const [portalEmail, setPortalEmail] = useState("");
   const [portalPassword, setPortalPassword] = useState("");
   const [portalLoading, setPortalLoading] = useState(false);
+  const [portalSuccessData, setPortalSuccessData] = useState<{
+    name: string;
+    email: string;
+    password: string;
+    orgName?: string;
+    portalUrl: string;
+    emailSent?: boolean;
+  } | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [showSuccessPassword, setShowSuccessPassword] = useState(false);
+
+  const copyToClipboard = (text: string, fieldName: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(fieldName);
+    toast({ title: "Copied!", description: `${fieldName} copied to clipboard.` });
+    setTimeout(() => setCopiedField(null), 2500);
+  };
+
+  const getShareableText = () => {
+    if (!portalSuccessData) return "";
+    return `Hello ${portalSuccessData.name},\n\nYour Attendance Portal account has been created!\n\n🔗 Portal Link: ${portalSuccessData.portalUrl}\n📧 Email: ${portalSuccessData.email}\n🔑 Temporary Password: ${portalSuccessData.password}\n\nPlease click the link to log in and record your daily attendance (Clock-In / Clock-Out).`;
+  };
+
   const [shifts, setShifts] = useState<any[]>([]);
   const [selectedShiftId, setSelectedShiftId] = useState<string>("none");
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docType, setDocType] = useState<string>("ID Proof");
   const [selectedEmpForStructure, setSelectedEmpForStructure] = useState<any | null>(null);
   const [structureModalOpen, setStructureModalOpen] = useState(false);
-  const [activeTabFilter, setActiveTabFilter] = useState<"all" | "monthly" | "wagers">("all");
+  const [activeTabFilter, setActiveTabFilter] = useState<"all" | "monthly" | "wagers" | "portal" | "no_portal">("all");
   const [dailyWagesEnabled, setDailyWagesEnabled] = useState<boolean>(true);
   const [existingDocs, setExistingDocs] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
@@ -447,19 +470,24 @@ export default function EmployeesPage() {
           { org_id: org.id, employee_id: empId, shift_id: selectedShiftId, effective_from: new Date().toISOString().split("T")[0] },
           { onConflict: "employee_id" }
         );
+        await supabase.from("employees").update({ shift_id: selectedShiftId }).eq("id", empId);
       } else {
         await (supabase as any).from("employee_shifts").delete().eq("employee_id", empId);
+        await supabase.from("employees").update({ shift_id: null }).eq("id", empId);
       }
 
       // Handle direct portal access creation on new employee if checked
       if (!editId && form.grant_portal_access && form.email && form.portal_password?.length >= 6) {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-employee`, {
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+          const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+          const createRes = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
               "Authorization": `Bearer ${session?.access_token}`,
+              "apikey": supabaseKey,
             },
             body: JSON.stringify({
               employee_id: empId,
@@ -467,7 +495,17 @@ export default function EmployeesPage() {
               password: form.portal_password,
             }),
           });
-          toast({ title: "Portal Access Granted", description: `Login created for ${form.email}` });
+          const createData = await createRes.json();
+          if (createRes.ok) {
+            setPortalSuccessData({
+              name: form.name,
+              email: form.email,
+              password: form.portal_password,
+              orgName: org?.name,
+              portalUrl: "https://attendance.aassaybiz.com",
+              emailSent: createData.email_sent ?? true
+            });
+          }
         } catch (authErr: any) {
           console.error("Portal access auto-grant error:", authErr);
         }
@@ -483,12 +521,16 @@ export default function EmployeesPage() {
     if (!portalEmp || !portalEmail || !portalPassword) return;
     setPortalLoading(true);
     try {
+      const empName = portalEmp.name;
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-employee`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+      const res = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`
+          "Authorization": `Bearer ${session?.access_token}`,
+          "apikey": supabaseKey,
         },
         body: JSON.stringify({
           employee_id: portalEmp.id,
@@ -498,8 +540,16 @@ export default function EmployeesPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create portal access");
-      toast({ title: "Success", description: `Portal access granted! Employee can login with email: ${portalEmail} and the password you set.` });
+      
       setPortalEmp(null);
+      setPortalSuccessData({
+        name: empName,
+        email: portalEmail,
+        password: portalPassword,
+        orgName: data.org_name || org?.name,
+        portalUrl: "https://attendance.aassaybiz.com",
+        emailSent: data.email_sent ?? true
+      });
       load();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -513,11 +563,14 @@ export default function EmployeesPage() {
     setResetLoading(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/reset-employee-password`, {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+      const res = await fetch(`${supabaseUrl}/functions/v1/reset-employee-password`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`
+          "Authorization": `Bearer ${session?.access_token}`,
+          "apikey": supabaseKey,
         },
         body: JSON.stringify({ employee_id: resetEmp.id, new_password: resetNewPassword })
       });
@@ -540,11 +593,14 @@ export default function EmployeesPage() {
     if (emp?.auth_user_id) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-employee-auth`, {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+        await fetch(`${supabaseUrl}/functions/v1/delete-employee-auth`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": supabaseKey,
           },
           body: JSON.stringify({ auth_user_id: emp.auth_user_id })
         });
@@ -570,6 +626,10 @@ export default function EmployeesPage() {
     }
   };
 
+  // Portal Access Counts
+  const portalAccessCount = useMemo(() => rows.filter(r => !!r.auth_user_id).length, [rows]);
+  const noPortalAccessCount = useMemo(() => rows.filter(r => !r.auth_user_id).length, [rows]);
+
   // Filtered rows
   const filteredRows = useMemo(() => {
     if (activeTabFilter === "all") return rows;
@@ -578,6 +638,12 @@ export default function EmployeesPage() {
     }
     if (activeTabFilter === "wagers") {
       return rows.filter((r) => r.wage_type === "daily" || r.wage_type === "hourly");
+    }
+    if (activeTabFilter === "portal") {
+      return rows.filter((r) => !!r.auth_user_id);
+    }
+    if (activeTabFilter === "no_portal") {
+      return rows.filter((r) => !r.auth_user_id);
     }
     return rows;
   }, [rows, activeTabFilter]);
@@ -605,7 +671,30 @@ export default function EmployeesPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Employees & Staff</h1>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h1 className="text-2xl font-semibold">Employees & Staff</h1>
+            
+            {/* Total Employee Capacity Badge */}
+            <Badge
+              variant="outline"
+              className={`font-semibold text-xs py-1 px-2.5 flex items-center gap-1.5 shadow-sm ${
+                limitReached 
+                  ? "bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 border-rose-300 dark:border-rose-800" 
+                  : "bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-300 dark:border-blue-800"
+              }`}
+            >
+              <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span>
+                Staff Capacity: <strong>{rows.length}</strong> / <strong>{currentLimit}</strong>
+                {currentLimit > (effectivePlan === 'suite' ? 25 : 3) && (
+                  <span className="ml-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                    (+{currentLimit - (effectivePlan === 'suite' ? 25 : 3)} Extra)
+                  </span>
+                )}
+                <span className="ml-1 opacity-80 font-normal">({planName})</span>
+              </span>
+            </Badge>
+          </div>
           <p className="text-sm text-muted-foreground">Manage monthly salaried staff, daily/hourly wage workers, and portal access.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -640,10 +729,10 @@ export default function EmployeesPage() {
       {/* Filter Tabs */}
       <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/60 p-2 rounded-lg border flex-wrap gap-2">
         <Tabs value={activeTabFilter} onValueChange={(v: any) => setActiveTabFilter(v)}>
-          <TabsList className="bg-white dark:bg-slate-800 border">
+          <TabsList className="bg-white dark:bg-slate-800 border flex-wrap h-auto p-1 gap-1">
             <TabsTrigger value="all" className="text-xs">
               <Users className="w-3.5 h-3.5 mr-1" />
-              All Staff ({rows.length})
+              All Staff ({rows.length} / {currentLimit})
             </TabsTrigger>
             <TabsTrigger value="monthly" className="text-xs">
               Monthly Salaried ({rows.filter(r => !r.wage_type || r.wage_type === 'monthly').length})
@@ -652,6 +741,15 @@ export default function EmployeesPage() {
               <TabsTrigger value="wagers" className="text-xs text-amber-800 dark:text-amber-300 font-semibold">
                 <HardHat className="w-3.5 h-3.5 mr-1 text-amber-600" />
                 Daily & Hourly Wagers ({rows.filter(r => r.wage_type === 'daily' || r.wage_type === 'hourly').length})
+              </TabsTrigger>
+            )}
+            <TabsTrigger value="portal" className="text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+              <KeyRound className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+              Portal Access ({portalAccessCount})
+            </TabsTrigger>
+            {noPortalAccessCount > 0 && (
+              <TabsTrigger value="no_portal" className="text-xs text-slate-600 dark:text-slate-400">
+                No Portal ({noPortalAccessCount})
               </TabsTrigger>
             )}
           </TabsList>
@@ -685,7 +783,7 @@ export default function EmployeesPage() {
                 <TableHead>Phone</TableHead>
                 <TableHead className="text-right">Pay / Rate</TableHead>
                 <TableHead className="text-right">Paid Leaves/mo</TableHead>
-                <TableHead>Portal</TableHead>
+                <TableHead className="font-semibold">Portal ({portalAccessCount})</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-36 text-right">Actions</TableHead>
               </TableRow>
@@ -1142,12 +1240,12 @@ export default function EmployeesPage() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">File (Max 2MB)</Label>
+                    <Label className="text-xs">File (Max 25MB)</Label>
                     <Input type="file" className="mt-1 h-8 text-xs" onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) {
-                        if (f.size > 2 * 1024 * 1024) {
-                          toast({ title: "File too large", description: "Max file size is 2MB", variant: "destructive" });
+                        if (f.size > 25 * 1024 * 1024) {
+                          toast({ title: "File too large", description: "Max file size is 25MB", variant: "destructive" });
                           e.target.value = "";
                           setDocFile(null);
                         } else {
@@ -1288,6 +1386,142 @@ export default function EmployeesPage() {
             <Button variant="outline" onClick={() => setPortalEmp(null)}>Cancel</Button>
             <Button onClick={grantAccess} disabled={portalLoading || !portalEmail || portalPassword.length < 6}>
               {portalLoading ? "Creating..." : "Grant Access"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attendance Portal Access Success Dialog */}
+      <Dialog open={!!portalSuccessData} onOpenChange={(v) => { if (!v) setPortalSuccessData(null); }}>
+        <DialogContent className="max-w-md sm:max-w-lg border-orange-500/30 shadow-2xl">
+          <DialogHeader className="text-center pb-2">
+            <div className="mx-auto w-12 h-12 bg-gradient-to-br from-orange-500 to-amber-600 text-white rounded-full flex items-center justify-center mb-2 shadow-lg">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <DialogTitle className="text-xl font-bold text-foreground">
+              Attendance Portal Access Created! 🎉
+            </DialogTitle>
+            <DialogDescription className="text-sm text-muted-foreground">
+              Login credentials have been configured for <strong>{portalSuccessData?.name}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-1">
+            {/* Direct Link Action Button */}
+            <div className="p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 dark:from-orange-950/30 dark:to-amber-950/30 border border-orange-200 dark:border-orange-900/50 rounded-xl text-center space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                Attendance Portal Website
+              </p>
+              <a
+                href={portalSuccessData?.portalUrl || "https://attendance.aassaybiz.com"}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <Button className="w-full bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white font-bold py-5 shadow-md flex items-center justify-center gap-2 text-sm">
+                  <span>Open Attendance Portal</span>
+                  <ExternalLink className="w-4 h-4" />
+                </Button>
+              </a>
+              <p className="text-[11px] text-muted-foreground">
+                URL: <span className="font-mono text-orange-600 dark:text-orange-400 select-all font-medium">{portalSuccessData?.portalUrl}</span>
+              </p>
+            </div>
+
+            {/* Credentials Card */}
+            <div className="p-4 bg-muted/50 border rounded-xl space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Login Credentials</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs gap-1 text-primary hover:text-primary font-medium"
+                  onClick={() => copyToClipboard(getShareableText(), "All Credentials")}
+                >
+                  {copiedField === "All Credentials" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>Copy All Details</span>
+                </Button>
+              </div>
+
+              {/* Email Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Login Email</div>
+                  <div className="text-sm font-semibold font-mono truncate">{portalSuccessData?.email}</div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2.5 text-xs gap-1 flex-shrink-0"
+                  onClick={() => copyToClipboard(portalSuccessData?.email || "", "Email")}
+                >
+                  {copiedField === "Email" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span className="hidden sm:inline">Copy</span>
+                </Button>
+              </div>
+
+              {/* Password Row */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-[11px] font-semibold text-muted-foreground uppercase">Temporary Password</div>
+                  <div className="text-sm font-semibold font-mono tracking-wider">
+                    {showSuccessPassword ? portalSuccessData?.password : "••••••••••••"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs text-muted-foreground"
+                    onClick={() => setShowSuccessPassword(!showSuccessPassword)}
+                    title={showSuccessPassword ? "Hide password" : "Show password"}
+                  >
+                    {showSuccessPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs gap-1 flex-shrink-0"
+                    onClick={() => copyToClipboard(portalSuccessData?.password || "", "Password")}
+                  >
+                    {copiedField === "Password" ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span className="hidden sm:inline">Copy</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Email Notification Status */}
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900/50 rounded-xl flex items-start gap-2.5">
+              <MailCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-emerald-800 dark:text-emerald-300">
+                <strong className="block font-semibold">Login Email Dispatched</strong>
+                Login instructions with a secure <em>Tap-to-Reveal Password</em> have been sent to <strong>{portalSuccessData?.email}</strong>.
+              </div>
+            </div>
+
+            {/* WhatsApp Quick Share */}
+            <div className="pt-1">
+              <a
+                href={`https://api.whatsapp.com/send?text=${encodeURIComponent(getShareableText())}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <Button variant="outline" className="w-full border-emerald-500/40 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 font-medium py-4 text-xs gap-2">
+                  <Share2 className="w-4 h-4" />
+                  <span>Share Credentials with Employee via WhatsApp</span>
+                </Button>
+              </a>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              className="w-full sm:w-auto bg-primary text-primary-foreground font-semibold"
+              onClick={() => setPortalSuccessData(null)}
+            >
+              Done / Close
             </Button>
           </DialogFooter>
         </DialogContent>

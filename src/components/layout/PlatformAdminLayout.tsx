@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, ArrowLeft, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export function PlatformAdminLayout() {
   const { profile, signOut } = useAuth();
@@ -53,7 +54,7 @@ export function PlatformAdminLayout() {
             <span className="text-white font-bold text-sm">S</span>
           </div>
           <div>
-            <h1 className="font-bold tracking-tight text-slate-800 leading-tight">Assay Biz</h1>
+            <h1 className="leading-tight"><AassayBizBrand className="text-base" /></h1>
             <p className="text-[10px] text-indigo-500 font-medium uppercase tracking-wider leading-tight">Platform Admin</p>
           </div>
         </div>

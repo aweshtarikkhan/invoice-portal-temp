@@ -50,7 +50,10 @@ export function ProfessionalNavyInvoiceTemplate({
   const darkBlue = "#0f2e6b";
   const blue = "#164e9a";
   const grayBorder = "#9ca3af";
-  const hasGst = Boolean(org?.gst_number);
+  const snapshot = (invoice?.metadata as any) || {};
+  const hasGst = snapshot.has_gst !== undefined
+    ? Boolean(snapshot.has_gst)
+    : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
   const clientName = (invoice.clients as any)?.display_name || (invoice.vendors as any)?.name || (invoice.vendors as any)?.display_name || invoice.client_name || "Client Name";
   const clientGst = (invoice.clients as any)?.tax_number || (invoice.vendors as any)?.tax_number || invoice.client_gst;
@@ -78,22 +81,29 @@ export function ProfessionalNavyInvoiceTemplate({
     }
   }, [org?.address]);
 
-  const shipToAddressLines: string[] = useMemo(() => {
-    if (org?.shipping_same_as_billing) return [];
+  const { shipToAddressLines, shipToName } = useMemo(() => {
+    if (org?.shipping_same_as_billing && !invoice?.shipping_address) return { shipToAddressLines: [], shipToName: "" };
     const addr = invoice?.shipping_address || (invoice.clients as any)?.shipping_address;
-    if (!addr) return [];
+    if (!addr) return { shipToAddressLines: [], shipToName: "" };
     try {
       const a = typeof addr === "string" ? JSON.parse(addr) : addr;
       const res: string[] = [];
-      if (a?.street) res.push(a.street);
-      const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
-      if (cityLine) res.push(cityLine);
-      if (a?.country) res.push(a.country);
-      return res;
+      let name = "";
+      if (a && typeof a === "object") {
+        if (a.name) name = a.name;
+        if (a.street) res.push(a.street);
+        const cityLine = [a.city, a.state, a.zip].filter(Boolean).join(", ");
+        if (cityLine) res.push(cityLine);
+        if (a.country) res.push(a.country);
+        if (a.phone || a.contact) res.push(`Phone: ${a.phone || a.contact}`);
+        if (a.gstin || a.tax_number) res.push(`GSTIN: ${a.gstin || a.tax_number}`);
+        return { shipToAddressLines: res, shipToName: name || clientName };
+      }
+      return { shipToAddressLines: [String(addr)], shipToName: clientName };
     } catch {
-      return [String(addr)];
+      return { shipToAddressLines: [String(addr)], shipToName: clientName };
     }
-  }, [invoice?.shipping_address, org?.shipping_same_as_billing]);
+  }, [invoice?.shipping_address, org?.shipping_same_as_billing, clientName]);
 
   const billToAddressLines: string[] = useMemo(() => {
     const addr = invoice?.billing_address || (invoice.clients as any)?.address || (invoice.clients as any)?.billing_address || (invoice.vendors as any)?.address;
@@ -112,21 +122,21 @@ export function ProfessionalNavyInvoiceTemplate({
   }, [invoice?.billing_address]);
 
   const getTitleText = (t: string) => {
-    if (t === "estimate") return "ESTIMATE";
+    if (t === "estimate") return "QUOTATION";
     if (t === "po") return "PURCHASE ORDER";
     if (t === "bill") return "PURCHASE INVOICE";
-    return "TAX INVOICE";
+    return hasGst ? "TAX INVOICE" : "INVOICE";
   };
 
   const getNumberLabel = (t: string) => {
-    if (t === "estimate") return "Estimate No.";
+    if (t === "estimate") return "Quotation No.";
     if (t === "po") return "PO No.";
     if (t === "bill") return "Invoice No.";
     return "Invoice No.";
   };
 
   const getDateLabel = (t: string) => {
-    if (t === "estimate") return "Estimate Date";
+    if (t === "estimate") return "Quotation Date";
     if (t === "po") return "PO Date";
     if (t === "bill") return "Invoice Date";
     return "Invoice Date";
@@ -299,7 +309,7 @@ export function ProfessionalNavyInvoiceTemplate({
             </div>
             <div style={{ padding: "12px", display: "flex", justifyContent: "space-between" }}>
               <div style={{ fontSize: 11, lineHeight: 1.6 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: darkBlue, marginBottom: 4 }}>{clientName}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: darkBlue, marginBottom: 4 }}>{shipToName || clientName}</div>
                 {shipToAddressLines.map((line, i) => <div key={i}>{line}</div>)}
               </div>
             </div>
@@ -331,7 +341,7 @@ export function ProfessionalNavyInvoiceTemplate({
               const taxable = qty * rate;
               let taxRate = 0;
               if (hasGst) {
-                if (line.tax_rate !== undefined && line.tax_rate !== null) taxRate = Number(line.tax_rate);
+                if (line.tax_rate !== undefined && line.tax_rate !== null) taxRate = typeof line.tax_rate === 'object' ? Number(line.tax_rate.rate) : Number(line.tax_rate);
                 else if (line.tax_rates && line.tax_rates.rate !== undefined && line.tax_rates.rate !== null) taxRate = Number(line.tax_rates.rate);
                 else if (line.items?.tax_rate !== undefined && line.items?.tax_rate !== null) taxRate = Number(line.items.tax_rate);
                 else if (line.tax_amount && taxable > 0) taxRate = Math.round((Number(line.tax_amount) / taxable) * 100);
@@ -353,7 +363,7 @@ export function ProfessionalNavyInvoiceTemplate({
                       <div style={{ whiteSpace: "pre-wrap" }}>{line.description}</div>
                     )}
                   </td>
-                  {hasGst && <td style={{ ...tdStyle }}>{line.hsn_sac || "-"}</td>}
+                  {hasGst && <td style={{ ...tdStyle }}>{line.hsn_sac || line.hsn_code || line.hsn || line.items?.hsn_code || "-"}</td>}
                   <td style={{ ...tdStyle }}>{qty}</td>
                   <td style={{ ...tdStyle }}>{line.unit || "Pcs"}</td>
                   <td style={{ ...tdStyle }}>{fmt(rate)}</td>
@@ -375,8 +385,12 @@ export function ProfessionalNavyInvoiceTemplate({
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
             <tbody>
               <tr>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Total Taxable Value</td>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.subtotal ?? invoice.total) + Number(invoice.total_discount))}</td>
+                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>{hasGst ? "Total Taxable Value" : "Subtotal"}</td>
+                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>
+                  ₹ {fmt(!hasGst && Number(invoice.total_tax || 0) === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0)
+                      ? Number(invoice.total)
+                      : Number(invoice.subtotal ?? invoice.total) + Number(invoice.total_discount || 0))}
+                </td>
               </tr>
               {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
                 taxBreakdown.map((t, i) => (

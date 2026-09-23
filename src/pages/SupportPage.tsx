@@ -75,9 +75,9 @@ export default function SupportPage() {
   const handleWhatsAppDirect = (customMsg?: string) => {
     const text = encodeURIComponent(
       customMsg ||
-        `Hello Assay Biz Support Team,\n\nI need assistance with my account.\nBusiness: ${org?.name || 'N/A'}\nEmail: ${user?.email || 'N/A'}`
+        `Hello Aassay Biz Support Team,\n\nI need assistance with my account.\nBusiness: ${org?.name || 'N/A'}\nEmail: ${user?.email || 'N/A'}`
     );
-    window.open(`https://wa.me/919424825919?text=${text}`, '_blank');
+    window.open(`https://wa.me/917806025875?text=${text}`, '_blank');
   };
 
   const handleSubmitForm = async (e: React.FormEvent) => {
@@ -163,7 +163,7 @@ export default function SupportPage() {
     }
 
     const text =
-      `*Assay Biz Support Request*\n\n` +
+      `*Aassay Biz Support Request*\n\n` +
       `*Category:* ${formData.category}\n` +
       `*Name:* ${formData.name || 'User'}\n` +
       `*Email:* ${formData.email || user?.email || 'N/A'}\n` +
@@ -192,7 +192,7 @@ export default function SupportPage() {
       a: 'All data is encrypted in transit and at rest using enterprise-grade AES-256 encryption. Automated daily database snapshots and automated backups ensure your records are always safe.',
     },
     {
-      q: 'How do I report GST returns from Assay Biz?',
+      q: 'How do I report GST returns from Aassay Biz?',
       a: 'Go to Reports -> GST Returns. You can generate and export GSTR-1, GSTR-2, and GSTR-3B summary reports in JSON and Excel formats ready for upload to the GST portal.',
     },
   ];
@@ -250,12 +250,12 @@ export default function SupportPage() {
             <div className="p-3 rounded-lg bg-muted/60 border border-border/60 flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-[11px] text-muted-foreground">Direct Helpline</span>
-                <span className="text-base font-bold text-foreground">+91 94065 45047</span>
+                <span className="text-base font-bold text-foreground">+91 78060 25875</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard('+919406545047', 'Phone Number', 'phone')}
+                onClick={() => copyToClipboard('+917806025875', 'Phone Number', 'phone')}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
                 title="Copy Phone Number"
               >
@@ -263,7 +263,7 @@ export default function SupportPage() {
               </Button>
             </div>
             <a
-              href="tel:+919406545047"
+              href="tel:+917806025875"
               className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 transition-colors shadow-sm"
             >
               <Phone className="w-4 h-4" /> Call Now
@@ -294,12 +294,12 @@ export default function SupportPage() {
             <div className="p-3 rounded-lg bg-muted/60 border border-border/60 flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-[11px] text-muted-foreground">Business WhatsApp</span>
-                <span className="text-base font-bold text-foreground">+91 94248 25919</span>
+                <span className="text-base font-bold text-foreground">+91 78060 25875</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard('+919424825919', 'WhatsApp Number', 'whatsapp')}
+                onClick={() => copyToClipboard('+917806025875', 'WhatsApp Number', 'whatsapp')}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
                 title="Copy WhatsApp Number"
               >
@@ -336,12 +336,12 @@ export default function SupportPage() {
             <div className="p-3 rounded-lg bg-muted/60 border border-border/60 flex items-center justify-between">
               <div className="flex flex-col">
                 <span className="text-[11px] text-muted-foreground">Support Email</span>
-                <span className="text-base font-bold text-foreground truncate max-w-[170px] sm:max-w-[190px]">support@assaybiz.com</span>
+                <span className="text-base font-bold text-foreground truncate max-w-[170px] sm:max-w-[190px]">support@aassaybiz.com</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => copyToClipboard('support@assaybiz.com', 'Support Email', 'email')}
+                onClick={() => copyToClipboard('support@aassaybiz.com', 'Support Email', 'email')}
                 className="h-8 px-2 text-muted-foreground hover:text-foreground"
                 title="Copy Email Address"
               >
@@ -349,7 +349,7 @@ export default function SupportPage() {
               </Button>
             </div>
             <a
-              href="mailto:support@assaybiz.com?subject=Support%20Request%20-%20Assay%20Biz"
+              href="mailto:support@aassaybiz.com?subject=Support%20Request%20-%20Aassay%20Biz"
               className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-violet-600 hover:bg-violet-700 text-white text-sm font-semibold py-2.5 transition-colors shadow-sm"
             >
               <Mail className="w-4 h-4" /> Send Email
@@ -482,7 +482,7 @@ export default function SupportPage() {
               </div>
               <CardTitle className="text-lg font-bold">Emerging Thoughts Pvt. Ltd.</CardTitle>
               <CardDescription className="text-xs">
-                Operator & Parent Entity of Assay Biz Enterprise Platform
+                Operator & Parent Entity of Aassay Biz Enterprise Platform
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
@@ -502,8 +502,7 @@ export default function SupportPage() {
                   <div className="space-y-0.5">
                     <span className="text-xs font-semibold text-foreground block">Registered Corporate Office</span>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Flat No. 501, T-4 Sagar Lekh View Home,<br />
-                      Bhopal, Madhya Pradesh, India
+                      Indore, Madhya Pradesh, India
                     </p>
                   </div>
                 </div>
@@ -513,8 +512,7 @@ export default function SupportPage() {
                   <div className="space-y-0.5">
                     <span className="text-xs font-semibold text-foreground block">Branch & Operations Center</span>
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      E-9 Govindpura Industrial Area,<br />
-                      Bhopal, Madhya Pradesh - 462023, India
+                      Indore, Madhya Pradesh, India
                     </p>
                   </div>
                 </div>

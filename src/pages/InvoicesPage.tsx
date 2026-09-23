@@ -384,7 +384,7 @@ export default function InvoicesPage() {
             <Upload className="mr-1 h-4 w-4" /> Import
           </Button>
           <Button onClick={handleNewInvoiceClick} size="sm">
-            <Plus className="mr-1 h-4 w-4" /> + New
+            <Plus className="mr-1 h-4 w-4" /> New Invoice
           </Button>
         </div>
       </div>
@@ -681,7 +681,7 @@ export default function InvoicesPage() {
                  await supabase.from("invoice_lines").insert(lineItems);
               }
             }
-            } catch (e: any) { console.error("Import row error:", invNum, e); errors++; failedRows.push({ row, reason: e.message || "Unknown error" }); }
+            } catch (e: any) { console.error("Import row error:", invNum, e); errors++; failedRows.push({ row: groupRows[0], reason: e.message || "Unknown error" }); }
           }
           // Update opening_balance for each client based on their total balance_due
           const uniqueClientIds = Array.from(new Set(clientMap.values()));

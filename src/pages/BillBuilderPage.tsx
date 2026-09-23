@@ -277,6 +277,7 @@ function SortableLineItem({
             onFocus={(e) => e.target.select()} 
             onBlur={(e) => { if (!e.target.value || parseFloat(e.target.value) <= 0) onChange(index, "quantity", 1); }} 
             value={line.quantity} 
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
             onChange={(e) => {
               let val = e.target.value;
               if (val !== "") {
@@ -285,7 +286,7 @@ function SortableLineItem({
                   val = String(Math.floor(parseFloat(val) || 0));
                 }
               }
-              onChange(index, "quantity", val === "" ? "" : (parseFloat(val) || 0));
+              onChange(index, "quantity", val === "" ? "" : Math.max(0, parseFloat(val) || 0));
             }} 
             min={0} 
             step={["pcs", "pieces", "box", "boxes", "nos"].includes((line.unit || "").toLowerCase()) ? "1" : "0.01"} 
@@ -345,7 +346,9 @@ function SortableLineItem({
         </div>
         {/* Rate */}
         <div className="col-span-2 space-y-0.5">
-          <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate} onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))} min={0} step="0.01" />
+          <Input placeholder="0" type="number" className="h-8 text-xs text-right" value={line.rate}
+            onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+            onChange={(e) => onChange(index, "rate", e.target.value === "" ? "" : Math.max(0, parseFloat(e.target.value) || 0))} min={0} step="0.01" />
           {Number(line.discount) > 0 && (
             <div className="flex flex-col items-end mt-1 text-[10px]">
               <span className="text-emerald-600 font-semibold">{line.discount_type === 'percentage' ? `${line.discount}%` : `₹${line.discount}`} discount</span>
@@ -748,14 +751,15 @@ export default function BillBuilderPage() {
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
 
-  // Gross total before TDS/TCS
-  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + adjustment - expenses;
+  // Gross total before TDS/TCS (Fixed cost expenses & shipping are added, not subtracted)
+  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + expenses + adjustment;
 
-  // TDS is calculated BEFORE GST on Subtotal (taxable value) and DEDUCTED (-)
-  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + adjustment) and ADDED (+)
+  // TDS is calculated BEFORE GST on Subtotal (taxable value: subtotal + expenses) and DEDUCTED (-)
+  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + expenses + adjustment) and ADDED (+)
+  const taxableSubtotal = Math.max(0, subtotal + expenses);
   const tdsTcsAmount = tdsTcsApplicable
     ? tdsTcsType === "tds"
-      ? (subtotal * Math.max(0, tdsTcsRate)) / 100
+      ? (taxableSubtotal * Math.max(0, tdsTcsRate)) / 100
       : (baseTotalBeforeTdsTcs * Math.max(0, tdsTcsRate)) / 100
     : 0;
   
@@ -1466,10 +1470,15 @@ export default function BillBuilderPage() {
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
+                  min={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault();
+                  }}
                   className="h-7 w-16 text-xs text-right"
                   value={discount}
                   onChange={(e) => {
                     let val = parseFloat(e.target.value) || 0;
+                    val = Math.max(0, val);
                     if (discountType === "percentage" && val > 100) val = 100;
                     setDiscount(val);
                   }}
@@ -1491,9 +1500,13 @@ export default function BillBuilderPage() {
               <span className="text-muted-foreground">Shipping</span>
               <Input
                 type="number"
+                min={0}
                 className="h-7 w-24 text-xs text-right"
                 value={shippingCharge}
-                onChange={(e) => setShippingCharge(parseFloat(e.target.value) || 0)}
+                onKeyDown={(e) => {
+                  if (e.key === "-" || e.key === "e") e.preventDefault();
+                }}
+                onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
               />
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
@@ -1501,11 +1514,15 @@ export default function BillBuilderPage() {
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
+                  min={0}
                   className="h-7 w-24 text-xs text-right"
                   value={expenses}
-                  onChange={(e) => setExpenses(parseFloat(e.target.value) || 0)}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault();
+                  }}
+                  onChange={(e) => setExpenses(Math.max(0, parseFloat(e.target.value) || 0))}
                 />
-                {expenses > 0 && <span className="text-destructive">-{fmt(expenses)}</span>}
+                {expenses > 0 && <span className="text-foreground font-medium">+{fmt(expenses)}</span>}
               </div>
             </div>
             <div className="space-y-1">

@@ -95,22 +95,22 @@ export function calculateEmployeeLimit(planStr: string = 'free', purchasedLimit?
   const p = normalizePlanKey(planStr);
 
   // Base employee limits:
-  // Business Suite & Business HR: 25 base employees
-  // Business Accounting, Business Starter (Free), CRM, Promotion: 3 employees strictly
+  // Business Suite: 25 base employees (expandable if additional purchased)
+  // Business HR, Business Accounting, Starter, CRM, Promotion: 3 base employees (expandable if additional purchased)
   let baseLimit = 3;
-  if (p === 'suite' || p === 'hr') {
+  if (p === 'suite') {
     baseLimit = 25;
   } else {
     baseLimit = 3;
   }
 
-  // Self-heal: If plan was marked 'free' but has purchased capacity (>10), it's Suite/HR
+  // Self-heal: If plan was marked 'free' but has purchased capacity (>10), it's Suite scale
   if (p === 'free' && typeof purchasedLimit === 'number' && purchasedLimit > 10) {
     baseLimit = 25;
   }
 
-  // Extra employee capacity add-ons (+₹29) can ONLY be applied to Business Suite or Business HR:
-  if ((p === 'suite' || p === 'hr') && typeof purchasedLimit === 'number' && purchasedLimit > baseLimit) {
+  // Extra employee capacity add-ons or purchased limits:
+  if (typeof purchasedLimit === 'number' && purchasedLimit > baseLimit) {
     return purchasedLimit;
   }
 

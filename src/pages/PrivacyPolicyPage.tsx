@@ -4,6 +4,7 @@ import { PublicFooter } from "@/components/public/PublicFooter";
 import { LegalNavTabs } from "@/components/public/LegalNavTabs";
 import { ShieldCheck } from "lucide-react";
 import { SEO } from "@/components/shared/SEO";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export default function PrivacyPolicyPage() {
   useEffect(() => {
@@ -13,8 +14,8 @@ export default function PrivacyPolicyPage() {
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 text-slate-800">
       <SEO 
-        title="Privacy Policy | Assay Biz" 
-        description="Learn how Assay Biz protects your data, business records, and privacy in compliance with Indian Information Technology regulations."
+        title="Privacy Policy | Aassay Biz" 
+        description="Learn how Aassay Biz protects your data, business records, and privacy in compliance with Indian Information Technology regulations."
       />
       <PublicHeader />
 
@@ -40,7 +41,7 @@ export default function PrivacyPolicyPage() {
                 1. Introduction
               </h2>
               <p>
-                Welcome to <strong>Assay Biz</strong> ("we," "our," or "us"). We are committed to protecting the privacy, confidentiality, and security of your personal and business financial data. This Privacy Policy explains how we collect, use, process, and disclose information when you access our cloud ERP billing software, attendance portal, and CRM services via our websites and applications.
+                Welcome to <AassayBizBrand /> ("we," "our," or "us"). We are committed to protecting the privacy, confidentiality, and security of your personal and business financial data. This Privacy Policy explains how we collect, use, process, and disclose information when you access our cloud ERP billing software, attendance portal, and CRM services via our websites and applications.
               </p>
             </section>
 
@@ -118,9 +119,9 @@ export default function PrivacyPolicyPage() {
                 If you have any questions, concerns, or requests regarding this Privacy Policy or your personal information, please reach out to our grievance desk:
               </p>
               <div className="mt-3 p-4 bg-slate-100 rounded-xl space-y-1 text-slate-700">
-                <p className="font-semibold text-slate-900">Assay Biz Support & Grievance Desk</p>
-                <p>Email: <a href="mailto:support@assaybiz.com" className="text-primary hover:underline">support@assaybiz.com</a></p>
-                <p>Phone / WhatsApp: +91 94248 25919</p>
+                <p className="font-semibold text-slate-900 flex items-center gap-1.5"><AassayBizBrand /> Support &amp; Grievance Desk</p>
+                <p>Email: <a href="mailto:support@aassaybiz.com" className="text-primary hover:underline">support@aassaybiz.com</a></p>
+                <p>Phone / WhatsApp: +91 7806025875</p>
                 <p>Location: Madhya Pradesh, India</p>
               </div>
             </section>

@@ -3,6 +3,7 @@ import { useSubscription } from "@/hooks/use-subscription";
 import { ArrowUpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 import {
   LayoutDashboard,
   Users,
@@ -80,7 +81,7 @@ import { useLanguage } from "@/lib/i18n";
 
   const salesItems = [
   { title: "Invoices", url: "/invoices", icon: FileText, addUrl: "/invoices/new" },
-  { title: "Quotations", url: "/estimates", icon: ClipboardList, addUrl: "/estimates/new" },
+  { title: "Quotations", url: "/quotations", icon: ClipboardList, addUrl: "/quotations/new" },
   { title: "Client", url: "/clients", icon: Users, addUrl: "/clients?add=1" },
   { title: "Credit Notes", url: "/credit-notes", icon: FileMinus2, addUrl: "/credit-notes/new" },
   { title: "Payments Received", url: "/payments", icon: CreditCard, addUrl: "/payments/new" },
@@ -182,18 +183,18 @@ export function AppSidebar() {
 
   const currentUserEmail = session?.user?.email?.toLowerCase().trim();
   const isUserAdmin = isAdmin(currentUserEmail);
+  const isOrgAdmin = userRole === 'owner' || userRole === 'admin' || isUserAdmin;
   
   // Find permissions for regular users in current org
   const currentOrgId = org?.id || "default";
-  const currentTeamMember = !isUserAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
+  const currentTeamMember = !isOrgAdmin ? (teamMembers[currentOrgId] || []).find(m => m.email === currentUserEmail) : null;
   // Combine local and global permissions
   const userPermissions = [...(currentTeamMember?.permissions || []), ...globalPermissions];
 
   const isGroupAccessible = (groupKey: string) => {
-    if (isUserAdmin) return true; // Admins see everything that is enabled
-    // Fallback: If no team members exist for this org yet, assume owner access and show everything
-    if (!teamMembers[currentOrgId] || teamMembers[currentOrgId].length === 0) return true;
-    return userPermissions.includes(groupKey); // Regular users see only assigned features
+    if (isOrgAdmin) return true; // Admins & Owners see everything that is enabled
+    // Regular invited users see only explicitly assigned features
+    return userPermissions.includes(groupKey);
   };
 
   const multiWarehouseEnabled = (org as any)?.multi_warehouse_enabled;
@@ -206,6 +207,11 @@ export function AppSidebar() {
   });
 
     // Default groups (always visible for admins, or if explicitly given permission)
+  const isSuiteActive = subscriptionPlan?.toLowerCase().trim() === 'suite' || 
+                        subscriptionPlan?.toLowerCase().trim() === 'plan_3' || 
+                        subscriptionPlan?.toLowerCase().includes('suite') ||
+                        subscriptionPlan?.toLowerCase().includes('flagship');
+
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
@@ -214,7 +220,7 @@ export function AppSidebar() {
     if (g.key === 'outreach' && subscriptionPlan && subscriptionPlan !== 'free') {
       hasPlatformFeature = true;
     }
-    return { ...g, isLocked: !isGroupEnabled(g.key) || !hasPlatformFeature };
+    return { ...g, isLocked: (!isSuiteActive && (!isGroupEnabled(g.key) || !hasPlatformFeature)) || !isGroupAccessible(g.key) };
   });
 
   // Admin controlled groups - mapped from the feature store
@@ -233,7 +239,7 @@ export function AppSidebar() {
         key: g.key,
         label: g.label,
         isUpcoming: g.isUpcoming,
-        isLocked: !isOutreachUnlocked && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key)),
+        isLocked: (!isSuiteActive && !isOutreachUnlocked && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key))) || !isGroupAccessible(g.key),
         items: g.items.map(i => {
           let itemIcon = ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
@@ -272,9 +278,11 @@ export function AppSidebar() {
   const bmSubGroups = allGroups.filter(g => bmKeys.includes(g.key));
   const otherGroups = allGroups.filter(g => !bmKeys.includes(g.key));
   
+  const isAllBmLocked = bmSubGroups.length > 0 && bmSubGroups.every(g => (g as any).isLocked);
+  
   const sidebarGroups = bmSubGroups.length > 0 
     ? [
-        { key: "business_management", label: "Business Accounting", items: [], subGroups: bmSubGroups },
+        { key: "business_management", label: "Business Accounting", items: [], subGroups: bmSubGroups, isLocked: isAllBmLocked },
         ...otherGroups
       ]
     : otherGroups;
@@ -307,7 +315,7 @@ export function AppSidebar() {
       <SidebarHeader className="px-4 py-6 flex flex-col gap-6">
         <NavLink to="/dashboard" className="flex items-center justify-center gap-3 hover:opacity-90 transition-opacity w-full">
           <div className="bg-white/95 px-4 py-2 rounded-xl shadow-sm w-full flex justify-center border border-white/20">
-            <img src={`${logoImg}?v=${Date.now()}`} alt="Assay Biz" className="h-10 w-auto object-contain" />
+            <img src={`${logoImg}?v=${Date.now()}`} alt="Aassay Biz" className="h-10 w-auto object-contain" />
           </div>
         </NavLink>
 
@@ -390,6 +398,9 @@ export function AppSidebar() {
                   <SidebarMenuItem>
                     <SidebarMenuButton
                       onClick={() => {
+                        if ((g as any).isLocked && !(g as any).subGroups) {
+                          return;
+                        }
                         if ((g as any).isUpcoming) {
                           if (g.key === "feedback") navigate("/feedback");
                           else if (g.key === "ai-analysis") navigate("/business-analysis");
@@ -397,7 +408,7 @@ export function AppSidebar() {
                           toggleGroup(g.key, isOpen);
                         }
                       }}
-                      className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
+                      className={`hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn ${(g as any).isLocked && !(g as any).subGroups ? "opacity-60 cursor-not-allowed" : ""}`}
                       tooltip={t(g.label)}
                     >
                       {g.key === "business_management" && <Briefcase className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
@@ -418,7 +429,7 @@ export function AppSidebar() {
                             <span className="font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm truncate">
                               {t(g.label)}
                             </span>
-                            {(g as any).isLocked && !(g as any).isUpcoming && <Lock className="h-3.5 w-3.5 text-amber-500 ml-2 shrink-0" title="Upgrade to use this feature" />}
+                            {(g as any).isLocked && !(g as any).isUpcoming && <Lock className="h-3.5 w-3.5 text-amber-500 ml-2 shrink-0" title="Locked" />}
                             {(g as any).isUpcoming && (
                               <div className="flex items-center gap-1 shrink-0 ml-2" title="Coming Soon">
                                 <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
@@ -428,18 +439,18 @@ export function AppSidebar() {
                             )}
                           </div>
                       )}
-                      {!collapsed && !(g as any).isUpcoming && (
+                      {!collapsed && !(g as any).isUpcoming && !((g as any).isLocked && !(g as any).subGroups) && (
                         <ChevronRight className={`h-4 w-4 text-slate-500 transition-transform ${isOpen ? "rotate-90" : ""}`} />
                       )}
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                   
-                  {isOpen && g.items.map((item) => (
+                  {isOpen && !(g as any).isLocked && g.items.map((item) => (
                     <SidebarMenuItem key={item.title} className={`group/item mt-1 ${collapsed ? "pl-0 flex justify-center" : "pl-6"}`}>
                       <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
                         <NavLink
                           to={item.url}
-                          className={`hover:bg-[#1e293b] hover:text-white transition-colors h-9 rounded-lg ${(g as any).isLocked ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}`} title={(g as any).isLocked ? "Upgrade to use this feature" : undefined} onClick={(e) => { if((g as any).isLocked) e.preventDefault(); }}
+                          className="hover:bg-[#1e293b] hover:text-white transition-colors h-9 rounded-lg"
                         >
                           {collapsed ? (
                             <item.icon className="h-4 w-4" />
@@ -462,13 +473,20 @@ export function AppSidebar() {
                   ))}
 
                   {isOpen && g.subGroups?.map((sub) => {
-                    const isSubOpen = openGroups[sub.key] !== undefined ? openGroups[sub.key] : sub.items.some(item => isActive(item.url) || (item.addUrl && isActive(item.addUrl)));
+                    const isSubLocked = (sub as any).isLocked;
+                    const isSubOpen = openGroups[sub.key] !== undefined 
+                      ? openGroups[sub.key] 
+                      : (!isSubLocked && sub.items.some(item => isActive(item.url) || (item.addUrl && isActive(item.addUrl))));
                     return (
                       <div key={sub.key} id={`group-${sub.key}`} className="mt-1">
                         <SidebarMenuItem className={`group/item ${collapsed ? "pl-0 flex justify-center" : "pl-4"}`}>
                           <SidebarMenuButton 
-                            onClick={() => toggleGroup(sub.key, isSubOpen)} 
-                            className="hover:bg-transparent h-9 text-slate-400 hover:text-white cursor-pointer"
+                            onClick={() => {
+                              if (!isSubLocked) {
+                                toggleGroup(sub.key, isSubOpen);
+                              }
+                            }} 
+                            className={`hover:bg-transparent h-9 text-slate-400 hover:text-white ${isSubLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
                             tooltip={collapsed ? t(sub.label) : undefined}
                           >
                             {collapsed ? (
@@ -482,14 +500,14 @@ export function AppSidebar() {
                                <>
                                  <span className="flex-1 text-sm flex items-center justify-between pr-2">
                                      {t(sub.label)}
-                                     {(sub as any).isLocked && <Lock className="h-3 w-3 text-amber-500" title="Upgrade to use this feature" />}
+                                     {isSubLocked && <Lock className="h-3.5 w-3.5 text-amber-500 ml-1.5 shrink-0" title="Locked" />}
                                    </span>
-                                 <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSubOpen ? "rotate-90" : ""}`} />
+                                 {!isSubLocked && <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSubOpen ? "rotate-90" : ""}`} />}
                                </>
                             )}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
-                        {isSubOpen && !collapsed && (
+                        {isSubOpen && !collapsed && !isSubLocked && (
                           <div className="pl-6 border-l border-slate-700/50 ml-6 mt-1 space-y-1">
                             {sub.items.map(item => (
                               <SidebarMenuItem key={item.title} className="group/subitem">
@@ -645,7 +663,7 @@ export function AppSidebar() {
         {!collapsed && (
           <div className="flex items-center justify-between px-3 mt-1">
             <div className="flex flex-col">
-              <span className="text-xs font-semibold text-sidebar-foreground">Assay Biz</span>
+              <AassayBizBrand theme="dark" className="text-xs" />
               <span className="text-[10px] text-slate-500">Version 2.0.0</span>
             </div>
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="System Online"></div>

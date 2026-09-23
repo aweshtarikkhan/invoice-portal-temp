@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, Fragment } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSequenceNumber } from "@/lib/utils";
@@ -23,12 +23,13 @@ interface Line {
   description: string;
   quantity: string;
   unit_cost: string;
+  tax_rate: string;
   batch_no: string;
   serial_no: string;
   expiry_date: string;
   expiry_warning?: string;
 }
-const emptyLine = (): Line => ({ item_id: "", po_line_id: null, description: "", quantity: 1, unit_cost: "", batch_no: "", serial_no: "", expiry_date: "" });
+const emptyLine = (): Line => ({ item_id: "", po_line_id: null, description: "", quantity: "1", unit_cost: "", tax_rate: "0", batch_no: "", serial_no: "", expiry_date: "" });
 
 export default function GrnBuilderPage() {
   const org = useAppStore((s) => s.organization);
@@ -101,9 +102,10 @@ export default function GrnBuilderPage() {
     }
     if (pl) setLines(pl.map((l: any) => ({
       item_id: l.item_id || "", po_line_id: l.id,
-      description: l.description,
+      description: l.description || "",
       quantity: String(Math.max(0, Number(l.quantity) - Number(l.received_quantity || 0))),
       unit_cost: String(l.rate || 0),
+      tax_rate: String(l.tax_rate || 0),
       batch_no: "", serial_no: "", expiry_date: "",
     })));
   };
@@ -125,32 +127,53 @@ export default function GrnBuilderPage() {
     if (gl) setLines(gl.map((l: any) => ({
       item_id: l.item_id || "", po_line_id: l.po_line_id, description: l.description,
       quantity: String(l.quantity), unit_cost: String(l.unit_cost),
+      tax_rate: String(l.tax_rate || 0),
       batch_no: l.batch_no || "", serial_no: l.serial_no || "", expiry_date: l.expiry_date || "",
     })));
   };
 
-  const total = useMemo(() => lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unit_cost) || 0), 0), [lines]);
+  const { baseTotal, taxTotal, grandTotal } = useMemo(() => {
+    let base = 0;
+    let tax = 0;
+    lines.forEach(l => {
+      const q = Number(l.quantity) || 0;
+      const c = Number(l.unit_cost) || 0;
+      const tr = Number(l.tax_rate) || 0;
+      const lineBase = q * c;
+      const lineTax = lineBase * (tr / 100);
+      base += lineBase;
+      tax += lineTax;
+    });
+    return {
+      baseTotal: base,
+      taxTotal: tax,
+      grandTotal: base + tax,
+    };
+  }, [lines]);
 
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find(x => x.id === itemId);
     const x = [...lines];
     x[idx].item_id = itemId;
-    if (it) { let extraDesc = "";
+    if (it) {
+      let extraDesc = "";
       if (it.custom_field_values && it.custom_field_values.length > 0) {
         extraDesc = it.custom_field_values
           .filter((cf: any) => cf.value)
           .map((cf: any) => `${cf.custom_field_definitions?.field_name}: ${cf.value}`)
           .join("\n");
       }
-      x[idx].description = it.name + (extraDesc ? `\n${extraDesc}` : "");       let __rate = Number(it.purchase_price) || 0;
+      x[idx].description = it.name + (extraDesc ? `\n${extraDesc}` : "");
+      let __rate = Number(it.purchase_price || it.unit_price) || 0;
       const __priceType = it.purchase_price_type || "without_tax";
-      if (__priceType === "with_tax" && it.tax_id) {
-        const __tax = taxRates.find((t: any) => t.id === it.tax_id);
-        if (__tax && Number(__tax.rate) > 0) {
-          __rate = Number((__rate / (1 + Number(__tax.rate) / 100)).toFixed(2));
-        }
+      const itemTax = it.tax_id ? taxRates.find((t: any) => t.id === it.tax_id) : null;
+      const itemTaxRate = Number(itemTax?.rate || 0);
+      if (__priceType === "with_tax" && itemTaxRate > 0) {
+        __rate = Number((__rate / (1 + itemTaxRate / 100)).toFixed(2));
       }
-      x[idx].unit_cost = String(__rate); }
+      x[idx].unit_cost = String(__rate);
+      x[idx].tax_rate = String(itemTaxRate);
+    }
     setLines(x);
   };
 
@@ -194,18 +217,26 @@ export default function GrnBuilderPage() {
         // Update item stock_quantity and post stock movements
         for (const lp of linePayloads) {
           const { data: it } = await (supabase as any).from("items").select("stock_quantity").eq("id", lp.item_id).maybeSingle();
-          const newQty = Number(it?.stock_quantity || 0) + Number(lp.quantity);
+          const currentStock = Number(it?.stock_quantity || 0);
+          const newQty = currentStock + Number(lp.quantity);
           await (supabase as any).from("items").update({ stock_quantity: newQty }).eq("id", lp.item_id);
-          await logStockMovements([{
-            orgId: org.id, itemId: lp.item_id!, changeQty: Number(lp.quantity),
-            balanceAfter: newQty, reason: `GRN ${grnNumber}`,
-            refType: "manual", refId: grnId!, refNumber: grnNumber, createdBy: user?.id || null,
-          }]);
-          // record batch/serial/cost/warehouse on the latest movement
-          await (supabase as any).from("stock_movements").update({
-            batch_no: lp.batch_no, serial_no: lp.serial_no, expiry_date: lp.expiry_date,
-            unit_cost: lp.unit_cost, warehouse_id: warehouseId || null,
-          }).eq("ref_id", grnId).eq("item_id", lp.item_id);
+          
+          await (supabase as any).from("stock_movements").insert({
+            org_id: org.id,
+            item_id: lp.item_id,
+            change_qty: Number(lp.quantity),
+            balance_after: newQty,
+            reason: `GRN ${grnNumber}`,
+            ref_type: "grn",
+            ref_id: grnId,
+            ref_number: grnNumber,
+            batch_no: lp.batch_no || null,
+            serial_no: lp.serial_no || null,
+            expiry_date: lp.expiry_date || null,
+            unit_cost: lp.unit_cost,
+            warehouse_id: warehouseId || null,
+            created_by: user?.id || null,
+          });
         }
         // Update PO line received_quantity
         for (const lp of linePayloads) {
@@ -320,46 +351,168 @@ export default function GrnBuilderPage() {
         </CardHeader>
         <CardContent className="overflow-x-auto">
           <Table>
-            <TableHeader><TableRow>
-              <TableHead className="min-w-48">Item</TableHead><TableHead>Description</TableHead>
-              <TableHead className="w-20">Qty</TableHead><TableHead className="w-24">Unit Cost</TableHead>
-              <TableHead className="w-28">Batch #</TableHead><TableHead className="w-28">Serial #</TableHead>
-              <TableHead className="w-32">Expiry</TableHead><TableHead></TableHead>
-            </TableRow></TableHeader>
+            <TableHeader>
+              <TableRow className="bg-slate-50/80">
+                <TableHead className="w-[220px]">Item</TableHead>
+                <TableHead className="min-w-[200px]">Description</TableHead>
+                <TableHead className="w-28 text-center">Qty</TableHead>
+                <TableHead className="w-36 text-right">Unit Cost (₹)</TableHead>
+                <TableHead className="w-24 text-center">GST %</TableHead>
+                <TableHead className="w-32 text-right">Total (₹)</TableHead>
+                <TableHead className="w-12 text-center"></TableHead>
+              </TableRow>
+            </TableHeader>
             <TableBody>
               {lines.map((l, i) => {
                 const it = items.find(x => x.id === l.item_id);
+                const q = Number(l.quantity) || 0;
+                const c = Number(l.unit_cost) || 0;
+                const tr = Number(l.tax_rate) || 0;
+                const lineBase = q * c;
+                const lineTotal = lineBase + (lineBase * (tr / 100));
+
                 return (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <Select value={l.item_id || undefined} onValueChange={(v) => pickItem(i, v)}>
-                        <SelectTrigger className="h-9"><SelectValue placeholder="Select item" /></SelectTrigger>
-                        <SelectContent className="z-50 max-h-60">
-                          {items.length === 0 ? (
-                            <SelectItem value="none" disabled>No items found</SelectItem>
-                          ) : (
-                            items.map(x => (
-                              <SelectItem key={x.id} value={x.id}>
-                                {x.name} {x.sku ? `(${x.sku})` : ""}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                    <TableCell><Input value={l.description} onChange={e => { const x = [...lines]; x[i].description = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Input type="number" placeholder="1" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Input type="number" placeholder="1" value={l.unit_cost} onChange={e => { const x = [...lines]; x[i].unit_cost = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Input value={l.batch_no} onChange={e => { const x = [...lines]; x[i].batch_no = e.target.value; setLines(x); }} disabled={!it?.track_batches} placeholder={it?.track_batches ? "" : "—"} /></TableCell>
-                    <TableCell><Input value={l.serial_no} onChange={e => { const x = [...lines]; x[i].serial_no = e.target.value; setLines(x); }} disabled={!it?.track_serials} placeholder={it?.track_serials ? "" : "—"} /></TableCell>
-                    <TableCell><Input type="date" value={l.expiry_date} onChange={e => { const x = [...lines]; x[i].expiry_date = e.target.value; setLines(x); }} /></TableCell>
-                    <TableCell><Button size="icon" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}><Trash2 className="h-4 w-4" /></Button></TableCell>
-                  </TableRow>
+                  <Fragment key={i}>
+                    <TableRow className="border-b-0 hover:bg-slate-50/40">
+                      <TableCell className="w-[220px] align-top pt-3">
+                        <Select value={l.item_id || undefined} onValueChange={(v) => pickItem(i, v)}>
+                          <SelectTrigger className="h-9 w-full bg-white"><SelectValue placeholder="Select item" /></SelectTrigger>
+                          <SelectContent className="z-50 max-h-60">
+                            {items.length === 0 ? (
+                              <SelectItem value="none" disabled>No items found</SelectItem>
+                            ) : (
+                              items.map(x => (
+                                <SelectItem key={x.id} value={x.id}>
+                                  {x.name} {x.sku ? `(${x.sku})` : ""}
+                                </SelectItem>
+                              ))
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="min-w-[200px] align-top pt-3">
+                        <Input
+                          value={l.description}
+                          onChange={e => {
+                            const x = [...lines];
+                            x[i].description = e.target.value;
+                            setLines(x);
+                          }}
+                          placeholder="Description..."
+                          className="h-9 bg-white"
+                        />
+                      </TableCell>
+                      <TableCell className="w-28 align-top pt-3">
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          min={0}
+                          value={l.quantity}
+                          onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                          onChange={e => {
+                            const x = [...lines];
+                            x[i].quantity = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
+                            setLines(x);
+                          }}
+                          className="h-9 text-center font-semibold bg-white"
+                        />
+                      </TableCell>
+                      <TableCell className="w-36 align-top pt-3">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          min={0}
+                          value={l.unit_cost}
+                          onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                          onChange={e => {
+                            const x = [...lines];
+                            x[i].unit_cost = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
+                            setLines(x);
+                          }}
+                          className="h-9 text-right font-semibold bg-white"
+                        />
+                      </TableCell>
+                      <TableCell className="w-24 align-top pt-3">
+                        <Input
+                          type="number"
+                          placeholder="0"
+                          min={0}
+                          value={l.tax_rate}
+                          onChange={e => {
+                            const x = [...lines];
+                            x[i].tax_rate = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
+                            setLines(x);
+                          }}
+                          className="h-9 text-center bg-white"
+                        />
+                      </TableCell>
+                      <TableCell className="w-32 align-top pt-3 text-right">
+                        <div className="h-9 flex items-center justify-end font-bold text-slate-800">
+                          ₹{lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </div>
+                      </TableCell>
+                      <TableCell className="w-12 align-top pt-3 text-center">
+                        <Button size="icon" variant="ghost" className="h-9 w-9 text-slate-400 hover:text-red-600" onClick={() => setLines(lines.filter((_, j) => j !== i))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="border-b border-slate-200/80 hover:bg-transparent">
+                      <TableCell colSpan={7} className="pt-0 pb-3 px-4">
+                        <div className="flex flex-wrap items-center gap-3 px-3 py-2 bg-slate-50/90 rounded-md border border-slate-200/90 text-xs">
+                          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Tracking:</span>
+                          <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+                            <span className="text-slate-600 font-medium whitespace-nowrap">Batch #:</span>
+                            <Input
+                              value={l.batch_no}
+                              onChange={e => { const x = [...lines]; x[i].batch_no = e.target.value; setLines(x); }}
+                              placeholder={it?.track_batches ? "Batch number" : "Optional batch #"}
+                              className="h-7 text-xs bg-white border-slate-200"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-1 min-w-[140px]">
+                            <span className="text-slate-600 font-medium whitespace-nowrap">Serial #:</span>
+                            <Input
+                              value={l.serial_no}
+                              onChange={e => { const x = [...lines]; x[i].serial_no = e.target.value; setLines(x); }}
+                              placeholder={it?.track_serials ? "Serial number" : "Optional serial #"}
+                              className="h-7 text-xs bg-white border-slate-200"
+                            />
+                          </div>
+                          <div className="flex items-center gap-1.5 w-52 shrink-0">
+                            <span className="text-slate-600 font-medium whitespace-nowrap">Expiry:</span>
+                            <Input
+                              type="date"
+                              value={l.expiry_date}
+                              onChange={e => { const x = [...lines]; x[i].expiry_date = e.target.value; setLines(x); }}
+                              className="h-7 text-xs bg-white border-slate-200"
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  </Fragment>
                 );
               })}
             </TableBody>
           </Table>
-          <div className="mt-4 text-right text-sm">Total Inventory Value: <span className="font-semibold">{total.toFixed(2)}</span></div>
+          <div className="mt-6 flex justify-end">
+            <div className="w-80 space-y-2 bg-slate-50 p-4 rounded-lg border border-slate-200 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Material / Base Value:</span>
+                <span className="font-semibold text-slate-800">₹{baseTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>GST / Tax Amount:</span>
+                <span className="font-semibold text-slate-800">₹{taxTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="pt-2 border-t flex justify-between font-bold text-base text-slate-900">
+                <span>Total GRN Value:</span>
+                <span className="text-emerald-700">₹{grandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

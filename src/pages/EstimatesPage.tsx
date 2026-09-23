@@ -42,7 +42,7 @@ const statusMap: Record<EstimateStatus, { label: string; variant: "default" | "i
   converted: { label: "Converted", variant: "success" },
 };
 
-const PIE_COLORS = ["hsl(201, 96%, 42%)", "hsl(142, 71%, 45%)", "hsl(32, 95%, 44%)", "hsl(0, 72%, 51%)", "hsl(262, 83%, 58%)", "hsl(215, 16%, 47%)", "hsl(186, 80%, 40%)"];
+const PIE_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 
 function normalizeEstStatus(st: any): "draft" | "sent" | "accepted" | "rejected" | "expired" {
@@ -156,11 +156,11 @@ export default function EstimatesPage() {
 
   const handleDelete = async (id: string) => {
     await supabase.from("estimates").delete().eq("id", id);
-    toast({ title: "Estimate deleted" });
+    toast({ title: "Quotation deleted" });
     fetchEstimates();
   };
 
-  const handleConvert = (id: string) => navigate(`/estimates/${id}/convert`);
+  const handleConvert = (id: string) => navigate(`/quotations/${id}/convert`);
 
   const updateStatus = async (id: string, newStatus: string, dateField: string) => {
     await supabase.from("estimates").update({ status: newStatus, [dateField]: new Date().toISOString() }).eq("id", id);
@@ -170,7 +170,7 @@ export default function EstimatesPage() {
 
   return (
     <div className="space-y-6">
-      <PageActionBar title="Estimates">
+      <PageActionBar title="Quotations">
         <Button variant="outline" size="sm" onClick={() => {
           downloadCSV(estimates.map(e => ({
             estimate_number: e.estimate_number,
@@ -179,20 +179,20 @@ export default function EstimatesPage() {
             expiry_date: e.expiry_date,
             total: e.total,
             status: e.status,
-          })), "estimates");
+          })), "quotations");
         }}>
           <Download className="mr-1 h-4 w-4" /> Export
         </Button>
         <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 h-4 w-4" /> Import
         </Button>
-        <Button size="sm" onClick={() => navigate("/estimates/new")}>
-          <Plus className="mr-1 h-4 w-4" /> New Estimate
+        <Button size="sm" onClick={() => navigate("/quotations/new")}>
+          <Plus className="mr-1 h-4 w-4" /> New Quotation
         </Button>
       </PageActionBar>
 
       <SummaryRibbon
-        label="Estimate Summary"
+        label="Quotation Summary"
         items={[
           { label: "Total Value", value: fmt(summary.totalValue), accent: "info" },
           { label: "Accepted / Converted", value: fmt(summary.acceptedValue), accent: "success" },
@@ -276,7 +276,7 @@ export default function EstimatesPage() {
         </Tabs>
         <div className="relative w-full sm:w-64">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9 h-9" placeholder="Search estimates..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input className="pl-9 h-9" placeholder="Search quotations..." value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
@@ -285,17 +285,17 @@ export default function EstimatesPage() {
           {!loading && visible.length === 0 ? (
             <EmptyState
               icon={FileText}
-              title="No estimates yet"
-              description="Create your first estimate to get started."
-              actionLabel="New Estimate"
-              onAction={() => navigate("/estimates/new")}
+              title="No quotations yet"
+              description="Create your first quotation to get started."
+              actionLabel="New Quotation"
+              onAction={() => navigate("/quotations/new")}
             />
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/30">
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Date</TableHead>
-                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Estimate #</TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Quotation #</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Client</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Expiry</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Amount</TableHead>
@@ -307,7 +307,7 @@ export default function EstimatesPage() {
                 {visible.map((est) => {
                   const s = statusMap[est.status as EstimateStatus] || statusMap.draft;
                   return (
-                    <TableRow key={est.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/estimates/${est.id}`)}>
+                    <TableRow key={est.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/quotations/${est.id}`)}>
                       <TableCell className="text-sm text-muted-foreground">{est.issue_date ? format(parseISO(est.issue_date), "dd/MM/yyyy") : "-"}</TableCell>
                       <TableCell className="font-medium text-primary text-sm">{est.estimate_number}</TableCell>
                       <TableCell className="text-sm">{est.clients?.display_name}</TableCell>
@@ -329,7 +329,7 @@ export default function EstimatesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => navigate(`/estimates/${est.id}/edit`)}>
+                              <DropdownMenuItem onClick={() => navigate(`/quotations/${est.id}/edit`)}>
                                 <FileText className="mr-2 h-4 w-4" /> Edit
                               </DropdownMenuItem>
                               {(est.status === "draft" || est.status === "sent" || est.status === "viewed" || est.status === "accepted") && (
@@ -374,7 +374,7 @@ export default function EstimatesPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         fields={[
-          { key: "estimate_number", label: "Estimate #", required: true },
+          { key: "estimate_number", label: "Quotation #", required: true },
           { key: "client_name", label: "Client Name", required: true },
           { key: "issue_date", label: "Issue Date" },
           { key: "expiry_date", label: "Expiry Date" },
@@ -383,7 +383,7 @@ export default function EstimatesPage() {
   { key: "unit", label: "Unit" },
           { key: "notes", label: "Notes" },
         ]}
-        entityName="Estimates"
+        entityName="Quotations"
         onImport={async (rows) => {
           let success = 0, errors = 0; const failedRows: {row: any, reason: string}[] = [];
           const { data: clients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);

@@ -35,10 +35,10 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     key: "sales",
     label: "Sales",
     icon: "FileText",
-    description: "Invoices, Estimates, Credit Notes & more",
+    description: "Invoices, Quotations, Credit Notes & more",
     items: [
       { key: "invoices", title: "Invoices", description: "Create & manage invoices", icon: "FileText", url: "/invoices" },
-      { key: "estimates", title: "Quotations", description: "Send quotes to clients", icon: "ClipboardList", url: "/estimates" },
+      { key: "estimates", title: "Quotations", description: "Send quotes to clients", icon: "ClipboardList", url: "/quotations" },
       { key: "clients", title: "Client", description: "Manage your customers", icon: "Users", url: "/clients" },
       { key: "credit-notes", title: "Credit Notes", description: "Issue credit notes", icon: "FileMinus2", url: "/credit-notes" },
       { key: "payments", title: "Payments Received", description: "Track all payments", icon: "CreditCard", url: "/payments" },
@@ -48,7 +48,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
   },
   {
     key: "catalog",
-    label: "Catalog",
+    label: "Inventory Management",
     icon: "Package",
     description: "Items & Inventory management",
     items: [
@@ -442,8 +442,23 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
 
   isGroupEnabled: (groupKey: string) => {
     const state = get();
-    // It must be enabled for this business AND allowed by the platform
-    return state.enabledGroups.includes(groupKey) && state.platformFeatures.includes(groupKey);
+    // 1. Business Suite always has full unrestricted access to the entire portal
+    const plan = state.subscriptionPlan?.toLowerCase().trim() || '';
+    if (
+      plan === 'suite' ||
+      plan === 'plan_3' ||
+      plan.includes('suite') ||
+      plan.includes('flagship') ||
+      plan.includes('enterprise')
+    ) {
+      return true;
+    }
+    // 2. If the platform subscription explicitly grants this group, allow access
+    if (state.platformFeatures.includes(groupKey)) {
+      return true;
+    }
+    // 3. Fallback to business custom enabled groups
+    return state.enabledGroups.includes(groupKey);
   },
 
   // Admin management

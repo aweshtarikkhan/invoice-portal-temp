@@ -136,7 +136,7 @@ export default function CRMIntegrationsPage() {
     toast.success("Copied to clipboard!");
   };
 
-  const jdWebhookUrl = `https://ewnsxsnjcolhdehrdrhf.supabase.co/functions/v1/webhook-jd?org_id=${org?.id}`;
+  const jdWebhookUrl = `${import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com"}/functions/v1/webhook-jd?org_id=${org?.id}`;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto w-full px-2 sm:px-4 pb-12">

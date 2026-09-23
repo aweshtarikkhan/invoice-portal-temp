@@ -94,7 +94,7 @@ export default function MarketingTemplatesPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Message Templates</h1>
-          <p className="text-sm text-muted-foreground">Reusable templates for SMS & Email. Use {`{{name}}`} or {`{{1}}`} for variables.</p>
+          <p className="text-sm text-muted-foreground">Reusable templates for WhatsApp & Email. Use {`{{name}}`} or {`{{1}}`} for variables.</p>
         </div>
         <Button onClick={() => { setForm(EMPTY); setOpen(true); }}><Plus className="h-4 w-4 mr-2" />New Template</Button>
       </div>
@@ -146,8 +146,7 @@ export default function MarketingTemplatesPage() {
                 <Select value={form.channel} onValueChange={(v) => setForm({ ...form, channel: v as any })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-
-                    <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="whatsapp">WhatsApp</SelectItem>
                     <SelectItem value="email">Email</SelectItem>
                   </SelectContent>
                 </Select>

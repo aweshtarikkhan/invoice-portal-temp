@@ -18,11 +18,12 @@ import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
 import { useSubscription } from "@/hooks/use-subscription";
 import { SEO } from "@/components/shared/SEO";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Shield, Check, X, ArrowLeft, Plus, Trash2, Building2,
   FileText, Package, ShoppingCart, Calculator,
   UserCog, Users, Send, BarChart3, Loader2, AlertCircle, ChevronDown,
-  AlertTriangle, Crown
+  AlertTriangle, Crown, CheckCircle2, XCircle, Mail
 } from "lucide-react";
 
 const ICON_MAP: Record<string, any> = {
@@ -57,12 +58,21 @@ export default function AdminPanelPage() {
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState("Staff");
   const [newUserPermissions, setNewUserPermissions] = useState<string[]>([]);
+  // Invite member modal state: 'idle' | 'loading' | 'success' | 'error'
+  const [inviteModalState, setInviteModalState] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [inviteModalData, setInviteModalData] = useState<{
+    email: string;
+    role: string;
+    businessName: string;
+    errorMessage?: string;
+  }>({ email: '', role: '', businessName: '' });
   const [fetchedTeamMembers, setFetchedTeamMembers] = useState<any[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [selectedTeamOrgId, setSelectedTeamOrgId] = useState<string>("");
   const [selectedOrgFeatures, setSelectedOrgFeatures] = useState<string[]>([]);
   const [selectedOrgPlan, setSelectedOrgPlan] = useState<string | null>(null);
-  
+  const [businessEmployees, setBusinessEmployees] = useState<Array<{ id: string; name: string; email: string | null; designation: string | null }>>([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("custom");
   const [isCreatingBusiness, setIsCreatingBusiness] = useState(false);
   const [newOrgIdToUpgrade, setNewOrgIdToUpgrade] = useState<string | null>(null);
   const addMyOrganization = useAppStore((s) => s.addMyOrganization);
@@ -182,7 +192,34 @@ export default function AdminPanelPage() {
     }
   }, [currentOrgId, selectedTeamOrgId]);
 
-  useEffect(() => { loadTeamMembers(); }, [selectedTeamOrgId, currentOrgId]);
+  const loadBusinessEmployees = async (targetOrgId: string) => {
+    if (!targetOrgId || targetOrgId === "default") return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("employees")
+        .select("id, name, email, designation")
+        .eq("org_id", targetOrgId)
+        .order("name");
+
+      if (!error && data) {
+        setBusinessEmployees(data);
+      } else {
+        setBusinessEmployees([]);
+      }
+    } catch (err) {
+      console.error("Error loading employees for org:", err);
+      setBusinessEmployees([]);
+    }
+  };
+
+  useEffect(() => { 
+    loadTeamMembers(); 
+    const targetOrgId = selectedTeamOrgId || currentOrgId;
+    if (targetOrgId) {
+      loadBusinessEmployees(targetOrgId);
+      setSelectedEmployeeId("custom");
+    }
+  }, [selectedTeamOrgId, currentOrgId]);
 
 
 
@@ -194,41 +231,80 @@ export default function AdminPanelPage() {
   };
 
   const handleAddTeamMember = async () => {
+    if (inviteModalState === 'loading') return;
     const targetOrgId = selectedTeamOrgId || currentOrgId;
-    if (newUserEmail && newUserEmail.includes("@") && targetOrgId) {
-      // Fetch fresh member count for this org
-      const { data: freshMembers } = await supabase.rpc("get_org_members_with_status", { target_org_id: targetOrgId });
-      const currentCount = Array.isArray(freshMembers) ? freshMembers.length : fetchedTeamMembers.length;
-      
-      if (currentCount >= maxUsersAllowed) {
-        alert("Limit exceed! Purchase extra employee to proceed.");
-        setShowPlanModal(true);
+    if (!newUserEmail || !newUserEmail.includes("@") || !targetOrgId) return;
+
+    const targetOrg = allOrgsWithPlans.find(o => o.id === targetOrgId);
+    const targetBusinessName = targetOrg?.name || currentOrg?.name || "this business";
+    const emailToInvite = newUserEmail.trim();
+    const roleToInvite = newUserRole;
+    const permsToInvite = [...newUserPermissions];
+
+    // CA/CS is an external advisor and can be invited across multiple businesses without employee slot restrictions
+    const isCaRole = newUserRole === "CA/CS" || newUserRole.toLowerCase().includes("ca");
+
+    if (!isCaRole) {
+      const currentCount = fetchedTeamMembers.length;
+      if (maxUsersAllowed > 0 && currentCount >= maxUsersAllowed) {
+        setInviteModalData({
+          email: emailToInvite,
+          role: roleToInvite,
+          businessName: targetBusinessName,
+          errorMessage: `Plan limit reached (${maxUsersAllowed} users). Please purchase additional user slots or upgrade your plan to proceed.`
+        });
+        setInviteModalState('error');
         return;
       }
+    }
 
-      try {
-        const { data, error } = await supabase.functions.invoke("invite-team-member", {
-          body: {
-            email: newUserEmail,
-            role: newUserRole.toLowerCase(),
-            org_id: targetOrgId,
-            permissions: newUserPermissions
+    // Immediately open modal in loading state and lock interaction
+    setInviteModalData({
+      email: emailToInvite,
+      role: roleToInvite,
+      businessName: targetBusinessName,
+    });
+    setInviteModalState('loading');
+
+    try {
+      const { data, error } = await supabase.functions.invoke("invite-team-member", {
+        body: {
+          email: emailToInvite,
+          role: isCaRole ? "ca_cs" : roleToInvite.toLowerCase().replace(/\s+/g, '_'),
+          org_id: targetOrgId,
+          permissions: permsToInvite
+        }
+      });
+
+      if (error) {
+        let errorMsg = error.message;
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const body = await error.context.json();
+            if (body?.error) errorMsg = body.error;
           }
-        });
-
-        if (error) throw error;
-        
-        // Reload team members to reflect the new user
-        loadTeamMembers();
-        
-        setNewUserEmail("");
-        setNewUserRole("Staff");
-        setNewUserPermissions([]);
-        alert("✅ User invited successfully!");
-      } catch (err: any) {
-        console.error("Failed to invite team member:", err.message);
-        alert("Failed to invite user: " + err.message);
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
+      
+      // Reload team members in the background
+      loadTeamMembers();
+      
+      // Reset form fields
+      setNewUserEmail("");
+      setNewUserRole("Staff");
+      setNewUserPermissions([]);
+      setSelectedEmployeeId("custom");
+
+      // Show success modal directly on screen
+      setInviteModalState('success');
+    } catch (err: any) {
+      console.error("Failed to invite team member:", err.message);
+      setInviteModalData(prev => ({
+        ...prev,
+        errorMessage: err.message || "Failed to invite user. Please verify the email and try again."
+      }));
+      setInviteModalState('error');
     }
   };
 
@@ -562,6 +638,47 @@ export default function AdminPanelPage() {
                       )}
 
                       <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
+                          <span>Select Employee</span>
+                          {businessEmployees.length > 0 && (
+                            <span className="text-[11px] text-emerald-600 font-medium">
+                              {businessEmployees.length} employee{businessEmployees.length === 1 ? '' : 's'} in HR
+                            </span>
+                          )}
+                        </label>
+                        <select
+                          value={selectedEmployeeId}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedEmployeeId(val);
+                            if (val === "custom") {
+                              setNewUserEmail("");
+                            } else {
+                              const emp = businessEmployees.find(item => item.id === val);
+                              if (emp?.email) {
+                                setNewUserEmail(emp.email);
+                              } else {
+                                setNewUserEmail("");
+                              }
+                            }
+                          }}
+                          className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium"
+                        >
+                          <option value="custom">-- Custom Email ID (Enter Manually) --</option>
+                          {businessEmployees.map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name} {emp.email ? `(${emp.email})` : '(No email set)'} {emp.designation ? `• ${emp.designation}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                        {selectedEmployeeId !== "custom" && !businessEmployees.find(e => e.id === selectedEmployeeId)?.email && (
+                          <p className="text-[11px] text-amber-600 font-medium">
+                            ⚠️ This employee does not have an email saved in HR. Please type an email below.
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">Email Address</label>
                         <Input
                           placeholder="employee@company.com"
@@ -569,19 +686,33 @@ export default function AdminPanelPage() {
                           onChange={(e) => setNewUserEmail(e.target.value)}
                           className="bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 h-10 focus:border-emerald-500 focus:ring-emerald-500/20"
                         />
+                        {selectedEmployeeId !== "custom" && (
+                          <p className="text-[11px] text-slate-500">
+                            Auto-filled from selected HR employee.
+                          </p>
+                        )}
                       </div>
                       
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">User Role</label>
                         <select
                           value={newUserRole}
-                          onChange={(e) => setNewUserRole(e.target.value)}
-                          className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm"
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setNewUserRole(val);
+                            if (val === "CA/CS") {
+                              // By default, grant CA/CS access to financial, reporting, and management modules
+                              const caGroups = ["sales", "catalog", "purchases", "accounting", "reports", "gst"];
+                              setNewUserPermissions(prev => Array.from(new Set([...prev, ...caGroups])));
+                            }
+                          }}
+                          className="w-full bg-white border border-slate-300 text-slate-900 h-10 rounded-lg px-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium"
                         >
+                          <option value="Staff">Staff</option>
                           <option value="Manager">Manager</option>
                           <option value="Accountant">Accountant</option>
                           <option value="Sales Executive">Sales Executive</option>
-                          <option value="Staff">Staff</option>
+                          <option value="CA/CS">CA/CS (Chartered Accountant / Company Secretary)</option>
                         </select>
                       </div>
                       
@@ -622,11 +753,24 @@ export default function AdminPanelPage() {
 
                       <Button
                         onClick={handleAddTeamMember}
-                        disabled={!newUserEmail || !newUserEmail.includes("@")}
-                        className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-2xs transition-colors mt-2"
+                        disabled={!newUserEmail || !newUserEmail.includes("@") || inviteModalState === 'loading'}
+                        className={`w-full h-10 text-white font-medium shadow-2xs transition-colors mt-2 ${
+                          inviteModalState === 'loading'
+                            ? "bg-emerald-500/70 cursor-not-allowed"
+                            : "bg-emerald-600 hover:bg-emerald-700"
+                        }`}
                       >
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        Add User
+                        {inviteModalState === 'loading' ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Inviting User...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            Add User
+                          </>
+                        )}
                       </Button>
                     </div>
                 </div>
@@ -656,7 +800,7 @@ export default function AdminPanelPage() {
                                 <h4 className="text-sm text-slate-900 font-semibold leading-none">{member.email}</h4>
                                 <div className="flex items-center gap-2 mt-1.5">
                                   <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-700 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-full">
-                                    {member.role}
+                                    {member.role === 'ca_cs' || member.role === 'ca/cs' ? 'CA/CS' : member.role}
                                   </span>
                                   <span className="text-[9px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                                     {member.status}
@@ -996,6 +1140,128 @@ export default function AdminPanelPage() {
           </div>
         </div>
       )}
+      {/* Invite Member Status Modal (Loading / Success / Error) */}
+      <Dialog 
+        open={inviteModalState !== 'idle'} 
+        onOpenChange={(open) => {
+          if (!open && inviteModalState !== 'loading') {
+            setInviteModalState('idle');
+          }
+        }}
+      >
+        <DialogContent 
+          className="sm:max-w-md bg-white border border-slate-200 text-slate-900 shadow-2xl p-0 overflow-hidden rounded-2xl"
+          onPointerDownOutside={(e) => {
+            if (inviteModalState === 'loading') e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (inviteModalState === 'loading') e.preventDefault();
+          }}
+        >
+          {inviteModalState === 'loading' && (
+            <div className="p-8 text-center space-y-4">
+              <div className="relative mx-auto w-16 h-16 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full border-4 border-emerald-100 border-t-emerald-600 animate-spin" />
+                <Mail className="h-7 w-7 text-emerald-600 animate-pulse" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-bold text-slate-900">Inviting User...</h3>
+                <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                  Please wait while we set up access and dispatch the invitation email to:
+                </p>
+                <div className="inline-block px-3 py-1 bg-slate-100 rounded-full text-xs font-semibold text-slate-800 mt-1">
+                  {inviteModalData.email}
+                </div>
+              </div>
+              <div className="pt-2">
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-amber-700 bg-amber-50 px-3 py-1.5 rounded-full font-medium border border-amber-200">
+                  ⏳ Please do not close or refresh this tab
+                </span>
+              </div>
+            </div>
+          )}
+
+          {inviteModalState === 'success' && (
+            <div className="p-6 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
+                <CheckCircle2 className="h-9 w-9 text-emerald-600" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-slate-900">User Invited Successfully!</h3>
+                <p className="text-xs text-slate-500">
+                  The invitation and access credentials have been dispatched.
+                </p>
+              </div>
+
+              <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-4 text-left space-y-2 text-xs">
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-500">Recipient Email:</span>
+                  <span className="font-semibold text-slate-900">{inviteModalData.email}</span>
+                </div>
+                <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                  <span className="text-slate-500">Assigned Role:</span>
+                  <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">{inviteModalData.role}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-slate-500">Workspace / Business:</span>
+                  <span className="font-semibold text-slate-800">{inviteModalData.businessName}</span>
+                </div>
+              </div>
+
+              <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-xl p-3 text-left flex items-start gap-2.5">
+                <Mail className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+                <p className="text-[12px] text-emerald-900 leading-relaxed">
+                  An email with a secure link to set up their password and log in to the platform has been sent to <strong>{inviteModalData.email}</strong>.
+                </p>
+              </div>
+
+              <Button
+                onClick={() => setInviteModalState('idle')}
+                className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition-all"
+              >
+                Done
+              </Button>
+            </div>
+          )}
+
+          {inviteModalState === 'error' && (
+            <div className="p-6 text-center space-y-5">
+              <div className="w-16 h-16 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+                <XCircle className="h-9 w-9 text-red-600" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-xl font-bold text-slate-900">Invitation Failed</h3>
+                <p className="text-xs text-slate-500">
+                  We were unable to complete the user invitation.
+                </p>
+              </div>
+
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3.5 text-left text-xs text-red-800 leading-relaxed font-medium">
+                {inviteModalData.errorMessage || "An unexpected error occurred. Please check the email and try again."}
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setInviteModalState('idle')}
+                  className="flex-1 h-10 rounded-xl border-slate-300 font-medium text-slate-700"
+                >
+                  Close
+                </Button>
+                <Button
+                  onClick={() => {
+                    setInviteModalState('idle');
+                    handleAddTeamMember();
+                  }}
+                  className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                >
+                  Try Again
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -23,7 +23,7 @@ import { SignatureSettingsTab } from "@/components/settings/SignatureSettingsTab
 
 const ENTITY_TYPES = [
   { value: "invoice", label: "Invoice" },
-  { value: "estimate", label: "Estimate" },
+  { value: "estimate", label: "Quotation" },
   { value: "credit_note", label: "Credit Note" },
   { value: "client", label: "Client" },
   { value: "item", label: "Item" },

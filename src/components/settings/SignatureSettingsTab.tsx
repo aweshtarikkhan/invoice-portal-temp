@@ -106,7 +106,7 @@ export function SignatureSettingsTab() {
       <CardHeader>
         <CardTitle>Authorized Signature</CardTitle>
         <CardDescription>
-          Configure the signature that appears on your invoices, estimates, and purchase orders.
+          Configure the signature that appears on your invoices, quotations, and purchase orders.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">

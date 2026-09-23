@@ -47,8 +47,11 @@ function formatINR(val: number): string {
 
 // Convert amount in numbers to words (Indian numbering system)
 function numberToWordsINR(amount: number): string {
-  const rounded = Math.round(amount);
-  if (rounded === 0) return "Zero Rupees Only";
+  const totalNum = Number(amount) || 0;
+  const rupees = Math.floor(totalNum);
+  const paise = Math.round((totalNum - rupees) * 100);
+
+  if (rupees === 0 && paise === 0) return "Zero Rupees Only";
 
   const a = [
     "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
@@ -67,7 +70,15 @@ function numberToWordsINR(amount: number): string {
     return numToWords(Math.floor(n / 10000000)) + "Crore " + numToWords(n % 10000000);
   }
 
-  return ("Rupees " + numToWords(rounded).trim() + " Only").replace(/\s+/g, " ");
+  let words = "";
+  if (rupees > 0) {
+    words += "Rupees " + numToWords(rupees).trim();
+  }
+  if (paise > 0) {
+    if (words) words += " and ";
+    words += numToWords(paise).trim() + " Paise";
+  }
+  return (words + " Only").replace(/\s+/g, " ");
 }
 
 /**
@@ -121,10 +132,12 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
     console.warn("Failed to embed logo image, falling back to wordmark:", imgErr);
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
-    doc.setTextColor(231, 120, 23);
-    doc.text("Assay", logoX + 2, logoY + 7);
-    doc.setTextColor(40, 22, 111);
-    doc.text("Biz", logoX + 22, logoY + 7);
+    doc.setTextColor(231, 120, 23); // Orange A
+    doc.text("A", logoX + 2, logoY + 7);
+    doc.setTextColor(40, 22, 111); // Blue assay
+    doc.text("assay", logoX + 6.5, logoY + 7);
+    doc.setTextColor(231, 120, 23); // Orange Biz
+    doc.text("Biz", logoX + 24, logoY + 7);
   }
 
   doc.setFontSize(8);
@@ -223,7 +236,7 @@ export function generateSubscriptionInvoicePDF(data: SubscriptionInvoiceData): j
   byY += 4.5;
   doc.text("Website - www.aassaybiz.com", margin + 4, byY);
   byY += 4.5;
-  doc.text("address - Bhopal, Madhya Pradesh", margin + 4, byY);
+  doc.text("address - Indore, Madhya Pradesh", margin + 4, byY);
 
   // Column 2: Billed To (Customer)
   const toX = margin + colWidth + 6;
@@ -507,6 +520,6 @@ export function getSubscriptionInvoiceBlob(data: SubscriptionInvoiceData): Blob 
  */
 export function downloadSubscriptionInvoicePDF(data: SubscriptionInvoiceData): void {
   const doc = generateSubscriptionInvoicePDF(data);
-  const cleanFilename = `AssayBiz_TaxInvoice_${data.invoiceNumber || "Subscription"}.pdf`;
+  const cleanFilename = `AassayBiz_TaxInvoice_${data.invoiceNumber || "Subscription"}.pdf`;
   doc.save(cleanFilename);
 }

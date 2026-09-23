@@ -308,12 +308,12 @@ export default function MarketingPostersPage() {
     
     // Ultra-thin, elegant footer strip at the absolute bottom
     const defaultFooterColor = FOOTER_COLOR_MAP[t.festival_name] || "#0f172a";
-    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 26, bgColor: defaultFooterColor, opacity: 100, borderRadius: 0, x: 0, y: 474, zIndex: 20 });
+    initialElements.push({ id: "footer-box", type: "shape", width: 400, height: 34, bgColor: defaultFooterColor, opacity: 100, borderRadius: 0, x: 0, y: 466, zIndex: 20 });
 
     // Business Name (Floating beautifully above the footer strip)
-    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 442, zIndex: 21, maxWidth: 360 });
+    initialElements.push({ id: "biz-name", type: "text", text: bizName.toUpperCase(), color: "#ffffff", fontSize: 18, fontFamily: "'Montserrat', sans-serif", fontWeight: 800, x: 200, y: 436, zIndex: 21, maxWidth: 360 });
     
-    // Contact Info (Phone + Email + Web + Address in one line, Centered perfectly INSIDE the thin footer)
+    // Contact Info (Phone + Email + Web + Address in one line, Centered perfectly INSIDE the footer)
     const contactParts = [];
     if (phone) contactParts.push(`📞 ${phone}`);
     const email = (org as any)?.email || (user as any)?.email;
@@ -327,16 +327,16 @@ export default function MarketingPostersPage() {
     const contactText = contactParts.join("   |   ");
     
     if (contactText) {
-      let fSize = 9;
-      if (contactText.length > 80) fSize = 6;
+      let fSize = 8.5;
+      if (contactText.length > 80) fSize = 6.5;
       else if (contactText.length > 60) fSize = 7.5;
       
-      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#ffffff", fontSize: fSize, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 480, zIndex: 21, maxWidth: 395 });
+      initialElements.push({ id: "biz-contact", type: "text", text: contactText, color: "#ffffff", fontSize: fSize, fontFamily: "system-ui, sans-serif", fontWeight: 500, x: 200, y: 473, zIndex: 21, maxWidth: 395 });
     }
 
     // Logo (Top Right corner - professional standard)
     if (logoUrl) {
-      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 65, height: 65, x: 315, y: 15, zIndex: 30 });
+      initialElements.push({ id: "biz-logo", type: "image", src: logoUrl, width: 95, height: 48, x: 290, y: 15, zIndex: 30 });
     }
 
     setElements(initialElements);
@@ -533,10 +533,13 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
     await new Promise(r => setTimeout(r, 50));
     try {
       const canvas = await html2canvas(posterRef.current, {
-        scale: 2,
+        scale: 2.5,
         useCORS: true,
         allowTaint: false,
         backgroundColor: null,
+        scrollX: 0,
+        scrollY: 0,
+        logging: false,
       });
       const dataUrl = canvas.toDataURL("image/png");
       const link = document.createElement("a");
@@ -562,10 +565,13 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
       console.log("Calling html2canvas...");
       const canvas = await Promise.race([
         html2canvas(posterRef.current, {
-          scale: 2,
+          scale: 2.5,
           useCORS: true,
           allowTaint: false,
           backgroundColor: null,
+          scrollX: 0,
+          scrollY: 0,
+          logging: false,
         }),
         new Promise<null>((_, reject) => setTimeout(() => reject(new Error("html2canvas timeout")), 8000))
       ]);
@@ -982,29 +988,34 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
         const outlineStyle = isActive ? "outline outline-4 outline-blue-500/20" : "none";
         
         if (el.type === "text") {
+          const isContact = el.id === "biz-contact";
           return (
             <div
               key={el.id}
               style={{
                 position: 'absolute',
-                left: el.type === "shape" ? el.x : (el.x /* For backwards compatibility, text might be center-anchored? Wait, previously text was transformed. Let's keep it consistent. */),
+                left: el.type === "shape" ? el.x : el.x,
                 top: el.y,
-                transform: 'translateX(-50%)', // Only text uses translateX in our old code
+                transform: 'translateX(-50%)',
                 color: el.color,
                 fontSize: el.fontSize,
                 fontFamily: el.fontFamily,
                 fontWeight: el.fontWeight,
+                lineHeight: isContact ? 1.25 : 1.35,
                 cursor: view === "editor" ? (draggingId === el.id ? 'grabbing' : 'grab') : 'default',
                 zIndex: el.zIndex,
                 textAlign: 'center',
-                whiteSpace: 'pre-wrap',
-                textShadow: "2px 2px 6px rgba(0,0,0,0.7)",
+                whiteSpace: isContact ? 'nowrap' : 'pre-wrap',
+                textShadow: isContact ? "none" : "2px 2px 6px rgba(0,0,0,0.7)",
                 border: borderStyle,
                 outline: outlineStyle,
-                padding: "4px 8px",
+                padding: isContact ? "2px 6px" : "4px 8px",
                 borderRadius: 4,
-                width: "max-content",
+                width: isContact ? "390px" : "max-content",
                 maxWidth: el.maxWidth ? `${el.maxWidth}px` : "100%",
+                display: isContact ? 'flex' : undefined,
+                alignItems: isContact ? 'center' : undefined,
+                justifyContent: isContact ? 'center' : undefined,
                 userSelect: "none"
               }}
               onPointerDown={(e) => handlePointerDownElement(el.id, e)}
@@ -1054,10 +1065,26 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
+                overflow: 'hidden',
               }}
               onPointerDown={(e) => handlePointerDownElement(el.id, e)}
             >
-              {el.src && <img src={el.src} alt="layer" style={{ width: '100%', height: '100%', objectFit: 'contain' }} draggable={false} />}
+              {el.src && (
+                <img
+                  src={el.src}
+                  alt="layer"
+                  style={{
+                    maxWidth: '100%',
+                    maxHeight: '100%',
+                    width: 'auto',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                  }}
+                  crossOrigin="anonymous"
+                  draggable={false}
+                />
+              )}
             </div>
           );
         }
@@ -1084,29 +1111,29 @@ Only output the raw JSON or the ERROR string, no markdown, no other text.`;
       const url = URL.createObjectURL(file);
       setElements(prev => {
         if (prev.some(el => el.id === "biz-logo")) {
-          return prev.map(el => el.id === "biz-logo" ? { ...el, src: url, opacity: 100 } : el);
+          return prev.map(el => el.id === "biz-logo" ? { ...el, src: url, width: 95, height: 48, opacity: 100 } : el);
         } else {
-          return [...prev, { id: "biz-logo", type: "image", src: url, width: 80, height: 80, x: 20, y: 20, zIndex: 30 }];
+          return [...prev, { id: "biz-logo", type: "image", src: url, width: 95, height: 48, x: 290, y: 15, zIndex: 30 }];
         }
       });
     };
 
     const updateLogoPosition = (pos: string) => {
-      let lx = 20, ly = 20;
-      if (pos === "top-right") { lx = 300; ly = 20; }
-      if (pos === "bottom-left") { lx = 20; ly = 320; }
-      if (pos === "bottom-right") { lx = 300; ly = 320; }
-      if (pos === "center") { lx = 160; ly = 160; }
-      setElements(prev => prev.map(e => e.id === "biz-logo" ? { ...e, x: lx, y: ly, opacity: pos === "hidden" ? 0 : 100 } : e));
+      let lx = 15, ly = 15;
+      if (pos === "top-right") { lx = 290; ly = 15; }
+      if (pos === "bottom-left") { lx = 15; ly = 320; }
+      if (pos === "bottom-right") { lx = 290; ly = 320; }
+      if (pos === "center") { lx = 152; ly = 160; }
+      setElements(prev => prev.map(e => e.id === "biz-logo" ? { ...e, x: lx, y: ly, width: 95, height: 48, opacity: pos === "hidden" ? 0 : 100 } : e));
     };
 
     const updateFooterPosition = (pos: string) => {
-      const boxY = pos === "bottom" ? 474 : (pos === "top" ? 0 : -1000);
-      const contactY = pos === "bottom" ? 480 : (pos === "top" ? 6 : -1000);
-      const nameY = pos === "bottom" ? 442 : (pos === "top" ? 35 : -1000);
+      const boxY = pos === "bottom" ? 466 : (pos === "top" ? 0 : -1000);
+      const contactY = pos === "bottom" ? 473 : (pos === "top" ? 6 : -1000);
+      const nameY = pos === "bottom" ? 436 : (pos === "top" ? 40 : -1000);
       
       setElements(prev => prev.map(e => {
-        if (e.id === "footer-box") return { ...e, y: boxY, opacity: pos === "hidden" ? 0 : (showFooterBox ? 100 : 0) };
+        if (e.id === "footer-box") return { ...e, y: boxY, height: 34, opacity: pos === "hidden" ? 0 : (showFooterBox ? 100 : 0) };
         if (e.id === "biz-name") return { ...e, y: nameY, opacity: pos === "hidden" ? 0 : 100 };
         if (e.id === "biz-contact") return { ...e, y: contactY, opacity: pos === "hidden" ? 0 : 100 };
         return e;

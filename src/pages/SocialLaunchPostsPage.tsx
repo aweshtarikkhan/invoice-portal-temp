@@ -14,6 +14,7 @@ import {
   ExternalLink, Phone, Mail, Globe, Download,
   Layers, MessageSquare, Linkedin
 } from "lucide-react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export default function SocialLaunchPostsPage() {
   const navigate = useNavigate();
@@ -38,11 +39,11 @@ export default function SocialLaunchPostsPage() {
 
   // Social Captions
   const captions = {
-    instagram: `🚀 THE ALL-NEW ASSAYBIZ IS FINALLY HERE! 🇮🇳✨
+    instagram: `🚀 THE ALL-NEW AASSAY BIZ IS FINALLY HERE! 🇮🇳✨
 
 Say goodbye to running your business across 5 different apps, confusing spreadsheets, and manual registers. 
 
-Meet AssayBiz — India's Next-Gen Business Operating System built to automate your daily operations from day one:
+Meet Aassay Biz — India's Next-Gen Business Operating System built to automate your daily operations from day one:
 
 ⚡ 30-Second GST Invoicing with instant UPI QR payments
 📦 Real-Time Multi-Warehouse Inventory & Barcode Tracking
@@ -55,16 +56,16 @@ Meet AssayBiz — India's Next-Gen Business Operating System built to automate y
 
 Plans start at ₹0 (Forever Free), ₹499/mo for Sales & Inventory, and ₹999/mo for the complete Business Suite!
 
-📲 Click the link in bio to start your 14-day free trial or visit www.satahinvoice.com!
+📲 Click the link in bio to start your 14-day free trial or visit www.aassaybiz.com!
 📞 Call us at ${contactPhone} for a live guided walkthrough.
 
-#AssayBiz #GSTInvoicing #IndianBusiness #SMEGrowth #InventoryManagement #BusinessSoftware #MakeInIndia #StartupIndia #BusinessAutomation #SmartBilling`,
+#AassayBiz #GSTInvoicing #IndianBusiness #SMEGrowth #InventoryManagement #BusinessSoftware #MakeInIndia #StartupIndia #BusinessAutomation #SmartBilling`,
 
     facebook: `🎉 Big Announcement for Indian Business Owners & Entrepreneurs! 🇮🇳
 
-We are thrilled to officially introduce the all-new AssayBiz — the complete Business Operating System designed to replace multiple expensive software subscriptions with one intuitive platform.
+We are thrilled to officially introduce the all-new Aassay Biz — the complete Business Operating System designed to replace multiple expensive software subscriptions with one intuitive platform.
 
-Whether you run a wholesale trading firm, manufacturing unit, retail store, or service business, AssayBiz provides:
+Whether you run a wholesale trading firm, manufacturing unit, retail store, or service business, Aassay Biz provides:
 
 ✅ 100% GST-Ready Tax Invoicing & E-Way Bills
 ✅ Multi-Godown Stock Management with Low-Stock Alerts
@@ -76,17 +77,17 @@ Whether you run a wholesale trading firm, manufacturing unit, retail store, or s
 🎁 Special Launch Celebration:
 Enjoy a FLAT 20% DISCOUNT on all annual subscriptions! Plus, our dedicated support team will help you migrate your existing Tally/Vyapar data for FREE!
 
-👉 Start your free trial today: https://www.satahinvoice.com
+👉 Start your free trial today: https://www.aassaybiz.com
 📞 Direct Support Hotline: ${contactPhone}
 Follow our official page for regular tutorials and growth tips!
 
-#AssayBiz #BusinessProductivity #GSTIndia #AccountingSoftware #InventoryControl #MSMEIndia #BusinessSuite`,
+#AassayBiz #BusinessProductivity #GSTIndia #AccountingSoftware #InventoryControl #MSMEIndia #BusinessSuite`,
 
-    linkedin: `Thrilled to unveil AssayBiz: Reimagining Enterprise Operations for the Next 10 Million Indian MSMEs 🚀
+    linkedin: `Thrilled to unveil Aassay Biz: Reimagining Enterprise Operations for the Next 10 Million Indian MSMEs 🚀
 
 Managing a growing enterprise in India often involves juggling fragmented systems — one software for GST billing, another for godown stock, biometric devices for staff payroll, and messy spreadsheets for cash flow.
 
-AssayBiz bridges this gap with a unified, modular Business Operating System:
+Aassay Biz bridges this gap with a unified, modular Business Operating System:
 🔹 Financial Operations: Instant GST-compliant invoices, delivery challans, automated reconciliation, and audit-ready P&L reports.
 🔹 Supply Chain: Multi-warehouse tracking, batch/expiry controls, and barcode scanners.
 🔹 Human Capital: Geofenced selfie attendance, leave policies, and automated salary slip generation.
@@ -96,14 +97,14 @@ Our modular pricing starts with a Forever Free plan, ₹499/mo for Sales & Inven
 
 We're offering 20% off annual plans with complimentary onboarding for early adopters.
 
-Explore the platform: https://www.satahinvoice.com
-Reach our enterprise team at ${contactPhone} or support@assaybiz.com.
+Explore the platform: https://www.aassaybiz.com
+Reach our enterprise team at ${contactPhone} or support@aassaybiz.com.
 
 #Fintech #MSME #ERP #EnterpriseSoftware #GST #BusinessOperations #SaaS #ProductLaunch #IndianEnterprise`,
 
-    whatsapp: `🌟 *ANNOUNCING THE ALL-NEW ASSAYBIZ!* 🇮🇳
+    whatsapp: `🌟 *ANNOUNCING THE ALL-NEW AASSAY BIZ!* 🇮🇳
 
-Namaste! 🙏 We are excited to introduce *AssayBiz* — the all-in-one software to simplify and supercharge your business.
+Namaste! 🙏 We are excited to introduce *Aassay Biz* — the all-in-one software to simplify and supercharge your business.
 
 *Everything you need in ONE App:*
 ✅ *30-Sec GST Invoicing:* Tax invoices, quotations & instant UPI QR codes
@@ -116,12 +117,12 @@ Namaste! 🙏 We are excited to introduce *AssayBiz* — the all-in-one software
 Get *20% OFF* on Annual Plans + Free Data Migration!
 Use Code: *LAUNCH20*
 
-👉 *Try Free Demo Now:* https://www.satahinvoice.com
+👉 *Try Free Demo Now:* https://www.aassaybiz.com
 📞 *Call/WhatsApp for Setup:* ${contactPhone}
 
 _Empowering 500+ Indian Businesses to Grow Faster._`,
 
-    youtube: `🎉 WELCOME TO THE NEW ASSAYBIZ! Watch our official launch walkthrough and see how AssayBiz helps over 500+ Indian businesses automate their billing, stock, banking, HR, and marketing under one unified cloud platform!
+    youtube: `🎉 WELCOME TO THE NEW AASSAY BIZ! Watch our official launch walkthrough and see how Aassay Biz helps over 500+ Indian businesses automate their billing, stock, banking, HR, and marketing under one unified cloud platform!
 
 📌 What's Covered in the New Release:
 • 30-Second GST Invoicing with automatic UPI QR codes
@@ -132,8 +133,8 @@ _Empowering 500+ Indian Businesses to Grow Faster._`,
 
 🎁 Launch Offer: Use promo code LAUNCH20 to get 20% OFF any annual plan + Free Data Migration from Tally/Vyapar!
 
-🔗 Get Started for Free: https://www.satahinvoice.com
-📞 Contact our team: ${contactPhone} | support@assaybiz.com
+🔗 Get Started for Free: https://www.aassaybiz.com
+📞 Contact our team: ${contactPhone} | support@aassaybiz.com
 
 Make sure to subscribe to our channel for weekly software tutorials and business growth strategies!`
   };
@@ -187,11 +188,11 @@ Make sure to subscribe to our channel for weekly software tutorials and business
             <Badge className="bg-amber-400 text-slate-950 font-black text-xs px-3 py-1 mb-3">
               <Sparkles className="w-3.5 h-3.5 mr-1" /> OFFICIAL PRODUCT LAUNCH 2026
             </Badge>
-            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight">
-              AssayBiz Social Media Launch & Campaign Kit
+            <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight leading-tight flex items-center gap-2 flex-wrap">
+              <AassayBizBrand theme="dark" /> Social Media Launch & Campaign Kit
             </h1>
             <p className="text-slate-300 text-sm md:text-base mt-2 leading-relaxed">
-              Use these pre-formatted promotional creatives and customized captions to launch and announce the updated AssayBiz brand, new modular packages, and pricing across your channels.
+              Use these pre-formatted promotional creatives and customized captions to launch and announce the updated Aassay Biz brand, new modular packages, and pricing across your channels.
             </p>
           </div>
         </div>
@@ -215,9 +216,9 @@ Make sure to subscribe to our channel for weekly software tutorials and business
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <img src={logoImg} alt="AssayBiz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
+                    <img src={logoImg} alt="Aassay Biz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
                     <div>
-                      <span className="font-black text-white text-base leading-none block">AssayBiz</span>
+                      <AassayBizBrand theme="dark" className="text-base leading-none block" />
                       <span className="text-[10px] font-bold text-indigo-400 uppercase">Enterprise Business OS</span>
                     </div>
                   </div>
@@ -232,7 +233,7 @@ Make sure to subscribe to our channel for weekly software tutorials and business
                     Say Goodbye to 5 Disconnected Apps.
                   </h3>
                   <p className="text-slate-300 text-xs mt-2 leading-relaxed">
-                    GST Invoicing · Multi-Godown Stock · Staff Biometric HR · Cash Flow & Banking · Branded Promotions — all unified in AssayBiz.
+                    GST Invoicing · Multi-Godown Stock · Staff Biometric HR · Cash Flow & Banking · Branded Promotions — all unified in Aassay Biz.
                   </p>
                 </div>
               </div>
@@ -253,9 +254,9 @@ Make sure to subscribe to our channel for weekly software tutorials and business
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <img src={logoImg} alt="AssayBiz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
+                    <img src={logoImg} alt="Aassay Biz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
                     <div>
-                      <span className="font-black text-white text-base leading-none block">AssayBiz</span>
+                      <AassayBizBrand theme="dark" className="text-base leading-none block" />
                       <span className="text-[10px] font-bold text-purple-400 uppercase">Pricing Reveal</span>
                     </div>
                   </div>
@@ -298,9 +299,9 @@ Make sure to subscribe to our channel for weekly software tutorials and business
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <img src={logoImg} alt="AssayBiz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
+                    <img src={logoImg} alt="Aassay Biz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
                     <div>
-                      <span className="font-black text-white text-base leading-none block">AssayBiz</span>
+                      <AassayBizBrand theme="dark" className="text-base leading-none block" />
                       <span className="text-[10px] font-bold text-amber-400 uppercase">Special Launch Deal</span>
                     </div>
                   </div>
@@ -342,9 +343,9 @@ Make sure to subscribe to our channel for weekly software tutorials and business
               <div>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
-                    <img src={logoImg} alt="AssayBiz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
+                    <img src={logoImg} alt="Aassay Biz" className="h-9 w-auto object-contain bg-white/95 rounded-lg p-1" />
                     <div>
-                      <span className="font-black text-white text-base leading-none block">AssayBiz</span>
+                      <AassayBizBrand theme="dark" className="text-base leading-none block" />
                       <span className="text-[10px] font-bold text-emerald-400 uppercase">Product Feature Spotlight</span>
                     </div>
                   </div>

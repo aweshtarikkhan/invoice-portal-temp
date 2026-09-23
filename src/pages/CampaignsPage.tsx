@@ -189,7 +189,7 @@ export default function CampaignsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Marketing Campaigns</h1>
-          <p className="text-sm text-muted-foreground">Bulk promotional broadcasts via SMS, WhatsApp, and Email to your contacts.</p>
+          <p className="text-sm text-muted-foreground">Bulk promotional broadcasts via WhatsApp and Email to your contacts.</p>
         </div>
         <Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-2" />New Campaign</Button>
       </div>
@@ -257,7 +257,6 @@ export default function CampaignsPage() {
               >
                 <SelectTrigger className="mt-1"><SelectValue placeholder="Select Channel" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sms">SMS</SelectItem>
                   <SelectItem value="whatsapp">WhatsApp</SelectItem>
                   <SelectItem value="email">Email</SelectItem>
                 </SelectContent>

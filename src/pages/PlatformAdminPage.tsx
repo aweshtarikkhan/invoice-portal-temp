@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import {
   CheckCircle2, IndianRupee, Image as ImageIcon, Trash2, Share2,
   Search, Filter, Check, Copy, Sparkles, PlusCircle, ArrowUpDown,
   SlidersHorizontal, UserCheck, RefreshCw, AlertCircle, ExternalLink,
-  Layers, Lock, Unlock, HelpCircle, Database, Clock
+  Layers, Lock, Unlock, HelpCircle, Database, Clock, Ticket, Send, Tag, Plus
 } from "lucide-react";
 import {
   Dialog,
@@ -104,6 +105,27 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
   plan_6: "Business Promotion",
 };
 
+const PLAN_FEATURES_MAPPING: Record<string, string[]> = {
+  free: ["sales", "catalog", "outreach"],
+  accounting: ["sales", "catalog", "purchases", "accounting", "reports", "outreach"],
+  hr: ["people", "outreach"],
+  crm: ["crm", "outreach"],
+  promotion: ["marketing", "outreach"],
+  suite: ["sales", "catalog", "purchases", "accounting", "reports", "people", "crm", "marketing", "outreach"]
+};
+
+function computeFeaturesForPlans(plans: string[]): string[] {
+  if (plans.includes("suite") || plans.includes("plan_3")) {
+    return ADMIN_FEATURE_GROUPS.map(g => g.key);
+  }
+  const featureSet = new Set<string>();
+  for (const p of plans) {
+    const feats = PLAN_FEATURES_MAPPING[p] || ["sales", "catalog", "outreach"];
+    feats.forEach(f => featureSet.add(f));
+  }
+  return Array.from(featureSet);
+}
+
 export default function PlatformAdminPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
@@ -133,6 +155,148 @@ export default function PlatformAdminPage() {
   const [adFile, setAdFile] = useState<File | null>(null);
   const [adSlidesCount, setAdSlidesCount] = useState<number>(3);
   const [adLoading, setAdLoading] = useState(false);
+
+  // Platform Support Tickets States
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [ticketLoading, setTicketLoading] = useState(false);
+  const [ticketFilter, setTicketFilter] = useState("all");
+  const [ticketSearch, setTicketSearch] = useState("");
+  const [selectedPlatformTicket, setSelectedPlatformTicket] = useState<any | null>(null);
+  const [platformTicketMessages, setPlatformTicketMessages] = useState<any[]>([]);
+  const [platformTicketReply, setPlatformTicketReply] = useState("");
+  const [sendingPlatformReply, setSendingPlatformReply] = useState(false);
+
+  // Partner Management States
+  const [partners, setPartners] = useState<any[]>([]);
+  const [partnerLoading, setPartnerLoading] = useState(false);
+  const [showAddPartner, setShowAddPartner] = useState(false);
+  const [newPartner, setNewPartner] = useState({ name: '', referral_code: '', max_users: '10' });
+  const [partnerSaving, setPartnerSaving] = useState(false);
+
+  const generateReferralCode = () => 'PART-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+  const fetchPartners = async () => {
+    setPartnerLoading(true);
+    const { data } = await supabase.from('partners').select('*').order('created_at', { ascending: false });
+    if (data) setPartners(data);
+    setPartnerLoading(false);
+  };
+
+  const handleAddPartner = async () => {
+    if (!newPartner.name || !newPartner.referral_code) {
+      toast({ title: "Error", description: "Partner name and referral code are required.", variant: "destructive" });
+      return;
+    }
+    setPartnerSaving(true);
+    const { error } = await supabase.from('partners').insert({
+      name: newPartner.name,
+      referral_code: newPartner.referral_code.toUpperCase(),
+      max_users: parseInt(newPartner.max_users) || 10,
+      is_active: true,
+    });
+    setPartnerSaving(false);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Partner Added!", description: `${newPartner.name} has been added as a partner.` });
+      setNewPartner({ name: '', referral_code: '', max_users: '10' });
+      setShowAddPartner(false);
+      fetchPartners();
+    }
+  };
+
+  const togglePartnerStatus = async (partnerId: string, currentStatus: boolean) => {
+    await supabase.from('partners').update({ is_active: !currentStatus }).eq('id', partnerId);
+    fetchPartners();
+  };
+
+  const handleDeletePartner = async (partnerId: string, partnerName: string) => {
+    if (!confirm(`Are you sure you want to delete partner "${partnerName}"? This cannot be undone.`)) return;
+    const { error } = await supabase.from('partners').delete().eq('id', partnerId);
+    if (error) {
+      toast({ title: "Delete Failed", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Partner Deleted", description: `${partnerName} has been removed.` });
+      fetchPartners();
+    }
+  };
+
+  const fetchTickets = async () => {
+
+    setTicketLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("tickets")
+        .select("*, organizations(id, name, email), clients(id, display_name, email, phone)")
+        .order("created_at", { ascending: false });
+      if (!error && data) {
+        setTickets(data);
+      }
+    } catch (err) {
+      console.error("Error fetching tickets:", err);
+    } finally {
+      setTicketLoading(false);
+    }
+  };
+
+  const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
+    try {
+      const { error } = await supabase
+        .from("tickets")
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq("id", ticketId);
+      if (error) throw error;
+      toast({ title: "Status Updated", description: `Ticket status set to ${status.toUpperCase()}` });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status } : t));
+      if (selectedPlatformTicket && selectedPlatformTicket.id === ticketId) {
+        setSelectedPlatformTicket((prev: any) => prev ? { ...prev, status } : null);
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const fetchPlatformTicketMessages = async (ticketId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("ticket_messages")
+        .select("*")
+        .eq("ticket_id", ticketId)
+        .order("created_at", { ascending: true });
+      if (!error && data) {
+        setPlatformTicketMessages(data);
+      }
+    } catch (err) {
+      console.error("Error fetching messages:", err);
+    }
+  };
+
+  const handleOpenPlatformTicket = (ticket: any) => {
+    setSelectedPlatformTicket(ticket);
+    fetchPlatformTicketMessages(ticket.id);
+  };
+
+  const handleSendPlatformReply = async () => {
+    if (!selectedPlatformTicket || !platformTicketReply.trim()) return;
+    setSendingPlatformReply(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error } = await supabase.from("ticket_messages").insert({
+        ticket_id: selectedPlatformTicket.id,
+        sender_id: user?.id,
+        sender_type: "platform_admin",
+        message: platformTicketReply.trim()
+      });
+      if (error) throw error;
+      setPlatformTicketReply("");
+      fetchPlatformTicketMessages(selectedPlatformTicket.id);
+      toast({ title: "Reply Sent", description: "Your message has been posted to this ticket." });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setSendingPlatformReply(false);
+    }
+  };
 
   const fetchAdsData = async () => {
     // fetch settings
@@ -240,6 +404,8 @@ export default function PlatformAdminPage() {
   useEffect(() => {
     fetchDashboardData();
     fetchAdsData();
+    fetchTickets();
+    fetchPartners();
   }, []);
 
   const handleToggleFeature = async (orgId: string, featureKey: string, isEnabled: boolean) => {
@@ -304,6 +470,8 @@ export default function PlatformAdminPage() {
       : [...currentPlans, toggledPlan];
     if (newPlans.length === 0) newPlans = ['free'];
 
+    const calculatedFeatures = computeFeaturesForPlans(newPlans);
+
     // Instant optimistic update for immediate tick mark [✓] feedback
     const defaultOrgName = user.org_name || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
     const targetOrgId = user.org_id || `temp-org-${user.user_id}`;
@@ -333,8 +501,9 @@ export default function PlatformAdminPage() {
               ...o.subscription,
               plan_name: newPlans[0],
               plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
-              enabled_features: o.subscription?.enabled_features || []
-            }
+              enabled_features: calculatedFeatures
+            },
+            enabled_features: calculatedFeatures
           };
         }
         return o;
@@ -356,9 +525,10 @@ export default function PlatformAdminPage() {
           subscription: {
             plan_name: newPlans[0],
             plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
-            enabled_features: []
+            enabled_features: calculatedFeatures
           },
-          subscription_plan_names: newPlans
+          subscription_plan_names: newPlans,
+          enabled_features: calculatedFeatures
         } as any);
       }
 
@@ -385,6 +555,13 @@ export default function PlatformAdminPage() {
     });
     setIsChangingPlan(false);
 
+    if (!error && (user.org_id || targetOrgId)) {
+      const effOrgId = user.org_id || (res as any)?.org_id || targetOrgId;
+      if (effOrgId && !effOrgId.startsWith('temp-org')) {
+        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", effOrgId);
+      }
+    }
+
     if (error) {
       toast({ title: "Failed to update plan", description: error.message, variant: "destructive" });
       await fetchDashboardData(false);
@@ -399,10 +576,11 @@ export default function PlatformAdminPage() {
 
   const handleSetUserDirectPlan = async (user: UserData, planName: string) => {
     let planArray = [planName];
-    if (planName === "plan_3") {
-      planArray = ["plan_3", "plan_5", "plan_6"];
+    if (planName === "plan_3" || planName === "suite") {
+      planArray = ["suite"];
     }
 
+    const calculatedFeatures = computeFeaturesForPlans(planArray);
     const defaultOrgName = user.org_name || `${[user.first_name, user.last_name].filter(Boolean).join(" ") || user.email.split("@")[0]}'s Business`;
     const targetOrgId = user.org_id || `temp-org-${user.user_id}`;
 
@@ -431,8 +609,9 @@ export default function PlatformAdminPage() {
               ...o.subscription,
               plan_name: planArray[0],
               plan_display_name: PLAN_DISPLAY_NAMES[planArray[0]] || planArray[0],
-              enabled_features: o.subscription?.enabled_features || []
-            }
+              enabled_features: calculatedFeatures
+            },
+            enabled_features: calculatedFeatures
           };
         }
         return o;
@@ -454,9 +633,10 @@ export default function PlatformAdminPage() {
           subscription: {
             plan_name: planArray[0],
             plan_display_name: PLAN_DISPLAY_NAMES[planArray[0]] || planArray[0],
-            enabled_features: []
+            enabled_features: calculatedFeatures
           },
-          subscription_plan_names: planArray
+          subscription_plan_names: planArray,
+          enabled_features: calculatedFeatures
         } as any);
       }
 
@@ -481,6 +661,14 @@ export default function PlatformAdminPage() {
       p_user_id: user.user_id,
       p_plan_names: planArray
     });
+
+    if (!error && (user.org_id || targetOrgId)) {
+      const effOrgId = user.org_id || (res as any)?.org_id || targetOrgId;
+      if (effOrgId && !effOrgId.startsWith('temp-org')) {
+        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", effOrgId);
+      }
+    }
+
     setIsChangingPlan(false);
 
     if (error) {
@@ -558,6 +746,8 @@ export default function PlatformAdminPage() {
       
     if (newPlans.length === 0) newPlans = ['free'];
 
+    const calculatedFeatures = computeFeaturesForPlans(newPlans);
+
     setDashData(prev => {
       if (!prev) return prev;
       return {
@@ -571,8 +761,9 @@ export default function PlatformAdminPage() {
                 ...o.subscription,
                 plan_name: newPlans[0],
                 plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
-                enabled_features: o.subscription?.enabled_features || []
-              }
+                enabled_features: calculatedFeatures
+              },
+              enabled_features: calculatedFeatures
             };
           }
           return o;
@@ -584,6 +775,7 @@ export default function PlatformAdminPage() {
       p_org_id: orgId,
       p_plan_names: newPlans,
     });
+    await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", orgId);
     fetchDashboardData(false);
   };
   
@@ -665,6 +857,14 @@ export default function PlatformAdminPage() {
           <TabsTrigger value="social" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-slate-800">
             <Share2 className="w-4 h-4 mr-2" /> Social Media
           </TabsTrigger>
+          <TabsTrigger value="tickets" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <Ticket className="w-4 h-4 mr-2" /> Support Tickets
+            {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length > 0 && (
+              <Badge className="ml-2 bg-amber-500 text-white rounded-full px-1.5 min-w-[20px] h-5 flex items-center justify-center text-[10px]">
+                {tickets.filter(t => t.status === 'open' || t.status === 'in_progress').length}
+              </Badge>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="data" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-slate-800">
               <Database className="w-4 h-4 mr-2" /> Form Data
             </TabsTrigger>
@@ -675,6 +875,9 @@ export default function PlatformAdminPage() {
                 {featureRequests.length}
               </Badge>
             )}
+          </TabsTrigger>
+          <TabsTrigger value="partners" className="data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
+            <Users2 className="w-4 h-4 mr-2" /> Partners
           </TabsTrigger>
         </TabsList>
 
@@ -1475,7 +1678,7 @@ export default function PlatformAdminPage() {
                               }
                             })() : '';
 
-                            const waLink = mobile ? `https://wa.me/91${mobile}?text=Hello%20${encodeURIComponent(name)},%20thank%20you%20for%20booking%20a%20demo%20with%20Assay%20Biz!%20Are%20you%20available%20for%20your%20scheduled%20session${formattedDemoDate ? `%20on%20${encodeURIComponent(formattedDemoDate)}` : ''}%20during%20${encodeURIComponent(preferredTime)}?` : '';
+                            const waLink = mobile ? `https://wa.me/91${mobile}?text=Hello%20${encodeURIComponent(name)},%20thank%20you%20for%20booking%20a%20demo%20with%20Aassay%20Biz!%20Are%20you%20available%20for%20your%20scheduled%20session${formattedDemoDate ? `%20on%20${encodeURIComponent(formattedDemoDate)}` : ''}%20during%20${encodeURIComponent(preferredTime)}?` : '';
 
                             return (
                               <TableRow key={req.id} className="hover:bg-slate-50/80 transition-colors">
@@ -1992,7 +2195,583 @@ export default function PlatformAdminPage() {
           <PlatformSocialsManager />
         </TabsContent>
 
+        {/* ── Support Tickets Manager Tab ── */}
+        <TabsContent value="tickets" className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <Ticket className="w-5 h-5 text-indigo-600" /> Support Tickets Management
+              </h3>
+              <p className="text-slate-500 text-sm mt-0.5">
+                Monitor all support tickets across every business, update statuses, and communicate with clients.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchTickets}
+              disabled={ticketLoading}
+              className="gap-2 border-slate-200 text-slate-700 hover:bg-slate-50 self-start sm:self-auto"
+            >
+              <RefreshCw className={`w-4 h-4 ${ticketLoading ? 'animate-spin' : ''}`} />
+              Refresh Tickets
+            </Button>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="bg-white border-slate-200 shadow-sm">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider block">Total Tickets</span>
+                <span className="text-2xl font-bold text-slate-900 mt-1 block">{tickets.length}</span>
+              </CardContent>
+            </Card>
+            <Card className="bg-amber-50/50 border-amber-200 shadow-sm">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider block">Open Tickets</span>
+                <span className="text-2xl font-bold text-amber-900 mt-1 block">
+                  {tickets.filter(t => t.status === 'open').length}
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-blue-50/50 border-blue-200 shadow-sm">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-blue-700 uppercase tracking-wider block">In Progress</span>
+                <span className="text-2xl font-bold text-blue-900 mt-1 block">
+                  {tickets.filter(t => t.status === 'in_progress' || t.status === 'pending').length}
+                </span>
+              </CardContent>
+            </Card>
+            <Card className="bg-emerald-50/50 border-emerald-200 shadow-sm">
+              <CardContent className="p-4">
+                <span className="text-xs font-semibold text-emerald-700 uppercase tracking-wider block">Resolved / Closed</span>
+                <span className="text-2xl font-bold text-emerald-900 mt-1 block">
+                  {tickets.filter(t => t.status === 'resolved' || t.status === 'closed').length}
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters & Search */}
+          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              {['all', 'open', 'in_progress', 'resolved', 'closed'].map(st => (
+                <Button
+                  key={st}
+                  size="sm"
+                  variant={ticketFilter === st ? "default" : "ghost"}
+                  onClick={() => setTicketFilter(st)}
+                  className={`text-xs capitalize h-8 ${
+                    ticketFilter === st
+                      ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  {st === 'in_progress' ? 'In Progress' : st}
+                  {st !== 'all' && (
+                    <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-black/10">
+                      {tickets.filter(t => t.status === st).length}
+                    </span>
+                  )}
+                </Button>
+              ))}
+            </div>
+
+            <div className="relative min-w-[240px]">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Search ticket, business, client..."
+                value={ticketSearch}
+                onChange={e => setTicketSearch(e.target.value)}
+                className="pl-8 text-xs h-8 bg-slate-50 border-slate-200"
+              />
+            </div>
+          </div>
+
+          {/* Tickets Table */}
+          <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 border-b border-slate-200">
+                    <TableHead className="text-xs font-semibold text-slate-700">Ticket Details</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Business Org</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Customer</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Status</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Created</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ticketLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="h-32 text-center text-slate-500">
+                        <div className="flex items-center justify-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+                          <span>Loading tickets...</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (() => {
+                    const filtered = tickets.filter(t => {
+                      if (ticketFilter !== 'all' && t.status !== ticketFilter) return false;
+                      if (!ticketSearch.trim()) return true;
+                      const q = ticketSearch.toLowerCase();
+                      const subj = (t.subject || '').toLowerCase();
+                      const orgN = (t.organizations?.name || '').toLowerCase();
+                      const orgE = (t.organizations?.email || '').toLowerCase();
+                      const cliN = (t.clients?.display_name || '').toLowerCase();
+                      const cliE = (t.clients?.email || '').toLowerCase();
+                      return subj.includes(q) || orgN.includes(q) || orgE.includes(q) || cliN.includes(q) || cliE.includes(q);
+                    });
+
+                    if (filtered.length === 0) {
+                      return (
+                        <TableRow>
+                          <TableCell colSpan={7} className="h-32 text-center text-slate-400">
+                            No tickets found matching current filter.
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+
+                    return filtered.map(t => (
+                      <TableRow key={t.id} className="hover:bg-slate-50/70 border-b border-slate-100 transition-colors">
+                        {/* Ticket Subject */}
+                        <TableCell className="font-medium">
+                          <button 
+                            onClick={() => handleOpenPlatformTicket(t)} 
+                            className="text-left font-semibold text-indigo-600 hover:text-indigo-800 hover:underline block truncate max-w-[220px]"
+                            title={t.subject}
+                          >
+                            {t.subject}
+                          </button>
+                          <span className="text-[10px] text-slate-400 font-mono">ID: {t.id.slice(0, 8)}</span>
+                        </TableCell>
+
+                        {/* Business Org */}
+                        <TableCell>
+                          <span className="text-xs font-semibold text-slate-800 block truncate max-w-[160px]">
+                            {t.organizations?.name || "Unknown Org"}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">
+                            {t.organizations?.email || "No email"}
+                          </span>
+                        </TableCell>
+
+                        {/* Customer */}
+                        <TableCell>
+                          <span className="text-xs text-slate-700 block truncate max-w-[140px]">
+                            {t.clients?.display_name || "—"}
+                          </span>
+                          <span className="text-[10px] text-slate-400 block truncate max-w-[140px]">
+                            {t.clients?.email || t.clients?.phone || "—"}
+                          </span>
+                        </TableCell>
+
+                        {/* Priority */}
+                        <TableCell>
+                          <Badge variant="outline" className={`text-[10px] font-semibold uppercase ${
+                            t.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
+                            t.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
+                            t.priority === 'medium' ? 'border-amber-200 text-amber-700 bg-amber-50' :
+                            'border-slate-200 text-slate-600 bg-slate-50'
+                          }`}>
+                            {t.priority}
+                          </Badge>
+                        </TableCell>
+
+                        {/* Status Select Dropdown (Platform Admin quick change) */}
+                        <TableCell>
+                          <Select
+                            value={t.status}
+                            onValueChange={(val) => handleUpdateTicketStatus(t.id, val)}
+                          >
+                            <SelectTrigger className={`h-7 w-[120px] text-[11px] font-semibold rounded-lg text-white border-0 shadow-xs ${
+                              t.status === 'open' ? 'bg-amber-500 hover:bg-amber-600' :
+                              t.status === 'in_progress' || t.status === 'pending' ? 'bg-blue-600 hover:bg-blue-700' :
+                              t.status === 'resolved' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                              'bg-slate-600 hover:bg-slate-700'
+                            }`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="z-[9999]">
+                              <SelectItem value="open">🟡 Open</SelectItem>
+                              <SelectItem value="in_progress">🔵 In Progress</SelectItem>
+                              <SelectItem value="resolved">🟢 Resolved</SelectItem>
+                              <SelectItem value="closed">⚪ Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+
+                        {/* Created Date */}
+                        <TableCell className="text-[11px] text-slate-500 whitespace-nowrap">
+                          {t.created_at ? format(new Date(t.created_at), "dd MMM yyyy, hh:mm a") : "—"}
+                        </TableCell>
+
+                        {/* Actions */}
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {t.status !== 'closed' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateTicketStatus(t.id, 'closed')}
+                                className="h-7 px-2 text-[11px] font-medium text-slate-700 border-slate-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200"
+                              >
+                                Close
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleUpdateTicketStatus(t.id, 'open')}
+                                className="h-7 px-2 text-[11px] font-medium text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                              >
+                                Reopen
+                              </Button>
+                            )}
+
+                            <Button
+                              size="sm"
+                              onClick={() => handleOpenPlatformTicket(t)}
+                              className="h-7 px-2 text-[11px] bg-slate-900 hover:bg-slate-800 text-white font-medium gap-1"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              View
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ));
+                  })()}
+                </TableBody>
+              </Table>
+            </div>
+          </Card>
+        </TabsContent>
+
+        {/* ── Partners ── */}
+        <TabsContent value="partners" className="space-y-6">
+          <Card className="bg-white border-slate-200 text-slate-800">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Tag className="w-5 h-5 text-indigo-600" /> Partner / Reseller Management
+                </CardTitle>
+                <CardDescription className="text-slate-500 text-xs mt-1">
+                  Partners ko manage karo — referral code, max users limit, aur status
+                </CardDescription>
+              </div>
+              <Button
+                onClick={() => {
+                  setNewPartner({ name: '', email: '', referral_code: generateReferralCode(), max_users: '10' });
+                  setShowAddPartner(true);
+                }}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-2"
+              >
+                <Plus className="w-4 h-4" /> Add Partner
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {partnerLoading ? (
+                <div className="flex items-center justify-center py-12 text-slate-400">
+                  <RefreshCw className="w-5 h-5 animate-spin mr-2" /> Loading partners...
+                </div>
+              ) : partners.length === 0 ? (
+                <div className="text-center py-12 text-slate-400">
+                  <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                  <p className="text-sm">Koi partner nahi mila. Pehle partner add karo.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-slate-200">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-slate-50">
+                        <TableHead className="text-xs font-semibold text-slate-600">Name</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600">Email</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600">Referral Code</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600 text-center">Max Users</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600 text-center">Linked Account</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600">Created</TableHead>
+                        <TableHead className="text-xs font-semibold text-slate-600 text-center">Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {partners.map((p) => (
+                        <TableRow key={p.id} className="hover:bg-slate-50">
+                          <TableCell className="font-medium text-slate-800 text-sm">{p.name}</TableCell>
+                          <TableCell className="text-slate-600 text-xs">{p.email}</TableCell>
+                          <TableCell>
+                            <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-md px-2.5 py-1 font-mono text-xs font-semibold tracking-wider">
+                              <Tag className="w-3 h-3" /> {p.referral_code}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant="outline" className="text-slate-700 text-xs">
+                              {p.max_users} users
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {p.user_id ? (
+                              <Badge className="bg-emerald-100 text-emerald-700 text-xs border-0">
+                                <CheckCircle2 className="w-3 h-3 mr-1" /> Registered
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-slate-400 text-xs">
+                                Not Signed Up
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-slate-500 text-xs">
+                            {p.created_at ? format(new Date(p.created_at), "dd MMM yyyy") : "—"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-2">
+                              <Switch
+                                checked={p.is_active}
+                                onCheckedChange={() => togglePartnerStatus(p.id, p.is_active)}
+                                className="data-[state=checked]:bg-emerald-500"
+                              />
+                              <span className={`text-xs font-medium ${p.is_active ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                {p.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePartner(p.id, p.name)}
+                                className="text-red-400 hover:text-red-600 hover:bg-red-50 p-1 h-7 w-7"
+                                title="Delete Partner"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Add Partner Dialog */}
+          <Dialog open={showAddPartner} onOpenChange={setShowAddPartner}>
+            <DialogContent className="max-w-md bg-white border-slate-200 text-slate-800 shadow-2xl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-lg font-bold">
+                  <Plus className="w-5 h-5 text-indigo-600" /> Add New Partner
+                </DialogTitle>
+                <DialogDescription className="text-slate-500 text-xs">
+                  Enter partner name and referral code. The partner will use this code to sign up.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Partner Name *</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Rahul Enterprises"
+                    value={newPartner.name}
+                    onChange={(e) => setNewPartner(p => ({ ...p, name: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Referral Code *</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="PART-XXXXXX"
+                      value={newPartner.referral_code}
+                      onChange={(e) => setNewPartner(p => ({ ...p, referral_code: e.target.value.toUpperCase() }))}
+                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300 uppercase"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setNewPartner(p => ({ ...p, referral_code: generateReferralCode() }))}
+                      className="text-xs border-slate-200 text-slate-600 hover:bg-slate-50 whitespace-nowrap"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" /> Auto
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-1">This code will be used by the partner during sign up</p>
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 mb-1.5 block">Max Users (Resell Limit)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="10"
+                    value={newPartner.max_users}
+                    onChange={(e) => setNewPartner(p => ({ ...p, max_users: e.target.value }))}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-1">Maximum number of accounts this partner can resell</p>
+                </div>
+              </div>
+              <DialogFooter className="border-t border-slate-100 pt-4 flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddPartner(false)}
+                  className="flex-1 border-slate-200 text-slate-600 text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddPartner}
+                  disabled={partnerSaving}
+                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs"
+                >
+                  {partnerSaving ? <RefreshCw className="w-4 h-4 animate-spin mr-1" /> : <Plus className="w-4 h-4 mr-1" />}
+                  {partnerSaving ? "Saving..." : "Add Partner"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
       </Tabs>
+
+
+      {/* ── Platform Admin Ticket Conversation & Status Modal ── */}
+      {selectedPlatformTicket && (
+        <Dialog open={!!selectedPlatformTicket} onOpenChange={(open) => { if (!open) setSelectedPlatformTicket(null); }}>
+          <DialogContent className="max-w-2xl bg-white border-slate-200 text-slate-800 shadow-2xl p-6 z-[9999] max-h-[90vh] flex flex-col">
+            <DialogHeader className="border-b border-slate-100 pb-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <Ticket className="w-5 h-5 text-indigo-600" />
+                    {selectedPlatformTicket.subject}
+                  </DialogTitle>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Org: <span className="font-semibold text-slate-800">{selectedPlatformTicket.organizations?.name || "Unknown"}</span>
+                    {" • "}
+                    Customer: <span className="font-semibold text-slate-800">{selectedPlatformTicket.clients?.display_name || "—"}</span>
+                    {selectedPlatformTicket.created_at && (
+                      <> • Created {format(new Date(selectedPlatformTicket.created_at), "dd MMM yyyy, hh:mm a")}</>
+                    )}
+                  </p>
+                </div>
+                <Badge variant="outline" className={`uppercase text-[11px] font-semibold ${
+                  selectedPlatformTicket.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
+                  selectedPlatformTicket.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
+                  'border-slate-200 text-slate-700'
+                }`}>
+                  {selectedPlatformTicket.priority}
+                </Badge>
+              </div>
+
+              {/* Status Change Control Bar */}
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-700">Change Status:</span>
+                  <Select
+                    value={selectedPlatformTicket.status}
+                    onValueChange={(val) => handleUpdateTicketStatus(selectedPlatformTicket.id, val)}
+                  >
+                    <SelectTrigger className={`h-8 px-3 text-xs font-semibold rounded-lg text-white border-0 ${
+                      selectedPlatformTicket.status === 'open' ? 'bg-amber-500' :
+                      selectedPlatformTicket.status === 'in_progress' || selectedPlatformTicket.status === 'pending' ? 'bg-blue-600' :
+                      selectedPlatformTicket.status === 'resolved' ? 'bg-emerald-600' :
+                      'bg-slate-600'
+                    }`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="z-[9999]">
+                      <SelectItem value="open">🟡 Open</SelectItem>
+                      <SelectItem value="in_progress">🔵 In Progress</SelectItem>
+                      <SelectItem value="resolved">🟢 Resolved</SelectItem>
+                      <SelectItem value="closed">⚪ Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {selectedPlatformTicket.status !== 'closed' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateTicketStatus(selectedPlatformTicket.id, 'closed')}
+                      className="h-8 text-xs font-semibold text-rose-700 border-rose-200 bg-rose-50 hover:bg-rose-100"
+                    >
+                      Close Ticket
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleUpdateTicketStatus(selectedPlatformTicket.id, 'open')}
+                      className="h-8 text-xs font-semibold text-indigo-700 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                    >
+                      Reopen Ticket
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </DialogHeader>
+
+            {/* Conversation Messages */}
+            <div className="flex-1 overflow-y-auto space-y-3 py-4 max-h-[360px] pr-1">
+              {platformTicketMessages.length === 0 ? (
+                <div className="text-center py-8 text-xs text-slate-400">
+                  No messages yet on this ticket thread.
+                </div>
+              ) : (
+                platformTicketMessages.map((msg: any) => (
+                  <div
+                    key={msg.id}
+                    className={`p-3 rounded-xl text-xs space-y-1 ${
+                      msg.sender_type === 'platform_admin'
+                        ? 'bg-purple-50 border border-purple-100 text-purple-950 ml-6'
+                        : msg.sender_type === 'agent'
+                        ? 'bg-indigo-50 border border-indigo-100 text-indigo-950 ml-6'
+                        : 'bg-slate-100 text-slate-800 mr-6'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                      <span>
+                        {msg.sender_type === 'platform_admin' ? '🛡️ Platform Admin Support' :
+                         msg.sender_type === 'agent' ? 'Business Support Agent' : 'Customer'}
+                      </span>
+                      <span>{msg.created_at && format(new Date(msg.created_at), "dd MMM, hh:mm a")}</span>
+                    </div>
+                    <p className="whitespace-pre-wrap text-xs text-slate-800">{msg.message}</p>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Reply Box */}
+            <div className="pt-3 border-t border-slate-100 space-y-2">
+              <textarea
+                className="w-full min-h-[70px] max-h-[110px] p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
+                placeholder="Post reply as Platform Support..."
+                value={platformTicketReply}
+                onChange={(e) => setPlatformTicketReply(e.target.value)}
+              />
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-slate-400">
+                  Replies are visible to both the business owner and client.
+                </span>
+                <Button
+                  size="sm"
+                  onClick={handleSendPlatformReply}
+                  disabled={sendingPlatformReply || !platformTicketReply.trim()}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs px-3 gap-1.5"
+                >
+                  {sendingPlatformReply ? "Posting…" : "Post Reply"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* ── Manage User Details & Plan Override Modal ── */}
       {selectedUserForModal && (

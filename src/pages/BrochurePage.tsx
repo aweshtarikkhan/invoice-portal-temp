@@ -4,6 +4,7 @@ import logoImg from "@/assets/logo.png";
 import { Button } from "@/components/ui/button";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 import { YoutubeIcon, FacebookIcon, InstagramIcon } from "@/components/shared/SocialMediaLinks";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 import {
   Printer, ArrowLeft, Download, ShieldCheck, CheckCircle2, Zap,
   FileText, Package, ShoppingCart, Landmark, Users, BarChart3,
@@ -38,7 +39,7 @@ export default function BrochurePage() {
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
             <div className="h-5 w-px bg-slate-700 mx-2" />
-            <span className="font-semibold text-white text-sm">Official AssayBiz Brochure (A4 Edition)</span>
+            <span className="font-semibold text-white text-sm flex items-center gap-1.5">Official <AassayBizBrand theme="dark" /> Brochure (A4 Edition)</span>
           </div>
           <div className="flex items-center gap-3">
             <Button
@@ -83,10 +84,10 @@ export default function BrochurePage() {
       <div ref={brochureRef} className="max-w-[210mm] mx-auto mt-8 space-y-10 print:mt-0 print:space-y-0">
         
         {/* ============================================================== */}
-        {/* PAGE 1: COVER & PRODUCT MODULE OVERVIEW */}
+        {/* PAGE 1: HERO, MODULES & CAPABILITIES */}
         {/* ============================================================== */}
         <section className="brochure-page bg-white text-slate-900 rounded-xl shadow-2xl p-10 flex flex-col justify-between border border-slate-200/80 relative overflow-hidden">
-          {/* Decorative Corner Accents */}
+          {/* Subtle Background Accent */}
           <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-100/60 to-purple-100/40 rounded-bl-full -z-0 pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-56 h-56 bg-gradient-to-tr from-amber-50/60 to-orange-100/40 rounded-tr-full -z-0 pointer-events-none" />
 
@@ -94,9 +95,9 @@ export default function BrochurePage() {
             {/* Header Header */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-5 mb-8">
               <div className="flex items-center gap-3">
-                <img src={logoImg} alt="AssayBiz Logo" className="h-12 w-auto object-contain" />
+                <img src={logoImg} alt="Aassay Biz Logo" className="h-12 w-auto object-contain" />
                 <div>
-                  <h1 className="text-2xl font-black tracking-tight text-slate-900 leading-none">AssayBiz</h1>
+                  <h1 className="leading-none"><AassayBizBrand className="text-2xl" /></h1>
                   <p className="text-[11px] font-semibold tracking-wider text-indigo-600 uppercase mt-1">Enterprise Business Operating System</p>
                 </div>
               </div>
@@ -116,8 +117,9 @@ export default function BrochurePage() {
                   Invoicing, Inventory, HR, Banking & Marketing
                 </span>
               </h2>
-              <p className="text-slate-600 text-sm leading-relaxed max-w-2xl">
-                AssayBiz is India’s next-generation all-in-one business software engineered specifically for SMBs, wholesalers, manufacturers, and modern enterprises. Eliminate software fragmentation with a unified cloud platform.
+              <p className="text-slate-600 text-sm leading-relaxed max-w-2xl flex items-center gap-1 flex-wrap">
+                <AassayBizBrand />
+                <span>is India’s next-generation all-in-one business software engineered specifically for SMBs, wholesalers, manufacturers, and modern enterprises. Eliminate software fragmentation with a unified cloud platform.</span>
               </p>
             </div>
 
@@ -154,7 +156,7 @@ export default function BrochurePage() {
                     <h4 className="font-bold text-xs text-slate-900">Sales & GST Invoicing</h4>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-snug">
-                    Tax Invoices, Quotations/Estimates, Delivery Challans, Credit Notes, and instant payment links with dynamic UPI QR code.
+                    Tax Invoices, Quotations, Delivery Challans, Credit Notes, and instant payment links with dynamic UPI QR code.
                   </p>
                 </div>
 
@@ -164,7 +166,7 @@ export default function BrochurePage() {
                     <span className="p-1 rounded bg-amber-100 text-amber-700">
                       <Package className="w-3.5 h-3.5" />
                     </span>
-                    <h4 className="font-bold text-xs text-slate-900">Catalog & Inventory</h4>
+                    <h4 className="font-bold text-xs text-slate-900">Inventory Management</h4>
                   </div>
                   <p className="text-[11px] text-slate-600 leading-snug">
                     Stock tracking, multi-warehouse transfers, barcode scanner, low-stock alerts, batch & expiry control.
@@ -254,7 +256,7 @@ export default function BrochurePage() {
 
           {/* Page 1 Footer */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>AssayBiz Comprehensive Enterprise Suite</span>
+            <span className="flex items-center gap-1"><AassayBizBrand className="text-[11px]" /> Comprehensive Enterprise Suite</span>
             <span>Page 1 of 2</span>
           </div>
         </section>
@@ -267,8 +269,8 @@ export default function BrochurePage() {
             {/* Header Mini */}
             <div className="flex items-center justify-between border-b border-slate-200 pb-4 mb-6">
               <div className="flex items-center gap-2.5">
-                <img src={logoImg} alt="AssayBiz" className="h-8 w-auto object-contain" />
-                <span className="font-bold text-lg text-slate-900">AssayBiz Packages & Pricing</span>
+                <img src={logoImg} alt="Aassay Biz" className="h-8 w-auto object-contain" />
+                <span className="font-bold text-lg text-slate-900 flex items-center gap-1.5"><AassayBizBrand className="text-lg" /> Packages &amp; Pricing</span>
               </div>
               <span className="text-xs font-semibold text-indigo-600">Transparent & Affordable Plans</span>
             </div>
@@ -290,8 +292,8 @@ export default function BrochurePage() {
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 100 Invoices / Year</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 3 Employee Attendance</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 50 Leads (Manual)</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Festival Posts Only</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Up to 50 Leads</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Festive Posts</li>
                     </ul>
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-200 text-[10px] text-slate-500 text-center font-medium">
@@ -312,7 +314,7 @@ export default function BrochurePage() {
                     <ul className="space-y-1.5 text-[11px] text-slate-600">
                       <li className="flex items-center gap-1.5 font-bold text-blue-900"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Everything in Free Plan</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> <strong>Unlimited</strong> Invoices & Bills</li>
-                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Estimates, POs & Delivery Challans</li>
+                      <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Quotations, POs & Delivery Challans</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> Multi-Warehouse Inventory</li>
                       <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-blue-600 shrink-0" /> 500 WhatsApp Msgs / Mo</li>
                     </ul>
@@ -385,7 +387,7 @@ export default function BrochurePage() {
                 <div>
                   <h4 className="text-sm font-bold flex items-center gap-2">
                     <Building2 className="w-4 h-4 text-indigo-400" />
-                    Get Started with AssayBiz Today
+                    <span>Get Started with</span> <AassayBizBrand theme="dark" className="text-sm" /> <span>Today</span>
                   </h4>
                   <p className="text-[11px] text-slate-300 mt-0.5">
                     Start your 14-day free trial. No credit card required. Call or connect on official channels.
@@ -415,11 +417,11 @@ export default function BrochurePage() {
               <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-800 text-[11px] text-slate-300">
                 <div className="flex items-center gap-1.5">
                   <Globe className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span>www.satahinvoice.com</span>
+                  <span>www.aassaybiz.com</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span>support@assaybiz.com</span>
+                  <span>support@aassaybiz.com</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -431,7 +433,7 @@ export default function BrochurePage() {
 
           {/* Page 2 Footer */}
           <div className="pt-4 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
-            <span>© {new Date().getFullYear()} AssayBiz Technologies. All rights reserved.</span>
+            <span className="flex items-center gap-1">© {new Date().getFullYear()} <AassayBizBrand className="text-[11px]" /> Technologies. All rights reserved.</span>
             <span>Page 2 of 2</span>
           </div>
         </section>

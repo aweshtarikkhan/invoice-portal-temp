@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { toast } from "@/hooks/use-toast";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 
 interface ShareCampaignDialogProps {
   open: boolean;
@@ -138,12 +139,28 @@ export function ShareCampaignDialog({ open, onOpenChange, posterDataUrl, festiva
         
         try {
           if (sendEmail && client.email) {
+            const html = buildBrandedEmailHtml({
+              logoUrl: org.logo_url || "https://aassaybiz.com/logo.png",
+              companyName: org.name || "Aassay Biz",
+              companyEmail: org.email || "support@aassaybiz.com",
+              badgeText: "SPECIAL ANNOUNCEMENT",
+              title: emailSubject,
+              subtitle: `From ${org.name || "Aassay Biz"}`,
+              recipientName: client.display_name || "Valued Customer",
+              customBodyHtml: `
+                <div style="font-size: 15px; color: #334155; line-height: 1.7; margin: 16px 0;">
+                  ${emailBody.replace(/\n/g, '<br/>')}
+                </div>
+              `,
+              attachmentNote: `Attached marketing flyer (${festivalName}.png).`,
+            });
+
             const { error: emailErr } = await supabase.functions.invoke("send-custom-email", {
               body: {
                 orgId: org.id,
                 to: client.email,
                 subject: emailSubject,
-                html: `<p>${emailBody.replace(/\n/g, '<br/>')}</p>`,
+                html,
                 attachments: [
                   {
                     filename: `${festivalName}.png`,

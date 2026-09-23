@@ -10,8 +10,8 @@ import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 
 const DEFAULT_REVIEWS = [
   { name: "Rajesh Sharma", role: "Owner, Sharma Hardware · Jaipur", quote: "Pehle Excel pe bill banata tha, ab WhatsApp pe seedha bhej deta hoon. Customer 5 minute mein UPI se paisa de deta hai.", rating: 5 },
-  { name: "Priya Mehta", role: "Founder, Mehta Textiles · Surat", quote: "GSTR-1 file karne mein pehle CA ko 3 din lagte the. Assay Biz se 10 minute mein JSON ready ho jata hai. Game changer.", rating: 5 },
-  { name: "Amit Patel", role: "CA, Patel & Associates · Ahmedabad", quote: "My 40+ clients moved from Tally + Vyapar to Assay Biz. The HSN summary and 3B export saves us hours every month.", rating: 5 },
+  { name: "Priya Mehta", role: "Founder, Mehta Textiles · Surat", quote: "GSTR-1 file karne mein pehle CA ko 3 din lagte the. Aassay Biz se 10 minute mein JSON ready ho jata hai. Game changer.", rating: 5 },
+  { name: "Amit Patel", role: "CA, Patel & Associates · Ahmedabad", quote: "My 40+ clients moved from Tally + Vyapar to Aassay Biz. The HSN summary and 3B export saves us hours every month.", rating: 5 },
   { name: "Sneha Iyer", role: "Freelance Designer · Bengaluru", quote: "Clean, fast, no bloat. The portal link means clients pay without me chasing. Worth every rupee.", rating: 5 },
 ];
 

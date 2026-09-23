@@ -21,8 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal } from "lucide-react";
-import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2 } from "lucide-react";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -34,6 +33,8 @@ import { jsPDF } from "jspdf";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
+import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
@@ -52,9 +53,12 @@ export default function InvoiceDetailPage() {
     amount: 0, payment_mode: "bank_transfer", reference_number: "", notes: "", payment_date: new Date().toISOString().split("T")[0],
   });
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [invoiceOrg, setInvoiceOrg] = useState<any>(null);
+  const [dataReady, setDataReady] = useState(false);
 
   const fetchInvoice = async () => {
     if (!id) return;
+    setDataReady(false);
     const { data: inv, error: invErr } = await supabase
       .from("invoices")
       .select("*, clients(display_name, email, tax_number, phone, billing_address, shipping_address)")
@@ -62,55 +66,52 @@ export default function InvoiceDetailPage() {
       .single();
     
     if (inv) {
-      const { data: cfData } = await supabase
-        .from("custom_field_values")
-        .select("value, custom_field_definitions(field_name)")
-        .eq("entity_id", id);
-      (inv as any).custom_field_values = cfData || [];
-    }
-    setInvoice(inv);
-    if (inv) {
+      const [cfRes, lineRes, payRes, orgRes] = await Promise.all([
+        supabase.from("custom_field_values").select("value, custom_field_definitions(field_name)").eq("entity_id", id),
+        supabase.from("invoice_lines").select("*").eq("invoice_id", id).order("sort_order"),
+        supabase.from("payments").select("*").eq("invoice_id", id).order("payment_date", { ascending: false }),
+        inv.org_id ? supabase.from("organizations").select("*").eq("id", inv.org_id).maybeSingle() : Promise.resolve({ data: null })
+      ]);
+
+      (inv as any).custom_field_values = cfRes.data || [];
+      const loadedLines = lineRes.data || [];
+      setLines(loadedLines);
+      setPayments(payRes.data || []);
+      if (orgRes.data) {
+        setInvoiceOrg(orgRes.data);
+      }
       setPaymentForm((f) => ({ ...f, amount: Number(inv.balance_due) }));
-    }
+      setInvoice(inv);
+      setDataReady(true);
 
-    const { data: lineData } = await supabase
-      .from("invoice_lines")
-      .select("*")
-      .eq("invoice_id", id)
-      .order("sort_order");
-    setLines(lineData || []);
-
-    const { data: payData } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("invoice_id", id)
-      .order("payment_date", { ascending: false });
-    setPayments(payData || []);
-
-    if (org?.id) {
-      const { data: taxData } = await supabase.from("tax_rates").select("*").eq("org_id", org.id);
-      setTaxRates(taxData || []);
+      const targetOrgId = inv.org_id || org?.id;
+      if (targetOrgId) {
+        const { data: taxData } = await supabase.from("tax_rates").select("*").eq("org_id", targetOrgId);
+        setTaxRates(taxData || []);
+      }
     }
   };
 
   useEffect(() => { fetchInvoice(); }, [id, org?.id]);
 
+  const activeOrg = invoiceOrg || org;
+
   const isInterstate = useMemo(() => {
-    if (!invoice || !org) return false;
-    const orgState = org.gst_number ? stateCodeFromGstin(org.gst_number)
-      : (org.address && typeof org.address === 'object' ? (org.address as any).state : null);
+    if (!invoice || !activeOrg) return false;
+    const orgState = activeOrg.gst_number ? stateCodeFromGstin(activeOrg.gst_number)
+      : (activeOrg.address && typeof activeOrg.address === 'object' ? (activeOrg.address as any).state : null);
     let clientState = null;
     if (invoice.clients?.tax_number) clientState = stateCodeFromGstin(invoice.clients.tax_number);
     else if (invoice.clients?.billing_address && typeof invoice.clients.billing_address === 'object') {
       clientState = (invoice.clients.billing_address as any).state;
     }
     return Boolean(orgState && clientState && orgState !== clientState);
-  }, [invoice, org]);
+  }, [invoice, activeOrg]);
 
   const taxBreakdown = useMemo(() => {
-    if (!invoice || !org || !lines.length) return [];
+    if (!invoice || !activeOrg || !lines.length) return [];
     return calculateTaxBreakdown(lines, taxRates, isInterstate);
-  }, [invoice, lines, org, taxRates, isInterstate]);
+  }, [invoice, lines, activeOrg, taxRates, isInterstate]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -177,10 +178,19 @@ export default function InvoiceDetailPage() {
 
   const handleDownloadPDF = useCallback(async () => {
     if (!invoiceRef.current) return;
+
+    if (lines && lines.length > 0) {
+      let attempts = 0;
+      while (attempts < 10 && !invoiceRef.current.querySelector("tbody tr")) {
+        await new Promise((r) => setTimeout(r, 100));
+        attempts++;
+      }
+    }
+
     const paperSizes: Record<string, [number, number]> = {
       a4: [210, 297], letter: [215.9, 279.4], legal: [215.9, 355.6], a5: [148, 210], a6: [105, 148], pos80: [80, 297],
     };
-    const paperKey = org?.template_paper_size || "a4";
+    const paperKey = activeOrg?.template_paper_size || "a4";
     const [pW, pH] = paperSizes[paperKey] || paperSizes.a4;
 
     // Target width in standard pixels at 96 DPI (210mm = 794px for A4)
@@ -240,15 +250,23 @@ export default function InvoiceDetailPage() {
     }
 
     pdf.save(`${invoice?.invoice_number || "invoice"}.pdf`);
-  }, [invoice, org]);
+  }, [invoice, activeOrg, lines]);
 
   const generatePDFBlob = useCallback(async (): Promise<Blob | null> => {
-    if (!invoiceRef.current || !invoice || !org) return null;
+    if (!invoiceRef.current || !invoice || !activeOrg) return null;
+
+    if (lines && lines.length > 0) {
+      let attempts = 0;
+      while (attempts < 10 && !invoiceRef.current.querySelector("tbody tr")) {
+        await new Promise((r) => setTimeout(r, 100));
+        attempts++;
+      }
+    }
 
     const paperSizes: Record<string, [number, number]> = {
       a4: [210, 297], letter: [215.9, 279.4], legal: [215.9, 355.6], a5: [148, 210], a6: [105, 148], pos80: [80, 297],
     };
-    const paperKey = (org as any).template_paper_size || "a4";
+    const paperKey = (activeOrg as any).template_paper_size || "a4";
     const [pW, pH] = paperSizes[paperKey] || paperSizes.a4;
     const targetPxWidth = Math.round(pW * 3.779528);
 
@@ -301,22 +319,132 @@ export default function InvoiceDetailPage() {
       }
     }
     return pdf.output('blob');
-  }, [invoice, org]);
+  }, [invoice, activeOrg, lines]);
 
-  useAutoEmailPDF({ entityType: "invoice", entityData: invoice, generatePDFBlob });
+  useAutoEmailPDF({ entityType: "invoice", entityData: invoice, lines, isDataReady: dataReady, generatePDFBlob });
+
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+
+  const handleSendEmail = async () => {
+    if (!invoice || !activeOrg) return;
+    const recipientEmail = invoice.clients?.email;
+    if (!recipientEmail) {
+      toast({
+        title: "No email address",
+        description: "This client does not have an email address specified. Please edit the client to add an email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingEmail(true);
+    toast({ title: "Generating invoice PDF for email..." });
+
+    try {
+      const pdfBlob = await generatePDFBlob();
+      if (!pdfBlob) throw new Error("Could not generate invoice PDF");
+
+      const base64data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(pdfBlob);
+        reader.onloadend = () => {
+          resolve((reader.result as string).split(",")[1]);
+        };
+      });
+
+      let pLink = "";
+      const token = await getOrCreatePortalToken(activeOrg.id, "invoice", invoice.id);
+      if (token) pLink = portalUrl(token);
+
+      const snapshot = (invoice?.metadata as any) || {};
+      const hasGst = snapshot.has_gst !== undefined
+        ? Boolean(snapshot.has_gst)
+        : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() && activeOrg?.gst_enabled !== false);
+
+      const docTitle = hasGst ? "Tax Invoice" : "Invoice";
+      const subject = `${docTitle} #${invoice.invoice_number} from ${activeOrg.name || "Aassay Biz"}`;
+      const details: Array<{ label: string; value: string; isHighlight?: boolean }> = [
+        { label: "Invoice Number", value: invoice.invoice_number },
+        { label: "Invoice Date", value: invoice.date || new Date().toISOString().split("T")[0] },
+      ];
+      if (invoice.due_date) {
+        details.push({ label: "Due Date", value: invoice.due_date, isHighlight: true });
+      }
+      if (invoice.balance_due !== undefined && Number(invoice.balance_due) < Number(invoice.total)) {
+        details.push({ label: "Balance Due", value: fmt(Number(invoice.balance_due)), isHighlight: true });
+      }
+
+      const html = buildBrandedEmailHtml({
+        logoUrl: activeOrg.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: activeOrg.name || "Aassay Biz",
+        companyEmail: activeOrg.email || "support@aassaybiz.com",
+        badgeText: hasGst ? "TAX INVOICE" : "INVOICE",
+        title: `${docTitle} #${invoice.invoice_number}`,
+        subtitle: `Issued by ${activeOrg.name || "Aassay Biz"}`,
+        recipientName: invoice.clients?.display_name || "Valued Customer",
+        introText: `Thank you for your business. Please find below the details of your invoice along with the attached official PDF document:`,
+        amountLabel: "Total Amount Due",
+        amountValue: fmt(Number(invoice.total)),
+        details,
+        actionButton: pLink ? { label: "View & Pay Invoice Online", url: pLink } : undefined,
+        attachmentNote: `${hasGst ? "Official GST Tax Invoice" : "Official Invoice"} (${invoice.invoice_number}.pdf) is attached to this email.`,
+      });
+
+      const { data, error } = await supabase.functions.invoke("send-custom-email", {
+        body: {
+          to: recipientEmail,
+          subject,
+          html,
+          orgId: activeOrg.id,
+          attachments: [
+            {
+              filename: `${invoice.invoice_number}.pdf`,
+              content: base64data,
+              content_type: "application/pdf",
+            },
+          ],
+        },
+      });
+
+      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+
+      if (invoice.status === "draft") {
+        await supabase.from("invoices").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", invoice.id);
+        fetchInvoice();
+      }
+
+      toast({
+        title: "Email Sent Successfully! ✉️",
+        description: `Invoice PDF was successfully sent to ${recipientEmail}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Failed to send email",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
 
   if (!invoice) {
     return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
   }
 
   const snapshot = (invoice.metadata as any) || {};
+  const hasGst = snapshot.has_gst !== undefined
+    ? Boolean(snapshot.has_gst)
+    : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() && activeOrg?.gst_enabled !== false);
+
   const effectiveOrg = {
-    ...org,
-    template_style: snapshot.template_style || org?.template_style,
-    template_accent_color: snapshot.template_accent_color || org?.template_accent_color,
-    template_font: snapshot.template_font || org?.template_font,
-    template_paper_size: snapshot.template_paper_size || org?.template_paper_size,
-    gst_number: snapshot.has_gst !== undefined ? (snapshot.has_gst ? org?.gst_number : "") : org?.gst_number,
+    ...activeOrg,
+    template_style: snapshot.template_style || activeOrg?.template_style,
+    template_accent_color: snapshot.template_accent_color || activeOrg?.template_accent_color,
+    template_font: snapshot.template_font || activeOrg?.template_font,
+    template_paper_size: snapshot.template_paper_size || activeOrg?.template_paper_size,
+    gst_number: hasGst ? (activeOrg?.gst_number || activeOrg?.tax_number || "") : "",
+    gst_enabled: hasGst,
     custom_fields: invoice.custom_field_values?.map((cf: any) => ({ name: cf.custom_field_definitions?.field_name, value: cf.value })) || [],
   };
 
@@ -334,6 +462,10 @@ export default function InvoiceDetailPage() {
         <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
           <Download className="mr-1 h-4 w-4" /> Download PDF
         </Button>
+        <Button variant="outline" size="sm" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
+          {isSendingEmail ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Mail className="mr-1 h-4 w-4" />}
+          {isSendingEmail ? "Sending..." : "Email Invoice"}
+        </Button>
         {invoice.status !== "void" && invoice.status !== "paid" && (
           <Button size="sm" onClick={() => setPaymentDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
             <CreditCard className="mr-1 h-4 w-4" /> Record Payment
@@ -346,6 +478,9 @@ export default function InvoiceDetailPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={handleSendEmail} disabled={isSendingEmail}>
+              <Mail className="mr-2 h-4 w-4 text-blue-600" /> Email PDF to Client
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setDuplicateDialogOpen(true)}>
               <Copy className="mr-2 h-4 w-4" /> Duplicate
             </DropdownMenuItem>

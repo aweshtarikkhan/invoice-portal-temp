@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Paperclip, X } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 
 const formSchema = z.object({
   to: z.string().email("Invalid email address"),
@@ -92,8 +93,16 @@ export function ComposeEmailDialog({
         }))
       );
 
-      // We format plain text with basic HTML replacing newlines
-      const htmlBody = `<div style="font-family: sans-serif; white-space: pre-wrap;">${values.body}</div>`;
+      // Format email using AssayBiz brand template with real logo
+      const htmlBody = buildBrandedEmailHtml({
+        logoUrl: org.logo_url || "https://aassaybiz.com/logo.png",
+        companyName: org.name || "Aassay Biz",
+        companyEmail: org.email || "support@aassaybiz.com",
+        title: values.subject,
+        subtitle: `Message from ${org.name || "Aassay Biz"}`,
+        customBodyHtml: `<div style="font-size: 15px; color: #334155; line-height: 1.7; white-space: pre-wrap;">${values.body}</div>`,
+        attachmentNote: processedAttachments.length > 0 ? `${processedAttachments.length} file(s) attached to this email.` : undefined,
+      });
 
       const { data, error } = await supabase.functions.invoke('send-custom-email', {
         body: {

@@ -19,11 +19,11 @@ interface StyledInvoiceTemplateProps {
   showSignature?: boolean;
 }
 
-const getTitleText = (type: string) => {
-  if (type === "estimate") return "ESTIMATE";
+const getTitleText = (type: string, hasGst = true) => {
+  if (type === "estimate") return "QUOTATION";
   if (type === "po") return "PURCHASE ORDER";
   if (type === "bill") return "PURCHASE INVOICE";
-  return "TAX INVOICE";
+  return hasGst ? "TAX INVOICE" : "INVOICE";
 };
 
 export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoice", taxBreakdown, isInterstate, showSignature = true }: StyledInvoiceTemplateProps) {
@@ -76,7 +76,10 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
   const clientGst = (invoice.clients as any)?.tax_number;
   const number = type === "estimate" ? invoice.estimate_number : (type === "po" ? invoice.po_number : invoice.invoice_number);
   const balanceDue = type === "estimate" ? Number(invoice.total) : Number(invoice.balance_due ?? invoice.total);
-  const hasGst = Boolean(org?.gst_number);
+  const snapshot = (invoice?.metadata as any) || {};
+  const hasGst = snapshot.has_gst !== undefined
+    ? Boolean(snapshot.has_gst)
+    : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
   const addressLines: string[] = [];
   if (org?.address) {
@@ -89,26 +92,45 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
     } catch {}
   }
 
+  const rawBillTo = invoice?.billing_address || (invoice?.clients as any)?.billing_address;
   const billToAddressLines: string[] = [];
-  if (invoice?.billing_address) {
+  if (rawBillTo) {
     try {
-      const a = typeof invoice.billing_address === "string" ? JSON.parse(invoice.billing_address) : invoice.billing_address;
-      if (a?.street) billToAddressLines.push(a.street);
-      const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
-      if (cityLine) billToAddressLines.push(cityLine);
-      if (a?.country) billToAddressLines.push(a.country);
+      const a = typeof rawBillTo === "string" ? JSON.parse(rawBillTo) : rawBillTo;
+      if (typeof a === "string") {
+        billToAddressLines.push(a);
+      } else if (a && typeof a === "object") {
+        if (a.street) billToAddressLines.push(a.street);
+        const cityLine = [a.city, a.state, a.zip].filter(Boolean).join(", ");
+        if (cityLine) billToAddressLines.push(cityLine);
+        if (a.country) billToAddressLines.push(a.country);
+      }
     } catch {}
   }
 
+  const rawShipTo = invoice?.shipping_address || ((invoice?.metadata as any)?.shipping_same_as_billing ? rawBillTo : (invoice?.clients as any)?.shipping_address);
   const shipToAddressLines: string[] = [];
-  if (invoice?.shipping_address) {
+  let shipToName = "";
+  let shipToPhone = "";
+  let shipToGstin = "";
+  if (rawShipTo) {
     try {
-      const a = typeof invoice.shipping_address === "string" ? JSON.parse(invoice.shipping_address) : invoice.shipping_address;
-      if (a?.street) shipToAddressLines.push(a.street);
-      const cityLine = [a?.city, a?.state, a?.zip].filter(Boolean).join(", ");
-      if (cityLine) shipToAddressLines.push(cityLine);
-      if (a?.country) shipToAddressLines.push(a.country);
+      const a = typeof rawShipTo === "string" ? JSON.parse(rawShipTo) : rawShipTo;
+      if (typeof a === "string") {
+        shipToAddressLines.push(a);
+      } else if (a && typeof a === "object") {
+        if (a.name) shipToName = a.name;
+        if (a.street) shipToAddressLines.push(a.street);
+        const cityLine = [a.city, a.state, a.zip].filter(Boolean).join(", ");
+        if (cityLine) shipToAddressLines.push(cityLine);
+        if (a.country) shipToAddressLines.push(a.country);
+        if (a.phone || a.contact) shipToPhone = a.phone || a.contact;
+        if (a.gstin || a.tax_number) shipToGstin = a.gstin || a.tax_number;
+      }
     } catch {}
+  }
+  if (!shipToName && (invoice?.metadata as any)?.shipping_same_as_billing) {
+    shipToName = clientName;
   }
 
   const thStyle = { background: "#f4f4f5", color: "#18181b", padding: "8px 10px", fontWeight: 600, borderBottom: "1px solid #e4e4e7", fontSize: 11, textAlign: "right" as const };
@@ -130,9 +152,9 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
       <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `2px solid ${accent}`, paddingBottom: 16, marginBottom: 20 }}>
         <div>
           {showLogo && org?.logo_url && (
-            <img src={org.logo_url} alt={org.name} style={{ maxHeight: 64, maxWidth: 200, objectFit: "contain", marginBottom: 12 }} />
+            <img src={org.logo_url} alt={org.name} style={{ maxHeight: 48, maxWidth: 130, objectFit: "contain", marginBottom: 8 }} />
           )}
-          <div style={{ fontWeight: 800, fontSize: 18, color: accent }}>{org?.name}</div>
+          <div style={{ fontWeight: 900, fontSize: 22, textTransform: "uppercase", letterSpacing: "-0.02em", color: accent, lineHeight: 1.1 }}>{org?.name}</div>
           {addressLines.map((l, i) => (
             <div key={i} style={{ fontSize: 11, color: "#3f3f46" }}>{l}</div>
           ))}
@@ -143,9 +165,9 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
           )}
         </div>
         <div style={{ textAlign: "right" }}>
-          <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: 0.5, color: accent }}>{getTitleText(type)}</div>
+          <div style={{ fontWeight: 800, fontSize: 24, letterSpacing: 0.5, color: accent }}>{getTitleText(type, hasGst)}</div>
           <div style={{ marginTop: 8 }}>
-            <span style={{ fontSize: 11, color: "#71717a", marginRight: 8 }}>Invoice#:</span>
+            <span style={{ fontSize: 11, color: "#71717a", marginRight: 8 }}>{type === "estimate" ? "Quotation#:" : (type === "po" ? "PO#:" : "Invoice#:")}</span>
             <span style={{ fontWeight: 600 }}>{number}</span>
           </div>
           <div>
@@ -181,19 +203,28 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
           {billToAddressLines.map((l, i) => (
             <div key={i} style={{ fontSize: 11, color: "#3f3f46" }}>{l}</div>
           ))}
-          {clientGst && org?.gst_enabled && org?.show_client_gst && (
+          {clientGst && org?.gst_enabled && org?.show_client_gst !== false && (
             <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4 }}>GSTIN: {clientGst}</div>
+          )}
+          {(invoice.clients as any)?.phone && (
+            <div style={{ fontSize: 11, color: "#3f3f46" }}>Phone: {(invoice.clients as any).phone}</div>
+          )}
+          {(invoice.clients as any)?.email && (
+            <div style={{ fontSize: 11, color: "#3f3f46" }}>Email: {(invoice.clients as any).email}</div>
           )}
           {(org as any)?.pan_enabled && (invoice.clients as any)?.pan_number && (
             <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2 }}>PAN: {(invoice.clients as any).pan_number}</div>
           )}
         </div>
-        {shipToAddressLines.length > 0 && (
+        {(shipToAddressLines.length > 0 || shipToName) && (
           <div>
             <div style={{ fontSize: 11, fontWeight: 700, color: accent, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Ship To</div>
+            {shipToName && <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 2 }}>{shipToName}</div>}
             {shipToAddressLines.map((l, i) => (
               <div key={i} style={{ fontSize: 11, color: "#3f3f46" }}>{l}</div>
             ))}
+            {shipToPhone && <div style={{ fontSize: 11, color: "#3f3f46" }}>Phone: {shipToPhone}</div>}
+            {shipToGstin && <div style={{ fontSize: 11, fontWeight: 600, marginTop: 4 }}>GSTIN: {shipToGstin}</div>}
           </div>
         )}
       </div>
@@ -236,7 +267,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
           <tr>
             <th style={{ ...thStyle, textAlign: "left", width: 30 }}>#</th>
             <th style={{ ...thStyle, textAlign: "left" }}>Item &amp; Description</th>
-            <th style={{ ...thStyle, textAlign: "left", width: 60 }}>HSN/SAC</th>
+            {hasGst && <th style={{ ...thStyle, textAlign: "left", width: 60 }}>HSN/SAC</th>}
             <th style={{ ...thStyle, width: 60 }}>Qty</th>
             <th style={{ ...thStyle, width: 80 }}>Rate</th>
             {hasGst && !isInterstate && (
@@ -253,7 +284,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         </thead>
         <tbody>
           {lines.map((line, idx) => {
-            const taxAmount = Number(line.tax_amount || 0);
+            const taxAmount = Number(line.tax_amount != null ? line.tax_amount : ((Number(line.quantity || 0) * Number(line.rate || 0)) * ((typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0)) / 100)));
             const isZeroTax = taxAmount === 0;
             const halfTax = taxAmount / 2;
             
@@ -264,13 +295,13 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             // We will just show the amount.
             
             return (
-              <tr key={line.id}>
+              <tr key={line.id || idx}>
                 <td style={{ ...tdStyle, textAlign: "left" }}>{idx + 1}</td>
                 <td style={{ ...tdStyle, textAlign: "left" }}>
                   <div style={{ fontWeight: 600 }}>{line.name}</div>
                   {line.description && <div style={{ fontSize: 10, color: "#52525b", marginTop: 2, whiteSpace: "pre-wrap" }}>{line.description}</div>}
                 </td>
-                <td style={{ ...tdStyle, textAlign: "left", fontSize: 11 }}>{line.hsn_code || "-"}</td>
+                {hasGst && <td style={{ ...tdStyle, textAlign: "left", fontSize: 11 }}>{line.hsn_code || line.hsn || line.hsn_sac || line.item?.hsn_code || "-"}</td>}
                 <td style={{ ...tdStyle }}>
                   <div style={{ fontWeight: 600 }}>
                     {line.quantity}
@@ -379,10 +410,17 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
 
         {/* Right Side: Totals */}
         <div style={{ width: 320, background: "#fafafa", padding: 16, borderRadius: 8, border: "1px solid #e4e4e7" }}>
-          <Row label="Subtotal" value={fmt(Number(invoice.subtotal ?? invoice.total))} />
+          <Row 
+            label="Subtotal" 
+            value={fmt(
+              !hasGst && Number(invoice.total_tax || 0) === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0)
+                ? Number(invoice.total)
+                : Number(invoice.subtotal ?? invoice.total)
+            )} 
+          />
           
           {Number(invoice.total_discount) > 0 && (
-            <Row label="Discount" value={"-${fmt(Number(invoice.total_discount))}"} />
+            <Row label="Discount" value={`-${fmt(Number(invoice.total_discount))}`} />
           )}
 
           {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
@@ -395,6 +433,9 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
 
           {Number(invoice.shipping_charge) > 0 && (
             <Row label="Shipping" value={fmt(Number(invoice.shipping_charge))} />
+          )}
+          {Number((invoice as any).expenses) > 0 && (
+            <Row label="Expenses (Fixed Cost)" value={fmt(Number((invoice as any).expenses))} />
           )}
           
           {!isNaN(Number(invoice.adjustment)) && Number(invoice.adjustment) !== 0 && (

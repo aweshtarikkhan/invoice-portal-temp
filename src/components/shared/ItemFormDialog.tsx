@@ -15,8 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
+import { Package, Trash2, FileText, Tag, Users, Database, X, Settings, Info, Ruler, Plus, Lock, HelpCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Trash2, FileText, Tag, Users, Database, X, Settings, Info, Ruler, Plus } from "lucide-react";
 
 
 interface ItemFormDialogProps {
@@ -41,10 +42,12 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
   const [customFieldDefs, setCustomFieldDefs] = useState<any[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
   
+  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+
   const defaultForm = {
     name: "", description: "", sku: "", type: defaultType,
-    unit_price: 0, sales_price_type: "with_tax",
-    purchase_price: 0, purchase_price_type: "with_tax",
+    unit_price: 0, sales_price_type: hasGst ? "with_tax" : "without_tax",
+    purchase_price: 0, purchase_price_type: hasGst ? "with_tax" : "without_tax",
     discount: 0,
     unit: "pcs", tax_id: null as string | null,
     category: "", stock_quantity: 0, hsn_code: "",
@@ -96,11 +99,13 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
           ...defaultForm,
           name: editItem.name || "", description: editItem.description || "", sku: editItem.sku || "",
           type: editItem.type || defaultType, unit_price: Number(editItem.unit_price) || 0, unit: editItem.unit || "pcs",
-          tax_id: editItem.tax_id, category: editItem.category || "", stock_quantity: Number(editItem.stock_quantity || 0),
-          hsn_code: editItem.hsn_code || "",
+          tax_id: hasGst ? editItem.tax_id : null, 
+          category: editItem.category || "", 
+          stock_quantity: Number(editItem.stock_quantity || 0),
+          hsn_code: hasGst ? (editItem.hsn_code || "") : "",
           purchase_price: Number(editItem.purchase_price) || 0,
-          sales_price_type: editItem.sales_price_type || "with_tax",
-          purchase_price_type: editItem.purchase_price_type || "with_tax",
+          sales_price_type: hasGst ? (editItem.sales_price_type || "with_tax") : "without_tax",
+          purchase_price_type: hasGst ? (editItem.purchase_price_type || "with_tax") : "without_tax",
           discount: Number(editItem.discount) || 0,
           show_online: editItem.show_online || false,
           sub_unit: editItem.sub_unit || "",
@@ -189,13 +194,13 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
       type: form.type,
       unit_price: form.unit_price,
       unit: form.unit || null,
-      tax_id: finalTaxId,
+      tax_id: hasGst ? finalTaxId : null,
       category: form.category || null,
       stock_quantity: form.stock_quantity,
-      hsn_code: form.hsn_code || null,
+      hsn_code: hasGst ? (form.hsn_code || null) : null,
       purchase_price: form.purchase_price,
-      sales_price_type: form.sales_price_type,
-      purchase_price_type: form.purchase_price_type,
+      sales_price_type: hasGst ? form.sales_price_type : "without_tax",
+      purchase_price_type: hasGst ? form.purchase_price_type : "without_tax",
       sub_unit: form.show_sub_unit && form.sub_unit && form.sub_unit.trim() ? form.sub_unit.trim() : null,
       sub_unit_conversion_rate: form.show_sub_unit && form.sub_unit && form.sub_unit.trim() ? (Number(form.sub_unit_conversion_rate) || 1) : null,
       low_stock_threshold: form.show_low_stock_warning ? (Number(form.low_stock_threshold) || 0) : null,
@@ -393,13 +398,17 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           className="pl-8 h-11 rounded-r-none border-r-0 bg-white focus-visible:ring-indigo-500 z-10" 
                           placeholder="ex: 200" 
                         />
-                        <Select value={form.sales_price_type} onValueChange={(v) => setForm({...form, sales_price_type: v})}>
-                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0 focus:ring-offset-0">
+                        <Select 
+                          value={hasGst ? form.sales_price_type : "without_tax"} 
+                          onValueChange={(v) => hasGst && setForm({...form, sales_price_type: v})}
+                          disabled={!hasGst}
+                        >
+                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0 focus:ring-offset-0 disabled:opacity-80">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="with_tax">With Tax</SelectItem>
                             <SelectItem value="without_tax">Without Tax</SelectItem>
+                            {hasGst && <SelectItem value="with_tax">With Tax</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
@@ -411,18 +420,44 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                       )}
                     </div>
                     <div className="space-y-3">
-                      <Label className="text-slate-600">GST Tax Rate(%)</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-slate-600">GST Tax Rate(%)</Label>
+                        {!hasGst && (
+                          <TooltipProvider>
+                            <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="text-amber-500 hover:text-amber-600 inline-flex items-center">
+                                  <HelpCircle className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-slate-900 text-white text-xs max-w-xs p-2.5 space-y-1 shadow-lg z-50">
+                                <p className="font-semibold flex items-center gap-1 text-amber-400">
+                                  <Lock className="w-3.5 h-3.5" /> Feature Locked
+                                </p>
+                                <p>Add your GST No. to unlock this feature.</p>
+                                <a href="/settings?tab=general" className="text-indigo-300 underline font-medium block pt-0.5 hover:text-indigo-200">
+                                  Add GST No. &rarr;
+                                </a>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                       <Select 
+                        disabled={!hasGst}
                         value={
-                          form.tax_id 
-                            ? (INDIAN_GST_SLABS.find(s => s.id === form.tax_id)?.id || 
-                               INDIAN_GST_SLABS.find(s => {
-                                 const t = taxRates.find(tr => tr.id === form.tax_id);
-                                 return t && Number(t.rate) === s.rate;
-                               })?.id || form.tax_id)
-                            : "exempt"
+                          !hasGst 
+                            ? "exempt"
+                            : (form.tax_id 
+                                ? (INDIAN_GST_SLABS.find(s => s.id === form.tax_id)?.id || 
+                                   INDIAN_GST_SLABS.find(s => {
+                                     const t = taxRates.find(tr => tr.id === form.tax_id);
+                                     return t && Number(t.rate) === s.rate;
+                                   })?.id || form.tax_id)
+                                : "exempt")
                         } 
                         onValueChange={(v) => {
+                          if (!hasGst) return;
                           const slab = INDIAN_GST_SLABS.find(s => s.id === v);
                           if (slab) {
                             const matched = taxRates.find(t => Number(t.rate) === slab.rate);
@@ -432,7 +467,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           }
                         }}
                       >
-                        <SelectTrigger className="h-11 bg-white">
+                        <SelectTrigger className="h-11 bg-white disabled:bg-slate-100 disabled:text-slate-500">
                           <SelectValue placeholder="0% - Exempted" />
                         </SelectTrigger>
                         <SelectContent>
@@ -443,6 +478,11 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           ))}
                         </SelectContent>
                       </Select>
+                      {!hasGst && (
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-slate-400" /> Locked (No GST registered)
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -483,7 +523,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
 
               {activeTab === "stock" && (
                 <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <div className="grid grid-cols-2 gap-6">
+                  <div className={`grid ${hasGst ? "grid-cols-2" : "grid-cols-1"} gap-6`}>
                     <div className="space-y-3">
                       <Label className="text-slate-600">Item Code</Label>
                       <div className="flex rounded-lg shadow-sm">
@@ -498,16 +538,18 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                         </Button>
                       </div>
                     </div>
-                    <div className="space-y-3">
-                      <Label className="text-slate-600">HSN code</Label>
-                      <Input 
-                        value={form.hsn_code} 
-                        onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} 
-                        className="h-11 bg-white" 
-                        placeholder="ex: 4010" 
-                      />
-                      <button className="text-blue-500 text-sm hover:underline">Find HSN Code</button>
-                    </div>
+                    {hasGst && (
+                      <div className="space-y-3">
+                        <Label className="text-slate-600">HSN code</Label>
+                        <Input 
+                          value={form.hsn_code} 
+                          onChange={(e) => setForm({ ...form, hsn_code: e.target.value })} 
+                          className="h-11 bg-white" 
+                          placeholder="ex: 4010" 
+                        />
+                        <button className="text-blue-500 text-sm hover:underline">Find HSN Code</button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Measuring Unit & Alternate / Sub Unit */}
@@ -710,13 +752,17 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           className="pl-8 h-11 rounded-r-none border-r-0 bg-white" 
                           placeholder="ex: 200" 
                         />
-                        <Select value={form.sales_price_type} onValueChange={(v) => setForm({...form, sales_price_type: v})}>
-                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0">
+                        <Select 
+                          value={hasGst ? form.sales_price_type : "without_tax"} 
+                          onValueChange={(v) => hasGst && setForm({...form, sales_price_type: v})}
+                          disabled={!hasGst}
+                        >
+                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0 disabled:opacity-80">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="with_tax">With Tax</SelectItem>
                             <SelectItem value="without_tax">Without Tax</SelectItem>
+                            {hasGst && <SelectItem value="with_tax">With Tax</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
@@ -761,13 +807,17 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           className="pl-8 h-11 rounded-r-none border-r-0 bg-white" 
                           placeholder="ex: 200" 
                         />
-                        <Select value={form.purchase_price_type} onValueChange={(v) => setForm({...form, purchase_price_type: v})}>
-                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0">
+                        <Select 
+                          value={hasGst ? form.purchase_price_type : "without_tax"} 
+                          onValueChange={(v) => hasGst && setForm({...form, purchase_price_type: v})}
+                          disabled={!hasGst}
+                        >
+                          <SelectTrigger className="w-[130px] h-11 rounded-l-none bg-slate-50 border-l-0 text-slate-600 focus:ring-0 disabled:opacity-80">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="with_tax">With Tax</SelectItem>
                             <SelectItem value="without_tax">Without Tax</SelectItem>
+                            {hasGst && <SelectItem value="with_tax">With Tax</SelectItem>}
                           </SelectContent>
                         </Select>
                       </div>
@@ -776,18 +826,44 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
 
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-3">
-                      <Label className="text-slate-600">GST Tax Rate(%)</Label>
+                      <div className="flex items-center gap-1.5">
+                        <Label className="text-slate-600">GST Tax Rate(%)</Label>
+                        {!hasGst && (
+                          <TooltipProvider>
+                            <Tooltip delayDuration={100}>
+                              <TooltipTrigger asChild>
+                                <button type="button" className="text-amber-500 hover:text-amber-600 inline-flex items-center">
+                                  <HelpCircle className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-slate-900 text-white text-xs max-w-xs p-2.5 space-y-1 shadow-lg z-50">
+                                <p className="font-semibold flex items-center gap-1 text-amber-400">
+                                  <Lock className="w-3.5 h-3.5" /> Feature Locked
+                                </p>
+                                <p>Add your GST No. to unlock this feature.</p>
+                                <a href="/settings?tab=general" className="text-indigo-300 underline font-medium block pt-0.5 hover:text-indigo-200">
+                                  Add GST No. &rarr;
+                                </a>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
                       <Select 
+                        disabled={!hasGst}
                         value={
-                          form.tax_id 
-                            ? (INDIAN_GST_SLABS.find(s => s.id === form.tax_id)?.id || 
-                               INDIAN_GST_SLABS.find(s => {
-                                 const t = taxRates.find(tr => tr.id === form.tax_id);
-                                 return t && Number(t.rate) === s.rate;
-                               })?.id || form.tax_id)
-                            : "exempt"
+                          !hasGst 
+                            ? "exempt"
+                            : (form.tax_id 
+                                ? (INDIAN_GST_SLABS.find(s => s.id === form.tax_id)?.id || 
+                                   INDIAN_GST_SLABS.find(s => {
+                                     const t = taxRates.find(tr => tr.id === form.tax_id);
+                                     return t && Number(t.rate) === s.rate;
+                                   })?.id || form.tax_id)
+                                : "exempt")
                         } 
                         onValueChange={(v) => {
+                          if (!hasGst) return;
                           const slab = INDIAN_GST_SLABS.find(s => s.id === v);
                           if (slab) {
                             const matched = taxRates.find(t => Number(t.rate) === slab.rate);
@@ -797,7 +873,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           }
                         }}
                       >
-                        <SelectTrigger className="h-11 bg-white">
+                        <SelectTrigger className="h-11 bg-white disabled:bg-slate-100 disabled:text-slate-500">
                           <SelectValue placeholder="0% - Exempted" />
                         </SelectTrigger>
                         <SelectContent>
@@ -808,6 +884,11 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                           ))}
                         </SelectContent>
                       </Select>
+                      {!hasGst && (
+                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                          <Lock className="w-3 h-3 text-slate-400" /> Locked (No GST registered)
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-3">
                       <Label className="text-slate-600">Discount on Sales Price <span className="text-slate-400 ml-1">ⓘ</span></Label>

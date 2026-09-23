@@ -500,7 +500,18 @@ export default function PurchaseOrderBuilderPage() {
                     <TableCell><Input value={l.hsn} onChange={e => { const x = [...lines]; x[i].hsn = e.target.value; setLines(x); }} /></TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1.5">
-                        <Input type="number" placeholder="1" value={l.quantity} onChange={e => { const x = [...lines]; x[i].quantity = e.target.value; setLines(x); }} />
+                        <Input
+                          type="number"
+                          placeholder="1"
+                          min={0}
+                          value={l.quantity}
+                          onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                          onChange={e => {
+                            const x = [...lines];
+                            x[i].quantity = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
+                            setLines(x);
+                          }}
+                        />
                         <Select value={l.unit || undefined} onValueChange={v => { const x = [...lines]; x[i].unit = v; setLines(x); }}>
                           <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Unit" /></SelectTrigger>
                           <SelectContent className="z-50 max-h-60">
@@ -511,7 +522,20 @@ export default function PurchaseOrderBuilderPage() {
                         </Select>
                       </div>
                     </TableCell>
-                    <TableCell><Input type="number" placeholder="1" value={l.rate} onChange={e => { const x = [...lines]; x[i].rate = e.target.value; setLines(x); }} /></TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        placeholder="1"
+                        min={0}
+                        value={l.rate}
+                        onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                        onChange={e => {
+                          const x = [...lines];
+                          x[i].rate = e.target.value === "" ? "" : String(Math.max(0, parseFloat(e.target.value) || 0));
+                          setLines(x);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       {vendorHasGst ? (
                         <Select
@@ -624,7 +648,8 @@ export default function PurchaseOrderBuilderPage() {
                           min={0}
                           className="h-7 w-16 text-xs text-right"
                           value={tdsTcsRate}
-                          onChange={(e) => setTdsTcsRate(Math.abs(Number(e.target.value)))}
+                          onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                          onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
                           placeholder="Rate"
                         />
                         <span className="text-muted-foreground">%</span>

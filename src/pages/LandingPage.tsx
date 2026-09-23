@@ -29,12 +29,12 @@ const t = {
     nav_features: "Features", nav_pricing: "Pricing", nav_compare: "Compare", nav_login: "Sign in",
     hero_eyebrow: "Built for Indian SMBs · 100% GST Ready",
     hero_title: "Send GST invoices in 30 seconds.",
-    hero_sub: "Assay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.",
+    hero_sub: "Aassay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.",
     cta_primary: "Create your first invoice — Free",
     cta_secondary: "Watch 60-sec demo",
-    trust_users: "Businesses Trust Assay Biz",
+    trust_users: "Businesses Trust Us",
     trust_invoices: "Total Invoiced",
-    trust_rating: "Rating on Assay",
+    trust_rating: "Rating on Aassay",
     trust_uptime: "System Uptime",
     speed_claim: "Invoice ready in 60 seconds",
     no_card_badge: "No credit card needed",
@@ -45,7 +45,7 @@ const t = {
     wa_title: "Send invoices instantly. Get paid 2x faster.",
     wa_sub: "One tap to share a polished PDF with a UPI QR. Your customers pay instantly — no app downloads, no logins.",
     wa_bullets: ["1-tap share with PDF + UPI QR", "Auto payment reminders for overdue invoices", "Customer portal — pay without sign-up"],
-    cmp_title: "Why teams switch to Assay Biz",
+    cmp_title: "Why teams switch to Aassay Biz",
     cmp_sub: "Honest comparison with the tools you're probably using today.",
     test_title: "our business made more then 12,000 invoices",
     pricing_title: "Simple pricing. No surprises.",
@@ -56,12 +56,12 @@ const t = {
     nav_features: "फीचर्स", nav_pricing: "प्राइसिंग", nav_compare: "तुलना", nav_login: "साइन इन",
     hero_eyebrow: "भारतीय व्यापारियों के लिए · 100% GST रेडी",
     hero_title: "30 सेकंड में GST बिल भेजें।",
-    hero_sub: "Assay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह।",
+    hero_sub: "Aassay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह।",
     cta_primary: "अभी मुफ़्त बिल बनाएं",
     cta_secondary: "60-सेकंड डेमो देखें",
     trust_users: "बिज़नेस का भरोसा",
     trust_invoices: "कुल इनवॉइसिंग",
-    trust_rating: "रेटिंग Assay पर",
+    trust_rating: "रेटिंग Aassay पर",
     trust_uptime: "सिस्टम अपटाइम",
     speed_claim: "60 सेकंड में इनवॉइस तैयार",
     no_card_badge: "कोई क्रेडिट कार्ड नहीं चाहिए",
@@ -72,7 +72,7 @@ const t = {
     wa_title: "बिल भेजें। 2x तेज़ पेमेंट पाएं।",
     wa_sub: "एक टैप में PDF + UPI QR के साथ बिल भेजें। कस्टमर तुरंत पेमेंट करें — कोई ऐप या लॉगिन नहीं।",
     wa_bullets: ["1-टैप शेयर — PDF + UPI QR के साथ", "ओवरड्यू बिल के लिए ऑटो रिमाइंडर", "कस्टमर पोर्टल — बिना साइन-अप पेमेंट"],
-    cmp_title: "लोग Assay Biz क्यों चुनते हैं",
+    cmp_title: "लोग Aassay Biz क्यों चुनते हैं",
     cmp_sub: "जो टूल्स आप आज इस्तेमाल कर रहे हैं उनसे ईमानदार तुलना।",
     test_title: "our business made more then 12,000 invoices",
     pricing_title: "सीधी प्राइसिंग। कोई छुपा शुल्क नहीं।",
@@ -83,11 +83,11 @@ const t = {
 
 
 const hrBadges = [
-  "GPS & Selfie Attendance",
-  "Biometric Machine Sync",
+  "GPS Attendance",
+  "Employee Self-Service Portal",
   "1-Click Payroll & Payslips",
   "WhatsApp Slip Delivery",
-  "Auto PF / ESIC / TDS",
+  "Overtime & Late Penalty Rules",
   "Multi-Shift & Leave Roster",
 ];
 const hrEmployees = [
@@ -102,7 +102,7 @@ const crmBadges = [
   "Multi-Source Lead Capture",
   "Visual Kanban Deal Stages",
   "WhatsApp Quick Follow-up",
-  "1-Tap Quote to Invoice",
+  "Lead Auto-Assignment",
   "Call Logs & Reminders",
   "Client 360° History",
 ];
@@ -134,9 +134,9 @@ const mktBadges = [
   "Bulk WhatsApp Broadcasts",
   "Auto Festive Poster Maker",
   "Logo & QR Branded Creatives",
-  "Discount Coupons & Vouchers",
+  "Printable Brochure & Pamphlet Maker",
   "Inactive Client Retargeting",
-  "Real-Time Campaign Analytics",
+  "Multi-Channel WhatsApp & Email Campaigns",
 ];
 const mktCampaigns = [
   { name: "Diwali Sale 2026",   sent: 1250, opened: 1156, orders: 87, revenue: "₹1,42,800", status: "Live",     badge: "bg-[#28166f]" },
@@ -242,7 +242,7 @@ export default function LandingPage() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const [hrExtra, setHrExtra] = useState(0);
 
-  const getPlanPrice = (baseMo, baseYr, hasHrAddon = false) => {
+  const getPlanPrice = (baseMo: number, baseYr: number, hasHrAddon = false) => {
     const platAddon = platformExtra * 99;
     const hrAddon = hasHrAddon ? hrExtra * 29 : 0;
     const totalMo = baseMo + platAddon + hrAddon;
@@ -250,7 +250,18 @@ export default function LandingPage() {
     const platAddonYr = Math.round(platformExtra * 99 * 12 * 0.83);
     const hrAddonYr = hasHrAddon ? Math.round(hrExtra * 29 * 12 * 0.83) : 0;
     const totalYr = baseYr + platAddonYr + hrAddonYr;
-    return (billingCycle === "yearly") ? totalYr.toLocaleString("en-IN") : totalMo.toLocaleString("en-IN");
+    if (billingCycle === "yearly") {
+      const monthlyEquiv = Math.floor(totalYr / 12);
+      return monthlyEquiv.toLocaleString("en-IN");
+    }
+    return totalMo.toLocaleString("en-IN");
+  };
+
+  const getPlanYearlyTotal = (baseYr: number, hasHrAddon = false) => {
+    const platAddonYr = Math.round(platformExtra * 99 * 12 * 0.83);
+    const hrAddonYr = hasHrAddon ? Math.round(hrExtra * 29 * 12 * 0.83) : 0;
+    const totalYr = baseYr + platAddonYr + hrAddonYr;
+    return totalYr.toLocaleString("en-IN");
   };
   const [platformExtra, setPlatformExtra] = useState(0);
   const [customReviews, setCustomReviews] = useState<any[] | null>(null);
@@ -311,21 +322,21 @@ export default function LandingPage() {
             {/* Pill Eyebrow */}
             <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 shadow-xs">
               <Sparkles className="w-3.5 h-3.5 text-[#e77817] shrink-0" />
-              <span>AUTOMATE YOUR BUSINESS. ONE SMART PLATFORM.</span>
+              <span>SIMPLIFY YOUR BUSINESS &bull; AMPLIFY YOUR GROWTH</span>
             </div>
 
             {/* Main Headline: Fluid dynamic responsive font sizing by screen size, exactly 2 lines with balanced line gap */}
-            <h1 className="flex flex-col gap-2 sm:gap-3 lg:gap-3.5 text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.25] text-slate-900 mb-6">
+            <h1 className="flex flex-col gap-3 sm:gap-4 lg:gap-5 text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.75] text-slate-900 mb-6">
               <span className="block sm:whitespace-nowrap">
-                Simplify Your{" "}
+                Everything you{" "}
                 <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
-                  Business
+                  need.
                 </span>
               </span>
               <span className="block sm:whitespace-nowrap">
-                Amplify Your{" "}
+                One smart{" "}
                 <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
-                  Growth
+                  platform.
                 </span>
               </span>
             </h1>
@@ -343,7 +354,7 @@ export default function LandingPage() {
                 asChild
               >
                 <a href="#pricing">
-                  Get Started Free <ArrowRight className="ml-2.5 h-5 w-5 stroke-[2.5]" />
+                  Start Free <ArrowRight className="ml-2.5 h-5 w-5 stroke-[2.5]" />
                 </a>
               </Button>
             </div>
@@ -451,15 +462,15 @@ export default function LandingPage() {
               <MessageCircle className="h-4 w-4 text-[#ff9438]" />
               <span>{L.wa_eyebrow}</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.68]">
               {lang === "hi" ? (
                 <>
-                  बिल भेजें।{" "}
+                  बिल भेजें।<br />
                   <span className="text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
                 </>
               ) : (
                 <>
-                  Send invoices instantly.{" "}
+                  Send invoices instantly.<br />
                   <span className="text-[#ff9438]">Get paid 2x faster.</span>
                 </>
               )}
@@ -499,7 +510,7 @@ export default function LandingPage() {
                       <span className="text-white font-black text-[10px]">A</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-white text-[10.5px] leading-none">Assay</div>
+                      <div className="font-bold text-white text-[10.5px] leading-none">Aassay Biz</div>
                       <div className="text-[8px] text-white/80 mt-0.5">online</div>
                     </div>
                     <div className="flex gap-1.5 text-white/80">
@@ -651,13 +662,13 @@ export default function LandingPage() {
               <UserCheck className="h-4 w-4" />
               <span>HR & PAYROLL AUTOMATION</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.68]">
               Track Attendance.<br />
               <span className="text-[#28166f]">Run Payroll in 60 Seconds.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
-              Ditch the Excel sheets. Manage GPS attendance, biometric punch-in,
-              leave approvals, PF/ESI compliance, and WhatsApp payslip delivery
+              Ditch the Excel sheets. Manage real-time GPS attendance, shift schedules,
+              leave approvals, smart payroll, and instant WhatsApp payslips
               — all in one place.
             </p>
             {/* 6 Capability Pills */}
@@ -684,14 +695,14 @@ export default function LandingPage() {
               <Target className="h-4 w-4" />
               <span>CRM & SALES PIPELINE</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.2]">
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-white !text-white mb-4 leading-[1.68]">
               Capture Every Lead.<br />
               <span className="text-[#ff9438]">Close Deals 3x Faster.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
-              From inquiry to invoice — manage your entire sales funnel with
+              From lead capture to deal close — manage your entire sales funnel with
               visual Kanban pipelines, automated WhatsApp follow-ups, and
-              1-tap quotation-to-billing conversion.
+              real-time deal stage tracking.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
               {crmBadges.map((b, i) => (
@@ -851,14 +862,14 @@ export default function LandingPage() {
               <Megaphone className="h-4 w-4" />
               <span>MARKETING & PROMOTION</span>
             </div>
-            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.2]">
+            <h2 className="text-3xl sm:text-4xl md:text-[2.65rem] lg:text-[2.85rem] font-black tracking-tight text-slate-900 mb-4 leading-[1.68]">
               Reach 10,000+ Customers.<br />
               <span className="text-[#28166f]">Boost Repeat Sales by 40%.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
               Turn your customer list into a revenue machine. Create branded
               WhatsApp campaigns, auto-generate festive posters with your logo,
-              and launch coupon deals — no designer needed.
+              and launch promotional campaigns — no designer needed.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
               {mktBadges.map((b, i) => (
@@ -934,11 +945,20 @@ export default function LandingPage() {
             let totalAmount = 0;
             if (finalSelected.has("suite")) {
               totalAmount = isYearly ? 14999 : 1499;
+              if (platformExtra > 0) {
+                totalAmount += platformExtra * (isYearly ? Math.round(99 * 12 * 0.83) : 99);
+              }
             } else {
               if (finalSelected.has("accounting")) totalAmount += isYearly ? 5999 : 599;
               if (finalSelected.has("hr")) totalAmount += isYearly ? 5999 : 599;
               if (finalSelected.has("crm")) totalAmount += isYearly ? 3499 : 349;
               if (finalSelected.has("promotion")) totalAmount += isYearly ? 3499 : 349;
+              if (finalSelected.size > 0 && platformExtra > 0) {
+                totalAmount += platformExtra * (isYearly ? Math.round(99 * 12 * 0.83) : 99);
+              }
+              if (finalSelected.has("hr") && hrExtra > 0) {
+                totalAmount += hrExtra * (isYearly ? Math.round(29 * 12 * 0.83) : 29);
+              }
             }
 
             return (
@@ -960,14 +980,17 @@ export default function LandingPage() {
                           <Gift className="w-7 h-7" />
                         </div>
                         <div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="text-2xl font-black text-slate-900 tracking-tight">Free Plan</h3>
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Free for 6 Months
+                            </span>
                             {selectedPlans.includes("free") && (
                               <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
                             )}
                           </div>
                           <p className="text-xs text-slate-500 mt-1 leading-snug">
-                            Basic invoicing features for small businesses at no cost.
+                            Basic invoicing & business features — 100% Free for 6 Months.
                           </p>
                         </div>
                       </div>
@@ -978,13 +1001,13 @@ export default function LandingPage() {
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
-                          <span>100 Invoices Free / Year</span>
+                          <span>100 Invoices Free</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
-                          <span>Festival Posts Only</span>
+                          <span>Festive Posts</span>
                         </div>
                         <div className="flex items-center gap-2.5 text-slate-700 font-medium">
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
@@ -996,29 +1019,20 @@ export default function LandingPage() {
                           <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                             <Check className="w-2.5 h-2.5 stroke-[3]" />
                           </div>
-                          <span>100 WhatsApp Msgs</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                          </div>
-                          <span>50 Leads Free (Manual)</span>
-                        </div>
-                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                          </div>
-                          <span>No Admin Panel</span>
+                          <span>Up to 50 Leads</span>
                         </div>
                       </div>
 
-                      {/* Right: Employee Limit & Price */}
-                      <div className="flex items-center justify-between lg:justify-end gap-6 lg:border-l lg:border-slate-200 lg:pl-8">
-                        
-                        <div className="border border-orange-200/90 bg-orange-50/50 rounded-xl px-4 py-2 flex items-baseline gap-1 shrink-0">
-                          <span className="text-3xl font-black text-[#e77817]">₹0</span>
-                          <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
-                        </div>
+                      {/* Right: Solid Action Button */}
+                      <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
+                        <Link
+                          to={`/register?plan=free&billing=${billingCycle}`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="bg-[#e77817] hover:bg-[#d46a0f] text-white font-bold px-6 py-3 rounded-xl shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all duration-200 text-sm whitespace-nowrap"
+                        >
+                          <span>Get Started</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -1065,11 +1079,22 @@ export default function LandingPage() {
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
                               <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5999)}`}</span>
-                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
-                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              {isYearly ? "Save ₹1,189 (17% OFF) · ₹500/mo" : "Save 17% yearly"}
-                            </div>
+                            {isYearly ? (
+                              <div className="mt-1 flex flex-col gap-1">
+                                <span className="text-xs font-semibold text-slate-500">
+                                  Billed annually at ₹{getPlanYearlyTotal(5999)}/year upfront
+                                </span>
+                                <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 17% (Pay upfront)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                Save 17% yearly
+                              </div>
+                            )}
                           </div>
 
                           {/* Features */}
@@ -1094,6 +1119,10 @@ export default function LandingPage() {
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
                               <span>500 WhatsApp messages</span>
                             </div>
+                            <div className="flex items-center gap-2.5">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                              <span>GST Ready Output</span>
+                            </div>
                             
                             <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
                               <Users className="w-4 h-4 text-[#e77817] shrink-0" />
@@ -1102,7 +1131,7 @@ export default function LandingPage() {
                             <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Users className="w-4 h-4 text-[#e77817] shrink-0" />
-                                <span className="text-slate-700 font-semibold">+ Platform Admin (₹99/mo)</span>
+                                <span className="text-slate-700 font-semibold">+ Additional Platform Access (₹99/mo)</span>
                               </div>
                               <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
                                 <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(Math.max(0, platformExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -1167,11 +1196,22 @@ export default function LandingPage() {
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
                               <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5999, true)}`}</span>
-                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
-                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              {isYearly ? "Save ₹1,189 (17% OFF) · ₹500/mo" : "Save 17% yearly"}
-                            </div>
+                            {isYearly ? (
+                              <div className="mt-1 flex flex-col gap-1">
+                                <span className="text-xs font-semibold text-slate-500">
+                                  Billed annually at ₹{getPlanYearlyTotal(5999, true)}/year upfront
+                                </span>
+                                <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 17% (Pay upfront)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                Save 17% yearly
+                              </div>
+                            )}
                           </div>
 
                           {/* Features */}
@@ -1187,8 +1227,8 @@ export default function LandingPage() {
                             
                             <div className="flex items-center justify-between w-full bg-emerald-50/50 p-2 rounded-lg border border-emerald-100/50 mt-1" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-emerald-600 shrink-0" />
-                                <span className="text-slate-700 font-semibold">+ Extra HR Employee (₹29/mo)</span>
+                                 <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                                 <span className="text-slate-700 font-semibold">+ Extra Employee (₹29/mo)</span>
                               </div>
                               <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
                                 <button onClick={(e) => { e.stopPropagation(); setHrExtra(Math.max(0, hrExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -1216,7 +1256,7 @@ export default function LandingPage() {
                             <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Users className="w-4 h-4 text-[#e77817] shrink-0" />
-                                <span className="text-slate-700 font-semibold">+ Platform Admin (₹99/mo)</span>
+                                <span className="text-slate-700 font-semibold">+ Additional Platform Access (₹99/mo)</span>
                               </div>
                               <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
                                 <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(Math.max(0, platformExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -1281,11 +1321,22 @@ export default function LandingPage() {
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
                               <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(349, 3499)}`}</span>
-                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
-                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              {isYearly ? "Save ₹689 (16% OFF) · ₹291/mo" : "Save 16% yearly"}
-                            </div>
+                            {isYearly ? (
+                              <div className="mt-1 flex flex-col gap-1">
+                                <span className="text-xs font-semibold text-slate-500">
+                                  Billed annually at ₹{getPlanYearlyTotal(3499)}/year upfront
+                                </span>
+                                <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 16% (Pay upfront)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                Save 16% yearly
+                              </div>
+                            )}
                           </div>
 
                           {/* Features */}
@@ -1318,7 +1369,7 @@ export default function LandingPage() {
                             <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Users className="w-4 h-4 text-[#e77817] shrink-0" />
-                                <span className="text-slate-700 font-semibold">+ Platform Admin (₹99/mo)</span>
+                                <span className="text-slate-700 font-semibold">+ Additional Platform Access (₹99/mo)</span>
                               </div>
                               <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
                                 <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(Math.max(0, platformExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -1383,11 +1434,22 @@ export default function LandingPage() {
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
                               <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(349, 3499)}`}</span>
-                              <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
+                              <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
-                            <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                              {isYearly ? "Save ₹689 (16% OFF) · ₹291/mo" : "Save 16% yearly"}
-                            </div>
+                            {isYearly ? (
+                              <div className="mt-1 flex flex-col gap-1">
+                                <span className="text-xs font-semibold text-slate-500">
+                                  Billed annually at ₹{getPlanYearlyTotal(3499)}/year upfront
+                                </span>
+                                <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 16% (Pay upfront)
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                Save 16% yearly
+                              </div>
+                            )}
                           </div>
 
                           {/* Features */}
@@ -1416,7 +1478,7 @@ export default function LandingPage() {
                             <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Users className="w-4 h-4 text-[#e77817] shrink-0" />
-                                <span className="text-slate-700 font-semibold">+ Platform Admin (₹99/mo)</span>
+                                <span className="text-slate-700 font-semibold">+ Additional Platform Access (₹99/mo)</span>
                               </div>
                               <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
                                 <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(Math.max(0, platformExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
@@ -1584,62 +1646,60 @@ export default function LandingPage() {
                             <p className="text-xs text-slate-500 mt-0.5 leading-snug">
                               Complete all-in-one business suite with full system access!
                             </p>
-                            <div className="flex items-center gap-2.5 mt-2">
+                            <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                               <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹14,999" : "₹1,499"}</span>
-                                <span className="text-xs text-slate-500 font-semibold">{isYearly ? "/year" : "/month"}</span>
+                                <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹1,249" : "₹1,499"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
                               </div>
-                              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                {isYearly ? "Save ₹2,989 (17% OFF) · ₹1,250/mo" : "Save 17% yearly"}
-                              </span>
+                              {isYearly ? (
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    (Billed ₹14,999/year upfront)
+                                  </span>
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save ₹2,989 (17% OFF)
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 17% yearly
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Middle: 2 Columns of Features */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                        {/* Middle: 3 Feature Points */}
+                        <div className="flex flex-col justify-center gap-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
                           <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
                             <div className="w-4 h-4 rounded-full bg-[#e77817] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
-                            <span>Everything in Free Plan</span>
+                            <span>Everything in Free Plan + Business Accounting + Business HR + Business CRM + Business Promotion</span>
                           </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="flex items-center gap-2.5 text-slate-700 font-semibold">
                             <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
                               <Check className="w-2.5 h-2.5 stroke-[3]" />
                             </div>
-                            <span>All Premium Features</span>
+                            <span>Platform Access up to 5 employees</span>
                           </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          <div className="flex items-center justify-between max-w-md bg-orange-50/50 p-2 rounded-lg border border-orange-100/50" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2">
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                              <span className="text-slate-700 font-semibold">+ Additional Platform Access (₹99/mo)</span>
                             </div>
-                            <span>Full Suite Admin</span>
-                          </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-md px-1.5 py-1 shadow-sm">
+                              <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(Math.max(0, platformExtra - 1)); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Minus className="w-3.5 h-3.5" /></button>
+                              <span className="font-bold text-sm w-5 text-center text-slate-800">{platformExtra}</span>
+                              <button onClick={(e) => { e.stopPropagation(); setPlatformExtra(platformExtra + 1); }} className="text-slate-400 hover:text-slate-700 transition-colors"><Plus className="w-3.5 h-3.5" /></button>
                             </div>
-                            <span>25 Base Employees Included</span>
-                          </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                            <span>500 WhatsApp Msgs / Mo</span>
-                          </div>
-                          <div className="flex items-center gap-2.5 text-slate-700 font-medium">
-                            <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                            <span>+ ₹29 / Extra Employee</span>
                           </div>
                         </div>
 
                         {/* Right: Solid Action Button */}
                         <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
                           <Link
-                            to={`/register?plan=suite&billing=${billingCycle}`}
+                            to={`/register?plan=suite&billing=${billingCycle}${platformExtra > 0 ? `&plat=${platformExtra}` : ''}`}
                             onClick={(e) => e.stopPropagation()}
                             className="bg-[#e77817] hover:bg-[#d46a0f] text-white font-bold px-6 py-3 rounded-xl shadow-md shadow-orange-500/25 flex items-center gap-2 transition-all duration-200 text-sm whitespace-nowrap"
                           >
@@ -1662,7 +1722,22 @@ export default function LandingPage() {
                         </div>
                         <div>
                           <div className="text-sm font-medium text-slate-300 uppercase tracking-wider">Total Selected</div>
-                          <div className="text-3xl font-black text-white">₹{totalAmount.toLocaleString('en-IN')}<span className="text-lg font-medium text-slate-400">{isYearly ? "/yr" : "/mo"}</span></div>
+                          <div className="text-3xl font-black text-white">
+                            {isYearly ? (
+                              <>
+                                ₹{Math.floor(totalAmount / 12).toLocaleString('en-IN')}
+                                <span className="text-lg font-medium text-slate-400">/mo</span>
+                                <span className="text-xs text-slate-300 font-normal ml-2 block sm:inline">
+                                  (₹{totalAmount.toLocaleString('en-IN')}/yr upfront)
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                ₹{totalAmount.toLocaleString('en-IN')}
+                                <span className="text-lg font-medium text-slate-400">/mo</span>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <Button size="lg" className="w-full md:w-auto h-14 px-10 text-lg font-bold bg-[#e77817] hover:bg-[#d46a0f] text-white rounded-full shadow-[0_0_20px_rgba(231,120,23,0.4)]" asChild>

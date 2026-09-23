@@ -12,6 +12,7 @@ import {
   QrCode, Award, Layers, ArrowRight, Smartphone, Monitor,
   Plus, Minus,
 } from "lucide-react";
+import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export default function PamphletPage() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ export default function PamphletPage() {
             </Button>
             <div className="h-5 w-px bg-slate-700 mx-1 hidden sm:block" />
             <div>
-              <span className="font-bold text-white text-sm block">Official AssayBiz Pamphlet / Handout</span>
+              <span className="font-bold text-white text-sm flex items-center gap-1.5">Official <AassayBizBrand theme="dark" /> Pamphlet / Handout</span>
               <span className="text-[11px] text-indigo-400 hidden sm:inline">Printable promotional flyer for client outreach & events</span>
             </div>
           </div>
@@ -138,9 +139,9 @@ export default function PamphletPage() {
                 {/* Header Strip */}
                 <div className="flex items-center justify-between border-b-2 border-indigo-600 pb-4 mb-6">
                   <div className="flex items-center gap-3">
-                    <img src={logoImg} alt="AssayBiz Logo" className="h-12 w-auto object-contain" />
+                    <img src={logoImg} alt="Aassay Biz Logo" className="h-12 w-auto object-contain" />
                     <div>
-                      <h1 className="text-2xl font-black tracking-tight text-slate-900 leading-none">AssayBiz</h1>
+                      <AassayBizBrand className="text-2xl leading-none" />
                       <p className="text-[11px] font-bold tracking-wider text-indigo-600 uppercase mt-1">Enterprise Business Operating System</p>
                     </div>
                   </div>
@@ -163,7 +164,7 @@ export default function PamphletPage() {
                       Stop Managing Your Business With 5 Disconnected Apps.
                     </h2>
                     <p className="text-slate-300 text-xs leading-relaxed max-w-xl">
-                      Switch to <strong className="text-white">AssayBiz</strong>: The all-in-one software trusted by 500+ Indian businesses for fast GST billing, live multi-warehouse inventory, staff biometric attendance, automated banking, and WhatsApp client promotion.
+                      Switch to <AassayBizBrand theme="dark" />: The all-in-one software trusted by 500+ Indian businesses for fast GST billing, live multi-warehouse inventory, staff biometric attendance, automated banking, and WhatsApp client promotion.
                     </p>
                   </div>
                 </div>
@@ -265,7 +266,7 @@ export default function PamphletPage() {
                       <Award className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="text-xs font-black text-slate-900 block">Why 500+ Indian Businesses Choose AssayBiz:</span>
+                      <span className="text-xs font-black text-slate-900 flex items-center gap-1">Why 500+ Indian Businesses Choose <AassayBizBrand />:</span>
                       <span className="text-[10px] text-slate-600">Replaces Vyapar, Tally, Zoho, and spreadsheets into one unified cloud app.</span>
                     </div>
                   </div>
@@ -280,7 +281,7 @@ export default function PamphletPage() {
               {/* Bottom Footer Callout for Side A */}
               <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-[11px] text-slate-500 font-semibold relative z-10">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-slate-800">AssayBiz Promotional Handout</span>
+                  <span className="font-bold text-slate-800 flex items-center gap-1"><AassayBizBrand /> Promotional Handout</span>
                   <span>•</span>
                   <span>See Back for Pricing & Free Trial QR</span>
                 </div>
@@ -301,7 +302,7 @@ export default function PamphletPage() {
                 {/* Header Strip */}
                 <div className="flex items-center justify-between border-b-2 border-indigo-600 pb-4 mb-5">
                   <div className="flex items-center gap-3">
-                    <img src={logoImg} alt="AssayBiz Logo" className="h-10 w-auto object-contain" />
+                    <img src={logoImg} alt="Aassay Biz Logo" className="h-10 w-auto object-contain" />
                     <div>
                       <h2 className="text-lg font-black tracking-tight text-slate-900 leading-none">Transparent, Modular Pricing</h2>
                       <p className="text-[10px] font-bold text-indigo-600 uppercase mt-0.5">Pay Only For What Your Business Needs</p>
@@ -351,6 +352,7 @@ export default function PamphletPage() {
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Unlimited Quotation & POS</li>
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> Inventory Management</li>
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> 500 WhatsApp messages</li>
+                        <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> GST Ready Output</li>
                         <li className="flex items-center gap-1.5 text-indigo-700 font-semibold"><Users className="w-3.5 h-3.5 shrink-0" /> Platform access up to 3 employees</li>
                         <li className="flex items-center gap-1.5"><Check className="w-3.5 h-3.5 text-emerald-600 shrink-0" /> +₹99 / Extra platform employee</li>
                       </ul>
@@ -450,11 +452,11 @@ export default function PamphletPage() {
                     </div>
                     <div className="flex items-center justify-end gap-1.5 text-[11px] text-slate-600">
                       <Mail className="w-3.5 h-3.5 text-slate-400" />
-                      <span>support@assaybiz.com</span>
+                      <span>support@aassaybiz.com</span>
                     </div>
                     <div className="flex items-center justify-end gap-1.5 text-[11px] font-bold text-indigo-600">
                       <Globe className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>www.satahinvoice.com</span>
+                      <span>www.aassaybiz.com</span>
                     </div>
                   </div>
                 </div>
@@ -478,8 +480,8 @@ export default function PamphletPage() {
                     </a>
                   </div>
                 </div>
-                <div className="text-slate-500 font-semibold text-[10px]">
-                  Side B (Pricing & Contact) · © 2026 AssayBiz Technologies
+                <div className="text-slate-500 font-semibold text-[10px] flex items-center gap-1">
+                  Side B (Pricing & Contact) · © 2026 <AassayBizBrand className="text-[10px]" /> Technologies
                 </div>
               </div>
             </section>
@@ -495,9 +497,9 @@ export default function PamphletPage() {
             <div>
               <div className="flex items-center justify-between border-b-2 border-indigo-600 pb-3 mb-4">
                 <div className="flex items-center gap-3">
-                  <img src={logoImg} alt="AssayBiz Logo" className="h-11 w-auto object-contain" />
+                  <img src={logoImg} alt="Aassay Biz Logo" className="h-11 w-auto object-contain" />
                   <div>
-                    <h1 className="text-xl font-black tracking-tight text-slate-900 leading-none">AssayBiz</h1>
+                    <AassayBizBrand className="text-xl leading-none" />
                     <p className="text-[10px] font-bold tracking-wider text-indigo-600 uppercase mt-0.5">Enterprise Business Operating System</p>
                   </div>
                 </div>
@@ -618,8 +620,8 @@ export default function PamphletPage() {
                   <p className="font-bold text-slate-900 flex items-center justify-end gap-1">
                     <Phone className="w-3 h-3 text-indigo-600" /> {socials.contact_mobile || "+91 9876543210"}
                   </p>
-                  <p className="text-slate-600 text-[10px]">support@assaybiz.com</p>
-                  <p className="font-semibold text-indigo-600 text-[10px]">www.satahinvoice.com</p>
+                  <p className="text-slate-600 text-[10px]">support@aassaybiz.com</p>
+                  <p className="font-semibold text-indigo-600 text-[10px]">www.aassaybiz.com</p>
                 </div>
               </div>
 
@@ -632,7 +634,7 @@ export default function PamphletPage() {
                   <span>•</span>
                   <span className="text-pink-600 font-bold">Instagram @assaybiz</span>
                 </div>
-                <span>AssayBiz Enterprise Suite · Single Sheet Edition</span>
+                <span className="flex items-center gap-1"><AassayBizBrand className="text-[10px]" /> Enterprise Suite · Single Sheet Edition</span>
               </div>
             </div>
           </section>

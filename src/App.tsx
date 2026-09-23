@@ -57,6 +57,7 @@ const DemoAutoLoginPage = lazy(() => import("./pages/DemoAutoLoginPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const ChatUIPage = lazy(() => import("./pages/ChatUIPage"));
 const VendorsPage = lazy(() => import("./pages/VendorsPage"));
+const VendorDetailPage = lazy(() => import("./pages/VendorDetailPage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const BillBuilderPage = lazy(() => import("./pages/BillBuilderPage"));
 const BillDetailPage = lazy(() => import("./pages/BillDetailPage"));
@@ -106,6 +107,10 @@ const PamphletPage = lazy(() => import("./pages/PamphletPage"));
 const SocialLaunchPostsPage = lazy(() => import("./pages/SocialLaunchPostsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
 const PartnerWithUsPage = lazy(() => import("./pages/PartnerWithUsPage"));
+const PartnerPortalPage = lazy(() => import("./pages/PartnerPortalPage"));
+const PartnerLoginPage = lazy(() => import("./pages/PartnerLoginPage"));
+const PartnerRegisterPage = lazy(() => import("./pages/PartnerRegisterPage"));
+const PartnerDashboardPage = lazy(() => import("./pages/PartnerDashboardPage"));
 const HRFeaturesPage = lazy(() => import("./pages/HRFeaturesPage"));
 const CRMFeaturesPage = lazy(() => import("./pages/CRMFeaturesPage"));
 const MarketingFeaturesPage = lazy(() => import("./pages/MarketingFeaturesPage"));
@@ -163,8 +168,16 @@ const App = () => (
                 <Route path="/invoices/new" element={<InvoiceBuilderPage />} />
                 <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
                 <Route path="/invoices/:id/edit" element={<InvoiceBuilderPage />} />
-                <Route path="/estimates" element={<EstimatesPage />} />
-                <Route path="/estimates/new" element={<EstimateBuilderPage />} />
+                <Route path="/quotations" element={<EstimatesPage />} />
+                <Route path="/quotations/new" element={<EstimateBuilderPage />} />
+                <Route path="/quotations/:id" element={<EstimateDetailPage />} />
+                <Route path="/quotations/:id/edit" element={<EstimateBuilderPage />} />
+                <Route path="/quotations/:id/convert" element={<EstimateDetailPage />} />
+                <Route path="/quotation" element={<Navigate to="/quotations" replace />} />
+                <Route path="/quotation/new" element={<Navigate to="/quotations/new" replace />} />
+                <Route path="/quotation/:id" element={<EstimateDetailPage />} />
+                <Route path="/estimates" element={<Navigate to="/quotations" replace />} />
+                <Route path="/estimates/new" element={<Navigate to="/quotations/new" replace />} />
                 <Route path="/estimates/:id" element={<EstimateDetailPage />} />
                 <Route path="/estimates/:id/edit" element={<EstimateBuilderPage />} />
                 <Route path="/estimates/:id/convert" element={<EstimateDetailPage />} />
@@ -177,7 +190,7 @@ const App = () => (
                 <Route path="/recurring-invoices" element={<RecurringInvoicesPage />} />
               </Route>
 
-              <Route element={<FeatureGuard featureKey="catalog" featureName="Catalog" />}>
+              <Route element={<FeatureGuard featureKey="catalog" featureName="Inventory Management" />}>
                 <Route path="/items" element={<ItemsPage />} />
                 <Route path="/inventory" element={<InventoryPage />} />
               </Route>
@@ -218,6 +231,7 @@ const App = () => (
               </Route>
               <Route element={<FeatureGuard featureKey="purchases" featureName="Purchases" />}>
                 <Route path="/vendors" element={<VendorsPage />} />
+                <Route path="/vendors/:id" element={<VendorDetailPage />} />
                 <Route path="/bills" element={<BillsPage />} />
                 <Route path="/bills/new" element={<BillBuilderPage />} />
                 <Route path="/bills/:id" element={<BillDetailPage />} />
@@ -305,6 +319,13 @@ const App = () => (
             <Route path="/" element={<LandingPage />} />
             <Route path="/partner" element={<PartnerWithUsPage />} />
             <Route path="/partner-with-us" element={<PartnerWithUsPage />} />
+
+            {/* ===== Partner Portal — Completely separate system ===== */}
+            <Route path="/partner-portal" element={<PartnerPortalPage />} />
+            <Route path="/partner-login" element={<PartnerLoginPage />} />
+            <Route path="/partner-register" element={<PartnerRegisterPage />} />
+            <Route path="/partner-dashboard" element={<PartnerDashboardPage />} />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>

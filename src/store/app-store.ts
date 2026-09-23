@@ -88,14 +88,14 @@ export const useAppStore = create<AppState>()(
         }
       },
       reset: () => {
-        set({ organization: null, myOrganizations: [], userRole: null });
+        set({ organization: null, myOrganizations: [], userRole: null, userPermissions: [] });
       },
       currentUserId: null,
       setCurrentUserId: (id) => {
         const current = get().currentUserId;
         if (current !== id) {
           // Forcefully clear organizations when user changes or on first load after fix
-          set({ currentUserId: id, myOrganizations: [] });
+          set({ currentUserId: id, myOrganizations: [], userRole: null, userPermissions: [] });
         }
       },
       userRole: null,

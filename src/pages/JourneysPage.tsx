@@ -187,8 +187,7 @@ export default function JourneysPage() {
                           <Select value={s.channel} onValueChange={(v) => updateStep(i, { channel: v, template_id: null })}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-
-                              <SelectItem value="sms">SMS</SelectItem>
+                              <SelectItem value="whatsapp">WhatsApp Message</SelectItem>
                             </SelectContent>
                           </Select>
                           <Select value={s.template_id || ""} onValueChange={(v) => updateStep(i, { template_id: v })}>

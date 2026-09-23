@@ -482,6 +482,7 @@ export function SalariesTab() {
           org_id: org.id,
           title,
           month: format(parseISO(startDate), "yyyy-MM"),
+          period_month: format(parseISO(startDate), "yyyy-MM-01"),
           start_date: startDate,
           end_date: endDate,
           total_employees: calculatedSalaries.length,
@@ -489,12 +490,12 @@ export function SalariesTab() {
           total_deductions: totals.deductions,
           total_net: totals.net,
           status: "completed",
-          metadata: JSON.stringify({
+          metadata: {
             calculated_at: new Date().toISOString(),
             total_overtime_hours: totals.overtimeHours,
             total_overtime_pay: totals.overtimePay,
             overrides,
-          }),
+          },
         })
         .select("*")
         .single();

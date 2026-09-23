@@ -11,8 +11,8 @@ interface SEOProps {
   noIndex?: boolean;
 }
 
-const SITE_NAME = "Assay Biz";
-const BASE_URL = "https://satahinvoice.com";
+const SITE_NAME = "Aassay Biz";
+const BASE_URL = "https://aassaybiz.com";
 const DEFAULT_IMAGE =
   "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/115b7e84-ce66-4814-9dbe-8f0fb9ac2cf8/id-preview-af91ddfd--fedbade2-ff1a-4d4f-94e6-f04beae4c8e8.lovable.app-1774609957498.png";
 

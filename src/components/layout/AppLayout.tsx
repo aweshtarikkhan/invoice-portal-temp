@@ -217,7 +217,9 @@ export function AppLayout() {
       if (activeOrg) {
         setOrganization(activeOrg as any);
         const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
-        setUserRole(activeMember?.role || "staff");
+        const isOrgOwner = (activeOrg as any).owner_id === profile.user_id;
+        const resolvedRole = isOrgOwner ? "owner" : (activeMember?.role || "staff");
+        setUserRole(resolvedRole);
         setUserPermissions(activeMember?.permissions || []);
 
         if ((activeOrg as any).enabled_features && Array.isArray((activeOrg as any).enabled_features)) {
@@ -240,31 +242,36 @@ export function AppLayout() {
             if (!features.includes('crm')) features.push('crm');
             if (!features.includes('marketing')) features.push('marketing');
             
-            let resolvedPlanName = normalizePlanKey(subData.plan_name || '');
+            let resolvedPlanName = normalizePlanKey(subData.plan_name || (activeOrg as any)?.subscription_plan || '');
             let resolvedEmpLimit = 3;
 
-            if (resolvedPlanName === 'suite' || resolvedPlanName === 'hr') {
+            if (resolvedPlanName === 'suite') {
               resolvedEmpLimit = 25;
-              // Only respect genuine purchased extra employees over base 25
-              if (subData.employee_count && subData.employee_count > 25) {
-                resolvedEmpLimit = subData.employee_count;
+              const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
+              if (extraOrPurchased > 25) {
+                resolvedEmpLimit = extraOrPurchased;
+              }
+            } else if (resolvedPlanName === 'hr') {
+              resolvedEmpLimit = 3;
+              const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
+              if (extraOrPurchased > 3) {
+                resolvedEmpLimit = extraOrPurchased;
               }
             } else {
               resolvedEmpLimit = 3;
-            }
-
-            if (resolvedPlanName === 'free') {
-              if (activeOrg && (activeOrg as any).subscription_plan && (activeOrg as any).subscription_plan !== 'free') {
-                resolvedPlanName = normalizePlanKey((activeOrg as any).subscription_plan);
+              const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
+              if (extraOrPurchased > 3) {
+                resolvedEmpLimit = extraOrPurchased;
               }
             }
 
-            // [REMOVED HARDCODED AE LOGIC HERE]
-
-            if (resolvedPlanName === 'free') {
-               features = features.filter(f => f !== 'reports');
+            if (resolvedPlanName === 'suite') {
+              features = ADMIN_FEATURE_GROUPS.map(g => g.key);
+            } else if (resolvedPlanName === 'free') {
+              features = features.filter(f => f !== 'reports');
             }
             useFeatureStore.getState().setPlatformFeatures(features);
+            useFeatureStore.getState().setOrgFeatures(activeOrgId, features);
             useFeatureStore.getState().setSubscriptionMeta({
               plan_name: resolvedPlanName,
               status: subData.status,
@@ -273,6 +280,9 @@ export function AppLayout() {
               employee_count: subData.employee_count,
               platform_employee_limit: subData.platform_employee_limit,
               platform_employee_count: subData.platform_employee_count,
+              invoice_limit: subData.invoice_limit,
+              client_limit: subData.client_limit,
+              item_limit: subData.item_limit,
               current_period_end: subData.current_period_end,
             });
           }
@@ -312,17 +322,21 @@ export function AppLayout() {
           const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: profile.org_id });
           if (subData) {
             let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
-            if (!subData.plan_name || subData.plan_name === 'free') {
-               if (!features.includes('people')) features.push('people');
-               if (!features.includes('crm')) features.push('crm');
-               if (!features.includes('marketing')) features.push('marketing');
-               features = features.filter(f => f !== 'reports');
+            let resolvedPlanName = normalizePlanKey(subData.plan_name || '');
+            if (resolvedPlanName === 'suite') {
+              features = ADMIN_FEATURE_GROUPS.map(g => g.key);
+            } else if (!subData.plan_name || subData.plan_name === 'free') {
+              if (!features.includes('people')) features.push('people');
+              if (!features.includes('crm')) features.push('crm');
+              if (!features.includes('marketing')) features.push('marketing');
+              features = features.filter(f => f !== 'reports');
             }
-            const isSuiteOrHr = subData.plan_name === 'suite' || subData.plan_name === 'hr';
+            const isSuiteOrHr = resolvedPlanName === 'suite' || resolvedPlanName === 'hr';
             const empLimit = isSuiteOrHr 
               ? (Math.max(subData.employee_limit || 0, subData.employee_count || 0) || 25) 
               : 3;
             useFeatureStore.getState().setPlatformFeatures(features);
+            useFeatureStore.getState().setOrgFeatures(profile.org_id, features);
             useFeatureStore.getState().setSubscriptionMeta({
               plan_name: subData.plan_name,
               status: subData.status,
@@ -331,6 +345,9 @@ export function AppLayout() {
               employee_count: subData.employee_count,
               platform_employee_limit: subData.platform_employee_limit,
               platform_employee_count: subData.platform_employee_count,
+              invoice_limit: subData.invoice_limit,
+              client_limit: subData.client_limit,
+              item_limit: subData.item_limit,
               current_period_end: subData.current_period_end,
             });
           }
@@ -430,7 +447,7 @@ export function AppLayout() {
           </CardHeader>
           <CardContent className="space-y-4 pt-4 text-center">
             <a
-              href="https://attendance.satahinvoice.com/"
+              href="https://attendance.aassaybiz.com/"
               target="_blank"
               rel="noreferrer"
               className="block w-full"

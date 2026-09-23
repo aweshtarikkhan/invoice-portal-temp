@@ -317,14 +317,14 @@ export default function ClientsPage() {
             </TabsList>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={exportCSV} title="Export">
-              <Download className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={exportCSV}>
+              <Download className="mr-1 h-4 w-4" /> Export
             </Button>
-            <Button variant="outline" size="icon" className="h-9 w-9 rounded-full" onClick={() => setImportOpen(true)} title="Import">
-              <Upload className="h-4 w-4" />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="mr-1 h-4 w-4" /> Import
             </Button>
-            <Button size="icon" className="h-9 w-9 rounded-full" onClick={openCreate} title="Add Customer">
-              <Plus className="h-4 w-4" />
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="mr-1 h-4 w-4" /> New Client
             </Button>
           </div>
         </div>
@@ -605,7 +605,7 @@ export default function ClientsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete {selected.size} Client(s)?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete the selected clients along with their invoices, estimates, payments, and credit notes.
+              This will permanently delete the selected clients along with their invoices, quotations, payments, and credit notes.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

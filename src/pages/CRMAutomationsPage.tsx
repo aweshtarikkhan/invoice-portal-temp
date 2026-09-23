@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -117,7 +117,7 @@ export default function CRMAutomationsPage() {
                 <div className="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <Workflow className="w-4 h-4" />
                   <span><strong>Trigger:</strong> {preset.trigger_event}</span>
-                  <span className="text-slate-300">→</span>
+                  <span className="text-slate-300">?</span>
                   <span><strong>Action:</strong> {preset.action_type}</span>
                 </div>
               </CardContent>

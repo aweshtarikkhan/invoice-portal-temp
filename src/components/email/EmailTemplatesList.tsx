@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 const TEMPLATE_TYPES = [
   { id: 'invoice', label: 'Invoices' },
-  { id: 'estimate', label: 'Estimates' },
+  { id: 'estimate', label: 'Quotations' },
   { id: 'po', label: 'Purchase Orders' },
   { id: 'bill', label: 'Bills' },
 ];
@@ -25,8 +25,9 @@ const AVAILABLE_VARIABLES = [
   { name: "{{client_email}}", desc: "The email address of the client/vendor" },
   { name: "{{company_name}}", desc: "Your company name" },
   { name: "{{company_email}}", desc: "Your company email" },
+  { name: "{{company_logo}}", desc: "Your company or Aassay Biz logo image URL" },
   { name: "{{invoice_number}}", desc: "The formatted invoice number" },
-  { name: "{{estimate_number}}", desc: "The formatted estimate number" },
+  { name: "{{estimate_number}}", desc: "The formatted quotation number" },
   { name: "{{po_number}}", desc: "The formatted PO number" },
   { name: "{{bill_number}}", desc: "The formatted Bill number" },
   { name: "{{invoice_date}}", desc: "The date of the document" },

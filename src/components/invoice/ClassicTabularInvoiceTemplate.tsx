@@ -44,8 +44,13 @@ export function ClassicTabularInvoiceTemplate({
   isInterstate = false,
   showSignature = true,
 }: InvoiceTemplateProps) {
-  const primary = "#1e293b";
+  const primary = (org?.template_accent_color as string) || "#1e293b";
   const accent = "#334155";
+
+  const snapshot = (invoice?.metadata as any) || {};
+  const hasGst = snapshot.has_gst !== undefined
+    ? Boolean(snapshot.has_gst)
+    : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
   const billToName = invoice?.clients?.company_name || invoice?.clients?.display_name || "";
   const billToGst = invoice?.clients?.tax_number || "";
@@ -65,22 +70,28 @@ export function ClassicTabularInvoiceTemplate({
   let shipToName = billToName;
   let shipToAddress = billToAddress;
   let shipToContact = billToPhone;
-  const sAddr = invoice?.shipping_address || invoice?.clients?.shipping_address;
+  let shipToGst = billToGst;
+  const sAddr = invoice?.shipping_address || ((invoice?.metadata as any)?.shipping_same_as_billing ? (invoice?.billing_address || invoice?.clients?.billing_address) : invoice?.clients?.shipping_address);
   if (sAddr) {
     const s = typeof sAddr === "string" ? JSON.parse(sAddr) : sAddr;
-    shipToName = s?.name || billToName;
-    shipToAddress = getAddressString(s);
-    shipToContact = s?.contact || billToPhone;
+    if (s?.name) shipToName = s.name;
+    shipToAddress = getAddressString(s) || (typeof s === "string" ? s : shipToAddress);
+    if (s?.phone || s?.contact) shipToContact = s.phone || s.contact;
+    if (s?.gstin || s?.tax_number) shipToGst = s.gstin || s.tax_number;
   }
 
   const customFields = org?.custom_fields || [];
 
   const getTitleText = () => {
-    if (type === "estimate") return "ESTIMATE";
+    if (type === "estimate") return "QUOTATION";
     if (type === "po") return "PURCHASE ORDER";
     if (type === "bill") return "PURCHASE INVOICE";
-    return "TAX INVOICE";
+    return hasGst ? "TAX INVOICE" : "INVOICE";
   };
+
+  const docNumberLabel = type === "estimate" ? "Quotation No." : type === "po" ? "P.O. No." : type === "bill" ? "Bill No." : "Invoice No.";
+  const docDateLabel = type === "estimate" ? "Quotation Date" : type === "po" ? "P.O. Date" : type === "bill" ? "Bill Date" : "Invoice Date";
+  const docDueDateLabel = type === "estimate" ? "Valid Till" : "Due Date";
 
   const hasIGST = isInterstate;
   const totalTax = taxBreakdown.reduce((sum, t) => sum + t.amount, 0);
@@ -107,10 +118,10 @@ export function ClassicTabularInvoiceTemplate({
       </div>
       <div className="grid grid-cols-2 gap-4 border border-gray-400 mb-4">
         <div className="p-4 border-r border-gray-400 flex">
-           {org?.logo_url && <img src={org.logo_url} className="h-16 object-contain mr-4" alt="Logo" />}
+           {org?.logo_url && <img src={org.logo_url} className="h-12 max-w-[130px] object-contain mr-4 shrink-0" alt="Logo" />}
            <div>
-             <h2 className="text-lg font-bold" style={{color: primary}}>{org?.name || org?.business_name}</h2>
-             <p className="whitespace-pre-wrap">{org?.address?.street || ""}</p>
+             <h2 className="text-2xl font-black uppercase tracking-tight" style={{color: primary, lineHeight: 1.1}}>{org?.name || org?.business_name}</h2>
+             <p className="whitespace-pre-wrap mt-1">{org?.address?.street || ""}</p>
              <p>{[org?.address?.city, org?.address?.state, org?.address?.zip].filter(Boolean).join(", ")}</p>
              {org?.gst_number && <p className="mt-1"><strong>GSTIN:</strong> {org.gst_number}</p>}
              {(org?.email || org?.phone) && <p><strong>Email:</strong> {org?.email} | <strong>Mobile:</strong> {org?.phone}</p>}
@@ -118,15 +129,15 @@ export function ClassicTabularInvoiceTemplate({
         </div>
         <div className="grid grid-cols-3 gap-2 p-2 text-[10px]">
            <div>
-             <p className="font-semibold text-gray-500">Invoice No.</p>
+             <p className="font-semibold text-gray-500">{docNumberLabel}</p>
              <p className="font-bold">{invoice?.invoice_number}</p>
            </div>
            <div>
-             <p className="font-semibold text-gray-500">Invoice Date</p>
+             <p className="font-semibold text-gray-500">{docDateLabel}</p>
              <p className="font-bold">{formatDate(invoice?.issue_date)}</p>
            </div>
            <div>
-             <p className="font-semibold text-gray-500">Due Date</p>
+             <p className="font-semibold text-gray-500">{docDueDateLabel}</p>
              <p className="font-bold">{formatDate(invoice?.due_date)}</p>
            </div>
            
@@ -179,7 +190,7 @@ export function ClassicTabularInvoiceTemplate({
           <div className="p-3">
             <h3 className="font-bold text-sm mb-1">{shipToName}</h3>
             <p className="whitespace-pre-wrap leading-relaxed">{shipToAddress}</p>
-            {billToGst && <p className="mt-2"><strong>GSTIN:</strong> {billToGst}</p>}
+            {shipToGst && <p className="mt-2"><strong>GSTIN:</strong> {shipToGst}</p>}
             <p className="mt-1">
               {shipToContact && <span><strong>Contact:</strong> {shipToContact}</span>}
             </p>
@@ -194,13 +205,13 @@ export function ClassicTabularInvoiceTemplate({
             <tr className="text-white text-[10px]" style={{backgroundColor: primary}}>
               <th className="py-2 px-2 text-center w-8">S.No.</th>
               <th className="py-2 px-2">Description of Goods / Services</th>
-              <th className="py-2 px-2 text-center">HSN / SAC</th>
+              {hasGst && <th className="py-2 px-2 text-center">HSN / SAC</th>}
               <th className="py-2 px-2 text-center">Qty</th>
               <th className="py-2 px-2 text-center">Unit</th>
               <th className="py-2 px-2 text-right">Rate (₹)</th>
-              <th className="py-2 px-2 text-right">Taxable (₹)</th>
-              <th className="py-2 px-2 text-center">GST %</th>
-              <th className="py-2 px-2 text-right">GST (₹)</th>
+              {hasGst && <th className="py-2 px-2 text-right">Taxable (₹)</th>}
+              {hasGst && <th className="py-2 px-2 text-center">GST %</th>}
+              {hasGst && <th className="py-2 px-2 text-right">GST (₹)</th>}
               <th className="py-2 px-2 text-right" style={{backgroundColor: accent}}>Total (₹)</th>
             </tr>
           </thead>
@@ -218,17 +229,21 @@ export function ClassicTabularInvoiceTemplate({
                     <div className="font-semibold text-[11px] whitespace-pre-wrap">{line.description}</div>
                   )}
                 </td>
-                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || ""}</td>
+                {hasGst && <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || line.hsn_code || line.hsn || line.hsn_sac || ""}</td>}
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.quantity}</td>
-                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || "PCS"}</td>
+                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || "PCS"}</td>
                 <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(line.rate).replace('₹', '')}</td>
-                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt((line.amount || 0) - (line.tax_amount || 0)).replace('₹', '')}</td>
-                <td className="py-2 px-2 text-center border-r border-gray-200">
-                  {line.tax_rate ? `${line.tax_rate.rate}%` : `${(line.amount && line.tax_amount) ? Math.round((line.tax_amount / ((line.amount || 0) - line.tax_amount)) * 100) : 0}%`}
-                </td>
-                <td className="py-2 px-2 text-right border-r border-gray-200">
-                  {fmt(line.tax_amount || 0).replace('₹', '')}
-                </td>
+                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt((line.amount || 0) - (line.tax_amount || 0)).replace('₹', '')}</td>}
+                {hasGst && (
+                  <td className="py-2 px-2 text-center border-r border-gray-200">
+                    {line.tax_rate != null ? `${typeof line.tax_rate === 'object' ? (line.tax_rate.rate ?? 0) : line.tax_rate}%` : `${(line.amount && line.tax_amount) ? Math.round((line.tax_amount / ((line.amount || 0) - line.tax_amount)) * 100) : 0}%`}
+                  </td>
+                )}
+                {hasGst && (
+                  <td className="py-2 px-2 text-right border-r border-gray-200">
+                    {fmt(line.tax_amount != null ? line.tax_amount : ((Number(line.quantity || 0) * Number(line.rate || 0)) * ((typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0)) / 100))).replace('₹', '')}
+                  </td>
+                )}
                 <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
                   {fmt(line.amount || 0).replace('₹', '')}
                 </td>
@@ -236,7 +251,7 @@ export function ClassicTabularInvoiceTemplate({
             ))}
             {/* Blank row for spacing */}
             <tr className="border-b border-gray-200">
-               <td colSpan={10} className="py-6 border-r border-gray-200"></td>
+               <td colSpan={hasGst ? 10 : 6} className="py-6 border-r border-gray-200"></td>
             </tr>
           </tbody>
         </table>
@@ -293,38 +308,44 @@ export function ClassicTabularInvoiceTemplate({
            {/* TOTALS */}
            <div className="border mb-4 border-gray-400">
              <table className="w-full text-[11px]">
-               <tbody>
-                 <tr className="border-b border-gray-200">
-                   <td className="p-2 font-bold w-1/2">Total Value</td>
-                   <td className="p-2 text-right border-l border-gray-200">{fmt(invoice?.subtotal || 0)}</td>
-                 </tr>
-                 
-                 {taxBreakdown && taxBreakdown.length > 0 ? (
-                     taxBreakdown.map((tax, i) => (
-                       <tr key={i} className="border-b border-gray-200">
-                         <td className="p-2 font-bold w-1/2">{tax.name}</td>
-                         <td className="p-2 text-right border-l border-gray-200">{fmt(tax.amount)}</td>
-                       </tr>
-                     ))
-                   ) : (
-                     <tr className="border-b border-gray-200">
-                       <td className="p-2 font-bold w-1/2">Total Tax</td>
-                       <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax)}</td>
-                     </tr>
-                   )}
-                 
-                 {invoice?.discount > 0 && (
-                   <tr className="border-b border-gray-200">
-                     <td className="p-2 font-bold w-1/2">Discount</td>
-                     <td className="p-2 text-right border-l border-gray-200 text-red-600">- {fmt(invoice?.discount)}</td>
-                   </tr>
-                 )}
-                 
-                 <tr className="text-white text-sm" style={{backgroundColor: primary}}>
-                   <td className="p-3 font-bold uppercase tracking-wider">GRAND TOTAL</td>
-                   <td className="p-3 text-right font-bold text-lg" style={{backgroundColor: accent}}>{fmt(invoice?.total || 0)}</td>
-                 </tr>
-               </tbody>
+                <tbody>
+                  <tr className="border-b border-gray-200">
+                    <td className="p-2 font-bold w-1/2">Subtotal</td>
+                    <td className="p-2 text-right border-l border-gray-200">
+                      {fmt(!hasGst && Number(invoice?.total_tax || totalTax || 0) === 0 && Number(invoice?.subtotal || 0) < Number(invoice?.total || 0)
+                        ? Number(invoice?.total)
+                        : Number(invoice?.subtotal || invoice?.total || 0))}
+                    </td>
+                  </tr>
+                  
+                  {hasGst && (
+                    taxBreakdown && taxBreakdown.length > 0 ? (
+                      taxBreakdown.map((tax, i) => (
+                        <tr key={i} className="border-b border-gray-200">
+                          <td className="p-2 font-bold w-1/2">{tax.name}</td>
+                          <td className="p-2 text-right border-l border-gray-200">{fmt(tax.amount)}</td>
+                        </tr>
+                      ))
+                    ) : Number(totalTax) > 0 ? (
+                      <tr className="border-b border-gray-200">
+                        <td className="p-2 font-bold w-1/2">Total Tax</td>
+                        <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax)}</td>
+                      </tr>
+                    ) : null
+                  )}
+                  
+                  {invoice?.discount > 0 && (
+                    <tr className="border-b border-gray-200">
+                      <td className="p-2 font-bold w-1/2">Discount</td>
+                      <td className="p-2 text-right border-l border-gray-200 text-red-600">- {fmt(invoice?.discount)}</td>
+                    </tr>
+                  )}
+                  
+                  <tr className="text-white text-sm" style={{backgroundColor: primary}}>
+                    <td className="p-3 font-bold uppercase tracking-wider">GRAND TOTAL</td>
+                    <td className="p-3 text-right font-bold text-lg" style={{backgroundColor: accent}}>{fmt(invoice?.total || 0)}</td>
+                  </tr>
+                </tbody>
              </table>
            </div>
 
@@ -363,7 +384,7 @@ export function ClassicTabularInvoiceTemplate({
       </div>
 
       <div className="mt-8 text-center text-[10px] flex justify-center items-center gap-1 font-semibold border-t border-gray-200 pt-4">
-         Powered by <img src="/logo.png" alt="AassayBiz" style={{ height: "16px", objectFit: "contain", display: "inline-block", marginLeft: "4px" }} />
+         Powered by <img src="/logo.png" alt="Aassay Biz" style={{ height: "16px", objectFit: "contain", display: "inline-block", marginLeft: "4px" }} />
       </div>
     </div>
   );
