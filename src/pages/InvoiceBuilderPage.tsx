@@ -1352,6 +1352,10 @@ export default function InvoiceBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
+      <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium border border-blue-200 dark:border-blue-800/50 mb-4">
+        <span className="text-lg">💡</span>
+        Aap is app ko offline billing ke liye bhi use kar sakte hain, bina kisi GST setup ke!
+      </div>
       <ContactPromptDialog
         open={contactPromptOpen}
         onOpenChange={setContactPromptOpen}
