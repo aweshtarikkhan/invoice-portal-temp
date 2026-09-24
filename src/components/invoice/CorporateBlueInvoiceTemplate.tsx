@@ -240,7 +240,7 @@ export function CorporateBlueInvoiceTemplate({
         </div>
         <div style={{ padding: "10px 14px", fontSize: 11, background: "#ffffff" }}>
           <div style={{ fontWeight: 800, fontSize: 13, color: darkNavy, marginBottom: 2 }}>{clientName}</div>
-          {billToAddressLines.map((line, idx) => (
+          {billingAddressLines.map((line, idx) => (
             <div key={idx} style={{ color: "#475569" }}>{line}</div>
           ))}
           <div style={{ display: "flex", gap: 24, marginTop: 6, fontWeight: 600, color: "#1e293b" }}>
