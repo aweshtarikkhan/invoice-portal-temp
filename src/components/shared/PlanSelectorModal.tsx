@@ -189,24 +189,53 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const isHrActive = isPlanActive("hr") || isPlanActive("suite");
 
   const getDisplayFeatures = (plan: Plan): string[] => {
-    if (plan.name === "free") {
-      return (plan.features || []).map((f) =>
-        f.toLowerCase().includes("3 employee") ? "3 Employee Attendance" : f
-      );
+    switch (plan.name) {
+      case "free":
+        return [
+          "Up to 5 invoices / mo",
+          "Up to 5 clients & items",
+          "Dynamic UPI QR Code",
+          "Standard GST format"
+        ];
+      case "accounting":
+        return [
+          "Everything in free plan",
+          "Unlimited Invoice",
+          "Unlimited Quotation & POS",
+          "Inventory Management",
+          "500 WhatsApp messages",
+          "GST Ready Output",
+          "Platform access up to 3 employees",
+          "+₹99 / Extra platform employee"
+        ];
+      case "suite":
+        return [
+          "Full Sales & Multi-Warehouse",
+          "Purchases, POs & Payables",
+          "Banking, Journal & P&L",
+          "Free CRM & Promotion Inc."
+        ];
+      case "hr":
+        return [
+          "5 Staff included",
+          "+₹29 / Extra Employee",
+          "Attendance & Payroll",
+          "Shifts & Leaves"
+        ];
+      case "crm":
+        return [
+          "Leads, pipelines & follow-ups",
+          "API Integrations",
+          "Sales Pipeline"
+        ];
+      case "promotion":
+        return [
+          "Festival studio & WhatsApp",
+          "Email Campaigns"
+        ];
+      default:
+        return plan.features || [];
     }
-
-    // For all other plans (Accounting, CRM, Promotion, HR, Suite):
-    // First line must be "Everything in Free Plan"
-    // Remove "3 Employee" or redundant employee lines from limited plans
-    const isHrOrSuite = plan.name === "hr" || plan.name === "suite";
-    const filtered = (plan.features || []).filter((f) => {
-      const lower = f.toLowerCase();
-      if (lower.includes("everything in free")) return false;
-      if (!isHrOrSuite && lower.includes("employee")) return false;
-      return true;
-    });
-
-    return ["Everything in Free Plan", ...filtered];
   };
 
   const handleApplyPromo = async () => {
