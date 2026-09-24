@@ -462,18 +462,18 @@ export default function LandingPage() {
               <MessageCircle className="h-4 w-4 text-[#ff9438]" />
               <span>{L.wa_eyebrow}</span>
             </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.2]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.86]">
               {lang === "hi" ? (
                 <>
                   <span className="whitespace-nowrap inline-block">बिल भेजें।</span>
                   <br />
-                  <span className="whitespace-nowrap inline-block text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
+                  <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
                 </>
               ) : (
                 <>
                   <span className="whitespace-nowrap inline-block">Send invoices instantly.</span>
                   <br />
-                  <span className="whitespace-nowrap inline-block text-[#ff9438]">Get paid 2x faster.</span>
+                  <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">Get paid 2x faster.</span>
                 </>
               )}
             </h2>
@@ -664,10 +664,10 @@ export default function LandingPage() {
               <UserCheck className="h-4 w-4" />
               <span>HR & PAYROLL AUTOMATION</span>
             </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.2]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.86]">
               <span className="whitespace-nowrap inline-block">Track Attendance.</span>
               <br />
-              <span className="whitespace-nowrap inline-block text-[#28166f]">Run Payroll in 60 Seconds.</span>
+              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#28166f]">Run Payroll in 60 Seconds.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
               Ditch the Excel sheets. Manage real-time GPS attendance, shift schedules,
@@ -698,10 +698,10 @@ export default function LandingPage() {
               <Target className="h-4 w-4" />
               <span>CRM & SALES PIPELINE</span>
             </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.2]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.86]">
               <span className="whitespace-nowrap inline-block">Capture Every Lead.</span>
               <br />
-              <span className="whitespace-nowrap inline-block text-[#ff9438]">Close Deals 3x Faster.</span>
+              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">Close Deals 3x Faster.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
               From lead capture to deal close — manage your entire sales funnel with
@@ -866,10 +866,10 @@ export default function LandingPage() {
               <Megaphone className="h-4 w-4" />
               <span>MARKETING & PROMOTION</span>
             </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.2]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.86]">
               <span className="whitespace-nowrap inline-block">Reach 10,000+ Customers.</span>
               <br />
-              <span className="whitespace-nowrap inline-block text-[#28166f]">Boost Repeat Sales by 40%.</span>
+              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#28166f]">Boost Repeat Sales by 40%.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
               Turn your customer list into a revenue machine. Create branded

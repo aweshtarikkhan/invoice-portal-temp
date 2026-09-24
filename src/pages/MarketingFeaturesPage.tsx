@@ -49,10 +49,10 @@ export default function MarketingFeaturesPage() {
                 MARKETING & PROMOTION
               </div>
 
-              <h1 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white leading-[2.2] mb-5">
+              <h1 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white leading-[2.86] mb-5">
                 <span className="whitespace-nowrap inline-block">Reach 10,000+ Customers.</span>
                 <br />
-                <span className="whitespace-nowrap inline-block bg-gradient-to-r from-[#ff9438] to-amber-300 bg-clip-text text-transparent">
+                <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 bg-gradient-to-r from-[#ff9438] to-amber-300 bg-clip-text text-transparent">
                   Boost Repeat Sales by 40%.
                 </span>
               </h1>
