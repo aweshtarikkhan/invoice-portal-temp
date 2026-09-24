@@ -133,9 +133,10 @@ export default function CRMFeaturesPage() {
                 CRM & SALES PIPELINE
               </div>
 
-              <h1 className="text-3xl sm:text-4xl xl:text-[2.8rem] font-black tracking-tight text-slate-900 leading-[1.65] mb-4">
-                Capture Every Lead.<br />
-                <span className="bg-gradient-to-r from-[#28166f] to-[#e77817] bg-clip-text text-transparent">
+              <h1 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 leading-[2.2] mb-5">
+                <span className="whitespace-nowrap inline-block">Capture Every Lead.</span>
+                <br />
+                <span className="whitespace-nowrap inline-block bg-gradient-to-r from-[#28166f] to-[#e77817] bg-clip-text text-transparent">
                   Close Deals 3x Faster.
                 </span>
               </h1>
