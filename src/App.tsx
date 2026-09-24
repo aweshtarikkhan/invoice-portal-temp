@@ -1,6 +1,6 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, Navigate } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +12,8 @@ const SalesReportsPage = lazy(() => import("./pages/SalesReportsPage"));
 const InventoryReportsPage = lazy(() => import("./pages/InventoryReportsPage"));
 const PurchaseAccountingReportsPage = lazy(() => import("./pages/PurchaseAccountingReportsPage"));
 const HRReportsPage = lazy(() => import("./pages/HRReportsPage"));
-const CRMMarketingReportsPage = lazy(() => import("./pages/CRMMarketingReportsPage"));
+const CRMReportsPage = lazy(() => import("./pages/CRMReportsPage"));
+const PromotionReportsPage = lazy(() => import("./pages/PromotionReportsPage"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const RegisterPage = lazy(() => import("./pages/RegisterPage"));
@@ -122,12 +123,32 @@ import { PlatformAdminLayout } from "@/components/layout/PlatformAdminLayout";
 
 const queryClient = new QueryClient();
 
+function AuthErrorRedirector() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const hash = window.location.hash || "";
+    const search = window.location.search || "";
+    const hasAuthParams = hash.includes("error=access_denied") || search.includes("error=access_denied") || 
+                          hash.includes("type=invite") || search.includes("type=invite") ||
+                          hash.includes("type=recovery") || search.includes("type=recovery");
+                          
+    if (hasAuthParams && location.pathname === "/") {
+      navigate(`/reset-password${search}${hash}`, { replace: true });
+    }
+  }, [navigate, location]);
+
+  return null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <AuthErrorRedirector />
         <AuthProvider>
           <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center"><div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div></div>}>
           <Routes>
@@ -201,8 +222,8 @@ const App = () => (
                 <Route path="/inventory-reports" element={<InventoryReportsPage />} />
                 <Route path="/purchase-accounting-reports" element={<PurchaseAccountingReportsPage />} />
                 <Route path="/hr-reports" element={<HRReportsPage />} />
-                <Route path="/crm-marketing-reports" element={<CRMMarketingReportsPage />} />
-                <Route path="/promotion-reports" element={<CRMMarketingReportsPage />} />
+                <Route path="/crm-reports" element={<CRMReportsPage />} />
+                <Route path="/promotion-reports" element={<PromotionReportsPage />} />
                 <Route path="/business-report" element={<BusinessReportPage />} />
                 <Route path="/aging-details" element={<AgingDetailsPage />} />
                 <Route path="/profit-loss" element={<ProfitLossPage />} />

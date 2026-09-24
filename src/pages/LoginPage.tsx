@@ -34,10 +34,14 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setEmployeeBlocked(false);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setLoading(false);
     if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      let errorMsg = error?.message || "An unknown error occurred";
+      if (typeof errorMsg === 'object' || errorMsg === '{}') {
+        errorMsg = "Invalid login credentials or network error.";
+      }
+      toast({ title: "Login failed", description: errorMsg, variant: "destructive" });
     } else {
       // Check if user is an organization member (admin/owner) first
       const { data: memberCheck } = await supabase

@@ -121,6 +121,7 @@ const peopleItems = [
 
 const crmItems = [
   { title: "CRM Dashboard", url: "/crm-dashboard", icon: BarChart3, addUrl: null },
+  { title: "CRM Reports", url: "/crm-reports", icon: BarChart3, addUrl: null },
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },

@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { Users, DollarSign, Target, Activity, BarChart3, PieChart, Download, FileText } from "lucide-react";
+import { DollarSign, BarChart3, Download, FileText, Target } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -16,28 +16,19 @@ import {
   CartesianGrid,
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  Legend
 } from "recharts";
 import { format, parseISO } from "date-fns";
 
-const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
-
-export default function CRMMarketingReportsPage() {
+export default function CRMReportsPage() {
   const org = useAppStore((s) => s.organization);
 
   const [loading, setLoading] = useState(true);
   const [metrics, setMetrics] = useState({
-    totalLeads: 0,
     wonOpportunitiesValue: 0,
-    activeCampaigns: 0,
-    leadConversionRate: 0,
+    openOpportunitiesCount: 0,
   });
 
   const [pipelineData, setPipelineData] = useState<any[]>([]);
-  const [leadsSourceData, setLeadsSourceData] = useState<any[]>([]);
   const [leadsList, setLeadsList] = useState<any[]>([]);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
 
@@ -55,31 +46,27 @@ export default function CRMMarketingReportsPage() {
       const [
         { data: leads },
         { data: opportunities },
-        { data: campaigns },
         { data: pipelineStages }
       ] = await Promise.all([
         (supabase as any).from("leads").select("*").eq("org_id", org.id),
         (supabase as any).from("opportunities").select("*").eq("org_id", org.id),
-        (supabase as any).from("campaigns").select("*").eq("org_id", org.id),
         (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true })
       ]);
 
-      // Metrics
-      const totalLeads = leads?.length || 0;
-      const convertedLeads = leads?.filter((l: any) => l.status === "converted").length || 0;
-      const leadConversionRate = totalLeads > 0 ? (convertedLeads / totalLeads) * 100 : 0;
+      setLeadsList(leads || []);
 
       const wonOpportunities = opportunities?.filter((o: any) => o.status === "won") || [];
       const wonOpportunitiesValue = wonOpportunities.reduce((sum: number, o: any) => sum + (o.amount || 0), 0);
-
-      // Active Campaigns
-      const activeCampaigns = campaigns?.filter((c: any) => c.status !== "completed" && c.status !== "draft").length || 0;
+      
+      const openOpp = opportunities?.filter((o: any) => {
+        if (o.status === "won" || o.status === "lost") return false;
+        if (!o.expected_close_date) return false;
+        return new Date(o.expected_close_date).getTime() >= new Date().setHours(0,0,0,0);
+      }) || [];
 
       setMetrics({
-        totalLeads,
         wonOpportunitiesValue,
-        activeCampaigns,
-        leadConversionRate,
+        openOpportunitiesCount: openOpp.length,
       });
 
       // Pipeline Data
@@ -96,25 +83,7 @@ export default function CRMMarketingReportsPage() {
       
       setPipelineData(Object.values(stageMap));
 
-      // Leads by Source
-      const sourceMap: Record<string, number> = {};
-      leads?.forEach((l: any) => {
-        const source = l.source || "Unknown";
-        sourceMap[source] = (sourceMap[source] || 0) + 1;
-      });
-      const sourceData = Object.entries(sourceMap).map(([name, value]) => ({
-        name,
-        value,
-      }));
-      setLeadsSourceData(sourceData);
-      setLeadsList(leads || []);
-
       // Top 5 Open Opportunities
-      const openOpp = opportunities?.filter((o: any) => {
-          if (o.status === "won" || o.status === "lost") return false;
-          if (!o.expected_close_date) return false; // Hide if no date
-          return new Date(o.expected_close_date).getTime() >= new Date().setHours(0,0,0,0);
-        }) || [];
       const top5 = openOpp
         .sort((a, b) => (b.amount || 0) - (a.amount || 0))
         .slice(0, 5);
@@ -135,8 +104,8 @@ export default function CRMMarketingReportsPage() {
     <div className="space-y-6" id="crm-report-page">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Promotion Reports</h1>
-          <p className="text-muted-foreground">Analyze your promotional campaigns, lead conversions, and outreach performance.</p>
+          <h1 className="text-2xl font-bold tracking-tight">CRM Reports</h1>
+          <p className="text-muted-foreground">Analyze your sales pipeline and opportunity performance.</p>
         </div>
         <Button onClick={() => exportFullPagePDF('crm-report-page', 'crm_full_report')} className="shrink-0" variant="secondary">
           <Download className="w-4 h-4 mr-2" />
@@ -144,17 +113,7 @@ export default function CRMMarketingReportsPage() {
         </Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Leads</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.totalLeads}</div>
-          </CardContent>
-        </Card>
-        
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Won Opportunities</CardTitle>
@@ -164,90 +123,42 @@ export default function CRMMarketingReportsPage() {
             <div className="text-2xl font-bold">{formatCurrency(metrics.wonOpportunitiesValue)}</div>
           </CardContent>
         </Card>
-
+        
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Campaigns</CardTitle>
+            <CardTitle className="text-sm font-medium">Open Opportunities</CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{metrics.activeCampaigns}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{metrics.leadConversionRate.toFixed(1)}%</div>
+            <div className="text-2xl font-bold">{metrics.openOpportunitiesCount}</div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Pipeline Stages
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={pipelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
-                  <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <PieChart className="w-5 h-5 mr-2" />
-              Leads by Source
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <RechartsPieChart>
-                  <Pie
-                    data={leadsSourceData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {leadsSourceData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
-                    itemStyle={{ color: '#fff' }}
-                  />
-                  <Legend />
-                </RechartsPieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <BarChart3 className="w-5 h-5 mr-2" />
+            Pipeline Stages
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={pipelineData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#333" />
+                <XAxis dataKey="name" stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                <YAxis stroke="#888" fontSize={12} tickLine={false} axisLine={false} />
+                <RechartsTooltip 
+                  contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
