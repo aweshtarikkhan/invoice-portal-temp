@@ -621,16 +621,16 @@ export default function SettingsPage() {
 
               <Card className="bg-slate-900 border-slate-800">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-slate-50">
                     <Bell className="h-5 w-5 text-purple-400" />
                     Automations
                   </CardTitle>
-                  <CardDescription>Automate tasks and reminders</CardDescription>
+                  <CardDescription className="text-slate-400">Automate tasks and reminders</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label className="text-base font-medium">Automate Overdue Reminders</Label>
+                      <Label className="text-base font-medium text-slate-50">Automate Overdue Reminders</Label>
                       <p className="text-sm text-slate-400">Automatically send WhatsApp and Email reminders when invoices become overdue.</p>
                     </div>
                     <Switch checked={orgForm.automate_overdue_reminders} onCheckedChange={(v) => setOrgForm({ ...orgForm, automate_overdue_reminders: v })} />
