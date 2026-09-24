@@ -23,7 +23,7 @@ import {
   Shield, Check, X, ArrowLeft, Plus, Trash2, Building2,
   FileText, Package, ShoppingCart, Calculator,
   UserCog, Users, Send, BarChart3, Loader2, AlertCircle, ChevronDown,
-  AlertTriangle, Crown, CheckCircle2, XCircle, Mail
+  AlertTriangle, Crown, CheckCircle2, XCircle, Mail, Edit2
 } from "lucide-react";
 
 const ICON_MAP: Record<string, any> = {
@@ -66,6 +66,12 @@ export default function AdminPanelPage() {
     businessName: string;
     errorMessage?: string;
   }>({ email: '', role: '', businessName: '' });
+  
+  // Edit member state
+  const [editingMember, setEditingMember] = useState<any>(null);
+  const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
+  const [isUpdatingMember, setIsUpdatingMember] = useState(false);
+
   const [fetchedTeamMembers, setFetchedTeamMembers] = useState<any[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [selectedTeamOrgId, setSelectedTeamOrgId] = useState<string>("");
@@ -314,6 +320,34 @@ export default function AdminPanelPage() {
         ? prev.filter((k) => k !== groupKey) 
         : [...prev, groupKey]
     );
+  };
+
+  const toggleEditPermission = (groupKey: string) => {
+    setEditingPermissions((prev) => 
+      prev.includes(groupKey) 
+        ? prev.filter((k) => k !== groupKey) 
+        : [...prev, groupKey]
+    );
+  };
+
+  const handleUpdateMember = async () => {
+    if (!editingMember) return;
+    setIsUpdatingMember(true);
+    try {
+      const { error } = await supabase
+        .from('organization_members')
+        .update({ permissions: editingPermissions })
+        .eq('id', editingMember.member_id);
+
+      if (error) throw error;
+      
+      await loadTeamMembers();
+      setEditingMember(null);
+    } catch (err: any) {
+      alert("Failed to update permissions: " + err.message);
+    } finally {
+      setIsUpdatingMember(false);
+    }
   };
 
   const handleCreateBusiness = async () => {
@@ -808,13 +842,30 @@ export default function AdminPanelPage() {
                                 </div>
                               </div>
                             </div>
-                            <button
-                              onClick={async () => { await supabase.from('organization_members').delete().eq('id', member.member_id); loadTeamMembers(); }}
-                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Remove user"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingMember(member);
+                                  setEditingPermissions(member.permissions || []);
+                                }}
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                title="Edit access"
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (confirm(`Are you sure you want to remove ${member.email}?`)) {
+                                    await supabase.from('organization_members').delete().eq('id', member.member_id);
+                                    loadTeamMembers();
+                                  }
+                                }}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Remove user"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </div>
                           
                           {member.permissions && member.permissions.length > 0 && (
@@ -1260,6 +1311,71 @@ export default function AdminPanelPage() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Modal */}
+      <Dialog open={!!editingMember} onOpenChange={(open) => !open && setEditingMember(null)}>
+        <DialogContent className="sm:max-w-md bg-white border border-slate-200 shadow-2xl p-6 rounded-2xl">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-lg font-bold text-slate-900">Edit Member Access</h3>
+              <p className="text-xs text-slate-500">Update permissions for {editingMember?.email}</p>
+            </div>
+            
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">Feature Permissions</label>
+              <div className="max-h-60 overflow-y-auto pr-2 grid gap-2">
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.includes("settings_access")}
+                    onChange={() => toggleEditPermission("settings_access")}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="truncate font-medium">Settings Access</span>
+                </label>
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={editingPermissions.includes("whatsapp_access")}
+                    onChange={() => toggleEditPermission("whatsapp_access")}
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="truncate font-medium">WhatsApp Access</span>
+                </label>
+                {[...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS.filter(g => selectedOrgFeatures.includes(g.key))].map(group => (
+                  <label key={group.key} className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={editingPermissions.includes(group.key)}
+                      onChange={() => toggleEditPermission(group.key)}
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span className="truncate font-medium">{group.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setEditingMember(null)}
+                disabled={isUpdatingMember}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleUpdateMember}
+                disabled={isUpdatingMember}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                {isUpdatingMember ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Save Changes"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

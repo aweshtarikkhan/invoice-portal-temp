@@ -486,7 +486,7 @@ export default function SettingsPage() {
                     <Checkbox id="hide-zero" />
                     <Label htmlFor="hide-zero">Hide zero-value line items</Label>
                   </div>
-                  <p className="text-xs text-muted-foreground ml-7">
+                  <p className="text-xs text-slate-600 dark:text-slate-300 ml-7">
                     Choose whether to hide zero-value line items in an invoice's PDF and the Customer Portal. They will still be visible while editing an invoice.
                   </p>
                 </CardContent>
@@ -512,7 +512,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Enable GST</Label>
-                      <p className="text-xs text-muted-foreground">Show GST details on invoices</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Show GST details on invoices</p>
                     </div>
                     <Switch checked={orgForm.gst_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, gst_enabled: v })} />
                   </div>
@@ -522,7 +522,7 @@ export default function SettingsPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <Label>Show Client GST</Label>
-                          <p className="text-xs text-muted-foreground">Include client's GST number on invoice for input tax credit claims</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300">Include client's GST number on invoice for input tax credit claims</p>
                         </div>
                         <Switch checked={orgForm.show_client_gst} onCheckedChange={(v) => setOrgForm({ ...orgForm, show_client_gst: v })} />
                       </div>
@@ -537,7 +537,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Embed QR Code</Label>
-                      <p className="text-xs text-muted-foreground">Add a UPI payment QR code to invoices with exact invoice amount</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Add a UPI payment QR code to invoices with exact invoice amount</p>
                     </div>
                     <Switch checked={orgForm.qr_code_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, qr_code_enabled: v })} />
                   </div>
@@ -545,7 +545,7 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label>UPI ID</Label>
                       <Input value={orgForm.upi_id} onChange={(e) => setOrgForm({ ...orgForm, upi_id: e.target.value })} placeholder="e.g. yourname@upi or 9999999999@paytm" />
-                      <p className="text-xs text-muted-foreground">Enter your UPI ID to generate payment QR codes on invoices with the exact balance amount</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Enter your UPI ID to generate payment QR codes on invoices with the exact balance amount</p>
                     </div>
                   )}
                 </CardContent>
@@ -557,7 +557,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <Label>Enable Inventory Tracking</Label>
-                      <p className="text-xs text-muted-foreground">Turn on if you sell physical products. Stock auto-deducts on each invoice. Service businesses can leave this off.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Turn on if you sell physical products. Stock auto-deducts on each invoice. Service businesses can leave this off.</p>
                     </div>
                     <Switch checked={orgForm.inventory_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, inventory_enabled: v })} />
                   </div>
@@ -565,13 +565,13 @@ export default function SettingsPage() {
                     <div className="space-y-2">
                       <Label>Low Stock Alert Threshold</Label>
                       <Input type="number" min={0} value={orgForm.low_stock_threshold} onChange={(e) => setOrgForm({ ...orgForm, low_stock_threshold: parseFloat(e.target.value) || 0 })} />
-                      <p className="text-xs text-muted-foreground">Items at or below this stock level appear in the dashboard low-stock alert.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Items at or below this stock level appear in the dashboard low-stock alert.</p>
                     </div>
                   )}
                   <div className="flex items-center justify-between border-t pt-4">
                     <div>
                       <Label>Multi-warehouse mode</Label>
-                      <p className="text-xs text-muted-foreground">Track stock across multiple locations. When off, a single shared stock pool is used (recommended for most users).</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Track stock across multiple locations. When off, a single shared stock pool is used (recommended for most users).</p>
                     </div>
                     <Switch checked={orgForm.multi_warehouse_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, multi_warehouse_enabled: v })} />
                   </div>
@@ -612,7 +612,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between border-t pt-4">
                     <div>
                       <Label>Enable Sub Units (e.g. 1 Box = 10 Packs)</Label>
-                      <p className="text-xs text-muted-foreground">Allows selling products in smaller sub-units.</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300">Allows selling products in smaller sub-units.</p>
                     </div>
                     <Switch checked={orgForm.sub_unit_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, sub_unit_enabled: v })} />
                   </div>
@@ -631,7 +631,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div className="space-y-0.5">
                       <Label className="text-base font-medium text-slate-50">Automate Overdue Reminders</Label>
-                      <p className="text-sm text-slate-400">Automatically send WhatsApp and Email reminders when invoices become overdue.</p>
+                      <p className="text-sm text-slate-400 dark:text-slate-300">Automatically send WhatsApp and Email reminders when invoices become overdue.</p>
                     </div>
                     <Switch checked={orgForm.automate_overdue_reminders} onCheckedChange={(v) => setOrgForm({ ...orgForm, automate_overdue_reminders: v })} />
                   </div>
@@ -649,7 +649,7 @@ export default function SettingsPage() {
                     <div className="col-span-3 space-y-2 mb-2">
                       <Label>Invoice Number Format</Label>
                       <Input value={orgForm.invoice_prefix} onChange={(e) => setOrgForm({ ...orgForm, invoice_prefix: e.target.value })} placeholder="e.g. INV-{YYYY}-{NNNN}" />
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                         Use placeholders to create a custom format. E.g. <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">INV-{`{YYYY}`}-{`{NNNN}`}</code> produces INV-2024-0001, <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">SALES-{`{YY}`}-{`{NN}`}</code> produces SALES-24-01. If no placeholders are used, we append the year and number automatically.
                       </p>
                     </div>
