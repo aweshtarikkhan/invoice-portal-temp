@@ -27,7 +27,15 @@ export function PayslipModal({
   if (!slip) return null;
 
   const orgName = organization?.name || "Company Name";
-  const orgAddress = organization?.address || "";
+  const orgAddress = (() => {
+    const addr = organization?.address;
+    if (!addr) return "";
+    if (typeof addr === "string") return addr;
+    if (typeof addr === "object") {
+      return [(addr as any).street, (addr as any).city, (addr as any).state, (addr as any).zip || (addr as any).pincode, (addr as any).country].filter(Boolean).join(", ");
+    }
+    return String(addr);
+  })();
   const orgGst = organization?.gst_number || organization?.tax_id || "";
   
   const formattedStart = format(parseISO(slip.start_date), "dd MMM yyyy");

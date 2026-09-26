@@ -107,6 +107,7 @@ const BrochurePage = lazy(() => import("./pages/BrochurePage"));
 const PamphletPage = lazy(() => import("./pages/PamphletPage"));
 const SocialLaunchPostsPage = lazy(() => import("./pages/SocialLaunchPostsPage"));
 const SupportPage = lazy(() => import("./pages/SupportPage"));
+const ContactUsPage = lazy(() => import("./pages/ContactUsPage"));
 const PartnerWithUsPage = lazy(() => import("./pages/PartnerWithUsPage"));
 const PartnerPortalPage = lazy(() => import("./pages/PartnerPortalPage"));
 const PartnerLoginPage = lazy(() => import("./pages/PartnerLoginPage"));
@@ -161,6 +162,8 @@ const App = () => (
             <Route path="/try" element={<DemoAutoLoginPage />} />
             <Route path="/brochure" element={<BrochurePage />} />
             <Route path="/pamphlet" element={<PamphletPage />} />
+            <Route path="/contact" element={<ContactUsPage />} />
+            <Route path="/contact-us" element={<ContactUsPage />} />
             <Route path="/launch-posts" element={<SocialLaunchPostsPage />} />
             <Route path="/privacy" element={<PrivacyPolicyPage />} />
             <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
@@ -222,7 +225,6 @@ const App = () => (
                 <Route path="/inventory-reports" element={<InventoryReportsPage />} />
                 <Route path="/purchase-accounting-reports" element={<PurchaseAccountingReportsPage />} />
                 <Route path="/hr-reports" element={<HRReportsPage />} />
-                <Route path="/crm-reports" element={<CRMReportsPage />} />
                 <Route path="/promotion-reports" element={<PromotionReportsPage />} />
                 <Route path="/business-report" element={<BusinessReportPage />} />
                 <Route path="/aging-details" element={<AgingDetailsPage />} />
@@ -295,6 +297,11 @@ const App = () => (
                 <Route path="/pipeline" element={<PipelinePage />} />
                 <Route path="/pipeline/:id" element={<DealDetailPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
+                <Route path="/crm-reports" element={<CRMReportsPage />} />
+                <Route path="/crm/reports" element={<Navigate to="/crm-reports" replace />} />
+                <Route path="/crm-marketing-reports" element={<Navigate to="/crm-reports" replace />} />
+                <Route path="/crm marketing reports" element={<Navigate to="/crm-reports" replace />} />
+                <Route path="/crm%20marketing%20reports" element={<Navigate to="/crm-reports" replace />} />
               </Route>
               <Route element={<FeatureGuard featureKey="marketing" featureName="Business Promotion" />}>
                 <Route path="/marketing/posters" element={<MarketingPostersPage />} />
@@ -305,7 +312,7 @@ const App = () => (
                 <Route path="/message-logs" element={<MessageLogsPage />} />
               </Route>
               <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/support" element={<SupportPage />} />
+              <Route path="/support" element={<Navigate to="/settings?tab=support" replace />} />
               <Route path="/admin" element={<AdminPanelPage />} />
                 <Route path="/feedback" element={<ComingSoonPage title="Business Feedback" description="Collect, manage, and analyze customer feedback and satisfaction ratings." />} />
                 <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />

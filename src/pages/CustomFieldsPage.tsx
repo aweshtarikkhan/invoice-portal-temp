@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { SignatureSettingsTab } from "@/components/settings/SignatureSettingsTab";
 
 const ENTITY_TYPES = [
@@ -39,6 +40,7 @@ const FIELD_TYPES = [
 ];
 
 export default function CustomFieldsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const [fields, setFields] = useState<any[]>([]);
@@ -97,11 +99,16 @@ export default function CustomFieldsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <PageHeader title="Custom Fields" description="Define custom fields for your documents and entities">
-        {activeTab !== "signature" && (
-          <Button onClick={() => setDialogOpen(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Add Field
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Settings
           </Button>
-        )}
+          {activeTab !== "signature" && (
+            <Button onClick={() => setDialogOpen(true)} size="sm">
+              <Plus className="mr-1 h-4 w-4" /> Add Field
+            </Button>
+          )}
+        </div>
       </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -147,7 +154,11 @@ export default function CustomFieldsPage() {
                           <TableCell className="capitalize">{f.field_type}</TableCell>
                           <TableCell>{f.is_required ? "Yes" : "—"}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">
-                            {f.field_options ? (f.field_options as string[]).join(", ") : "—"}
+                            {f.field_options
+                              ? (Array.isArray(f.field_options)
+                                  ? (f.field_options as string[]).join(", ")
+                                  : String(f.field_options))
+                              : "—"}
                           </TableCell>
                           <TableCell>
                             <Button variant="ghost" size="icon" onClick={() => deleteField(f.id)}>

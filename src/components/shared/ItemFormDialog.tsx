@@ -49,7 +49,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
     unit_price: 0, sales_price_type: hasGst ? "with_tax" : "without_tax",
     purchase_price: 0, purchase_price_type: hasGst ? "with_tax" : "without_tax",
     discount: 0,
-    unit: "pcs", tax_id: null as string | null,
+    unit: defaultType === "service" ? "" : "pcs", tax_id: null as string | null,
     category: "", stock_quantity: 0, hsn_code: "",
     show_online: false,
     as_of_date: new Date().toISOString().split('T')[0],
@@ -98,7 +98,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
         setForm({
           ...defaultForm,
           name: editItem.name || "", description: editItem.description || "", sku: editItem.sku || "",
-          type: editItem.type || defaultType, unit_price: Number(editItem.unit_price) || 0, unit: editItem.unit || "pcs",
+          type: editItem.type || defaultType, unit_price: Number(editItem.unit_price) || 0, unit: editItem.unit !== undefined && editItem.unit !== null ? editItem.unit : (editItem.type === "service" ? "" : "pcs"),
           tax_id: hasGst ? editItem.tax_id : null, 
           category: editItem.category || "", 
           stock_quantity: Number(editItem.stock_quantity || 0),
@@ -193,10 +193,10 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
       sku: form.sku || null,
       type: form.type,
       unit_price: form.unit_price,
-      unit: form.unit || null,
+      unit: form.unit?.trim() ? form.unit.trim() : null,
       tax_id: hasGst ? finalTaxId : null,
       category: form.category || null,
-      stock_quantity: form.stock_quantity,
+      stock_quantity: form.type === "service" ? 0 : form.stock_quantity,
       hsn_code: hasGst ? (form.hsn_code || null) : null,
       purchase_price: form.purchase_price,
       sales_price_type: hasGst ? form.sales_price_type : "without_tax",
@@ -344,33 +344,32 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
               
               {activeTab === "basic" && (
                 <div className="max-w-2xl space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                  <div className="grid grid-cols-2 gap-6 items-end">
-                    <div className="space-y-3">
-                      <Label className="text-slate-600">Item Type <span className="text-destructive">*</span></Label>
-                      <RadioGroup 
-                        value={form.type} 
-                        onValueChange={(v) => setForm({ ...form, type: v as any })}
-                        className="flex gap-4"
-                      >
-                        <div className={`flex items-center justify-center space-x-2 border rounded-lg px-4 py-2.5 flex-1 cursor-pointer transition-colors ${form.type === 'product' ? 'border-indigo-500 bg-indigo-50/30' : 'bg-white'}`}>
-                          <RadioGroupItem value="product" id="r1" className="text-indigo-600 border-indigo-600" />
-                          <Package className={`h-4 w-4 ${form.type === 'product' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                          <Label htmlFor="r1" className="cursor-pointer font-medium">Product</Label>
-                        </div>
-                        <div className={`flex items-center justify-center space-x-2 border rounded-lg px-4 py-2.5 flex-1 cursor-pointer transition-colors ${form.type === 'service' ? 'border-indigo-500 bg-indigo-50/30' : 'bg-white'}`}>
-                          <RadioGroupItem value="service" id="r2" className="text-indigo-600 border-indigo-600" />
-                          <Settings className={`h-4 w-4 ${form.type === 'service' ? 'text-indigo-600' : 'text-slate-400'}`} />
-                          <Label htmlFor="r2" className="cursor-pointer font-medium">Service</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-
-                    <div className="flex items-center justify-between p-3 border rounded-xl bg-white h-11">
-                      <Label className="text-sm font-medium text-slate-700 cursor-pointer flex items-center gap-1.5" htmlFor="online">
-                        Show Item in Online Store <Info className="h-3.5 w-3.5 text-slate-400" />
-                      </Label>
-                      <Switch id="online" checked={form.show_online} onCheckedChange={(c) => setForm({...form, show_online: c})} />
-                    </div>
+                  <div className="space-y-3">
+                    <Label className="text-slate-600">Item Type <span className="text-destructive">*</span></Label>
+                    <RadioGroup 
+                      value={form.type} 
+                      onValueChange={(v) => {
+                        const newType = v as "product" | "service";
+                        setForm(prev => ({
+                          ...prev,
+                          type: newType,
+                          unit: newType === "service" ? "" : (prev.unit || "pcs"),
+                          stock_quantity: newType === "service" ? 0 : prev.stock_quantity,
+                        }));
+                      }}
+                      className="grid grid-cols-2 gap-4 w-full"
+                    >
+                      <div className={`flex items-center justify-center space-x-2 border rounded-lg px-4 py-2.5 cursor-pointer transition-colors ${form.type === 'product' ? 'border-indigo-500 bg-indigo-50/30 ring-1 ring-indigo-500/20' : 'bg-white hover:bg-slate-50'}`}>
+                        <RadioGroupItem value="product" id="r1" className="text-indigo-600 border-indigo-600" />
+                        <Package className={`h-4 w-4 ${form.type === 'product' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                        <Label htmlFor="r1" className="cursor-pointer font-medium">Product</Label>
+                      </div>
+                      <div className={`flex items-center justify-center space-x-2 border rounded-lg px-4 py-2.5 cursor-pointer transition-colors ${form.type === 'service' ? 'border-indigo-500 bg-indigo-50/30 ring-1 ring-indigo-500/20' : 'bg-white hover:bg-slate-50'}`}>
+                        <RadioGroupItem value="service" id="r2" className="text-indigo-600 border-indigo-600" />
+                        <Settings className={`h-4 w-4 ${form.type === 'service' ? 'text-indigo-600' : 'text-slate-400'}`} />
+                        <Label htmlFor="r2" className="cursor-pointer font-medium">Service</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
 
                   <div className="space-y-3">
@@ -491,9 +490,12 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                       <Label className="text-slate-600">Measuring Unit</Label>
                       <div className="relative">
                         <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
-                        <Select value={form.unit || "pcs"} onValueChange={(v) => setForm({ ...form, unit: v })}>
-                          <SelectTrigger className="pl-9 h-11 bg-white"><SelectValue placeholder="Pieces(PCS)" /></SelectTrigger>
+                        <Select value={form.unit || "none"} onValueChange={(v) => setForm({ ...form, unit: v === "none" ? "" : v })}>
+                          <SelectTrigger className="pl-9 h-11 bg-white">
+                            <SelectValue placeholder={form.type === "service" ? "None (Blank)" : "Pieces(PCS)"} />
+                          </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="none">None (Blank)</SelectItem>
                             {COMMON_UNITS.map(u => (
                               <SelectItem key={u} value={u}>{u.toUpperCase()}</SelectItem>
                             ))}
@@ -502,18 +504,26 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <Label className="text-slate-600">Opening Stock</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-slate-600">Opening Stock</Label>
+                        {form.type === "service" && (
+                          <span className="text-[11px] font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                            <Lock className="w-3 h-3" /> Locked for Services
+                          </span>
+                        )}
+                      </div>
                       <div className="relative">
                         <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 z-10" />
                         <Input 
-                          type="number" 
-                          value={form.stock_quantity || ""} 
+                          type="text" 
+                          disabled={form.type === "service"}
+                          value={form.type === "service" ? "N/A (Infinite / Unlimited)" : (form.stock_quantity || "")} 
                           onChange={(e) => setForm({ ...form, stock_quantity: parseFloat(e.target.value) || 0 })} 
-                          className="pl-9 h-11 bg-white pr-16" 
+                          className={`pl-9 h-11 pr-16 ${form.type === "service" ? "bg-slate-100 text-slate-500 cursor-not-allowed font-medium select-none" : "bg-white"}`} 
                           placeholder="ex: 150" 
                         />
                         <div className="absolute right-0 top-0 h-full flex items-center justify-center px-4 border-l text-slate-500 text-sm font-medium bg-slate-50 rounded-r-md min-w-16">
-                          {form.unit ? form.unit.toUpperCase() : 'PCS'}
+                          {form.type === "service" ? 'N/A' : (form.unit ? form.unit.toUpperCase() : 'PCS')}
                         </div>
                       </div>
                     </div>
@@ -557,9 +567,12 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
                     <div className="grid grid-cols-2 gap-6">
                       <div className="space-y-3">
                         <Label className="text-slate-600">Measuring Unit (Primary)</Label>
-                        <Select value={form.unit || "pcs"} onValueChange={(v) => setForm({ ...form, unit: v })}>
-                          <SelectTrigger className="h-11 bg-white"><SelectValue /></SelectTrigger>
+                        <Select value={form.unit || "none"} onValueChange={(v) => setForm({ ...form, unit: v === "none" ? "" : v })}>
+                          <SelectTrigger className="h-11 bg-white">
+                            <SelectValue placeholder={form.type === "service" ? "None (Blank)" : "Pieces (PCS)"} />
+                          </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="none">None (Blank)</SelectItem>
                             {COMMON_UNITS.map(u => (
                               <SelectItem key={u} value={u}>{u.toUpperCase()}</SelectItem>
                             ))}

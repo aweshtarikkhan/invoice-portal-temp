@@ -1,3 +1,5 @@
+import { INDIAN_STATES } from "@/lib/constants";
+
 // GST Returns computation helpers (India)
 // Reference: GSTR-1 JSON schema v3 (offline tool)
 
@@ -47,6 +49,127 @@ export function stateCodeFromGstin(gstin?: string | null): string | null {
   if (t.length < 2) return null;
   const code = t.slice(0, 2);
   return /^\d{2}$/.test(code) ? code : null;
+}
+
+/**
+ * Normalizes any Indian state input (2-digit code, full name, "Name (Code)", or GSTIN)
+ * into a standard 2-digit GST state code (e.g., "23").
+ */
+export function normalizeStateCode(stateOrGstin?: string | null): string | null {
+  if (!stateOrGstin) return null;
+  const s = String(stateOrGstin).trim();
+  if (!s) return null;
+
+  // 1. If it's a 15-char GSTIN, extract first 2 digits
+  if (s.length === 15) {
+    const code = stateCodeFromGstin(s);
+    if (code) return code;
+  }
+
+  // 2. If it's already a 2-digit numeric code (e.g. "23" or "07")
+  if (/^\d{2}$/.test(s)) return s;
+
+  // 3. If it has parentheses with 2-digit code, e.g. "Madhya Pradesh (23)"
+  const parenMatch = s.match(/\((\d{2})\)/);
+  if (parenMatch) return parenMatch[1];
+
+  // 4. Exact match against INDIAN_STATES by name or code
+  const lower = s.toLowerCase();
+  const matched = INDIAN_STATES.find(
+    (item) => item.name.toLowerCase() === lower || item.code === s
+  );
+  if (matched) return matched.code;
+
+  // 5. Check if string includes any state name from INDIAN_STATES
+  const partial = INDIAN_STATES.find((item) => lower.includes(item.name.toLowerCase()));
+  if (partial) return partial.code;
+
+  // 6. Look for any 2-digit code within the string (01 to 38, or 97)
+  const numMatch = s.match(/\b(\d{2})\b/);
+  if (numMatch) {
+    const num = Number(numMatch[1]);
+    if ((num >= 1 && num <= 38) || num === 97) return numMatch[1];
+  }
+
+  return s;
+}
+
+/**
+ * Returns formatted state name with code, e.g. "Madhya Pradesh (23)"
+ */
+export function formatStateWithCode(stateOrCode?: string | null): string {
+  if (!stateOrCode) return "";
+  const code = normalizeStateCode(stateOrCode);
+  if (code) {
+    const found = INDIAN_STATES.find((item) => item.code === code);
+    if (found) return `${found.name} (${found.code})`;
+  }
+  return String(stateOrCode);
+}
+
+/**
+ * Extracts normalized 2-digit state code from any entity (organization, client, vendor)
+ * inspecting GSTIN, billing_address, address, shipping_address, or state property.
+ */
+export function extractEntityState(entity?: any): string | null {
+  if (!entity) return null;
+
+  // 1. Check GSTIN / tax_number
+  if (entity.tax_number) {
+    const code = stateCodeFromGstin(entity.tax_number);
+    if (code) return code;
+  }
+  if (entity.gst_number) {
+    const code = stateCodeFromGstin(entity.gst_number);
+    if (code) return code;
+  }
+
+  // 2. Helper to extract state from an address field (which might be an object or JSON string)
+  const parseAddress = (addr: any): string | null => {
+    if (!addr) return null;
+    let obj = addr;
+    if (typeof addr === "string") {
+      try {
+        obj = JSON.parse(addr);
+      } catch {
+        // Plain text address like "Indore, Madhya Pradesh - 452001"
+        return normalizeStateCode(addr);
+      }
+    }
+    if (obj && typeof obj === "object") {
+      return obj.state || obj.state_code || obj.stateName || null;
+    }
+    return null;
+  };
+
+  // 3. Check billing_address
+  const billingState = parseAddress(entity.billing_address);
+  if (billingState) {
+    const norm = normalizeStateCode(billingState);
+    if (norm) return norm;
+  }
+
+  // 4. Check address
+  const addrState = parseAddress(entity.address);
+  if (addrState) {
+    const norm = normalizeStateCode(addrState);
+    if (norm) return norm;
+  }
+
+  // 5. Check shipping_address
+  const shippingState = parseAddress(entity.shipping_address);
+  if (shippingState) {
+    const norm = normalizeStateCode(shippingState);
+    if (norm) return norm;
+  }
+
+  // 6. Direct state property
+  if (entity.state) {
+    const norm = normalizeStateCode(entity.state);
+    if (norm) return norm;
+  }
+
+  return null;
 }
 
 /** Format YYYY-MM-DD to GSTR-1 date format DD-MM-YYYY. */

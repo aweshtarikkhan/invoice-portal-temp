@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, Users, Truck, CheckCircle2, AlertCircle } from "lucide-react";
+import { Upload, Users, Truck, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
 import { parseTallyOutstandingReport, ParsedTallyParty, TallySyncType } from "@/lib/tally-sync-parser";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -193,7 +193,11 @@ setSyncResult({ parties: partiesAdded, invoices: invoicesAdded, payments: paymen
   return (
     <div className="container mx-auto p-6 max-w-5xl">
       <SEO title="Tally Master Sync" />
-      <PageHeader title="Tally Master Sync" description="Import Clients, Vendors, Sales, Purchases, and Payments directly from Tally Outstanding Reports." />
+      <PageHeader title="Tally Master Sync" description="Import Clients, Vendors, Sales, Purchases, and Payments directly from Tally Outstanding Reports.">
+        <Button variant="outline" size="sm" onClick={() => navigate("/invoices")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Invoices
+        </Button>
+      </PageHeader>
 
       {syncResult ? (
         <Card className="mt-6 border-success bg-success/5">

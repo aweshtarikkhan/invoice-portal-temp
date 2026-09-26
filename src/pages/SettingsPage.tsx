@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { CURRENCIES } from "@/lib/currency";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
@@ -23,8 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell, Landmark, CreditCard, Pencil, LogOut } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -32,17 +30,18 @@ import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
 import { WhatsAppSettingsTab } from "@/components/settings/WhatsAppSettingsTab";
+import SupportPage from "@/pages/SupportPage";
 
 
 
 export default function SettingsPage() {
   const org = useAppStore((s) => s.organization);
   const setOrganization = useAppStore((s) => s.setOrganization);
-  const { profile, user } = useAuth();
+  const { profile, user, signOut } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get("tab") || "organization";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get("tab") || "organization";
   const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
@@ -74,6 +73,25 @@ export default function SettingsPage() {
   const [taxDialogOpen, setTaxDialogOpen] = useState(false);
   const [taxForm, setTaxForm] = useState({ name: "", rate: 0, is_default: false });
 
+  // Bank accounts
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [bankDialogOpen, setBankDialogOpen] = useState(false);
+  const [editBankId, setEditBankId] = useState<string | null>(null);
+  const [bankForm, setBankForm] = useState({
+    bank_name: "", account_holder_name: "", account_number: "", ifsc: "", branch: "", upi_id: ""
+  });
+  const [bankSaving, setBankSaving] = useState(false);
+
+  const fetchBankAccounts = async () => {
+    if (!org?.id) return;
+    const { data } = await supabase.from("bank_accounts").select("*").eq("org_id", org.id).order("created_at", { ascending: false });
+    setBankAccounts(data || []);
+  };
+
+  useEffect(() => {
+    fetchBankAccounts();
+  }, [org?.id]);
+
   useEffect(() => {
     if (profile) {
       setProfileForm({
@@ -89,7 +107,7 @@ export default function SettingsPage() {
     setOrgForm({
       name: org.name || "", email: org.email || "", phone: org.phone || "",
       website: org.website || "", logo_url: org.logo_url || "", tax_number: org.tax_number || "", tax_name: org.tax_number || "",
-      currency_code: org.currency_code || "INR", invoice_prefix: org.invoice_prefix || "INV",
+      currency_code: "INR", invoice_prefix: org.invoice_prefix || "INV",
       payment_terms: org.payment_terms || 30, default_notes: org.default_notes || "",
       default_terms: org.default_terms || "",
       address: (org.address as any) || { street: "", city: "", state: "", zip: "", country: "" },
@@ -213,6 +231,76 @@ export default function SettingsPage() {
   };
 
 
+  const handleEditBankAccount = (account: any) => {
+    let notesData = {};
+    try {
+      if (account.notes) notesData = JSON.parse(account.notes);
+    } catch (e) {}
+    
+    setBankForm({
+      bank_name: account.bank_name || "",
+      account_holder_name: account.name || "",
+      account_number: account.account_number || "",
+      ifsc: account.ifsc || "",
+      branch: (notesData as any).branch || "",
+      upi_id: account.upi_id || "",
+    });
+    setEditBankId(account.id);
+    setBankDialogOpen(true);
+  };
+
+  const deleteBankAccount = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this bank account?")) return;
+    await supabase.from("bank_accounts").delete().eq("id", id);
+    fetchBankAccounts();
+    toast({ title: "Bank account deleted" });
+  };
+
+  const saveBankAccount = async () => {
+    if (!org?.id || !bankForm.account_holder_name) {
+      toast({ title: "Error", description: "Account Holder Name is required.", variant: "destructive" });
+      return;
+    }
+    setBankSaving(true);
+    
+    const notesStr = JSON.stringify({
+      branch: bankForm.branch,
+      account_holder_name: bankForm.account_holder_name
+    });
+
+    const payload = {
+      org_id: org.id,
+      name: bankForm.account_holder_name,
+      bank_name: bankForm.bank_name,
+      account_number: bankForm.account_number,
+      ifsc: bankForm.ifsc,
+      upi_id: bankForm.upi_id,
+      notes: notesStr,
+      is_active: true,
+      account_type: "Current"
+    };
+
+    let err;
+    if (editBankId) {
+      const { error } = await supabase.from("bank_accounts").update(payload).eq("id", editBankId);
+      err = error;
+    } else {
+      const { error } = await supabase.from("bank_accounts").insert(payload);
+      err = error;
+    }
+
+    setBankSaving(false);
+    if (err) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } else {
+      setBankDialogOpen(false);
+      setEditBankId(null);
+      setBankForm({ bank_name: "", account_holder_name: "", account_number: "", ifsc: "", branch: "", upi_id: "" });
+      fetchBankAccounts();
+      toast({ title: editBankId ? "Bank account updated!" : "Bank account added!" });
+    }
+  };
+
   const saveTaxRate = async () => {
     if (!taxForm.name.trim()) return;
     const { error } = await supabase.from("tax_rates").insert({
@@ -242,15 +330,15 @@ export default function SettingsPage() {
       <SEO title="Settings" description="Configure organization details, currency, tax rates, branding and document preferences." path="/settings" />
       <PageHeader title="Settings" description="Manage your organization and preferences" />
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList>
+      <Tabs value={currentTab} onValueChange={(tab) => setSearchParams({ tab })}>
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1.5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="organization">Organization</TabsTrigger>
           <TabsTrigger value="email">Email Settings</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
-          
+          <TabsTrigger value="support">Help & Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="email" className="space-y-6 mt-4">
@@ -327,6 +415,34 @@ export default function SettingsPage() {
 
               <Button onClick={saveProfile} disabled={profileSaving}>
                 {profileSaving ? "Saving..." : "Save Profile"}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="border-red-200/60 dark:border-red-900/40">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2 text-red-600 dark:text-red-400">
+                <LogOut className="h-5 w-5" /> Account Session & Sign Out
+              </CardTitle>
+              <CardDescription>
+                Sign out of your active session on this device. You will need to log back in with your credentials.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Logged in as {user?.email}</p>
+                <p className="text-xs text-muted-foreground">Session is secure and active</p>
+              </div>
+              <Button 
+                variant="destructive" 
+                onClick={async () => {
+                  await signOut();
+                  navigate("/login");
+                }}
+                className="gap-2 font-medium shrink-0"
+              >
+                <LogOut className="h-4 w-4" />
+                Sign Out
               </Button>
             </CardContent>
           </Card>
@@ -414,27 +530,39 @@ export default function SettingsPage() {
                 <Label>Street Address</Label>
                 <Input value={orgForm.address.street} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, street: e.target.value } })} />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="space-y-2">
                   <Label>City</Label>
-                  <Input value={orgForm.address.city} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, city: e.target.value } })} />
+                  <Input placeholder="City" value={orgForm.address.city} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, city: e.target.value } })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>PIN Code</Label>
+                  <Input 
+                    placeholder="e.g. 462001" 
+                    maxLength={6} 
+                    value={orgForm.address.zip || ""} 
+                    onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, zip: e.target.value.replace(/\D/g, '') } })} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>State (GST Code)</Label>
-                  <Select value={orgForm.address.state} onValueChange={(val) => setOrgForm({ ...orgForm, address: { ...orgForm.address, state: val } })}>
+                  <Select 
+                    value={INDIAN_STATES.find(s => s.code === orgForm.address.state || s.name.toLowerCase() === (orgForm.address.state || "").toLowerCase())?.code || orgForm.address.state} 
+                    onValueChange={(val) => setOrgForm({ ...orgForm, address: { ...orgForm.address, state: val } })}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select State" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60">
                       {INDIAN_STATES.map((st) => (
-                        <SelectItem key={st.code} value={st.code}>{st.code} - {st.name}</SelectItem>
+                        <SelectItem key={st.code} value={st.code}>{st.name} ({st.code})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Country</Label>
-                  <Input value={orgForm.address.country} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, country: e.target.value } })} />
+                  <Input placeholder="Country" value={orgForm.address.country || "India"} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, country: e.target.value } })} />
                 </div>
               </div>
               {/* Tax Name and Tax Number removed as per request */}
@@ -448,19 +576,10 @@ export default function SettingsPage() {
             <TabsList>
               <TabsTrigger value="preferences">Preferences</TabsTrigger>
               <TabsTrigger value="defaults">Defaults & Numbering</TabsTrigger>
+              <TabsTrigger value="bank-accounts">Bank Accounts</TabsTrigger>
             </TabsList>
 
             <TabsContent value="preferences" className="space-y-6 mt-4">
-              <Card>
-                <CardHeader><CardTitle className="text-base">General</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center gap-3">
-                    <Checkbox id="edit-sent" />
-                    <Label htmlFor="edit-sent">Allow editing of Sent Invoice?</Label>
-                  </div>
-                </CardContent>
-              </Card>
-
               <Card>
                 <CardHeader><CardTitle className="text-base">Payments</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
@@ -531,25 +650,6 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader><CardTitle className="text-base">QR Code & UPI Payment</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Embed QR Code</Label>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">Add a UPI payment QR code to invoices with exact invoice amount</p>
-                    </div>
-                    <Switch checked={orgForm.qr_code_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, qr_code_enabled: v })} />
-                  </div>
-                  {orgForm.qr_code_enabled && (
-                    <div className="space-y-2">
-                      <Label>UPI ID</Label>
-                      <Input value={orgForm.upi_id} onChange={(e) => setOrgForm({ ...orgForm, upi_id: e.target.value })} placeholder="e.g. yourname@upi or 9999999999@paytm" />
-                      <p className="text-xs text-slate-600 dark:text-slate-300">Enter your UPI ID to generate payment QR codes on invoices with the exact balance amount</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
 
               <Card>
                 <CardHeader><CardTitle className="text-base">Inventory Management</CardTitle></CardHeader>
@@ -645,24 +745,13 @@ export default function SettingsPage() {
               <Card>
                 <CardHeader><CardTitle className="text-base">Invoice Defaults</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="col-span-3 space-y-2 mb-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="col-span-1 md:col-span-2 space-y-2 mb-2">
                       <Label>Invoice Number Format</Label>
                       <Input value={orgForm.invoice_prefix} onChange={(e) => setOrgForm({ ...orgForm, invoice_prefix: e.target.value })} placeholder="e.g. INV-{YYYY}-{NNNN}" />
                       <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                         Use placeholders to create a custom format. E.g. <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">INV-{`{YYYY}`}-{`{NNNN}`}</code> produces INV-2024-0001, <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">SALES-{`{YY}`}-{`{NN}`}</code> produces SALES-24-01. If no placeholders are used, we append the year and number automatically.
                       </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Currency</Label>
-                      <Select value={orgForm.currency_code} onValueChange={(v) => setOrgForm({ ...orgForm, currency_code: v })}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {CURRENCIES.map((c) => (
-                            <SelectItem key={c.code} value={c.code}>{c.code} — {c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
                     </div>
                     <div className="space-y-2">
                       <Label>Payment Terms (days)</Label>
@@ -674,6 +763,120 @@ export default function SettingsPage() {
               </Card>
             </TabsContent>
             
+            <TabsContent value="bank-accounts" className="space-y-6 mt-4">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Bank Accounts</CardTitle>
+                    <CardDescription className="text-xs">Manage bank details displayed on your invoices</CardDescription>
+                  </div>
+                  <Button size="sm" onClick={() => {
+                    setBankForm({ bank_name: "", account_holder_name: "", account_number: "", ifsc: "", branch: "", upi_id: "" });
+                    setEditBankId(null);
+                    setBankDialogOpen(true);
+                  }}>
+                    <Plus className="mr-1 h-4 w-4" /> Add Bank Account
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {bankAccounts.length === 0 ? (
+                    <div className="p-8 text-center text-sm text-muted-foreground">
+                      No bank accounts added. Click 'Add Bank Account' to add one.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {bankAccounts.map((account) => {
+                        let notesData = { branch: "" };
+                        try {
+                          if (account.notes) notesData = JSON.parse(account.notes);
+                        } catch (e) {}
+                        
+                        return (
+                          <div key={account.id} className="p-4 rounded-xl border bg-slate-50 dark:bg-slate-900 relative">
+                            <div className="absolute top-4 right-4 flex gap-2">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditBankAccount(account)}>
+                                <Pencil className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => deleteBankAccount(account.id)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600">
+                                <Landmark className="h-5 w-5" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold">{account.bank_name || "Unknown Bank"}</h4>
+                                <p className="text-xs text-muted-foreground">{account.name}</p>
+                              </div>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <div className="grid grid-cols-3 gap-1">
+                                <span className="text-muted-foreground">Account:</span>
+                                <span className="col-span-2 font-mono">
+                                  {account.account_number ? `••••${account.account_number.slice(-4)}` : "—"}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                <span className="text-muted-foreground">IFSC:</span>
+                                <span className="col-span-2 font-mono">{account.ifsc || "—"}</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-1">
+                                <span className="text-muted-foreground">Branch:</span>
+                                <span className="col-span-2">{notesData.branch || "—"}</span>
+                              </div>
+                              {account.upi_id && (
+                                <div className="grid grid-cols-3 gap-1">
+                                  <span className="text-muted-foreground">UPI ID:</span>
+                                  <span className="col-span-2">{account.upi_id}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Dialog open={bankDialogOpen} onOpenChange={setBankDialogOpen}>
+                <DialogContent>
+                  <DialogHeader><DialogTitle>{editBankId ? "Edit Bank Account" : "Add Bank Account"}</DialogTitle></DialogHeader>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 col-span-2">
+                      <Label>Account Holder Name *</Label>
+                      <Input value={bankForm.account_holder_name} onChange={(e) => setBankForm({ ...bankForm, account_holder_name: e.target.value })} placeholder="Business Name or Individual Name" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Bank Name</Label>
+                      <Input value={bankForm.bank_name} onChange={(e) => setBankForm({ ...bankForm, bank_name: e.target.value })} placeholder="e.g. HDFC Bank" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Account Number</Label>
+                      <Input value={bankForm.account_number} onChange={(e) => setBankForm({ ...bankForm, account_number: e.target.value })} placeholder="Account Number" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>IFSC Code</Label>
+                      <Input value={bankForm.ifsc} onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value.toUpperCase() })} placeholder="e.g. HDFC0001234" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Branch</Label>
+                      <Input value={bankForm.branch} onChange={(e) => setBankForm({ ...bankForm, branch: e.target.value })} placeholder="Branch Location" />
+                    </div>
+                    <div className="space-y-2 col-span-2">
+                      <Label>UPI ID (Optional)</Label>
+                      <Input value={bankForm.upi_id} onChange={(e) => setBankForm({ ...bankForm, upi_id: e.target.value })} placeholder="e.g. yourname@upi" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setBankDialogOpen(false)} disabled={bankSaving}>Cancel</Button>
+                    <Button onClick={saveBankAccount} disabled={bankSaving}>{bankSaving ? "Saving..." : "Save"}</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            </TabsContent>
+
         </Tabs>
         </TabsContent>
 
@@ -794,6 +997,10 @@ export default function SettingsPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+        </TabsContent>
+
+        <TabsContent value="support" className="space-y-6 mt-4">
+          <SupportPage />
         </TabsContent>
         
         </Tabs>

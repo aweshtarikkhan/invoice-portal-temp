@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,11 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, MessageSquare, Search, Clock, CheckCircle2, Ticket, X, RefreshCw } from "lucide-react";
+import { Plus, MessageSquare, Search, Clock, CheckCircle2, Ticket, X, RefreshCw, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SupportTicketsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -194,14 +196,19 @@ export default function SupportTicketsPage() {
   return (
     <>
       <div className="flex-1 space-y-6 p-8 bg-slate-50 overflow-y-auto h-[calc(100vh-4rem)]">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Support Tickets</h1>
             <p className="text-muted-foreground mt-1">Manage customer issues and support requests.</p>
           </div>
-          <Button onClick={() => setIsNewTicketOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" /> New Ticket
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <Button onClick={() => setIsNewTicketOpen(true)} className="gap-2" size="sm">
+              <Plus className="w-4 h-4" /> New Ticket
+            </Button>
+          </div>
         </div>
 
         <Card className="border-slate-200/60 shadow-sm rounded-2xl">

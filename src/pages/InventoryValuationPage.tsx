@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { SEO } from "@/components/shared/SEO";
 import { formatCurrency } from "@/lib/currency";
-import { Boxes, Layers, Hash, PackageSearch, TrendingUp, TrendingDown, BarChart3 } from "lucide-react";
+import { Boxes, Layers, Hash, PackageSearch, TrendingUp, TrendingDown, BarChart3, ArrowLeft } from "lucide-react";
 
 interface MovementRow {
   item_id: string;
@@ -22,6 +24,7 @@ interface MovementRow {
 }
 
 export default function InventoryValuationPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const cur = (org as any)?.currency || "INR";
   const [movements, setMovements] = useState<MovementRow[]>([]);
@@ -132,7 +135,11 @@ export default function InventoryValuationPage() {
       <PageHeader
         title="Inventory Valuation"
         description="Analyze stock value using different costing methods"
-      />
+      >
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

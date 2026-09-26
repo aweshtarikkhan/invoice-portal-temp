@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -6,7 +7,7 @@ import { SEO } from "@/components/shared/SEO";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, FileText, Calculator, CheckCircle2 } from "lucide-react";
+import { Download, FileText, Calculator, CheckCircle2, ArrowLeft } from "lucide-react";
 import { format, isWithinInterval, parseISO } from "date-fns";
 import { downloadCSV } from "@/lib/export-csv";
 import { formatCurrency } from "@/lib/currency";
@@ -19,6 +20,7 @@ const MONTHS = [
 ];
 
 export default function GSTReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   
@@ -149,7 +151,11 @@ export default function GSTReportsPage() {
       <PageHeader 
         title="GST Returns (Offline Export)" 
         description="Generate CA-friendly Master Registers for GSTR-1 & ITC matching without any API keys." 
-      />
+      >
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </PageHeader>
 
       <div className="flex items-center gap-4 bg-muted/30 p-4 rounded-lg border">
         <div className="flex items-center gap-2">

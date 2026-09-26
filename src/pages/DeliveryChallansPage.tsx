@@ -65,14 +65,25 @@ export default function DeliveryChallansPage() {
 
 
 
+  const formatLocation = (loc: any): string => {
+    if (!loc) return "";
+    if (typeof loc === "string") return loc;
+    if (typeof loc === "object") {
+      return [loc.street, loc.city, loc.state, loc.zip || loc.pincode, loc.country].filter(Boolean).join(", ");
+    }
+    return String(loc);
+  };
+
   const filteredRows = useMemo(() => {
     return rows.filter((r) => {
       const matchStatus = statusFilter === "all" || r.status === statusFilter;
       const q = search.toLowerCase();
+      const destStr = formatLocation(r.destination).toLowerCase();
       const matchQuery =
         !q ||
         r.challan_number?.toLowerCase().includes(q) ||
         r.clients?.display_name?.toLowerCase().includes(q) ||
+        destStr.includes(q) ||
         r.vehicle_number?.toLowerCase().includes(q) ||
         r.transporter?.toLowerCase().includes(q) ||
         r.driver_name?.toLowerCase().includes(q) ||
@@ -220,7 +231,7 @@ export default function DeliveryChallansPage() {
                       <TableCell>
                         <div className="font-medium">{r.clients?.display_name || "—"}</div>
                         {r.destination && (
-                          <div className="text-[11px] text-muted-foreground">{r.destination}</div>
+                          <div className="text-[11px] text-muted-foreground">{formatLocation(r.destination)}</div>
                         )}
                       </TableCell>
                       <TableCell>
@@ -298,7 +309,7 @@ export default function DeliveryChallansPage() {
             driver_name: selectedChallan.driver_name,
             driver_phone: selectedChallan.driver_phone,
             eway_bill_number: selectedChallan.eway_bill_number,
-            destination: selectedChallan.destination,
+            destination: formatLocation(selectedChallan.destination),
             notes: selectedChallan.notes,
           }}
           lines={(selectedChallan.delivery_challan_lines || []).map((l: any) => ({

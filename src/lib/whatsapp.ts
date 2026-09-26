@@ -122,5 +122,9 @@ export function compileWhatsappMessage(template: string, data: Record<string, an
   // Clean up any unreplaced placeholders
   result = result.replace(/{{[^}]+}}/g, '');
   
+  if (data.portal_link && !result.includes(data.portal_link)) {
+    result += `\n\nLink: ${data.portal_link}`;
+  }
+  
   return result.trim();
 }

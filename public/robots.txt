@@ -16,4 +16,4 @@ Disallow: /portal/
 Disallow: /reset-password
 Disallow: /audit-logs
 
-Sitemap: https://satahinvoice.com/sitemap.xml
+Sitemap: https://aassaybiz.com/sitemap.xml

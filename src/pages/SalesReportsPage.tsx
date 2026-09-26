@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -12,12 +13,13 @@ import {
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TrendingUp, FileText, IndianRupee, PieChart as PieChartIcon, Download } from "lucide-react";
+import { TrendingUp, FileText, IndianRupee, PieChart as PieChartIcon, Download, ArrowLeft } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 export default function SalesReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -111,7 +113,11 @@ export default function SalesReportsPage() {
   return (
     <div className="space-y-6" id="sales-report-page">
       <SEO title="Sales Reports" description="Analyze your sales, revenue, and client metrics." path="/sales-reports" />
-      <PageHeader title="Sales Reports" description="Key performance indicators and sales analytics" />
+      <PageHeader title="Sales Reports" description="Key performance indicators and sales analytics">
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </PageHeader>
 
       <div className="flex items-center gap-3">
         <Select value={period} onValueChange={setPeriod}>

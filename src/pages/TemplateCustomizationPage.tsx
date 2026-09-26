@@ -1,5 +1,6 @@
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -13,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Check, FileText, Palette } from "lucide-react";
+import { Upload, Check, FileText, Palette, ArrowLeft } from "lucide-react";
 import { PAPER_SIZES } from "@/lib/document-templates";
 
 const TEMPLATE_STYLES = [
@@ -117,6 +118,7 @@ export default function TemplateCustomizationPage() {
   const org = useAppStore((s) => s.organization);
   const setOrganization = useAppStore((s) => s.setOrganization);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const [style, setStyle] = useState("standard_gst");
   const [accentColor, setAccentColor] = useState("#2563eb");
@@ -182,6 +184,9 @@ export default function TemplateCustomizationPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       <PageHeader title="Template Customization" description="Customize the look of your invoices, estimates, and credit notes">
+        <Button variant="outline" size="sm" onClick={() => navigate("/templates")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Templates
+        </Button>
         <Button onClick={handleSave}>Save Changes</Button>
       </PageHeader>
 

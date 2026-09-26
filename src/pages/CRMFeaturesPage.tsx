@@ -128,11 +128,6 @@ export default function CRMFeaturesPage() {
 
             {/* RIGHT: Copy */}
             <div className="order-1 lg:order-2 flex flex-col justify-center py-12 lg:py-0">
-              <div className="inline-flex items-center gap-2 mb-5 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs font-bold tracking-widest uppercase w-fit">
-                <Target className="h-3.5 w-3.5" />
-                CRM & SALES PIPELINE
-              </div>
-
               <h1 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 leading-[2.86] mb-5">
                 <span className="whitespace-nowrap inline-block">Capture Every Lead.</span>
                 <br />

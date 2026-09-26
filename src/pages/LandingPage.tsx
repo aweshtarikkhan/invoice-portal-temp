@@ -7,11 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   Fingerprint, Check, X, Zap, Shield, Smartphone, FileText, IndianRupee,
-  MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package,
+  MessageCircle, Star, ArrowRight, Sparkles, BarChart3, Package, Boxes, ClipboardList,
   Globe, PlayCircle, ShieldCheck, Building2, Quote, Timer, Users, Layers,
   Calculator, UserCheck, Megaphone, BrainCircuit, Link2,
   Gift, Crown, Bell, Target, MessageSquare, Clock,
-  Plus, Minus,
+  Plus, Minus, Bot,
 } from "lucide-react";
 import logoImg from "@/assets/logo.png";
 import { PublicHeader } from "@/components/public/PublicHeader";
@@ -29,7 +29,7 @@ const t = {
     nav_features: "Features", nav_pricing: "Pricing", nav_compare: "Compare", nav_login: "Sign in",
     hero_eyebrow: "Built for Indian SMBs · 100% GST Ready",
     hero_title: "Send GST invoices in 30 seconds.",
-    hero_sub: "Aassay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place.",
+    hero_sub: "Aassay Biz is the fastest GST-compliant billing software for shopkeepers, freelancers and growing businesses. Create, share and get paid — all in one place",
     cta_primary: "Create your first invoice — Free",
     cta_secondary: "Watch 60-sec demo",
     trust_users: "Businesses Trust Us",
@@ -40,23 +40,23 @@ const t = {
     no_card_badge: "No credit card needed",
     badges_title: "Built for India. Verified for GST.",
     feat_title: "Everything you need to run your business",
-    feat_sub: "Invoicing, inventory, GST returns, payments — no spreadsheets required.",
+    feat_sub: "Invoicing, inventory, GST returns, payments — no spreadsheets required",
     wa_eyebrow: "Instant Sharing",
     wa_title: "Send invoices instantly. Get paid 2x faster.",
-    wa_sub: "One tap to share a polished PDF with a UPI QR. Your customers pay instantly — no app downloads, no logins.",
+    wa_sub: "One tap to share a polished PDF with a UPI QR. Your customers pay instantly — no app downloads, no logins",
     wa_bullets: ["1-tap share with PDF + UPI QR", "Auto payment reminders for overdue invoices", "Customer portal — pay without sign-up"],
     cmp_title: "Why teams switch to Aassay Biz",
-    cmp_sub: "Honest comparison with the tools you're probably using today.",
+    cmp_sub: "Honest comparison with the tools you're probably using today",
     test_title: "our business made more then 12,000 invoices",
     pricing_title: "Simple pricing. No surprises.",
-    pricing_sub: "Start free forever. Upgrade only when you grow.",
+    pricing_sub: "Start free forever. Upgrade only when you grow",
     pricing_cta_free: "Start Free",
   },
   hi: {
     nav_features: "फीचर्स", nav_pricing: "प्राइसिंग", nav_compare: "तुलना", nav_login: "साइन इन",
     hero_eyebrow: "भारतीय व्यापारियों के लिए · 100% GST रेडी",
     hero_title: "30 सेकंड में GST बिल भेजें।",
-    hero_sub: "Aassay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह।",
+    hero_sub: "Aassay Biz भारत का सबसे तेज़ GST बिलिंग सॉफ़्टवेयर है — दुकानदार, फ्रीलांसर और बढ़ते बिज़नेस के लिए। बिल बनाओ, भेजो, पेमेंट लो — एक ही जगह",
     cta_primary: "अभी मुफ़्त बिल बनाएं",
     cta_secondary: "60-सेकंड डेमो देखें",
     trust_users: "बिज़नेस का भरोसा",
@@ -67,16 +67,16 @@ const t = {
     no_card_badge: "कोई क्रेडिट कार्ड नहीं चाहिए",
     badges_title: "भारत के लिए बना। GST के लिए वेरिफ़ाइड।",
     feat_title: "आपके बिज़नेस के लिए सब कुछ — एक ही जगह",
-    feat_sub: "बिलिंग, स्टॉक, GST रिटर्न, पेमेंट — कोई एक्सेल नहीं चाहिए।",
+    feat_sub: "बिलिंग, स्टॉक, GST रिटर्न, पेमेंट — कोई एक्सेल नहीं चाहिए",
     wa_eyebrow: "इंस्टेंट शेयर",
     wa_title: "बिल भेजें। 2x तेज़ पेमेंट पाएं।",
-    wa_sub: "एक टैप में PDF + UPI QR के साथ बिल भेजें। कस्टमर तुरंत पेमेंट करें — कोई ऐप या लॉगिन नहीं।",
+    wa_sub: "एक टैप में PDF + UPI QR के साथ बिल भेजें। कस्टमर तुरंत पेमेंट करें — कोई ऐप या लॉगिन नहीं",
     wa_bullets: ["1-टैप शेयर — PDF + UPI QR के साथ", "ओवरड्यू बिल के लिए ऑटो रिमाइंडर", "कस्टमर पोर्टल — बिना साइन-अप पेमेंट"],
     cmp_title: "लोग Aassay Biz क्यों चुनते हैं",
-    cmp_sub: "जो टूल्स आप आज इस्तेमाल कर रहे हैं उनसे ईमानदार तुलना।",
+    cmp_sub: "जो टूल्स आप आज इस्तेमाल कर रहे हैं उनसे ईमानदार तुलना",
     test_title: "our business made more then 12,000 invoices",
     pricing_title: "सीधी प्राइसिंग। कोई छुपा शुल्क नहीं।",
-    pricing_sub: "हमेशा के लिए मुफ़्त शुरू करें। बढ़ने पर ही अपग्रेड करें।",
+    pricing_sub: "हमेशा के लिए मुफ़्त शुरू करें। बढ़ने पर ही अपग्रेड करें",
     pricing_cta_free: "मुफ़्त शुरू करें",
   },
 };
@@ -86,8 +86,8 @@ const hrBadges = [
   "GPS Attendance",
   "Employee Self-Service Portal",
   "1-Click Payroll & Payslips",
-  "WhatsApp Slip Delivery",
-  "Overtime & Late Penalty Rules",
+  "Internal Team Chat",
+  "Track Overtime",
   "Multi-Shift & Leave Roster",
 ];
 const hrEmployees = [
@@ -101,10 +101,10 @@ const hrEmployees = [
 const crmBadges = [
   "Multi-Source Lead Capture",
   "Visual Kanban Deal Stages",
-  "WhatsApp Quick Follow-up",
-  "Lead Auto-Assignment",
+  "Lead to Client Conversion",
+  "IndiaMART & Justdial Sync",
   "Call Logs & Reminders",
-  "Client 360° History",
+  "CRM Reports & Analytics",
 ];
 const crmPipeline = [
   { stage: "New Leads",    count: 12, color: "bg-[#28166f]",    leads: [
@@ -131,10 +131,10 @@ const crmUpcoming = [
 ];
 
 const mktBadges = [
-  "Bulk WhatsApp Broadcasts",
-  "Auto Festive Poster Maker",
+  "Automated Customer Journey",
+  "Pre-Approved Message Templates",
   "Logo & QR Branded Creatives",
-  "Printable Brochure & Pamphlet Maker",
+  "Promotion Reports & Analytics",
   "Inactive Client Retargeting",
   "Multi-Channel WhatsApp & Email Campaigns",
 ];
@@ -152,8 +152,8 @@ const mktPosterTitles = ["Diwali Offer 🪔", "New Stock In! 📦", "Year End Sa
 const mktPosterDisc   = ["FLAT 30% OFF", "Exclusive Deals", "Upto 50% OFF"];
 const complianceBadges = [
   { icon: ShieldCheck, label: "GST Ready" },
-  { icon: FileText, label: "GSTIN Supported" },
-  { icon: Shield, label: "E-invoice (IRP) Compatible" },
+  { icon: ClipboardList, label: "Create Purchase Order" },
+  { icon: Boxes, label: "Inventory Management" },
   { icon: IndianRupee, label: "UPI / QR Payments" },
   { icon: BarChart3, label: "GSTR-1 & 3B Export" },
   { icon: Building2, label: "Tally CSV Export" },
@@ -163,21 +163,21 @@ const growthFeatures = [
   {
     icon: FileText,
     title: "Invoicing",
-    desc: "Create, send and track invoices easily.",
+    desc: "Create, send and track invoices easily",
     cardBg: "bg-blue-50/50 border-blue-100 hover:bg-blue-600 hover:border-blue-600",
     iconBg: "bg-blue-100/80 text-[#28166f] group-hover:bg-white group-hover:text-[#28166f]",
   },
   {
     icon: Calculator,
     title: "Accounting",
-    desc: "Manage your finances with confidence.",
+    desc: "Manage your finances with confidence",
     cardBg: "bg-emerald-50/40 border-emerald-100 hover:bg-emerald-600 hover:border-emerald-600",
     iconBg: "bg-emerald-100/80 text-[#e77817] group-hover:bg-white group-hover:text-[#e77817]",
   },
   {
     icon: Users,
     title: "CRM",
-    desc: "Build stronger customer relationships.",
+    desc: "Build stronger customer relationships",
     cardBg: "bg-orange-50/50 border-orange-100 hover:bg-[#e77817] hover:border-[#e77817]",
     iconBg: "bg-orange-100/80 text-[#e77817] group-hover:bg-white group-hover:text-[#e77817]",
     route: "/crm",
@@ -185,7 +185,7 @@ const growthFeatures = [
   {
     icon: UserCheck,
     title: "HRMS",
-    desc: "Manage your team, attendance and payroll with ease.",
+    desc: "Manage your team, attendance and payroll with ease",
     cardBg: "bg-purple-50/40 border-purple-100 hover:bg-purple-600 hover:border-purple-600",
     iconBg: "bg-purple-100/80 text-purple-600 group-hover:bg-white group-hover:text-purple-600",
     route: "/hr",
@@ -193,7 +193,7 @@ const growthFeatures = [
   {
     icon: Megaphone,
     title: "Promotion",
-    desc: "Grow your brand with built-in marketing tools.",
+    desc: "Grow your brand with built-in marketing tools",
     cardBg: "bg-rose-50/40 border-rose-100 hover:bg-rose-500 hover:border-rose-500",
     iconBg: "bg-rose-100/80 text-rose-500 group-hover:bg-white group-hover:text-rose-500",
     route: "/marketing",
@@ -201,33 +201,33 @@ const growthFeatures = [
   {
     icon: Star,
     title: "Business Feedback",
-    desc: "Listen, analyze and improve with customer feedback.",
+    desc: "Listen, analyze and improve with customer feedback",
     cardBg: "bg-amber-50/40 border-amber-100 hover:bg-amber-600 hover:border-amber-600",
     iconBg: "bg-amber-100/80 text-amber-600 group-hover:bg-white group-hover:text-amber-600",
   },
   {
     icon: BrainCircuit,
     title: "AI Analysis",
-    desc: "Get smart insights and predictions with AI.",
+    desc: "Get smart insights and predictions with AI",
     cardBg: "bg-cyan-50/40 border-cyan-100 hover:bg-cyan-600 hover:border-cyan-600",
     iconBg: "bg-cyan-100/80 text-cyan-600 group-hover:bg-white group-hover:text-cyan-600",
   },
   {
     icon: Link2,
     title: "Integrations",
-    desc: "Connect with Email, WhatsApp and other tools seamlessly.",
+    desc: "Connect with Email, WhatsApp and other tools seamlessly",
     cardBg: "bg-teal-50/40 border-teal-100 hover:bg-teal-600 hover:border-teal-600",
     iconBg: "bg-teal-100/80 text-teal-600 group-hover:bg-white group-hover:text-teal-600",
   },
 ];
 
 const features = [
-  { icon: Zap, title: "30-second invoicing", desc: "Pre-filled GST rates, HSN lookup, auto-numbering. Done before your chai gets cold." },
-  { icon: MessageCircle, title: "Share + UPI QR", desc: "Send a polished PDF with a UPI QR. Customers pay in one tap." },
-  { icon: Package, title: "Inventory with stock ledger", desc: "Auto-deduct stock on sales, restock on credit notes. Negative-stock warnings." },
-  { icon: FileText, title: "GSTR-1, GSTR-3B, HSN summary", desc: "Generate filing-ready JSON and CSV. Tally export included." },
-  { icon: BarChart3, title: "P&L, receivables, aging", desc: "Know who owes you, what's overdue, and what you actually earned." },
-  { icon: Smartphone, title: "Works offline, installs as app", desc: "PWA — install on phone or laptop. Use it even on a weak network." },
+  { icon: Zap, title: "30-second invoicing", desc: "Pre-filled GST rates, HSN lookup, auto-numbering. Done before your chai gets cold" },
+  { icon: MessageCircle, title: "Share + UPI QR", desc: "Send a polished PDF with a UPI QR. Customers pay in one tap" },
+  { icon: Package, title: "Inventory with stock ledger", desc: "Auto-deduct stock on sales, restock on credit notes. Negative-stock warnings" },
+  { icon: FileText, title: "GSTR-1, GSTR-3B, HSN summary", desc: "Generate filing-ready JSON and CSV. Tally export included" },
+  { icon: BarChart3, title: "P&L, receivables, aging", desc: "Know who owes you, what's overdue, and what you actually earned" },
+  { icon: Smartphone, title: "Works offline, installs as app", desc: "PWA — install on phone or laptop. Use it even on a weak network" },
 ];
 
 
@@ -320,13 +320,13 @@ export default function LandingPage() {
           <div className="lg:col-span-6 text-left flex flex-col justify-center items-start">
             
             {/* Pill Eyebrow */}
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-xs font-bold uppercase tracking-wider mb-5 shadow-xs">
-              <Sparkles className="w-3.5 h-3.5 text-[#e77817] shrink-0" />
+            <div className="inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-slate-100/90 border border-slate-200 text-[#28166f] text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-3 sm:mb-5 shadow-xs whitespace-nowrap">
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#e77817] shrink-0" />
               <span>SIMPLIFY YOUR BUSINESS &bull; AMPLIFY YOUR GROWTH</span>
             </div>
 
             {/* Main Headline: Fluid dynamic responsive font sizing by screen size, exactly 2 lines with balanced line gap */}
-            <h1 className="flex flex-col gap-3 sm:gap-4 lg:gap-5 text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-[1.75] text-slate-900 mb-6">
+            <h1 className="flex flex-col gap-[3px] lg:gap-[22px] text-3xl sm:text-4xl md:text-[44px] lg:text-[42px] xl:text-[50px] 2xl:text-[56px] font-black tracking-tight leading-snug text-slate-900 mb-3 sm:mb-5">
               <span className="block sm:whitespace-nowrap">
                 Everything you{" "}
                 <span className="bg-gradient-to-r from-[#28166f] via-[#7b2cbf] to-[#e77817] bg-clip-text text-transparent">
@@ -342,8 +342,8 @@ export default function LandingPage() {
             </h1>
 
             {/* Subtitle description */}
-            <p className="text-base sm:text-lg lg:text-xl text-slate-600 leading-relaxed mb-8 max-w-xl font-normal">
-              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis — everything your business needs
+            <p className="text-sm sm:text-lg lg:text-xl text-slate-600 leading-snug sm:leading-relaxed mb-5 sm:mb-8 max-w-xl font-normal">
+              Invoicing, Accounting, CRM, HRMS, Marketing, Feedback, AI Analysis — everything your business need
             </p>
 
             {/* Enlarged Prominent CTA Button */}
@@ -418,7 +418,7 @@ export default function LandingPage() {
               Everything You Need to Grow
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-relaxed">
-              All essential business tools together, so you can save time, reduce complexity and focus on what matters most — your growth.
+              All essential business tools together, so you can save time, reduce complexity and focus on what matters most — your growth
             </p>
           </div>
 
@@ -458,22 +458,18 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-[#e77817]/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs">
-              <MessageCircle className="h-4 w-4 text-[#ff9438]" />
-              <span>{L.wa_eyebrow}</span>
-            </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.86]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-snug">
               {lang === "hi" ? (
                 <>
                   <span className="whitespace-nowrap inline-block">बिल भेजें।</span>
                   <br />
-                  <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
+                  <span className="whitespace-nowrap inline-block pt-[3px] lg:pt-[22px] text-[#ff9438]">2x तेज़ पेमेंट पाएं।</span>
                 </>
               ) : (
                 <>
                   <span className="whitespace-nowrap inline-block">Send invoices instantly.</span>
                   <br />
-                  <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">Get paid 2x faster.</span>
+                  <span className="whitespace-nowrap inline-block pt-[3px] lg:pt-[22px] text-[#ff9438]">Get paid 2x faster.</span>
                 </>
               )}
             </h2>
@@ -660,19 +656,15 @@ export default function LandingPage() {
           </div>
           {/* RIGHT: Copy */}
           <div className="order-1 md:order-2 flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <UserCheck className="h-4 w-4" />
-              <span>HR & PAYROLL AUTOMATION</span>
-            </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.86]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-snug">
               <span className="whitespace-nowrap inline-block">Track Attendance.</span>
               <br />
-              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#28166f]">Run Payroll in 60 Seconds.</span>
+              <span className="whitespace-nowrap inline-block pt-[3px] lg:pt-[22px] text-[#28166f]">Run Payroll in 60 Seconds.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
-              Ditch the Excel sheets. Manage real-time GPS attendance, shift schedules,
+              Manage real-time GPS attendance, shift schedules,
               leave approvals, smart payroll, and instant WhatsApp payslips
-              — all in one place.
+              — all in one place
             </p>
             {/* 6 Capability Pills */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
@@ -694,19 +686,15 @@ export default function LandingPage() {
         <div className="mx-auto max-w-6xl px-6 grid md:grid-cols-2 gap-10 lg:gap-14 items-center">
           {/* LEFT: Copy */}
           <div className="flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <Target className="h-4 w-4" />
-              <span>CRM & SALES PIPELINE</span>
-            </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-[2.86]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white !text-white mb-5 leading-snug">
               <span className="whitespace-nowrap inline-block">Capture Every Lead.</span>
               <br />
-              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#ff9438]">Close Deals 3x Faster.</span>
+              <span className="whitespace-nowrap inline-block pt-[3px] lg:pt-[22px] text-[#ff9438]">Close Deals 3x Faster.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-200 leading-[1.7] mb-6 font-normal">
               From lead capture to deal close — manage your entire sales funnel with
               visual Kanban pipelines, automated WhatsApp follow-ups, and
-              real-time deal stage tracking.
+              real-time deal stage tracking
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
               {crmBadges.map((b, i) => (
@@ -862,19 +850,15 @@ export default function LandingPage() {
           </div>
           {/* RIGHT: Copy */}
           <div className="order-1 md:order-2 flex flex-col justify-center">
-            <div className="inline-flex items-center gap-2 mb-4 py-1.5 px-4 rounded-full bg-[#e77817]/10 border border-[#e77817]/30 text-[#e77817] text-xs sm:text-sm font-bold tracking-wide shadow-xs w-fit">
-              <Megaphone className="h-4 w-4" />
-              <span>MARKETING & PROMOTION</span>
-            </div>
-            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-[2.86]">
+            <h2 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-slate-900 mb-5 leading-snug">
               <span className="whitespace-nowrap inline-block">Reach 10,000+ Customers.</span>
               <br />
-              <span className="whitespace-nowrap inline-block pt-1.5 sm:pt-2 text-[#28166f]">Boost Repeat Sales by 40%.</span>
+              <span className="whitespace-nowrap inline-block pt-[3px] lg:pt-[22px] text-[#28166f]">Boost Repeat Sales by 40%.</span>
             </h2>
             <p className="text-base sm:text-lg text-slate-600 leading-[1.7] mb-6 font-normal">
               Turn your customer list into a revenue machine. Create branded
               WhatsApp campaigns, auto-generate festive posters with your logo,
-              and launch promotional campaigns — no designer needed.
+              and launch promotional campaigns — no designer needed
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-3.5 mb-8">
               {mktBadges.map((b, i) => (
@@ -891,7 +875,7 @@ export default function LandingPage() {
       </section>
 
 {/* Pricing */}
-      <section id="pricing" className="pt-24 pb-24 bg-[#fafbfc] relative overflow-hidden">
+      <section id="pricing" className="pt-24 pb-6 bg-[#fafbfc] relative overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent"></div>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
@@ -900,7 +884,7 @@ export default function LandingPage() {
             </Badge>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight text-slate-900 mb-3">{L.pricing_title}</h2>
             <p className="text-sm sm:text-base text-slate-500 max-w-2xl mx-auto">
-              Select one or more plans for your business. Mix and match exactly what you need.
+              Select one or more plans for your business. Mix and match exactly what you need
             </p>
 
             {/* Monthly / Yearly Billing Toggle */}
@@ -995,7 +979,7 @@ export default function LandingPage() {
                             )}
                           </div>
                           <p className="text-xs text-slate-500 mt-1 leading-snug">
-                            Basic invoicing & business features — 100% Free for 6 Months.
+                            Basic invoicing & business features — 100% Free for 6 Months
                           </p>
                         </div>
                       </div>
@@ -1075,7 +1059,7 @@ export default function LandingPage() {
                             <div>
                               <h4 className="text-lg font-black text-slate-900 leading-snug">Business Accounting</h4>
                               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                                Full billing, sales, purchases & inventory management.
+                                Full billing, sales, purchases & inventory management
                               </p>
                             </div>
                           </div>
@@ -1192,7 +1176,7 @@ export default function LandingPage() {
                             <div>
                               <h4 className="text-lg font-black text-slate-900 leading-snug">Business HR</h4>
                               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                                Complete HR solution — attendance, payroll, leaves & shifts.
+                                Complete HR solution — attendance, payroll, leaves & shifts
                               </p>
                             </div>
                           </div>
@@ -1317,7 +1301,7 @@ export default function LandingPage() {
                             <div>
                               <h4 className="text-lg font-black text-slate-900 leading-snug">Business CRM</h4>
                               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                                Manage leads, deals, sales pipeline and customer relationships.
+                                Manage leads, deals, sales pipeline and customer relationships
                               </p>
                             </div>
                           </div>
@@ -1430,7 +1414,7 @@ export default function LandingPage() {
                             <div>
                               <h4 className="text-lg font-black text-slate-900 leading-snug">Business Promotion</h4>
                               <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                                Festival posters, WhatsApp & broadcast marketing campaigns.
+                                Festival posters, WhatsApp & broadcast marketing campaigns
                               </p>
                             </div>
                           </div>
@@ -1525,7 +1509,7 @@ export default function LandingPage() {
                         <div>
                           <h4 className="text-lg font-black text-slate-900 leading-snug">Feedback Management</h4>
                           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                            Collect, manage and analyze customer feedback easily.
+                            Collect, manage and analyze customer feedback easily
                           </p>
                         </div>
                       </div>
@@ -1582,7 +1566,7 @@ export default function LandingPage() {
                         <div>
                           <h4 className="text-lg font-black text-slate-900 leading-snug">Business Analysis</h4>
                           <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
-                            Get actionable insights to grow your business.
+                            Get actionable insights to grow your business
                           </p>
                         </div>
                       </div>
@@ -1756,6 +1740,126 @@ export default function LandingPage() {
               </>
             );
           })()}
+        </div>
+      </section>
+
+      {/* Optimize Your Business with Us - Banner Box (Slim & Compact 50% Height) */}
+      <section className="pt-0 pb-6 sm:pb-8 bg-[#fafbfc] relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden bg-gradient-to-r from-[#1c0d58] via-[#4a1460] to-[#e77817] px-5 py-2.5 sm:px-8 sm:py-3 lg:px-10 lg:py-3 shadow-lg border border-white/10 flex flex-col lg:flex-row items-center justify-between gap-3 lg:gap-6">
+            
+            {/* Ambient background curves & glowing rings */}
+            <div className="absolute -right-20 -top-20 w-64 h-64 rounded-full border border-white/10 pointer-events-none" />
+            <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full border border-white/15 pointer-events-none" />
+            <div className="absolute right-6 top-4 w-40 h-40 rounded-full border border-white/20 pointer-events-none" />
+            <div className="absolute top-1/2 right-20 -translate-y-1/2 w-48 h-48 bg-[#ff781f]/25 rounded-full blur-[50px] pointer-events-none" />
+
+            {/* Left Content: Title + Feature Badges (Matched Width Edge-to-Edge) */}
+            <div className="relative z-10 w-fit max-w-full">
+              <h2 className="text-base sm:text-xl md:text-2xl lg:text-[28px] xl:text-[32px] font-black text-white leading-none tracking-normal mb-2.5 sm:mb-3 text-center lg:text-left whitespace-nowrap">
+                Optimize your business <span className="text-[#ff8522]">with us</span>
+              </h2>
+
+              {/* Feature Icon Badges Row (stretches to exact width of the headline) */}
+              <div className="w-full flex items-center justify-between">
+                {/* 1. Invoicing */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-sky-500 to-cyan-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-sky-500 flex items-center justify-center">
+                      <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">Invoicing</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 2. Accounting */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-purple-600 to-fuchsia-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-purple-600 flex items-center justify-center">
+                      <BarChart3 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">Accounting</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 3. CRM */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-pink-600 to-rose-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-pink-600 flex items-center justify-center">
+                      <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">CRM</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 4. HRMS */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-emerald-600 flex items-center justify-center">
+                      <UserCheck className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">HRMS</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 5. Marketing */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-orange-600 to-amber-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-orange-600 flex items-center justify-center">
+                      <Megaphone className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">Marketing</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 6. Feedback */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-amber-500 flex items-center justify-center">
+                      <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white fill-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">Feedback</span>
+                </div>
+
+                <div className="h-4 sm:h-5 w-px bg-white/25 hidden sm:block shrink-0" />
+
+                {/* 7. AI Analysis */}
+                <div className="flex flex-col items-center gap-1 text-center shrink-0">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-400 p-[1.5px] shadow-sm flex items-center justify-center">
+                    <div className="w-full h-full rounded-full bg-indigo-500 flex items-center justify-center">
+                      <Bot className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                    </div>
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-white/95">AI Analysis</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Content: Stretched Pill Contact Us CTA Button */}
+            <div className="relative z-10 shrink-0 lg:mr-6 xl:mr-10">
+              <Link
+                to="/contact"
+                className="group flex items-center justify-between w-[210px] sm:w-[240px] lg:w-[260px] bg-white hover:bg-slate-50 text-[#1b0d59] font-black text-xs sm:text-sm lg:text-base pl-5 sm:pl-6 pr-2 py-2 sm:py-2.5 rounded-full shadow-lg hover:shadow-[0_0_20px_rgba(255,255,255,0.4)] transition-all duration-300 hover:scale-[1.02]"
+              >
+                <span>Contact Us</span>
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-r from-[#e77817] to-[#ff8522] flex items-center justify-center text-white shadow-xs group-hover:translate-x-0.5 transition-transform">
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white stroke-[2.5]" />
+                </div>
+              </Link>
+            </div>
+
+          </div>
         </div>
       </section>
 

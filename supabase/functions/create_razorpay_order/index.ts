@@ -121,7 +121,9 @@ serve(async (req) => {
         employee_count,
         customer_email,
         customer_name,
-        total_amount
+        total_amount,
+        coupon_code,
+        discount_amount
       } = body;
 
       if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -190,12 +192,26 @@ serve(async (req) => {
         p_billing_cycle: billing_cycle || "monthly",
         p_razorpay_order_id: razorpay_order_id,
         p_razorpay_payment_id: razorpay_payment_id,
-        p_employee_count: finalEmpCount
+        p_employee_count: finalEmpCount,
+        p_coupon_code: coupon_code ? String(coupon_code).trim().toUpperCase() : null
       });
 
       if (actError) {
         console.error("activate_org_plans error:", actError);
         throw new Error("Payment verified, but plan activation failed: " + actError.message);
+      }
+
+      if (coupon_code && String(coupon_code).trim()) {
+        try {
+          await supabase.rpc("redeem_coupon", {
+            p_code: String(coupon_code).trim().toUpperCase(),
+            p_org_id: org_id,
+            p_discount_applied: Number(discount_amount || 0),
+            p_order_id: razorpay_order_id
+          });
+        } catch (couponErr) {
+          console.warn("Could not redeem coupon in verify action:", couponErr);
+        }
       }
 
       const invoiceNumber = `AB-SUB-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, "0")}-${Date.now().toString().slice(-4)}`;

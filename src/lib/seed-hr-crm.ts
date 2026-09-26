@@ -3,59 +3,15 @@ import { supabase } from "@/integrations/supabase/client";
 export async function seedHrCrmData(orgId: string) {
   try {
     // Check if already seeded to prevent duplicates
-    const { data: existingEmployees } = await supabase.from("employees").select("id").eq("org_id", orgId).limit(1);
-    if (existingEmployees && existingEmployees.length > 0) {
+    const { data: existingLeads } = await supabase.from("leads").select("id").eq("org_id", orgId).limit(1);
+    if (existingLeads && existingLeads.length > 0) {
       return; // Already seeded
     }
 
     const d = (days: number) => new Date(Date.now() - days * 86400000).toISOString().split("T")[0];
     
-    // 1. Employees
-    const { data: employees, error: empErr } = await supabase.from("employees").insert([
-      { org_id: orgId, name: "Alice Johnson", designation: "Software Engineer", employee_code: "EMP-001", email: "alice@example.com", phone: "555-0101", joining_date: d(365), monthly_salary: 80000, paid_leaves_per_month: 2, is_active: true },
-      { org_id: orgId, name: "Bob Smith", designation: "Sales Manager", employee_code: "EMP-002", email: "bob@example.com", phone: "555-0102", joining_date: d(200), monthly_salary: 95000, paid_leaves_per_month: 2, is_active: true },
-      { org_id: orgId, name: "Charlie Davis", designation: "HR Coordinator", employee_code: "EMP-003", email: "charlie@example.com", phone: "555-0103", joining_date: d(100), monthly_salary: 60000, paid_leaves_per_month: 2, is_active: true }
-    ]).select();
-    if (empErr) throw empErr;
-
-    // 2. Attendance & Leaves (for the last 5 days)
-    if (employees && employees.length > 0) {
-      const attendanceData = [];
-      const leaveData = [];
-      for (const emp of employees) {
-        for (let i = 0; i < 5; i++) {
-          const date = d(i);
-          // Make Charlie on leave 2 days ago
-          if (emp.name === "Charlie Davis" && i === 2) {
-            leaveData.push({ org_id: orgId, employee_id: emp.id, start_date: date, end_date: date, reason: "Sick Leave", status: "approved", type: "sick" });
-            attendanceData.push({ org_id: orgId, employee_id: emp.id, date, status: "leave" });
-          } else {
-            attendanceData.push({ org_id: orgId, employee_id: emp.id, date, status: "present", check_in: "09:00:00", check_out: "17:00:00" });
-          }
-        }
-      }
-      await supabase.from("attendance").insert(attendanceData);
-      if (leaveData.length > 0) await supabase.from("leaves").insert(leaveData);
-    }
-
-    // 3. Shifts
-    const { data: shifts, error: shiftErr } = await supabase.from("shifts").insert([
-      { org_id: orgId, name: "Morning Shift", start_time: "09:00:00", end_time: "17:00:00" },
-      { org_id: orgId, name: "Night Shift", start_time: "21:00:00", end_time: "05:00:00" }
-    ]).select();
-    if (shiftErr) throw shiftErr;
-
-    // 4. Documents (Dummy entry for Alice)
-    if (employees && employees.length > 0) {
-      await supabase.from("employee_documents").insert([
-        { org_id: orgId, employee_id: employees[0].id, name: "Offer Letter", document_url: "dummy-url", type: "contract" }
-      ]);
-    }
-
-    // 5. Payroll Runs
-    await supabase.from("payroll_runs").insert([
-      { org_id: orgId, month: "June", year: 2026, status: "draft" }
-    ]);
+    // HR Demo data creation (Employees, Attendance, Shifts, Documents, Payroll) has been removed
+    // as per user request to avoid auto-creating demo employees.
 
     // 6. Leads
     const { data: leads, error: leadsErr } = await supabase.from("leads").insert([

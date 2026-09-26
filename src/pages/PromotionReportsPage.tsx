@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Target, Activity, PieChart, Download } from "lucide-react";
+import { Users, Target, Activity, PieChart, Download, ArrowLeft } from "lucide-react";
 import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
@@ -17,6 +18,7 @@ import {
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 export default function PromotionReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
 
   const [loading, setLoading] = useState(true);
@@ -91,10 +93,16 @@ export default function PromotionReportsPage() {
           <h1 className="text-2xl font-bold tracking-tight">Promotion Reports</h1>
           <p className="text-muted-foreground">Analyze your promotional campaigns, lead conversions, and outreach performance.</p>
         </div>
-        <Button onClick={() => exportFullPagePDF('promotion-report-page', 'promotion_full_report')} className="shrink-0" variant="secondary">
-          <Download className="w-4 h-4 mr-2" />
-          Export Full Report (PDF)
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+            <ArrowLeft className="w-4 h-4 mr-1" />
+            Back to Reports
+          </Button>
+          <Button onClick={() => exportFullPagePDF('promotion-report-page', 'promotion_full_report')} className="shrink-0" variant="secondary" size="sm">
+            <Download className="w-4 h-4 mr-2" />
+            Export Full Report (PDF)
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

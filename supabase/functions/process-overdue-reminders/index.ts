@@ -93,7 +93,7 @@ serve(async (req) => {
         if (newToken) token = newToken.token;
       }
       
-      const portalLink = token ? `${Deno.env.get("PUBLIC_APP_URL") || "https://app.assaybiz.com"}/portal/${token}` : "";
+      const portalLink = token ? `${Deno.env.get("PUBLIC_APP_URL") || "https://aassaybiz.com"}/portal/${token}` : "";
 
       // Send Email
       if (client.email) {

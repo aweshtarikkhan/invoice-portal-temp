@@ -10,7 +10,7 @@ import {
   IndianRupee, Users, TrendingUp, Star, MapPin,
 } from "lucide-react";
 import { PublicHeader } from "@/components/public/PublicHeader";
-import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
+import { PublicFooter } from "@/components/public/PublicFooter";
 
 const STATS = [
   { value: "Attractive", label: "Commission", icon: IndianRupee, color: "text-emerald-400" },
@@ -67,7 +67,7 @@ export default function PartnerWithUsPage() {
 
       toast({
         title: "Request Submitted!",
-        description: "Thank you for showing interest. Our team will contact you shortly.",
+        description: "Thank you for showing interest. Our team will contact you shortly",
         variant: "default",
       });
 
@@ -80,10 +80,10 @@ export default function PartnerWithUsPage() {
   };
 
   return (
-    <div className="min-h-screen lg:h-screen flex flex-col bg-slate-50/50 justify-between overflow-x-hidden">
+    <div className="min-h-screen flex flex-col bg-slate-50/50 justify-between overflow-x-hidden">
       <PublicHeader />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-4 sm:py-6">
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
         <div className="w-full max-w-6xl mx-auto rounded-2xl sm:rounded-3xl border border-slate-200/90 overflow-hidden shadow-xl bg-white grid lg:grid-cols-5 items-stretch">
 
           {/* Left Column — Dark Blue Gradient */}
@@ -93,15 +93,12 @@ export default function PartnerWithUsPage() {
             <div className="absolute bottom-0 left-0 w-60 h-60 bg-[#28166f]/60 rounded-full blur-[70px] translate-y-1/3 -translate-x-1/3 pointer-events-none" />
 
             <div className="relative z-10">
-              <span className="inline-block text-[11px] font-bold uppercase tracking-wider text-[#ffaa47] bg-[#e77817]/20 border border-[#e77817]/30 px-3 py-1 rounded-full mb-3">
-                BECOME A PARTNER
-              </span>
               <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2 leading-tight">
                 Let's Build Something{" "}
                 <span className="text-[#e77817]">Great Together</span>
               </h2>
               <p className="text-xs sm:text-sm text-slate-300 leading-relaxed mb-6">
-                Whether you're an independent consultant, a growing agency, or a chartered accountant managing multiple businesses — our partnership program is designed for you. Share your details and our team will reach out within 24 hours.
+                Whether you're an independent consultant, a growing agency, or a chartered accountant managing multiple businesses — our partnership program is designed for you. Share your details and our team will reach out within 24 hours
               </p>
 
               {/* Stats Grid */}
@@ -226,7 +223,7 @@ export default function PartnerWithUsPage() {
                 </Button>
 
                 <p className="text-[11px] text-slate-400 text-center leading-tight">
-                  By submitting, you agree to our Terms of Service. We'll never share your information with third parties.
+                  By submitting, you agree to our Terms of Service. We'll never share your information with third parties
                 </p>
               </form>
             </div>
@@ -235,16 +232,7 @@ export default function PartnerWithUsPage() {
         </div>
       </main>
 
-      {/* Sleek single-line bottom footer */}
-      <footer className="py-2.5 px-4 text-center text-xs text-slate-500 border-t border-slate-200/80 bg-white shrink-0">
-        <span>© {new Date().getFullYear()} <AassayBizBrand />. All rights reserved.</span>
-        <span className="mx-2 text-slate-300">•</span>
-        <Link to="/terms" className="hover:underline text-slate-600">Terms</Link>
-        <span className="mx-1.5 text-slate-300">•</span>
-        <Link to="/privacy" className="hover:underline text-slate-600">Privacy</Link>
-        <span className="mx-1.5 text-slate-300">•</span>
-        <Link to="/support" className="hover:underline text-slate-600">Support</Link>
-      </footer>
+      <PublicFooter />
     </div>
   );
 }

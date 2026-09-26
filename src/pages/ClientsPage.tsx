@@ -141,10 +141,12 @@ export default function ClientsPage() {
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (client: any) => {
     setEditClient(client);
+    const rawState = client.billing_address?.state;
+    const resolvedState = INDIAN_STATES.find(s => s.code === rawState || s.name?.toLowerCase() === rawState?.toLowerCase())?.code || rawState || "";
     setForm({
       display_name: client.display_name || "", company_name: client.company_name || "",
       email: client.email || "", phone: client.phone || "", tax_number: client.tax_number || "",
-      billing_address: client.billing_address || { street: "", city: "", state: "", zip: "", country: "" },
+      billing_address: client.billing_address ? { ...client.billing_address, state: resolvedState } : { street: "", city: "", state: "", zip: "", country: "" },
       payment_terms: client.payment_terms ?? 30, notes: client.notes || "",
       tags: client.tags || [], credit_limit: Number(client.credit_limit || 0),
     });
@@ -188,7 +190,7 @@ export default function ClientsPage() {
     setIsFetchingGst(true);
     try {
       const details = await fetchGstDetails(form.tax_number);
-      const stateName = INDIAN_STATES.find(s => s.code === details.state || s.name === details.state)?.name || details.state || form.billing_address.state;
+      const stateCode = INDIAN_STATES.find(s => s.code === details.state || s.name?.toLowerCase() === details.state?.toLowerCase())?.code || details.state || form.billing_address.state;
       setForm(prev => ({
         ...prev,
         display_name: details.legalName || details.tradeName || prev.display_name,
@@ -197,7 +199,7 @@ export default function ClientsPage() {
           ...prev.billing_address,
           street: details.address || prev.billing_address.street,
           city: details.city || prev.billing_address.city,
-          state: stateName,
+          state: stateCode,
           zip: details.pincode || prev.billing_address.zip,
         }
       }));
@@ -525,8 +527,8 @@ export default function ClientsPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {INDIAN_STATES.map((s) => (
-                      <SelectItem key={s.code} value={s.name}>
-                        {s.name}
+                      <SelectItem key={s.code} value={s.code}>
+                        {s.name} ({s.code})
                       </SelectItem>
                     ))}
                   </SelectContent>

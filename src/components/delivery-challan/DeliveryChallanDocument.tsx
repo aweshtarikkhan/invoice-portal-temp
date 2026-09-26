@@ -62,11 +62,21 @@ export const DeliveryChallanDocument = forwardRef<HTMLDivElement, DeliveryChalla
     const whLocation = [whAddr.street, whAddr.city, whAddr.state, whAddr.pincode].filter(Boolean).join(", ");
 
     // Client / Consignee details
+    const formatAddress = (addr: any): string => {
+      if (!addr) return "";
+      if (typeof addr === "string") return addr;
+      if (typeof addr === "object") {
+        return [addr.street, addr.city, addr.state, addr.zip || addr.pincode, addr.country].filter(Boolean).join(", ");
+      }
+      return String(addr);
+    };
+
     const clientName = client?.display_name || "Customer / Consignee";
     const clientGst = client?.tax_number || "";
     const clientPhone = client?.phone || "";
     const clientState = client?.state || "";
-    const clientAddress = client?.shipping_address || client?.billing_address || "";
+    const clientAddress = formatAddress(client?.shipping_address || client?.billing_address);
+    const destinationDisplay = formatAddress(challan.destination) || clientState || "—";
 
     const totalQty = lines.reduce((acc, l) => acc + (Number(l.quantity) || 0), 0);
 
@@ -191,7 +201,7 @@ export const DeliveryChallanDocument = forwardRef<HTMLDivElement, DeliveryChalla
             <div className="flex justify-between border-b border-slate-200 pb-1">
               <span className="text-slate-500 font-medium">Destination / City:</span>
               <span className="font-semibold text-slate-900">
-                {challan.destination || clientState || "—"}
+                {destinationDisplay}
               </span>
             </div>
             <div className="flex justify-between">

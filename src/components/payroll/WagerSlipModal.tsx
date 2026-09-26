@@ -100,7 +100,12 @@ export function WagerSlipModal({ slip, org, currency, onClose }: WagerSlipModalP
                   {org?.name || "Organisation Name"}
                 </div>
                 {org?.address && (
-                  <div style={{ fontSize: "11px", color: "#bfdbfe", marginTop: "2px" }}>{org.address}</div>
+                  <div style={{ fontSize: "11px", color: "#bfdbfe", marginTop: "2px" }}>{(() => {
+                    const addr = org.address as any;
+                    if (typeof addr === "string") return addr;
+                    if (typeof addr === "object") return [addr.street, addr.city, addr.state, addr.zip || addr.pincode, addr.country].filter(Boolean).join(", ");
+                    return String(addr);
+                  })()}</div>
                 )}
                 {org?.gstin && (
                   <div style={{ fontSize: "10px", color: "#93c5fd", marginTop: "2px" }}>GSTIN: {org.gstin}</div>

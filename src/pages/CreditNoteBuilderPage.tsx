@@ -17,7 +17,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, Save, Send, Info } from "lucide-react";
+import { Plus, Trash2, Save, Send, Info, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
@@ -346,6 +346,9 @@ export default function CreditNoteBuilderPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       <PageHeader title={isEdit ? "Edit Credit Note" : "New Credit Note"}>
+        <Button variant="outline" size="sm" onClick={() => navigate("/credit-notes")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
         <Button variant="outline" onClick={() => handleSave("draft")}><Save className="mr-1 h-4 w-4" /> Save Draft</Button>
         <Button onClick={() => handleSave("sent")}><Send className="mr-1 h-4 w-4" /> Save & Send</Button>
       </PageHeader>

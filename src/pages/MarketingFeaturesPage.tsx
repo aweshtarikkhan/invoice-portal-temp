@@ -44,11 +44,6 @@ export default function MarketingFeaturesPage() {
 
             {/* LEFT: Copy */}
             <div className="flex flex-col justify-center py-12 lg:py-0">
-              <div className="inline-flex items-center gap-2 mb-5 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-widest uppercase w-fit">
-                <Megaphone className="h-3.5 w-3.5" />
-                MARKETING & PROMOTION
-              </div>
-
               <h1 className="text-[1.35rem] sm:text-3xl md:text-[1.85rem] lg:text-[2.15rem] xl:text-[2.45rem] font-black tracking-tight text-white leading-[2.86] mb-5">
                 <span className="whitespace-nowrap inline-block">Reach 10,000+ Customers.</span>
                 <br />

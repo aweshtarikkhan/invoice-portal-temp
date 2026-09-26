@@ -172,10 +172,10 @@ export function AddVendorDialog({ open, onOpenChange, onVendorAdded }: AddVendor
                 <SelectTrigger>
                   <SelectValue placeholder="Select State" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   {INDIAN_STATES.map((s) => (
                     <SelectItem key={s.code} value={s.code}>
-                      {s.code} - {s.name}
+                      {s.name} ({s.code})
                     </SelectItem>
                   ))}
                 </SelectContent>

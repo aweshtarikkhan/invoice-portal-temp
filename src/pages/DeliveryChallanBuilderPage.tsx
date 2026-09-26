@@ -59,6 +59,15 @@ export default function DeliveryChallanBuilderPage() {
   const [saving, setSaving] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
 
+  const formatAddress = (addr: any): string => {
+    if (!addr) return "";
+    if (typeof addr === "string") return addr;
+    if (typeof addr === "object") {
+      return [addr.street, addr.city, addr.state, addr.zip || addr.pincode, addr.country].filter(Boolean).join(", ");
+    }
+    return String(addr);
+  };
+
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
@@ -89,7 +98,8 @@ export default function DeliveryChallanBuilderPage() {
           setNumber(d.challan_number); setDate(d.challan_date); setStatus(d.status);
           setVehicleNumber(d.vehicle_number || ""); setTransporter(d.transporter || "");
           setDriverName(d.driver_name || ""); setDriverPhone(d.driver_phone || "");
-          setEwayBill(d.eway_bill_number || ""); setDestination(d.destination || "");
+          setEwayBill(d.eway_bill_number || "");
+          setDestination(formatAddress(d.destination));
           setNotes(d.notes || "");
         }
         if (l) setLines(l.map((x: any) => ({
@@ -116,7 +126,7 @@ export default function DeliveryChallanBuilderPage() {
         challan_number: number, challan_date: date, status,
         vehicle_number: vehicleNumber || null, transporter: transporter || null,
         driver_name: driverName || null, driver_phone: driverPhone || null,
-        eway_bill_number: ewayBill || null, destination: destination || null,
+        eway_bill_number: ewayBill || null, destination: formatAddress(destination) || null,
         notes: notes || null, created_by: user?.id || null,
       };
       let dcId = id;
@@ -157,7 +167,7 @@ export default function DeliveryChallanBuilderPage() {
     driver_name: driverName,
     driver_phone: driverPhone,
     eway_bill_number: ewayBill,
-    destination,
+    destination: formatAddress(destination),
     notes,
   };
 
@@ -232,7 +242,7 @@ export default function DeliveryChallanBuilderPage() {
                   setClientId(val);
                   const c = clients.find(x => x.id === val);
                   if (c && !destination) {
-                    setDestination(c.shipping_address || c.billing_address || "");
+                    setDestination(formatAddress(c.shipping_address || c.billing_address));
                   }
                 }}
               >
@@ -271,7 +281,7 @@ export default function DeliveryChallanBuilderPage() {
                 setClients((prev) => [...prev, c]);
                 setClientId(c.id);
                 if (c && !destination) {
-                  setDestination(c.shipping_address || c.billing_address || "");
+                  setDestination(formatAddress(c.shipping_address || c.billing_address));
                 }
               }}
             />

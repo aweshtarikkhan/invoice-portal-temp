@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend
 } from "recharts";
-import { FileText, Wallet, Users, AlertCircle, TrendingUp, TrendingDown, CalendarClock, Package, BarChart3 } from "lucide-react";
+import { FileText, Wallet, Users, AlertCircle, TrendingUp, TrendingDown, CalendarClock, Package, BarChart3, ArrowLeft } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = { paid: "#22c55e", unpaid: "#3b82f6", overdue: "#ef4444", draft: "#6b7280", partial: "#f59e0b" };
 const AGING_COLORS = ["#22c55e", "#facc15", "#fb923c", "#f87171", "#dc2626"];
@@ -256,9 +256,14 @@ export default function BusinessReportPage() {
   return (
     <div className="space-y-8 p-6">
       <SEO title="Business Report" description="Business analytics and charts" path="/business-report" />
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Business Report</h1>
-        <p className="text-muted-foreground">Comprehensive overview of your business analytics and charts.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Business Report</h1>
+          <p className="text-muted-foreground">Comprehensive overview of your business analytics and charts.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
       </div>
 
       {/* KPI Row */}

@@ -14,8 +14,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
+import { useAuth } from "@/lib/auth";
 
 export function EmailSettingsTab() {
+  const { user } = useAuth();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -39,12 +41,18 @@ export function EmailSettingsTab() {
 
   // Test Email states
   const [testEmailOpen, setTestEmailOpen] = useState(false);
-  const [testEmailAddress, setTestEmailAddress] = useState("");
+  const [testEmailAddress, setTestEmailAddress] = useState(user?.email || org?.email || "");
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isRegisteringDomain, setIsRegisteringDomain] = useState(false);
   const [isVerifyingDomain, setIsVerifyingDomain] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user?.email && !testEmailAddress) {
+      setTestEmailAddress(user.email);
+    }
+  }, [user?.email]);
 
   const copyToClipboard = (text: string, key: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -377,7 +385,17 @@ export function EmailSettingsTab() {
                 Choose how outgoing emails (Invoices, Receipts, Custom Emails) are delivered to your clients.
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setTestEmailOpen(true)} className="gap-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                if (!testEmailAddress && (user?.email || org?.email)) {
+                  setTestEmailAddress(user?.email || org?.email || "");
+                }
+                setTestEmailOpen(true);
+              }} 
+              className="gap-2"
+            >
               <Send className="h-4 w-4" /> Send Test Email
             </Button>
           </div>

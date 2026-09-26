@@ -188,50 +188,76 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
   const isHrActive = isPlanActive("hr") || isPlanActive("suite");
 
+  const getPlanDescription = (planName: string): string => {
+    const key = normalizePlanKey(planName);
+    switch (key) {
+      case "free":
+        return "Basic invoicing & business features — 100% Free for 6 Months";
+      case "accounting":
+        return "Full billing, sales, purchases & inventory management";
+      case "hr":
+        return "Complete HR solution — attendance, payroll, leaves & shifts";
+      case "crm":
+        return "Manage leads, deals, sales pipeline and customer relationships";
+      case "promotion":
+        return "Festival posters, WhatsApp & broadcast marketing campaigns";
+      case "suite":
+        return "Complete all-in-one business suite with full system access!";
+      default:
+        return "";
+    }
+  };
+
   const getDisplayFeatures = (plan: Plan): string[] => {
-    switch (plan.name) {
+    const key = normalizePlanKey(plan.name);
+    switch (key) {
       case "free":
         return [
-          "Up to 5 invoices / mo",
-          "Up to 5 clients & items",
-          "Dynamic UPI QR Code",
-          "Standard GST format"
+          "100 Invoices Free",
+          "Festive Posts",
+          "3 Employee Attendance",
+          "Up to 50 Leads"
         ];
       case "accounting":
         return [
-          "Everything in free plan",
-          "Unlimited Invoice",
+          "Everything in Free Plan",
+          "Unlimited Invoices",
           "Unlimited Quotation & POS",
           "Inventory Management",
           "500 WhatsApp messages",
           "GST Ready Output",
-          "Platform access up to 3 employees",
-          "+₹99 / Extra platform employee"
-        ];
-      case "suite":
-        return [
-          "Full Sales & Multi-Warehouse",
-          "Purchases, POs & Payables",
-          "Banking, Journal & P&L",
-          "Free CRM & Promotion Inc."
+          "Platform access up to 3 employees"
         ];
       case "hr":
         return [
-          "5 Staff included",
-          "+₹29 / Extra Employee",
+          "Everything in Free Plan",
+          "25 Employee Attendance",
           "Attendance & Payroll",
-          "Shifts & Leaves"
+          "Shifts & Leaves",
+          "500 WhatsApp messages",
+          "Platform access up to 3 employees"
         ];
       case "crm":
         return [
-          "Leads, pipelines & follow-ups",
+          "Everything in Free Plan",
+          "Unlimited Leads",
           "API Integrations",
-          "Sales Pipeline"
+          "Sales Pipeline",
+          "500 WhatsApp messages",
+          "Platform access up to 3 employees"
         ];
       case "promotion":
         return [
-          "Festival studio & WhatsApp",
-          "Email Campaigns"
+          "Everything in Free Plan",
+          "All Poster Categories",
+          "Email & WhatsApp Campaign",
+          "500 WhatsApp messages",
+          "Platform access up to 3 employees"
+        ];
+      case "suite":
+        return [
+          "Everything in Free Plan + Business Accounting + Business HR + Business CRM + Business Promotion",
+          "Platform Access up to 5 employees"
         ];
       default:
         return plan.features || [];
@@ -977,8 +1003,13 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
                       {/* Header & Checkbox */}
                       <div className="flex items-start justify-between mt-2">
-                        <h4 className="text-lg font-bold text-slate-900">{plan.display_name}</h4>
-                        <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors ${
+                        <div>
+                          <h4 className="text-lg font-bold text-slate-900">{plan.display_name}</h4>
+                          {getPlanDescription(plan.name) && (
+                            <p className="text-xs text-slate-500 mt-0.5 leading-snug">{getPlanDescription(plan.name)}</p>
+                          )}
+                        </div>
+                        <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors shrink-0 ml-2 ${
                           active
                             ? "bg-emerald-600 border-emerald-600 text-white"
                             : isSelected

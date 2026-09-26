@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -8,12 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export default function TdsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const [sections, setSections] = useState<any[]>([]);
@@ -61,7 +63,15 @@ export default function TdsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">TDS Management</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">TDS Management</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">TDS sections configuration and deduction reports</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </div>
 
       <Tabs defaultValue="report">
         <TabsList>

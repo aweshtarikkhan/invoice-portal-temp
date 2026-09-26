@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, CalendarDays, DollarSign, Download, FileText } from "lucide-react";
+import { Users, UserCheck, CalendarDays, DollarSign, Download, FileText, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
@@ -127,6 +128,7 @@ function getStatusBadge(status: string, leaveType?: string) {
 }
 
 export default function HRReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   
   const [headcount, setHeadcount] = useState(0);
@@ -137,6 +139,7 @@ export default function HRReportsPage() {
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [leaveData, setLeaveData] = useState<any[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
+  const [todayStats, setTodayStats] = useState({ total: 0, present: 0, absent: 0, late: 0, onLeave: 0 });
 
   useEffect(() => {
     if (!org?.id) return;
@@ -372,6 +375,30 @@ export default function HRReportsPage() {
       });
 
       setRecentAttendance(sorted.slice(0, 30));
+
+      // 6. Calculate Today's Stats
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      let present = 0, absent = 0, late = 0, onLeave = 0;
+      
+      const activeEmps = (employees || []).filter((e: any) => e.status !== 'inactive');
+      const total = activeEmps.length;
+
+      activeEmps.forEach((emp: any) => {
+        const key = `${emp.id}|${todayStr}`;
+        const record = mergedMap[key];
+        if (!record) {
+          absent++;
+        } else {
+          const s = (record.status || "").toLowerCase();
+          if (s === "present" || s === "half_day" || s === "half-day") present++;
+          else if (s === "absent") absent++;
+          else if (s === "late") late++;
+          else if (s === "leave" || s === "paid_leave" || s === "approved_leave" || s.includes("leave")) onLeave++;
+          else present++; // fallback
+        }
+      });
+      
+      setTodayStats({ total, present, absent, late, onLeave });
     };
     
     fetchData();
@@ -381,12 +408,47 @@ export default function HRReportsPage() {
 
   return (
     <div className="space-y-6" id="hr-report-page">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">HR Reports</h1>
           <p className="text-gray-500 mt-1">Analytics and KPIs for Human Resources</p>
         </div>
+        <div>
+          <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+          </Button>
+        </div>
       </div>
+
+      <Card className="bg-white border-gray-200 shadow-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold text-gray-900">Today's Attendance</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div>
+              <div className="text-3xl font-bold text-gray-900">{todayStats.total}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Total Employees</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-emerald-600">{todayStats.present}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Present</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-rose-600">{todayStats.absent}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Absent</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-amber-500">{todayStats.late}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Late</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-blue-600">{todayStats.onLeave}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">On Leave</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card className="bg-white border-gray-200">

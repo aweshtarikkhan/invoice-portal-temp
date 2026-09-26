@@ -93,7 +93,7 @@ export const PARENT_MODULES = [
 const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
   dashboard: {
     title: "Executive Business Dashboard",
-    subtitle: "Real-time summary of sales, cash flow, stock health & team operations.",
+    subtitle: "Real-time summary of sales, cash flow, stock health & team operations",
     subPages: [
       { name: "Live Sales", count: "₹18.90L", status: "156 Invoices" },
       { name: "Receivables", count: "₹2.50L", status: "Due in 7d" },
@@ -128,21 +128,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Services", pct: 8, color: "bg-cyan-500", stroke: "#06b6d4", dash: "16 200", offset: "-184" },
     ],
     featureList: [
-      { title: "Consolidated Revenue", desc: "Live tracking of sales, quotes, credit notes & payments received across businesses." },
-      { title: "Cash Flow Health", desc: "Real-time bank balances, daily collections, and upcoming 30-day payout projections." },
-      { title: "Inventory Status", desc: "Monitor multi-warehouse stock levels, re-order alerts, and high-velocity SKUs." },
-      { title: "Daily Team Attendance", desc: "Instant visibility into who is clocked in, half-day, or on approved leave today." },
+      { title: "Consolidated Revenue", desc: "Live tracking of sales, quotes, credit notes & payments received across businesses" },
+      { title: "Cash Flow Health", desc: "Real-time bank balances, daily collections, and upcoming 30-day payout projections" },
+      { title: "Inventory Status", desc: "Monitor multi-warehouse stock levels, re-order alerts, and high-velocity SKUs" },
+      { title: "Daily Team Attendance", desc: "Instant visibility into who is clocked in, half-day, or on approved leave today" },
     ],
     aiInsight: {
       title: "Revenue Pacing 18% Ahead",
-      desc: "Healthy cash collections and zero overdue supply orders reported across all hubs.",
+      desc: "Healthy cash collections and zero overdue supply orders reported across all hubs",
       action: "View Executive Summary →",
     },
   },
 
   accounting: {
     title: "Business Accounting Suite",
-    subtitle: "Complete unified control of Sales, Purchases, Inventory & Bank Accounts.",
+    subtitle: "Complete unified control of Sales, Purchases, Inventory & Bank Accounts",
     subPages: [
       { name: "Sales (Invoices & Quotes)", count: "₹18.90L", status: "156 Invoices" },
       { name: "Purchases & Bills", count: "₹9.40L", status: "48 Vendors" },
@@ -177,21 +177,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Bank Reserve", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20 200", offset: "-180" },
     ],
     featureList: [
-      { title: "Sales & Invoicing", desc: "GST invoices, quotations, credit notes, client ledger & delivery challans." },
-      { title: "Purchases & Expenses", desc: "Vendor orders, 3-way GRN match, supplier purchase bills & expense tracking." },
-      { title: "Inventory & Warehouses", desc: "Real-time stock quantities across multi-warehouses with auto re-order alerts." },
-      { title: "Double-Entry Banking", desc: "Live bank account feed, automated reconciliation, and GSTR-1/3B export." },
+      { title: "Sales & Invoicing", desc: "GST invoices, quotations, credit notes, client ledger & delivery challans" },
+      { title: "Purchases & Expenses", desc: "Vendor orders, 3-way GRN match, supplier purchase bills & expense tracking" },
+      { title: "Inventory & Warehouses", desc: "Real-time stock quantities across multi-warehouses with auto re-order alerts" },
+      { title: "Double-Entry Banking", desc: "Live bank account feed, automated reconciliation, and GSTR-1/3B export" },
     ],
     aiInsight: {
       title: "Strong Financial Health",
-      desc: "Working capital runway is 68 days with 94% on-time client payments.",
+      desc: "Working capital runway is 68 days with 94% on-time client payments",
       action: "View Cash Flow Audit →",
     },
   },
 
   hr: {
     title: "Business HR & Staff Management",
-    subtitle: "Biometric & web attendance, leave tracking, shift rosters, employee KYC & 1-click payroll.",
+    subtitle: "Biometric & web attendance, leave tracking, shift rosters, employee KYC & 1-click payroll",
     subPages: [
       { name: "Employees Roster", count: "24 Staff", status: "100% Onboarded" },
       { name: "Today Attendance", count: "22 Present", status: "91.6% Turnout" },
@@ -226,21 +226,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Tech & Support", pct: 10, color: "bg-cyan-500", stroke: "#06b6d4", dash: "20 200", offset: "-180" },
     ],
     featureList: [
-      { title: "Attendance & Shifts", desc: "Biometric integration & web punch with GPS geo-fencing for shop & field staff." },
-      { title: "Leave Management", desc: "Casual, Sick, Earned & Comp-off leaves with automated balance calculations." },
-      { title: "1-Click Payroll", desc: "Instant calculation of basic, HRA, PF/ESI deductions, and digital salary slips." },
-      { title: "Employee KYC Desk", desc: "Store Aadhaar, PAN, bank account details, and employment contracts securely." },
+      { title: "Attendance & Shifts", desc: "Biometric integration & web punch with GPS geo-fencing for shop & field staff" },
+      { title: "Leave Management", desc: "Casual, Sick, Earned & Comp-off leaves with automated balance calculations" },
+      { title: "1-Click Payroll", desc: "Instant calculation of basic, HRA, PF/ESI deductions, and digital salary slips" },
+      { title: "Employee KYC Desk", desc: "Store Aadhaar, PAN, bank account details, and employment contracts securely" },
     ],
     aiInsight: {
       title: "Payroll Ready for 1st",
-      desc: "All shift adjustments and leave balance deductions calculated automatically for 24 staff.",
+      desc: "All shift adjustments and leave balance deductions calculated automatically for 24 staff",
       action: "Approve 1-Click Payslips →",
     },
   },
 
   crm: {
     title: "Business CRM & Deal Pipeline",
-    subtitle: "Multi-channel lead capture, visual deal pipelines, task activities & client calendar.",
+    subtitle: "Multi-channel lead capture, visual deal pipelines, task activities & client calendar",
     subPages: [
       { name: "Lead Capture", count: "142 Active", status: "+28 This Week" },
       { name: "Pipeline Stages", count: "₹34.5L", status: "4 Visual Stages" },
@@ -275,21 +275,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Closed Won", pct: 15, color: "bg-cyan-500", stroke: "#06b6d4", dash: "30 200", offset: "-170" },
     ],
     featureList: [
-      { title: "Multi-Source Lead Capture", desc: "Capture inquiries automatically from WhatsApp, website forms, calls & walk-ins." },
-      { title: "Kanban Pipeline Board", desc: "Drag-and-drop deals across customized stages: Inquiry, Demo, Negotiation, Won." },
-      { title: "Activity & Task Scheduler", desc: "Never miss follow-ups with automated call reminders and calendar view." },
-      { title: "Client Helpdesk Tickets", desc: "Track customer issues and resolve service requests with clear accountability." },
+      { title: "Multi-Source Lead Capture", desc: "Capture inquiries automatically from WhatsApp, website forms, calls & walk-ins" },
+      { title: "Kanban Pipeline Board", desc: "Drag-and-drop deals across customized stages: Inquiry, Demo, Negotiation, Won" },
+      { title: "Activity & Task Scheduler", desc: "Never miss follow-ups with automated call reminders and calendar view" },
+      { title: "Client Helpdesk Tickets", desc: "Track customer issues and resolve service requests with clear accountability" },
     ],
     aiInsight: {
       title: "5 Hot Leads Ready to Close",
-      desc: "Prospects have reviewed your quotations multiple times; high closing probability today.",
+      desc: "Prospects have reviewed your quotations multiple times; high closing probability today",
       action: "Call High-Value Leads →",
     },
   },
 
   promotion: {
     title: "Business Promotion & Marketing Studio",
-    subtitle: "Pre-designed festival posters, automated WhatsApp broadcasts, templates & customer journeys.",
+    subtitle: "Pre-designed festival posters, automated WhatsApp broadcasts, templates & customer journeys",
     subPages: [
       { name: "Festival Posters", count: "85 Creatives", status: "Auto-Branded" },
       { name: "WhatsApp Campaigns", count: "12 Broadcasts", status: "99.2% Delivery" },
@@ -323,21 +323,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Email Dispatch", pct: 15, color: "bg-emerald-500", stroke: "#10b981", dash: "30 200", offset: "-170" },
     ],
     featureList: [
-      { title: "Auto-Branded Posters", desc: "85+ high-converting festival & offer creatives automatically stamped with your logo." },
-      { title: "Bulk WhatsApp Broadcasts", desc: "Send personalized offers and product launches to your entire customer base." },
-      { title: "Drip Automation Journeys", desc: "Auto-send welcome discounts, payment receipts, and birthday greetings." },
-      { title: "Real-time Delivery Analytics", desc: "Track delivered, opened, and clicked stats for every broadcast message." },
+      { title: "Auto-Branded Posters", desc: "85+ high-converting festival & offer creatives automatically stamped with your logo" },
+      { title: "Bulk WhatsApp Broadcasts", desc: "Send personalized offers and product launches to your entire customer base" },
+      { title: "Drip Automation Journeys", desc: "Auto-send welcome discounts, payment receipts, and birthday greetings" },
+      { title: "Real-time Delivery Analytics", desc: "Track delivered, opened, and clicked stats for every broadcast message" },
     ],
     aiInsight: {
       title: "Festive Campaign Ready",
-      desc: "Diwali poster campaign ready with your custom logo and phone number for 1-click WhatsApp blast.",
+      desc: "Diwali poster campaign ready with your custom logo and phone number for 1-click WhatsApp blast",
       action: "Launch Festive Blast →",
     },
   },
 
   integration: {
     title: "Business Integration & Connectors",
-    subtitle: "Integrate your official WhatsApp, business email & payments for 100% automated ops.",
+    subtitle: "Integrate your official WhatsApp, business email & payments for 100% automated ops",
     subPages: [
       { name: "Official WhatsApp API", count: "Active", status: "Meta Verified" },
       { name: "Business Email (SES)", count: "Active", status: "Zero Bounce" },
@@ -372,21 +372,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "External REST APIs", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "10 200", offset: "-190" },
     ],
     featureList: [
-      { title: "Integrate WhatsApp", desc: "Send invoices, receipts, payment reminders & festival posters directly to customer WhatsApp." },
-      { title: "Integrate Email (SES)", desc: "Dispatch GST invoices and quotations directly from your business domain with zero spam." },
-      { title: "UPI QR & Payment Links", desc: "Dynamic UPI QR codes printed on invoices; client scans to pay and bill auto-marks paid." },
-      { title: "External Webhooks", desc: "Connect with WooCommerce, Shopify, Zoho, or your custom inventory software in seconds." },
+      { title: "Integrate WhatsApp", desc: "Send invoices, receipts, payment reminders & festival posters directly to customer WhatsApp" },
+      { title: "Integrate Email (SES)", desc: "Dispatch GST invoices and quotations directly from your business domain with zero spam" },
+      { title: "UPI QR & Payment Links", desc: "Dynamic UPI QR codes printed on invoices; client scans to pay and bill auto-marks paid" },
+      { title: "External Webhooks", desc: "Connect with WooCommerce, Shopify, Zoho, or your custom inventory software in seconds" },
     ],
     aiInsight: {
       title: "All Connectors Live & Healthy",
-      desc: "WhatsApp Meta Cloud and Amazon SES operating with 100% real-time transaction delivery.",
+      desc: "WhatsApp Meta Cloud and Amazon SES operating with 100% real-time transaction delivery",
       action: "Test Live Webhooks →",
     },
   },
 
   feedback: {
     title: "Business Feedback & Reputation",
-    subtitle: "Automated post-invoice client reviews, CSAT ratings & Google review sync.",
+    subtitle: "Automated post-invoice client reviews, CSAT ratings & Google review sync",
     isUpcoming: true,
     subPages: [
       { name: "Client Feedback Link", count: "Upcoming", status: "Post-Payment Link" },
@@ -422,21 +422,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Under 3 Stars", pct: 2, color: "bg-rose-500", stroke: "#f43f5e", dash: "4 200", offset: "-196" },
     ],
     featureList: [
-      { title: "Post-Payment Review Links", desc: "Automatically send a quick 1-click rating link to customers as soon as they pay." },
-      { title: "Push to Google My Business", desc: "Direct satisfied 5-star reviewers straight to your Google page to skyrocket local rankings." },
-      { title: "Private Feedback Filter", desc: "Any rating under 4 stars gets routed privately to you so you can resolve issues immediately." },
-      { title: "NPS Customer Loyalty", desc: "Track repeat client sentiment and know exactly who your happiest brand advocates are." },
+      { title: "Post-Payment Review Links", desc: "Automatically send a quick 1-click rating link to customers as soon as they pay" },
+      { title: "Push to Google My Business", desc: "Direct satisfied 5-star reviewers straight to your Google page to skyrocket local rankings" },
+      { title: "Private Feedback Filter", desc: "Any rating under 4 stars gets routed privately to you so you can resolve issues immediately" },
+      { title: "NPS Customer Loyalty", desc: "Track repeat client sentiment and know exactly who your happiest brand advocates are" },
     ],
     aiInsight: {
       title: "Reputation Booster (Coming Soon)",
-      desc: "Designed to triple your Google 5-star reviews automatically after every invoice settlement.",
+      desc: "Designed to triple your Google 5-star reviews automatically after every invoice settlement",
       action: "Notify Me When Ready →",
     },
   },
 
   analysis: {
     title: "Business Analysis & AI Intelligence",
-    subtitle: "AI-powered revenue forecasts, stock outage warnings & profit margin optimization.",
+    subtitle: "AI-powered revenue forecasts, stock outage warnings & profit margin optimization",
     isUpcoming: true,
     subPages: [
       { name: "Predictive Revenue AI", count: "Upcoming", status: "+16% Projected" },
@@ -472,21 +472,21 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Client Retention", pct: 10, color: "bg-purple-500", stroke: "#a855f7", dash: "20 200", offset: "-180" },
     ],
     featureList: [
-      { title: "Predictive Revenue Model", desc: "Machine-learning models forecast next month's sales based on past seasonal trends." },
-      { title: "Stock Outage Warning", desc: "Detects fast-moving items running low and suggests exact purchase order quantities." },
-      { title: "Profit Margin Optimizer", desc: "Discovers your most profitable item combinations to cross-sell to regular clients." },
-      { title: "Cash Crunch Early Alert", desc: "Forecasts pending payables vs receivables 30 days ahead to prevent cash crunches." },
+      { title: "Predictive Revenue Model", desc: "Machine-learning models forecast next month's sales based on past seasonal trends" },
+      { title: "Stock Outage Warning", desc: "Detects fast-moving items running low and suggests exact purchase order quantities" },
+      { title: "Profit Margin Optimizer", desc: "Discovers your most profitable item combinations to cross-sell to regular clients" },
+      { title: "Cash Crunch Early Alert", desc: "Forecasts pending payables vs receivables 30 days ahead to prevent cash crunches" },
     ],
     aiInsight: {
       title: "Neural Engine (Coming Soon)",
-      desc: "Trained on Indian MSME billing patterns to unlock an estimated 16% revenue growth.",
+      desc: "Trained on Indian MSME billing patterns to unlock an estimated 16% revenue growth",
       action: "Notify Me When Ready →",
     },
   },
 
   settings: {
     title: "System & Settings Configuration",
-    subtitle: "Custom invoice designs, business tax setup, team role security & audit trails.",
+    subtitle: "Custom invoice designs, business tax setup, team role security & audit trails",
     subPages: [
       { name: "Invoice Templates", count: "7 Formats", status: "Custom Brand" },
       { name: "Custom Fields", count: "12 Fields", status: "Active in Forms" },
@@ -521,14 +521,14 @@ const MODULE_DATA: Record<ParentModuleKey, ModuleDetail> = {
       { label: "Auditors / Viewers", pct: 5, color: "bg-cyan-500", stroke: "#06b6d4", dash: "10 200", offset: "-190" },
     ],
     featureList: [
-      { title: "Invoice Template Studio", desc: "Select between Standard GST, Modern, Classic & Corporate with custom accent colors." },
-      { title: "Custom Data Fields", desc: "Add PAN, Vehicle Number, E-Way Bill Number, or custom attributes to any form." },
-      { title: "Audit Trail & Activity History", desc: "Tamper-proof logs record every invoice created, edited, printed, or deleted with timestamps." },
-      { title: "Role-Based Access Control", desc: "Restrict employees to specific modules so they only access what their role requires." },
+      { title: "Invoice Template Studio", desc: "Select between Standard GST, Modern, Classic & Corporate with custom accent colors" },
+      { title: "Custom Data Fields", desc: "Add PAN, Vehicle Number, E-Way Bill Number, or custom attributes to any form" },
+      { title: "Audit Trail & Activity History", desc: "Tamper-proof logs record every invoice created, edited, printed, or deleted with timestamps" },
+      { title: "Role-Based Access Control", desc: "Restrict employees to specific modules so they only access what their role requires" },
     ],
     aiInsight: {
       title: "Enterprise Role Guard",
-      desc: "All critical modules secured with strict role-based access control and live audit history.",
+      desc: "All critical modules secured with strict role-based access control and live audit history",
       action: "Manage Permissions →",
     },
   },

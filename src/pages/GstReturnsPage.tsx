@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Download, FileJson, FileSpreadsheet, AlertCircle, Receipt, FileText, IndianRupee, Percent, CalendarDays, Copy } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet, AlertCircle, Receipt, FileText, IndianRupee, Percent, CalendarDays, Copy, ArrowLeft } from "lucide-react";
 import {
   buildGstr1Json,
   buildGstr3bSummary,
@@ -35,6 +35,7 @@ import { format, addDays, startOfMonth, endOfMonth, subMonths, startOfQuarter, e
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 export default function GstReturnsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const now = new Date();
   
@@ -298,15 +299,20 @@ export default function GstReturnsPage() {
             <p className="text-sm text-muted-foreground mt-1">Monthly GSTR-1, GSTR-3B, HSN summary and Tally export, ready to file.</p>
           </div>
         </div>
-        {orgGstin && (
-          <div className="flex items-center gap-2 px-4 py-2 border rounded-full bg-background shadow-sm h-10">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">GSTIN:</span>
-            <span className="font-mono font-bold text-sm text-foreground">{orgGstin}</span>
-            <button className="text-muted-foreground hover:text-foreground ml-2 transition-colors" onClick={() => navigator.clipboard.writeText(orgGstin)} title="Copy GSTIN">
-              <Copy className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+          </Button>
+          {orgGstin && (
+            <div className="flex items-center gap-2 px-4 py-2 border rounded-full bg-background shadow-sm h-10">
+              <span className="text-xs text-muted-foreground uppercase tracking-wider">GSTIN:</span>
+              <span className="font-mono font-bold text-sm text-foreground">{orgGstin}</span>
+              <button className="text-muted-foreground hover:text-foreground ml-2 transition-colors" onClick={() => navigator.clipboard.writeText(orgGstin)} title="Copy GSTIN">
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {!orgGstin && (

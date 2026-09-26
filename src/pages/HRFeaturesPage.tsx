@@ -44,11 +44,6 @@ export default function HRFeaturesPage() {
 
             {/* LEFT: Copy */}
             <div className="flex flex-col justify-center py-12 lg:py-0">
-              <div className="inline-flex items-center gap-2 mb-5 py-1.5 px-4 rounded-full bg-[#e77817]/20 border border-[#e77817]/40 text-[#ffaa47] text-xs font-bold tracking-widest uppercase w-fit">
-                <UserCheck className="h-3.5 w-3.5" />
-                HR & PAYROLL AUTOMATION
-              </div>
-
               <h1 className="text-3xl sm:text-4xl xl:text-[2.8rem] font-black tracking-tight text-white leading-[1.18] mb-4">
                 Track Attendance.<br />
                 <span className="bg-gradient-to-r from-[#ff9438] to-amber-300 bg-clip-text text-transparent">

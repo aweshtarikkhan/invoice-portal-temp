@@ -484,7 +484,7 @@ export function AppLayout() {
     "/aging-details",
     "/statements",
     "/hr-reports",
-    "/crm-marketing-reports"
+    "/crm-reports"
   ];
   
   const MARKETING_ROUTES = [
@@ -526,7 +526,7 @@ export function AppLayout() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/support")}
+                onClick={() => navigate("/settings?tab=support")}
                 className="text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 rounded-full h-9 w-9"
                 title="Help & Support"
               >
@@ -575,7 +575,7 @@ export function AppLayout() {
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/support")} className="cursor-pointer">
+                  <DropdownMenuItem onClick={() => navigate("/settings?tab=support")} className="cursor-pointer">
                     <HelpCircle className="mr-2 h-4 w-4 text-blue-500" />
                     Help & Support
                   </DropdownMenuItem>

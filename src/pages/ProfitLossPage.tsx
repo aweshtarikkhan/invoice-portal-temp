@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -8,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, AreaChart, Area } from "recharts";
-import { Download, TrendingUp, TrendingDown, IndianRupee, Minus } from "lucide-react";
+import { Download, TrendingUp, TrendingDown, IndianRupee, Minus, ArrowLeft } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { downloadCSV } from "@/lib/export-csv";
 
 export default function ProfitLossPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
@@ -92,9 +94,14 @@ export default function ProfitLossPage() {
     <div className="space-y-6">
       <SEO title="Profit & Loss" description="View monthly income vs expense breakdown with GST summary and net margin trends." path="/profit-loss" />
       <PageHeader title="Profit & Loss" description="Income vs expenses breakdown">
-        <Button variant="outline" size="sm" onClick={() => downloadCSV(monthlyData, "profit-loss-report")}>
-          <Download className="mr-1 h-4 w-4" /> Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => downloadCSV(monthlyData, "profit-loss-report")}>
+            <Download className="mr-1 h-4 w-4" /> Export CSV
+          </Button>
+        </div>
       </PageHeader>
 
       <Select value={period} onValueChange={setPeriod}>

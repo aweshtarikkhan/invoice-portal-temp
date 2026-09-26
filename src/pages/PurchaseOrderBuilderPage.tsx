@@ -19,7 +19,7 @@ import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2, Mail, MessageCircle, ChevronDown, Clock, Printer, Share2, Eye } from "lucide-react";
+import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2, Mail, MessageCircle, ChevronDown, Clock, Printer, Share2, Eye, ArrowLeft } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
 
@@ -286,6 +286,9 @@ export default function PurchaseOrderBuilderPage() {
       />
       <div className="flex items-center justify-between bg-white p-4 rounded-xl shadow-sm border">
         <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/purchase-orders")} title="Back to Purchase Orders">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
           <div className="h-10 w-10 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
             <FileText className="h-5 w-5" />
           </div>

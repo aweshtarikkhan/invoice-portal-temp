@@ -13,7 +13,7 @@ import { CustomFieldsForm, saveCustomFieldValues } from "@/components/shared/Cus
 import { CURRENCIES, formatCurrency } from "@/lib/currency";
 import { formatSequenceNumber } from "@/lib/utils";
 import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
-import { stateCodeFromGstin } from "@/lib/gst";
+import { stateCodeFromGstin, normalizeStateCode, extractEntityState, formatStateWithCode } from "@/lib/gst";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
 
@@ -486,6 +486,12 @@ export default function InvoiceBuilderPage() {
   const [bankIfsc, setBankIfsc] = useState("");
   const [bankBranch, setBankBranch] = useState("");
   const [bankUpiId, setBankUpiId] = useState("");
+  const [savedBankAccounts, setSavedBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
+  const [addNewBankDialogOpen, setAddNewBankDialogOpen] = useState(false);
+  const [newBankForm, setNewBankForm] = useState({
+    bank_name: "", account_holder_name: "", account_number: "", ifsc: "", branch: "", upi_id: ""
+  });
 
   // Phase 5 — opt-in compliance
   const [generateIrn, setGenerateIrn] = useState(false);
@@ -530,6 +536,10 @@ export default function InvoiceBuilderPage() {
         setActiveOrgPlans(plans);
       }
 
+      // Fetch all saved bank accounts for dropdown
+      const { data: allBankAccounts } = await supabase.from("bank_accounts").select("*").eq("org_id", org.id).eq("is_active", true).order("created_at");
+      setSavedBankAccounts(allBankAccounts || []);
+
       // Auto-generate invoice number from fresh DB value
       if (!id) {
         const { data: freshOrg } = await supabase
@@ -557,6 +567,7 @@ export default function InvoiceBuilderPage() {
             const { data: bAccs } = await supabase.from("bank_accounts").select("*").eq("org_id", org.id).eq("is_active", true).limit(1);
             if (bAccs && bAccs.length > 0) {
               const acc = bAccs[0];
+              setSelectedBankAccountId(acc.id);
               setIncludeBankDetails(true);
               setBankName(acc.bank_name || "");
               setBankAccountName(acc.name || freshOrg.name || org.name || "");
@@ -807,24 +818,18 @@ export default function InvoiceBuilderPage() {
     }
   };
 
-  // State Detection
+  // State Detection (normalizes 2-digit code from GSTIN, state code, or full state name)
   const orgState = useMemo(() => {
-    if (org?.gst_number) return stateCodeFromGstin(org.gst_number);
-    if (org?.address && typeof org.address === 'object' && (org.address as any).state) return String((org.address as any).state);
-    return null;
+    return extractEntityState(org);
   }, [org]);
 
   const selectedClient = useMemo(() => clients.find((c) => c.id === clientId), [clients, clientId]);
 
   const baseClientState = useMemo(() => {
-    if (selectedClient?.tax_number) return stateCodeFromGstin(selectedClient.tax_number);
-    if (selectedClient?.billing_address && typeof selectedClient.billing_address === 'object' && (selectedClient.billing_address as any).state) {
-      return String((selectedClient.billing_address as any).state);
-    }
-    return null;
+    return extractEntityState(selectedClient);
   }, [selectedClient]);
 
-  const clientState = clientStateOverride || baseClientState;
+  const clientState = normalizeStateCode(clientStateOverride) || baseClientState;
 
   const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
 
@@ -949,6 +954,46 @@ export default function InvoiceBuilderPage() {
     handleSave("sent", action);
   };
 
+  const handleBankAccountSelect = (accountId: string) => {
+    if (accountId === "add-new") {
+      setAddNewBankDialogOpen(true);
+      return;
+    }
+    const acc = savedBankAccounts.find(a => a.id === accountId);
+    if (acc) {
+      setSelectedBankAccountId(accountId);
+      setBankName(acc.bank_name || "");
+      const parsedNotes = acc.notes ? (() => { try { return JSON.parse(acc.notes); } catch { return {}; } })() : {};
+      setBankAccountName(parsedNotes.account_holder_name || acc.name || "");
+      setBankAccountNumber(acc.account_number || "");
+      setBankIfsc(acc.ifsc || "");
+      setBankBranch(parsedNotes.branch || "");
+      setBankUpiId(acc.upi_id || "");
+      setIncludeBankDetails(true);
+    }
+  };
+
+  const handleSaveNewBankAccount = async () => {
+    if (!org?.id || !newBankForm.bank_name.trim()) return;
+    const { data, error } = await supabase.from("bank_accounts").insert({
+      org_id: org.id,
+      name: newBankForm.account_holder_name.trim() || newBankForm.bank_name.trim(),
+      bank_name: newBankForm.bank_name.trim(),
+      account_number: newBankForm.account_number.trim(),
+      ifsc: newBankForm.ifsc.trim(),
+      upi_id: newBankForm.upi_id.trim() || null,
+      account_type: "bank",
+      notes: JSON.stringify({ branch: newBankForm.branch.trim(), account_holder_name: newBankForm.account_holder_name.trim() }),
+    }).select().single();
+    if (!error && data) {
+      setSavedBankAccounts(prev => [...prev, data]);
+      handleBankAccountSelect(data.id);
+      setAddNewBankDialogOpen(false);
+      setNewBankForm({ bank_name: "", account_holder_name: "", account_number: "", ifsc: "", branch: "", upi_id: "" });
+      toast({ title: "Bank account saved!" });
+    }
+  };
+
   const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email" | "whatsapp") => {
     if (!clientId) {
       toast({ title: "Select a client", variant: "destructive" });
@@ -1022,7 +1067,10 @@ export default function InvoiceBuilderPage() {
     const invoicePayload = {
       org_id: org!.id,
       client_id: clientId,
-      billing_address: selectedClient?.billing_address || null,
+      billing_address: selectedClient?.billing_address ? {
+        ...(typeof selectedClient.billing_address === 'object' ? selectedClient.billing_address : {}),
+        state: clientState || (selectedClient.billing_address as any)?.state || null
+      } : (clientState ? { state: clientState } : null),
       shipping_address: shippingSameAsBilling
         ? (selectedClient?.shipping_address || selectedClient?.billing_address || null)
         : {
@@ -1352,10 +1400,6 @@ export default function InvoiceBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium border border-blue-200 dark:border-blue-800/50 mb-4">
-        <span className="text-lg">💡</span>
-        Aap is app ko offline billing ke liye bhi use kar sakte hain, bina kisi GST setup ke!
-      </div>
       <ContactPromptDialog
         open={contactPromptOpen}
         onOpenChange={setContactPromptOpen}
@@ -1370,7 +1414,12 @@ export default function InvoiceBuilderPage() {
       />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{id ? "Edit Invoice" : "New Invoice"}</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/invoices")} title="Back to Invoices">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">{id ? "Edit Invoice" : "New Invoice"}</h1>
+        </div>
         <div className="flex gap-2">
           <InvoiceSettingsSheet />
           <Button variant="outline" onClick={() => navigate("/invoices")}>Cancel</Button>
@@ -1466,6 +1515,7 @@ export default function InvoiceBuilderPage() {
                                 setClientId(c.id);
                                 setClientSearch(c.display_name);
                                 setClientDropdownOpen(false);
+                                setClientStateOverride("");
                               }}
                             >
                               <div className="font-medium">{c.display_name}</div>
@@ -1496,9 +1546,16 @@ export default function InvoiceBuilderPage() {
                     <div className="text-muted-foreground leading-relaxed">
                       {(() => {
                         const addr = selectedClient.billing_address;
-                        if (!addr) return <span className="italic">No billing address saved for this client</span>;
+                        const clientResolvedState = extractEntityState(selectedClient);
+                        const stateStr = clientResolvedState ? formatStateWithCode(clientResolvedState) : ((addr && typeof addr === 'object') ? (addr as any).state : "");
+                        if (!addr && !stateStr) return <span className="italic">No billing address saved for this client</span>;
                         if (typeof addr === "string") return addr;
-                        const parts = [(addr as any).street, (addr as any).city, (addr as any).state, (addr as any).zip].filter(Boolean);
+                        const parts = [
+                          (addr as any)?.street, 
+                          (addr as any)?.city, 
+                          stateStr, 
+                          (addr as any)?.zip
+                        ].filter(Boolean);
                         return parts.length > 0 ? parts.join(", ") : <span className="italic">No billing address saved</span>;
                       })()}
                     </div>
@@ -1586,12 +1643,21 @@ export default function InvoiceBuilderPage() {
 
                         <div className="space-y-1">
                           <Label className="text-xs">State</Label>
-                          <Input
-                            placeholder="State"
-                            value={shippingState}
-                            onChange={(e) => setShippingState(e.target.value)}
-                            className="h-8 text-xs"
-                          />
+                          <Select 
+                            value={INDIAN_STATES.find(s => s.code === shippingState || s.name.toLowerCase() === (shippingState || "").toLowerCase())?.name || shippingState} 
+                            onValueChange={setShippingState}
+                          >
+                            <SelectTrigger className="h-8 text-xs bg-white dark:bg-background">
+                              <SelectValue placeholder="Select State" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                              {INDIAN_STATES.map((s) => (
+                                <SelectItem key={s.code} value={s.name}>
+                                  {s.name} ({s.code})
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
 
                         <div className="space-y-1">
@@ -1661,7 +1727,7 @@ export default function InvoiceBuilderPage() {
                 )}
                 
                 {/* State Override if Client State is missing */}
-                {clientId && !baseClientState && (
+                {clientId && !clientState && (
                   <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30 p-3 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-semibold text-yellow-700 dark:text-yellow-400">
                       <AlertTriangle className="h-4 w-4" />
@@ -1670,13 +1736,22 @@ export default function InvoiceBuilderPage() {
                     <p className="text-xs text-yellow-600 dark:text-yellow-500">
                       Select the client's state to correctly calculate CGST/SGST vs IGST.
                     </p>
-                    <Select value={clientStateOverride} onValueChange={setClientStateOverride}>
+                    <Select value={clientStateOverride} onValueChange={async (val) => {
+                      setClientStateOverride(val);
+                      if (selectedClient?.id) {
+                        const existingAddr = (selectedClient.billing_address && typeof selectedClient.billing_address === 'object') ? selectedClient.billing_address : {};
+                        const updatedAddr = { ...existingAddr, state: val };
+                        await supabase.from("clients").update({ billing_address: updatedAddr }).eq("id", selectedClient.id);
+                        setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, billing_address: updatedAddr } : c));
+                        toast({ title: "Client state saved", description: "State saved to client profile for billing." });
+                      }
+                    }}>
                       <SelectTrigger className="h-8 text-xs bg-white dark:bg-background">
-                        <SelectValue placeholder="Select State Code" />
+                        <SelectValue placeholder="Select State" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60">
                         {INDIAN_STATES.map((state) => (
-                          <SelectItem key={state.code} value={state.code}>{state.code} - {state.name}</SelectItem>
+                          <SelectItem key={state.code} value={state.code}>{state.name} ({state.code})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -1921,64 +1996,92 @@ export default function InvoiceBuilderPage() {
             </p>
 
             {includeBankDetails && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                <div className="space-y-1">
-                  <Label className="text-xs">Bank Name</Label>
-                  <Input
-                    value={bankName}
-                    onChange={(e) => setBankName(e.target.value)}
-                    placeholder="e.g. HDFC Bank, SBI, ICICI"
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Account Holder Name</Label>
-                  <Input
-                    value={bankAccountName}
-                    onChange={(e) => setBankAccountName(e.target.value)}
-                    placeholder="e.g. Company / Business Name"
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Account Number</Label>
-                  <Input
-                    value={bankAccountNumber}
-                    onChange={(e) => setBankAccountNumber(e.target.value)}
-                    placeholder="e.g. 50200012345678"
-                    className="h-8 text-xs font-mono"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">IFSC Code</Label>
-                  <Input
-                    value={bankIfsc}
-                    onChange={(e) => setBankIfsc(e.target.value.toUpperCase())}
-                    placeholder="e.g. HDFC0001234"
-                    className="h-8 text-xs font-mono uppercase"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Branch Name</Label>
-                  <Input
-                    value={bankBranch}
-                    onChange={(e) => setBankBranch(e.target.value)}
-                    placeholder="e.g. Connaught Place, New Delhi"
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">UPI ID (Optional)</Label>
-                  <Input
-                    value={bankUpiId}
-                    onChange={(e) => setBankUpiId(e.target.value)}
-                    placeholder="e.g. company@okhdfcbank"
-                    className="h-8 text-xs"
-                  />
-                </div>
+              <div className="space-y-4 pt-2">
+                <Select value={selectedBankAccountId || ""} onValueChange={handleBankAccountSelect}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Select bank account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {savedBankAccounts.map((acc) => (
+                      <SelectItem key={acc.id} value={acc.id}>
+                        {acc.bank_name} {acc.account_number ? `- ...${acc.account_number.slice(-4)}` : ""}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value="add-new" className="text-primary font-medium">
+                      + Add New Account
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {selectedBankAccountId && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1 text-xs">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Bank Name</Label>
+                      <div className="font-medium bg-muted/30 p-2 rounded-md">{bankName || "-"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Account Holder Name</Label>
+                      <div className="font-medium bg-muted/30 p-2 rounded-md">{bankAccountName || "-"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Account Number</Label>
+                      <div className="font-mono bg-muted/30 p-2 rounded-md">{bankAccountNumber || "-"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">IFSC Code</Label>
+                      <div className="font-mono bg-muted/30 p-2 rounded-md uppercase">{bankIfsc || "-"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Branch Name</Label>
+                      <div className="font-medium bg-muted/30 p-2 rounded-md">{bankBranch || "-"}</div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">UPI ID</Label>
+                      <div className="font-medium bg-muted/30 p-2 rounded-md">{bankUpiId || "-"}</div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
+
+          <Dialog open={addNewBankDialogOpen} onOpenChange={setAddNewBankDialogOpen}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add Bank Account</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label>Bank Name</Label>
+                  <Input value={newBankForm.bank_name} onChange={(e) => setNewBankForm({ ...newBankForm, bank_name: e.target.value })} placeholder="e.g. HDFC Bank" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Account Holder Name</Label>
+                  <Input value={newBankForm.account_holder_name} onChange={(e) => setNewBankForm({ ...newBankForm, account_holder_name: e.target.value })} placeholder="e.g. Acme Corp" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Account Number</Label>
+                  <Input value={newBankForm.account_number} onChange={(e) => setNewBankForm({ ...newBankForm, account_number: e.target.value })} placeholder="e.g. 50200012345678" />
+                </div>
+                <div className="space-y-2">
+                  <Label>IFSC Code</Label>
+                  <Input value={newBankForm.ifsc} onChange={(e) => setNewBankForm({ ...newBankForm, ifsc: e.target.value })} placeholder="e.g. HDFC0001234" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Branch Name</Label>
+                  <Input value={newBankForm.branch} onChange={(e) => setNewBankForm({ ...newBankForm, branch: e.target.value })} placeholder="e.g. Connaught Place" />
+                </div>
+                <div className="space-y-2">
+                  <Label>UPI ID (Optional)</Label>
+                  <Input value={newBankForm.upi_id} onChange={(e) => setNewBankForm({ ...newBankForm, upi_id: e.target.value })} placeholder="e.g. company@okhdfcbank" />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setAddNewBankDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveNewBankAccount}>Save Account</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="space-y-2 rounded-md border p-3">
               <div className="text-sm font-medium">Display Options</div>

@@ -59,7 +59,6 @@ export default function ResetPasswordPage() {
 
       const existingFirst = profile?.first_name || user.user_metadata?.first_name;
       const existingLast = profile?.last_name || user.user_metadata?.last_name;
-      const hasSignedInBefore = Boolean(user.last_sign_in_at);
 
       if (existingFirst) {
         setFirstName(existingFirst);
@@ -71,16 +70,39 @@ export default function ResetPasswordPage() {
         setMobile(profile?.phone || user.user_metadata?.phone);
       }
 
-      // If user has already registered or completed setup before,
-      // don't ask for name & password again — grant direct access!
-      if (existingFirst || hasSignedInBefore) {
-        setIsExistingUser(true);
-        setExistingUserName(existingFirst || "there");
-        setReady(true);
+      // For invite flows: ONLY consider user "existing" if they have actually
+      // completed their profile (have a first_name). Do NOT use last_sign_in_at
+      // because verifyOtp() itself sets last_sign_in_at even for first-time users.
+      //
+      // For non-invite flows: also check if user has signed in before (has password set).
+      const isInviteFlow = linkType === "invite" || linkType?.includes("invite");
+
+      // Check if user has actually set a password before (not just created by invite)
+      // user_metadata.password_set or checking if they have completed profile setup
+      const hasCompletedSetup = Boolean(existingFirst);
+
+      if (isInviteFlow) {
+        // Invite flow: only skip setup if user has ACTUALLY filled in their profile
+        if (hasCompletedSetup) {
+          setIsExistingUser(true);
+          setExistingUserName(existingFirst || "there");
+          setReady(true);
+        } else {
+          // First-time invited user: prompt for name, mobile, and password
+          setIsInvite(true);
+          setReady(true);
+        }
       } else {
-        // First-time invited user: prompt for name, mobile, and password
-        setIsInvite(true);
-        setReady(true);
+        // Non-invite flow (e.g., magic link, etc.)
+        const hasSignedInBefore = Boolean(user.last_sign_in_at);
+        if (existingFirst || hasSignedInBefore) {
+          setIsExistingUser(true);
+          setExistingUserName(existingFirst || "there");
+          setReady(true);
+        } else {
+          setIsInvite(true);
+          setReady(true);
+        }
       }
     } catch (err) {
       console.error("Error evaluating user session:", err);
@@ -93,21 +115,38 @@ export default function ResetPasswordPage() {
     const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
     const searchParams = new URLSearchParams(window.location.search);
 
+    // Prevent double-processing of evaluateSession from both verifyOtp and onAuthStateChange
+    let sessionEvaluated = false;
+    const safeEvaluateSession = (session: any, linkType: string | null) => {
+      if (sessionEvaluated) return;
+      sessionEvaluated = true;
+      evaluateSession(session, linkType);
+    };
+
     // 1. Check for explicit error parameters (e.g. otp_expired, access_denied)
     const errorParam = hashParams.get("error") || searchParams.get("error");
     const errorCode = hashParams.get("error_code") || searchParams.get("error_code");
     const errorDesc = hashParams.get("error_description") || searchParams.get("error_description");
 
     if (errorParam || errorCode) {
-      const cleanDesc = errorDesc
-        ? decodeURIComponent(errorDesc.replace(/\+/g, " "))
-        : "This invitation or password reset link has expired or has already been used.";
-      setLinkError(cleanDesc);
-      setReady(true);
+      // Even if URL has error params, check if there's already a valid session
+      // (user may have clicked the link before and it worked, now clicking again)
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          const linkType = searchParams.get("type") || hashParams.get("type") || "recovery";
+          safeEvaluateSession(session, linkType);
+        } else {
+          const cleanDesc = errorDesc
+            ? decodeURIComponent(errorDesc.replace(/\+/g, " "))
+            : "This invitation or password reset link has expired or has already been used.";
+          setLinkError(cleanDesc);
+          setReady(true);
+        }
+      });
       return;
     }
 
-    // 2. Check for token_hash in search params or hash (bulletproof direct verifyOtp flow)
+    // 2. Check for token_hash in search params or hash (direct verifyOtp flow)
     const tokenHash = searchParams.get("token_hash") || hashParams.get("token_hash");
     const linkType = searchParams.get("type") || hashParams.get("type") || "recovery";
 
@@ -121,16 +160,55 @@ export default function ResetPasswordPage() {
         type: linkType as any,
       }).then(({ data, error }) => {
         if (error) {
-          setLinkError(error.message || "This invitation or reset link has expired or is invalid.");
-          setReady(true);
+          // verifyOtp failed - but maybe Supabase client already auto-processed the token
+          // via its internal auth state handler, or user already has a valid session.
+          // Wait a moment then check for an existing session before showing error.
+          console.warn("verifyOtp failed, checking for existing session:", error.message);
+          setTimeout(() => {
+            if (sessionEvaluated) return; // onAuthStateChange already handled it
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (sessionEvaluated) return; // double-check after async
+              if (session?.user) {
+                // Session exists! User is authenticated - use this session
+                console.log("Found existing session after verifyOtp failure, using it");
+                safeEvaluateSession(session, linkType);
+              } else {
+                // No session at all - token is truly expired/invalid
+                setLinkError(error.message || "This invitation or reset link has expired or is invalid.");
+                setReady(true);
+              }
+            });
+          }, 500); // Brief delay to let onAuthStateChange fire first if it's going to
         } else if (data?.session) {
-          evaluateSession(data.session, linkType);
+          safeEvaluateSession(data.session, linkType);
         } else {
-          setReady(true);
+          // No error but no session - check if session was set by auth state change
+          setTimeout(() => {
+            if (sessionEvaluated) return;
+            supabase.auth.getSession().then(({ data: { session } }) => {
+              if (sessionEvaluated) return;
+              if (session?.user) {
+                safeEvaluateSession(session, linkType);
+              } else {
+                setReady(true);
+              }
+            });
+          }, 500);
         }
       }).catch((err) => {
-        setLinkError(err?.message || "Failed to verify invitation link.");
-        setReady(true);
+        // Network error or unexpected failure - still check for session
+        setTimeout(() => {
+          if (sessionEvaluated) return;
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (sessionEvaluated) return;
+            if (session?.user) {
+              safeEvaluateSession(session, linkType);
+            } else {
+              setLinkError(err?.message || "Failed to verify invitation link.");
+              setReady(true);
+            }
+          });
+        }, 500);
       });
       return;
     }
@@ -147,14 +225,14 @@ export default function ResetPasswordPage() {
     if (accessToken && refreshToken) {
       supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
         .then(({ data: { session } }) => {
-          evaluateSession(session, type);
+          safeEvaluateSession(session, type);
         })
         .catch(() => setReady(true));
     } else {
       // Check existing session
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
-          evaluateSession(session, type);
+          safeEvaluateSession(session, type);
         } else {
           setLinkError("No active invitation or reset link found. Please request a new link.");
           setReady(true);
@@ -162,17 +240,22 @@ export default function ResetPasswordPage() {
       });
     }
 
-    // Also listen to auth changes (when token exchange finishes)
+    // Also listen to auth changes (when Supabase client auto-processes token from URL)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user?.email) {
         setInviteEmail(session.user.email);
+        // If we had a link error but now got a valid session, clear the error
         setLinkError(null);
       }
       if (event === "PASSWORD_RECOVERY") {
         setIsInvite(false);
-        setReady(true);
-      } else if (event === "SIGNED_IN") {
-        evaluateSession(session, type);
+        if (!sessionEvaluated) {
+          sessionEvaluated = true;
+          setReady(true);
+        }
+      } else if (event === "SIGNED_IN" && session) {
+        const urlType = searchParams.get("type") || hashParams.get("type") || type;
+        safeEvaluateSession(session, urlType);
       }
     });
 

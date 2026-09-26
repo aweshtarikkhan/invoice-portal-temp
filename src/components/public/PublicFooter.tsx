@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
 import logoImg from "@/assets/logo.png";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
-import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin, Facebook, Instagram, Youtube, Linkedin } from "lucide-react";
+import { Phone, Mail, ShieldCheck, ArrowRight, Sparkles, CheckCircle2, MapPin, Facebook, Instagram, Youtube, Linkedin, Users, Handshake } from "lucide-react";
 import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export function PublicFooter() {
-  const { data: socials } = usePlatformSocials();
+  const { socials } = usePlatformSocials();
   const phone = (socials?.phone ? socials.phone.replace(/[^0-9]/g, "") : "") || "917806025875";
   const formattedPhone = socials?.phone || "+91 7806025875";
 
@@ -23,13 +23,13 @@ export function PublicFooter() {
           {/* Main 4-Column Balanced Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-10 lg:gap-8 pb-14 border-b border-white/10">
             
-            {/* Column 1: Brand, Tagline & Helpline (4 cols) */}
-            <div className="lg:col-span-4 flex flex-col items-start">
+            {/* Column 1: Brand, Tagline & Helpline (3 cols) */}
+            <div className="lg:col-span-3 flex flex-col items-start">
               <Link to="/" className="inline-block p-2.5 px-3.5 bg-white rounded-xl shadow-md mb-5 hover:opacity-95 transition-opacity">
                 <img src={logoImg} alt="Aassay Biz" className="h-8 w-auto object-contain" />
               </Link>
               <p className="text-slate-300 text-sm leading-relaxed mb-6 max-w-sm text-justify">
-                The unified operating system built for modern Indian enterprises. Powering effortless GST compliance, financial accounting, workforce payroll, and customer growth from a single intelligent workspace.
+                The unified operating system built for modern Indian enterprises. Powering effortless GST compliance, financial accounting, workforce payroll, and customer growth from a single intelligent workspace
               </p>
 
 
@@ -73,36 +73,65 @@ export function PublicFooter() {
             </div>
 
             {/* Column 2: Platform Modules (3 cols) */}
-            <div className="lg:col-span-3">
-              <h3 className="font-bold text-white text-base tracking-wide mb-4">Core Modules</h3>
-              <ul className="space-y-3 text-sm text-slate-300">
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">GST Invoicing & E-Way Bill</a></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business Accounting & Ledger</a></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Multi-Warehouse Inventory</a></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business HR & Staff Attendance</a></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business CRM & Lead Pipeline</a></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Promotion & Festival Posters</a></li>
-              </ul>
+            <div className="lg:col-span-3 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-white text-base tracking-wide mb-4">Core Modules</h3>
+                <ul className="space-y-3 text-sm text-slate-300">
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">GST Invoicing & E-Way Bill</a></li>
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business Accounting & Ledger</a></li>
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Multi-Warehouse Inventory</a></li>
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business HR & Staff Attendance</a></li>
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Business CRM & Lead Pipeline</a></li>
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Promotion & Festival Posters</a></li>
+                </ul>
+              </div>
+
+              <a
+                href="https://attendance.aassaybiz.com/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-6 inline-flex items-center justify-between gap-2.5 w-full max-w-[210px] h-11 px-4 rounded-xl bg-[#e77817] hover:bg-[#d46a0f] text-white text-xs sm:text-sm font-semibold shadow-md shadow-[#e77817]/25 transition-all duration-300 hover:scale-[1.02] whitespace-nowrap"
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-white shrink-0" />
+                  <span>Attendance Portal</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-white shrink-0" />
+              </a>
             </div>
 
-            {/* Column 3: Quick Links & Collateral (2 cols) */}
-            <div className="lg:col-span-2">
-              <h3 className="font-bold text-white text-base tracking-wide mb-4">Quick Links</h3>
-              <ul className="space-y-3 text-sm text-slate-300">
-                <li><Link to="/" className="hover:text-[#ff9438] transition-colors">Home</Link></li>
-                <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Features</a></li>
-                <li><a href="/#pricing" className="hover:text-[#ff9438] transition-colors">Pricing & Plans</a></li>
-                <li><Link to="/brochure" className="hover:text-[#ff9438] transition-colors">Product Brochure (PDF)</Link></li>
-                <li><Link to="/pamphlet" className="hover:text-[#ff9438] transition-colors">Marketing Pamphlet</Link></li>
-                <li><Link to="/partner-with-us" className="hover:text-[#ff9438] transition-colors">Partner With Us</Link></li>
-              </ul>
+            {/* Column 3: Quick Links & Collateral (3 cols) */}
+            <div className="lg:col-span-3 flex flex-col justify-between">
+              <div>
+                <h3 className="font-bold text-white text-base tracking-wide mb-4">Quick Links</h3>
+                <ul className="space-y-3 text-sm text-slate-300">
+                  <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Features</a></li>
+                  <li><a href="/#pricing" className="hover:text-[#ff9438] transition-colors">Pricing & Plans</a></li>
+                  <li><Link to="/brochure" className="hover:text-[#ff9438] transition-colors">Product Brochure (PDF)</Link></li>
+                  <li><Link to="/pamphlet" className="hover:text-[#ff9438] transition-colors">Marketing Pamphlet</Link></li>
+                  <li><Link to="/partner-with-us" className="hover:text-[#ff9438] transition-colors">Partner With Us</Link></li>
+                  <li><Link to="/contact" className="hover:text-[#ff9438] transition-colors">Contact Us</Link></li>
+                </ul>
+              </div>
+
+              <Link
+                to="#"
+                onClick={(e) => e.preventDefault()}
+                className="mt-6 inline-flex items-center justify-between gap-2.5 w-full max-w-[210px] h-11 px-4 rounded-xl bg-[#e77817] hover:bg-[#d46a0f] text-white text-xs sm:text-sm font-semibold shadow-md shadow-[#e77817]/25 transition-all duration-300 hover:scale-[1.02] whitespace-nowrap cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  <Handshake className="w-4 h-4 text-white shrink-0" />
+                  <span>Partner Login</span>
+                </div>
+                <ArrowRight className="w-4 h-4 text-white shrink-0" />
+              </Link>
             </div>
 
             {/* Column 4: Legal & Trust (3 cols) */}
             <div className="lg:col-span-3 flex flex-col justify-between">
               <div>
                 <h3 className="font-bold text-white text-base tracking-wide mb-4">
-                  Contact Us
+                  Support
                 </h3>
                 <ul className="space-y-3 text-sm mb-6">
                   <li>

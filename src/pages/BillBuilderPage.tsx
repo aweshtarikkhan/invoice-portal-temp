@@ -9,7 +9,7 @@ import { logStockMovements, detectNegativeStock } from "@/lib/stock";
 import { CustomFieldsForm, saveCustomFieldValues } from "@/components/shared/CustomFieldsForm";
 import { CURRENCIES, formatCurrency } from "@/lib/currency";
 import { COMMON_UNITS, INDIAN_STATES, INDIAN_GST_SLABS } from "@/lib/constants";
-import { stateCodeFromGstin } from "@/lib/gst";
+import { stateCodeFromGstin, normalizeStateCode, extractEntityState, formatStateWithCode } from "@/lib/gst";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -676,21 +676,18 @@ export default function BillBuilderPage() {
     }
   };
 
-  // State Detection
+  // State Detection (normalizes 2-digit code from GSTIN, state code, or full state name)
   const orgState = useMemo(() => {
-    if (org?.gst_number) return stateCodeFromGstin(org.gst_number);
-    if (org?.address && typeof org.address === 'object' && (org.address as any).state) return String((org.address as any).state);
-    return null;
+    return extractEntityState(org);
   }, [org]);
 
-  const baseVendorState = useMemo(() => {
-    const vendor = vendors.find(c => c.id === vendorId);
-    if (vendor?.tax_number) return stateCodeFromGstin(vendor.tax_number);
-    if (vendor?.billing_address && typeof vendor.billing_address === 'object' && (vendor.billing_address as any).state) return String((vendor.billing_address as any).state);
-    return null;
-  }, [vendorId, vendors]);
+  const selectedVendor = useMemo(() => vendors.find(c => c.id === vendorId), [vendorId, vendors]);
 
-  const vendorState = vendorStateOverride || baseVendorState;
+  const baseVendorState = useMemo(() => {
+    return extractEntityState(selectedVendor);
+  }, [selectedVendor]);
+
+  const vendorState = normalizeStateCode(vendorStateOverride) || baseVendorState;
 
   const isInterstate = Boolean(orgState && vendorState && orgState !== vendorState);
 
@@ -1010,7 +1007,12 @@ export default function BillBuilderPage() {
         }}
       />
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{id ? "Edit Purchase Invoice" : "New Purchase Invoice"}</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/bills")} title="Back to Purchase Invoices">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">{id ? "Edit Purchase Invoice" : "New Purchase Invoice"}</h1>
+        </div>
         <div className="flex gap-2">
           <BillSettingsSheet />
           <Button variant="outline" onClick={() => navigate("/bills")}>Cancel</Button>
@@ -1162,7 +1164,7 @@ export default function BillBuilderPage() {
                 </div>
                 
                 {/* State Override if Vendor State is missing */}
-                {vendorId && !baseVendorState && (
+                {vendorId && !vendorState && (
                   <div className="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/30 p-3 space-y-2">
                     <div className="flex items-center gap-2 text-sm font-semibold text-yellow-700 dark:text-yellow-400">
                       <AlertTriangle className="h-4 w-4" />
@@ -1171,13 +1173,22 @@ export default function BillBuilderPage() {
                     <p className="text-xs text-yellow-600 dark:text-yellow-500">
                       Select the vendor's state to correctly calculate CGST/SGST vs IGST.
                     </p>
-                    <Select value={vendorStateOverride} onValueChange={setVendorStateOverride}>
+                    <Select value={vendorStateOverride} onValueChange={async (val) => {
+                      setVendorStateOverride(val);
+                      if (selectedVendor?.id) {
+                        const existingAddr = (selectedVendor.billing_address && typeof selectedVendor.billing_address === 'object') ? selectedVendor.billing_address : {};
+                        const updatedAddr = { ...existingAddr, state: val };
+                        await supabase.from("vendors").update({ billing_address: updatedAddr }).eq("id", selectedVendor.id);
+                        setVendors(prev => prev.map(c => c.id === selectedVendor.id ? { ...c, billing_address: updatedAddr } : c));
+                        toast({ title: "Vendor state saved", description: "State saved to vendor profile." });
+                      }
+                    }}>
                       <SelectTrigger className="h-8 text-xs bg-white dark:bg-background">
-                        <SelectValue placeholder="Select State Code" />
+                        <SelectValue placeholder="Select State" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="max-h-60">
                         {INDIAN_STATES.map((state) => (
-                          <SelectItem key={state.code} value={state.code}>{state.code} - {state.name}</SelectItem>
+                          <SelectItem key={state.code} value={state.code}>{state.name} ({state.code})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

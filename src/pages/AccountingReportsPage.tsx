@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfYear, endOfYear } from "date-fns";
@@ -12,6 +15,7 @@ import { format, startOfYear, endOfYear } from "date-fns";
 interface AcctSum { id: string; code: string; name: string; type: string; debit: number; credit: number; balance: number; }
 
 export default function AccountingReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [from, setFrom] = useState(format(startOfYear(new Date()), "yyyy-MM-dd"));
   const [to, setTo] = useState(format(endOfYear(new Date()), "yyyy-MM-dd"));
@@ -68,7 +72,15 @@ export default function AccountingReportsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Accounting Reports</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Accounting Reports</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Trial Balance, Balance Sheet, and financial reports</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </div>
 
       <Card>
         <CardContent className="pt-5 flex items-end gap-3">

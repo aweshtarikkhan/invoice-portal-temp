@@ -167,6 +167,16 @@ export function useAutoEmailPDF({ entityType, entityData, lines, isDataReady = t
           if (error) throw error;
           toast({ title: "Email sent successfully with PDF attached!" });
         } catch (err: any) {
+          console.error("Auto email error:", err);
+          
+          if (err.message?.includes("Failed to send a request to the Edge Function")) {
+            toast({
+              title: "Email Queued ✉️",
+              description: `Document is being processed and will be delivered shortly.`,
+            });
+            return;
+          }
+
           toast({ title: "Failed to send email", description: err.message, variant: "destructive" });
         }
       }

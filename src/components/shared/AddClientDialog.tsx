@@ -104,7 +104,7 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
         zip: billingZip.trim() || null,
         country: "IN",
       },
-    }).select("id, display_name").single();
+    }).select("*").single();
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -186,10 +186,10 @@ export function AddClientDialog({ open, onOpenChange, onClientAdded }: AddClient
                 <SelectTrigger>
                   <SelectValue placeholder="Select State" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   {INDIAN_STATES.map((s) => (
                     <SelectItem key={s.code} value={s.code}>
-                      {s.code} - {s.name}
+                      {s.name} ({s.code})
                     </SelectItem>
                   ))}
                 </SelectContent>

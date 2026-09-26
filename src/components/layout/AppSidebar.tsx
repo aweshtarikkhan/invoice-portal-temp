@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
 import { ArrowUpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +12,6 @@ import {
   CreditCard,
   Settings,
   Receipt,
-  LogOut,
   Lock,
   ClipboardList,
   BarChart3,
@@ -51,7 +50,6 @@ import {
   BrainCircuit,
   MessageSquareQuote,
   Sparkles,
-  Headphones,
   HelpCircle,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
@@ -60,6 +58,7 @@ import logoImg from "@/assets/logo.png";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -140,7 +139,6 @@ const settingsItems = [
   { title: "Templates", url: "/templates", icon: Layout },
   { title: "Custom Fields", url: "/custom-fields", icon: SlidersHorizontal },
   { title: "Audit Logs", url: "/audit-logs", icon: ScrollText },
-  { title: "Help & Support", url: "/support", icon: Headphones },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -154,11 +152,11 @@ const ADMIN_GROUP_ITEMS: Record<string, { label: string; items: any[] }> = {
 };
 
 export function AppSidebar() {
-  const { state } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-    const { signOut, profile, session } = useAuth();
+    const { profile, session } = useAuth();
   const { subscriptionPlan } = useSubscription();
   const org = useAppStore((s) => s.organization);
   const myOrganizations = useAppStore((s) => s.myOrganizations);
@@ -169,6 +167,65 @@ export function AppSidebar() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
+  const [unreadHrChatCount, setUnreadHrChatCount] = useState(0);
+
+  useEffect(() => {
+    if (!org?.id) return;
+
+    let isMounted = true;
+    const fetchUnread = async () => {
+      try {
+        const { data: hrEmp } = await (supabase as any)
+          .from("employees")
+          .select("id")
+          .eq("org_id", org.id)
+          .or("designation.ilike.%hr%,designation.ilike.%admin%")
+          .limit(1)
+          .maybeSingle();
+
+        if (hrEmp && isMounted) {
+          const { count } = await (supabase as any)
+            .from("chat_messages")
+            .select("id", { count: "exact", head: true })
+            .eq("receiver_id", hrEmp.id)
+            .eq("status", "sent");
+          if (isMounted) setUnreadHrChatCount(count || 0);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+
+    fetchUnread();
+
+    const handleUnreadEvent = (e: any) => {
+      if (isMounted) setUnreadHrChatCount(e.detail?.count ?? 0);
+    };
+    window.addEventListener("hr-chat-unread", handleUnreadEvent);
+
+    const channel = supabase
+      .channel(`sidebar-hr-chat-${org.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "chat_messages" },
+        () => { fetchUnread(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chat_messages" },
+        () => { fetchUnread(); }
+      )
+      .subscribe();
+
+    const interval = setInterval(fetchUnread, 5000);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("hr-chat-unread", handleUnreadEvent);
+      supabase.removeChannel(channel);
+      clearInterval(interval);
+    };
+  }, [org?.id]);
 
   const toggleGroup = (key: string, isOpen: boolean) => {
     setOpenGroups(prev => ({ ...prev, [key]: !isOpen }));
@@ -288,6 +345,17 @@ export function AppSidebar() {
       ]
     : otherGroups;
 
+  const getSubGroupIcon = (key: string) => {
+    switch (key) {
+      case "sales": return FileText;
+      case "catalog": return Package;
+      case "purchases": return ShoppingCart;
+      case "accounting": return Landmark;
+      case "reports": return BarChart3;
+      default: return ClipboardList;
+    }
+  };
+
   // Check if any settings item is active to auto-open settings
   const isSettingsActive = settingsItems.some(
     (item) => location.pathname === item.url || location.pathname.startsWith(item.url + "/")
@@ -313,10 +381,17 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0 bg-sidebar text-sidebar-foreground">
-      <SidebarHeader className="px-4 py-6 flex flex-col gap-6">
-        <NavLink to="/dashboard" className="flex items-center justify-center gap-3 hover:opacity-90 transition-opacity w-full">
-          <div className="bg-white/95 px-4 py-2 rounded-xl shadow-sm w-full flex justify-center border border-white/20">
-            <img src={`${logoImg}?v=${Date.now()}`} alt="Aassay Biz" className="h-10 w-auto object-contain" />
+      <SidebarHeader className={cn("flex flex-col transition-all", collapsed ? "p-2 items-center" : "px-4 py-6 gap-6")}>
+        <NavLink to="/dashboard" className="flex items-center justify-center hover:opacity-90 transition-opacity">
+          <div className={cn(
+            "bg-white/95 rounded-xl shadow-sm flex items-center justify-center border border-white/20 transition-all",
+            collapsed ? "w-8 h-8 p-1 rounded-lg" : "px-4 py-2 w-full"
+          )}>
+            <img 
+              src={`${logoImg}?v=${Date.now()}`} 
+              alt="Aassay Biz" 
+              className={cn("object-contain transition-all", collapsed ? "h-6 w-6" : "h-10 w-auto")} 
+            />
           </div>
         </NavLink>
 
@@ -367,19 +442,22 @@ export function AppSidebar() {
         )}
       </SidebarHeader>
 
-      <SidebarContent className="px-3 gap-1">
+      <SidebarContent className={cn("gap-1", collapsed ? "px-1.5" : "px-3")}>
         {/* Permanent Home / Dashboard Link */}
         <SidebarGroup className="p-0">
           <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
+            <SidebarMenu className={cn(collapsed && "items-center")}>
+              <SidebarMenuItem className={cn(collapsed && "flex justify-center")}>
                 <SidebarMenuButton asChild isActive={isActive("/dashboard")} tooltip={t("Dashboard")}>
                   <NavLink
                     to="/dashboard"
-                    className="hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-5"
+                    className={cn(
+                      "hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors flex items-center",
+                      collapsed ? "justify-center h-8 w-8 p-0" : "py-5 px-3"
+                    )}
                     activeClassName="bg-blue-600 text-white font-medium shadow-md shadow-blue-600/20"
                   >
-                    <LayoutDashboard className="h-5 w-5" />
+                    <LayoutDashboard className="h-5 w-5 shrink-0" />
                     {!collapsed && <span className="text-sm ml-2">{t("Dashboard")}</span>}
                   </NavLink>
                 </SidebarMenuButton>
@@ -393,10 +471,10 @@ export function AppSidebar() {
           const isOpen = openGroups[g.key] !== undefined ? openGroups[g.key] : isActiveGroup;
 
           return (
-            <SidebarGroup key={g.key} id={`group-${g.key}`} className="p-0 mt-2">
+            <SidebarGroup key={g.key} id={`group-${g.key}`} className={cn("p-0 mt-2", collapsed && "flex flex-col items-center")}>
               <SidebarGroupContent>
-                <SidebarMenu>
-                  <SidebarMenuItem>
+                <SidebarMenu className={cn(collapsed && "items-center")}>
+                  <SidebarMenuItem className={cn(collapsed && "flex justify-center")}>
                     <SidebarMenuButton
                       onClick={() => {
                         if ((g as any).isLocked && !(g as any).subGroups) {
@@ -409,26 +487,47 @@ export function AppSidebar() {
                           toggleGroup(g.key, isOpen);
                         }
                       }}
-                      className={`hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn ${(g as any).isLocked && !(g as any).subGroups ? "opacity-60 cursor-not-allowed" : ""}`}
+                      isActive={isActiveGroup}
+                      className={cn(
+                        "hover:bg-[#1e293b] hover:text-white cursor-pointer rounded-lg transition-colors group/groupbtn",
+                        (g as any).isLocked && !(g as any).subGroups ? "opacity-60 cursor-not-allowed" : "",
+                        collapsed ? "justify-center h-8 w-8 p-0" : "h-10 py-5"
+                      )}
                       tooltip={t(g.label)}
                     >
-                      {g.key === "business_management" && <Briefcase className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "sales" && <FileText className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "catalog" && <Package className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "purchases" && <ShoppingCart className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "accounting" && <Landmark className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "people" && <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "outreach" && <MessageCircle className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "feedback" && <MessageSquareQuote className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
-                      {g.key === "ai-analysis" && <BrainCircuit className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />}
+                      {g.key === "business_management" && <Briefcase className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "sales" && <FileText className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "catalog" && <Package className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "purchases" && <ShoppingCart className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "accounting" && <Landmark className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "people" && (
+                        <div className="relative flex items-center justify-center shrink-0">
+                          <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />
+                          {collapsed && unreadHrChatCount > 0 && (
+                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {g.key === "crm" && <Users className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "marketing" && <Send className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "reports" && <BarChart3 className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "outreach" && <MessageCircle className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "feedback" && <MessageSquareQuote className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
+                      {g.key === "ai-analysis" && <BrainCircuit className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />}
                       
                       {!collapsed && (
                         <div className="flex-1 flex items-center justify-between pr-2 ml-2 min-w-0">
-                            <span className="font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm truncate">
+                            <span className="font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm truncate flex items-center">
                               {t(g.label)}
+                              {g.key === "people" && !isOpen && unreadHrChatCount > 0 && (
+                                <span className="relative flex h-2 w-2 ml-1.5">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                                </span>
+                              )}
                             </span>
                             {(g as any).isLocked && !(g as any).isUpcoming && <Lock className="h-3.5 w-3.5 text-amber-500 ml-2 shrink-0" title="Locked" />}
                             {(g as any).isUpcoming && (
@@ -447,16 +546,34 @@ export function AppSidebar() {
                   </SidebarMenuItem>
                   
                   {isOpen && !(g as any).isLocked && g.items.map((item) => (
-                    <SidebarMenuItem key={item.title} className={`group/item mt-1 ${collapsed ? "pl-0 flex justify-center" : "pl-6"}`}>
-                      <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
+                    <SidebarMenuItem key={item.title} className={cn("group/item mt-1", collapsed ? "flex justify-center pl-0" : "pl-6")}>
+                      <SidebarMenuButton 
+                        asChild 
+                        isActive={isActive(item.url)} 
+                        tooltip={t(item.title)}
+                        className={cn(
+                          "hover:bg-[#1e293b] hover:text-white transition-colors rounded-lg",
+                          collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-9"
+                        )}
+                      >
                         <NavLink
                           to={item.url}
-                          className="hover:bg-[#1e293b] hover:text-white transition-colors h-9 rounded-lg"
+                          className={cn(
+                            "flex items-center w-full h-full",
+                            collapsed ? "justify-center" : "gap-2"
+                          )}
                         >
-                          {collapsed ? (
-                            <item.icon className="h-4 w-4" />
-                          ) : (
-                            <span className="text-sm">{t(item.title)}</span>
+                          <item.icon className="h-4 w-4 shrink-0 opacity-80" />
+                          {!collapsed && (
+                            <span className="text-sm flex items-center justify-between w-full">
+                              <span>{t(item.title)}</span>
+                              {item.url === "/attendance" && unreadHrChatCount > 0 && (
+                                <span className="relative flex h-2.5 w-2.5 ml-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                                </span>
+                              )}
+                            </span>
                           )}
                         </NavLink>
                       </SidebarMenuButton>
@@ -475,49 +592,71 @@ export function AppSidebar() {
 
                   {isOpen && g.subGroups?.map((sub) => {
                     const isSubLocked = (sub as any).isLocked;
+                    const isSubActive = sub.items.some(item => isActive(item.url) || (item.addUrl && isActive(item.addUrl)));
                     const isSubOpen = openGroups[sub.key] !== undefined 
                       ? openGroups[sub.key] 
-                      : (!isSubLocked && sub.items.some(item => isActive(item.url) || (item.addUrl && isActive(item.addUrl))));
+                      : (!isSubLocked && isSubActive);
+                    const SubIcon = getSubGroupIcon(sub.key);
+
                     return (
-                      <div key={sub.key} id={`group-${sub.key}`} className="mt-1">
-                        <SidebarMenuItem className={`group/item ${collapsed ? "pl-0 flex justify-center" : "pl-4"}`}>
+                      <div key={sub.key} id={`group-${sub.key}`} className={cn("mt-1", collapsed && "w-full flex flex-col items-center")}>
+                        <SidebarMenuItem className={cn("group/item", collapsed ? "flex justify-center pl-0" : "pl-4")}>
                           <SidebarMenuButton 
                             onClick={() => {
                               if (!isSubLocked) {
                                 toggleGroup(sub.key, isSubOpen);
                               }
                             }} 
-                            className={`hover:bg-transparent h-9 text-slate-400 hover:text-white ${isSubLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}
-                            tooltip={collapsed ? t(sub.label) : undefined}
+                            isActive={isSubActive}
+                            className={cn(
+                              "hover:bg-[#1e293b] text-slate-400 hover:text-white rounded-lg transition-colors",
+                              isSubLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                              collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-9"
+                            )}
+                            tooltip={t(sub.label)}
                           >
                             {collapsed ? (
-                               <>
-                                  {sub.key === "sales" && <FileText className="h-4 w-4" />}
-                                  {sub.key === "catalog" && <Package className="h-4 w-4" />}
-                                  {sub.key === "purchases" && <ShoppingCart className="h-4 w-4" />}
-                                  {sub.key === "accounting" && <Landmark className="h-4 w-4" />}
-                               </>
+                              <SubIcon className="h-4 w-4 shrink-0 opacity-80" />
                             ) : (
-                               <>
-                                 <span className="flex-1 text-sm flex items-center justify-between pr-2">
-                                     {t(sub.label)}
-                                     {isSubLocked && <Lock className="h-3.5 w-3.5 text-amber-500 ml-1.5 shrink-0" title="Locked" />}
-                                   </span>
-                                 {!isSubLocked && <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSubOpen ? "rotate-90" : ""}`} />}
-                               </>
+                              <>
+                                <span className="flex-1 text-sm flex items-center justify-between pr-2">
+                                  <span className="flex items-center gap-2">
+                                    <SubIcon className="h-4 w-4 shrink-0 opacity-70" />
+                                    <span>{t(sub.label)}</span>
+                                  </span>
+                                  {isSubLocked && <Lock className="h-3.5 w-3.5 text-amber-500 ml-1.5 shrink-0" title="Locked" />}
+                                </span>
+                                {!isSubLocked && <ChevronRight className={`h-3.5 w-3.5 transition-transform ${isSubOpen ? "rotate-90" : ""}`} />}
+                              </>
                             )}
                           </SidebarMenuButton>
                         </SidebarMenuItem>
-                        {isSubOpen && !collapsed && !isSubLocked && (
-                          <div className="pl-6 border-l border-slate-700/50 ml-6 mt-1 space-y-1">
+
+                        {isSubOpen && !isSubLocked && (
+                          <div className={cn(collapsed ? "space-y-1 my-1 flex flex-col items-center" : "pl-6 border-l border-slate-700/50 ml-6 mt-1 space-y-1")}>
                             {sub.items.map(item => (
-                              <SidebarMenuItem key={item.title} className="group/subitem">
-                                <SidebarMenuButton asChild isActive={isActive(item.url)}>
-                                  <NavLink to={item.url} className="h-8 hover:bg-[#1e293b] hover:text-white transition-colors rounded-lg">
-                                    <span className="text-sm">{t(item.title)}</span>
+                              <SidebarMenuItem key={item.title} className={cn(collapsed ? "flex justify-center pl-0" : "group/subitem")}>
+                                <SidebarMenuButton 
+                                  asChild 
+                                  isActive={isActive(item.url)} 
+                                  tooltip={t(item.title)}
+                                  className={cn(
+                                    "hover:bg-[#1e293b] hover:text-white transition-colors rounded-lg",
+                                    collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-8"
+                                  )}
+                                >
+                                  <NavLink 
+                                    to={item.url} 
+                                    className={cn(
+                                      "flex items-center w-full h-full",
+                                      collapsed ? "justify-center" : "gap-2"
+                                    )}
+                                  >
+                                    <item.icon className={cn("shrink-0", collapsed ? "h-4 w-4 opacity-80" : "h-3.5 w-3.5 opacity-70")} />
+                                    {!collapsed && <span className="text-sm">{t(item.title)}</span>}
                                   </NavLink>
                                 </SidebarMenuButton>
-                                {item.addUrl && (
+                                {!collapsed && item.addUrl && (
                                   <NavLink 
                                     to={item.addUrl}
                                     title={`New ${item.title.replace(/s$/, "")}`}
@@ -531,7 +670,7 @@ export function AppSidebar() {
                           </div>
                         )}
                       </div>
-                    )
+                    );
                   })}
                 </SidebarMenu>
               </SidebarGroupContent>
@@ -540,26 +679,29 @@ export function AppSidebar() {
         })}
 
         {/* Settings group - collapsible under gear icon */}
-        <SidebarGroup className="p-0 mt-2">
+        <SidebarGroup className={cn("p-0 mt-2", collapsed && "flex flex-col items-center")}>
           <SidebarGroupContent>
-            <SidebarMenu>
+            <SidebarMenu className={cn(collapsed && "items-center")}>
               {(userRole === 'admin' || userRole === 'owner' || userPermissions.includes('settings_access')) && (
                 <>
-                  <SidebarMenuItem id="group-settings">
-                      <SidebarMenuButton
-                        onClick={() => {
-                          setSettingsOpen(!settingsOpen);
-                          if (!settingsOpen) {
-                            setTimeout(() => {
-                              document.getElementById("group-settings")?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                            }, 150);
-                          }
-                        }}
+                  <SidebarMenuItem id="group-settings" className={cn(collapsed && "flex justify-center")}>
+                    <SidebarMenuButton
+                      onClick={() => {
+                        setSettingsOpen(!settingsOpen);
+                        if (!settingsOpen) {
+                          setTimeout(() => {
+                            document.getElementById("group-settings")?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 150);
+                        }
+                      }}
                       isActive={isSettingsActive}
-                      className="hover:bg-[#1e293b] hover:text-white cursor-pointer h-10 rounded-lg transition-colors py-5 group/groupbtn"
+                      className={cn(
+                        "hover:bg-[#1e293b] hover:text-white cursor-pointer rounded-lg transition-colors group/groupbtn",
+                        collapsed ? "justify-center h-8 w-8 p-0" : "h-10 py-5"
+                      )}
                       tooltip={t("System & Settings")}
                     >
-                      <Settings className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100" />
+                      <Settings className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />
                       {!collapsed && (
                         <>
                           <span className="flex-1 font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm ml-2">{t("System & Settings")}</span>
@@ -571,35 +713,49 @@ export function AppSidebar() {
                   {(settingsOpen || isSettingsActive) && (
                     <>
                       {settingsItems.map((item) => (
-                        <SidebarMenuItem key={item.title} className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
-                          <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={collapsed ? t(item.title) : undefined}>
+                        <SidebarMenuItem key={item.title} className={cn("mt-1", collapsed ? "flex justify-center pl-0" : "pl-6")}>
+                          <SidebarMenuButton 
+                            asChild 
+                            isActive={isActive(item.url)}
+                            tooltip={t(item.title)}
+                            className={cn(
+                              "hover:bg-[#1e293b] hover:text-white transition-colors rounded-lg",
+                              collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-9"
+                            )}
+                          >
                             <NavLink
                               to={item.url}
-                              className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
-                              activeClassName="bg-blue-600/10 text-blue-400 font-medium"
-                            >
-                              {collapsed ? (
-                                item.icon && <item.icon className="h-4 w-4 shrink-0" />
-                              ) : (
-                                <span className="text-sm">{t(item.title)}</span>
+                              className={cn(
+                                "flex items-center w-full h-full",
+                                collapsed ? "justify-center" : "gap-2"
                               )}
+                            >
+                              <item.icon className="h-4 w-4 shrink-0 opacity-80" />
+                              {!collapsed && <span className="text-sm">{t(item.title)}</span>}
                             </NavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
                       ))}
                       {userRole !== 'staff' && (
-                        <SidebarMenuItem className={`mt-1 ${collapsed ? 'pl-0 flex justify-center' : 'pl-6'}`}>
-                          <SidebarMenuButton asChild isActive={isActive("/admin")} tooltip={collapsed ? t("Admin Panel") : undefined}>
+                        <SidebarMenuItem className={cn("mt-1", collapsed ? "flex justify-center pl-0" : "pl-6")}>
+                          <SidebarMenuButton 
+                            asChild 
+                            isActive={isActive("/admin")}
+                            tooltip={t("Admin Panel")}
+                            className={cn(
+                              "hover:bg-[#1e293b] hover:text-white transition-colors rounded-lg",
+                              collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-9"
+                            )}
+                          >
                             <NavLink
                               to="/admin"
-                              className={`hover:bg-[#1e293b] hover:text-white rounded-lg transition-colors py-4 text-slate-400 ${collapsed ? 'justify-center items-center w-10 h-10 mx-auto' : ''}`}
-                              activeClassName="bg-blue-600/10 text-blue-400 font-medium"
-                            >
-                              {collapsed ? (
-                                <Shield className="h-4 w-4 shrink-0" />
-                              ) : (
-                                <span className="text-sm">{t("Admin Panel")}</span>
+                              className={cn(
+                                "flex items-center w-full h-full",
+                                collapsed ? "justify-center" : "gap-2"
                               )}
+                            >
+                              <Shield className="h-4 w-4 shrink-0 opacity-80" />
+                              {!collapsed && <span className="text-sm">{t("Admin Panel")}</span>}
                             </NavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -612,10 +768,13 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         {(!subscriptionPlan || subscriptionPlan === 'free') && (
-          <div className="px-4 mt-2 mb-2">
+          <div className={collapsed ? "p-1 flex justify-center mt-2 mb-2" : "px-4 mt-2 mb-2"}>
             <button
               onClick={() => window.dispatchEvent(new Event('open-plan-modal'))}
-              className={`w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all ${collapsed ? 'p-2 rounded-lg' : 'py-2.5 px-4 rounded-xl'}`}
+              className={cn(
+                "flex items-center justify-center bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white shadow-md transition-all",
+                collapsed ? 'w-8 h-8 rounded-lg p-0' : 'w-full py-2.5 px-4 rounded-xl gap-2'
+              )}
               title="Upgrade to Paid Plans"
             >
               <ArrowUpCircle className="h-4 w-4 shrink-0" />
@@ -625,51 +784,26 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t border-slate-800/50 p-4 pb-6 flex flex-col gap-3">
-        <SidebarMenu className="gap-2">
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              isActive={isActive("/support")}
-              className="w-full flex items-center gap-3 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 hover:text-blue-300 px-3 py-5 rounded-xl border border-blue-500/20 transition-all text-left group"
-              tooltip={t("Help & Support")}
-            >
-              <NavLink
-                to="/support"
-                className="flex items-center gap-3 w-full"
-                activeClassName="bg-blue-600/30 text-white border-blue-500"
-              >
-                <Headphones className="h-4 w-4 text-blue-400 group-hover:scale-110 transition-transform shrink-0" />
-                {!collapsed && <span className="font-semibold text-sm">{t("Help & Support")}</span>}
-              </NavLink>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={signOut}
-              className="w-full flex items-center gap-3 bg-transparent hover:bg-slate-800/50 text-slate-300 hover:text-white px-3 py-5 rounded-xl border border-slate-700/50 transition-all text-left"
-              tooltip={t("Sign Out")}
-            >
-              <LogOut className="h-4 w-4" />
-              {!collapsed && <span className="font-medium text-sm">{t("Sign Out")}</span>}
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className={cn("border-t border-slate-800/50 flex flex-col gap-3", collapsed ? "p-2 items-center" : "p-4 pb-6")}>
         {!collapsed && (
           <div className="px-1 pt-1 border-t border-slate-800/60 flex items-center justify-between">
             <span className="text-[10px] uppercase tracking-wider text-slate-500 font-semibold">Official Channels</span>
             <SocialMediaLinks iconSize="sm" />
           </div>
         )}
-        {!collapsed && (
-          <div className="flex items-center justify-between px-3 mt-1">
-            <div className="flex flex-col">
-              <AassayBizBrand theme="dark" className="text-xs" />
-              <span className="text-[10px] text-slate-500">Version 2.0.0</span>
-            </div>
+        <div className={cn("flex items-center", collapsed ? "justify-center py-1" : "justify-between px-3 mt-1")}>
+          {!collapsed ? (
+            <>
+              <div className="flex flex-col">
+                <AassayBizBrand theme="dark" className="text-xs" />
+                <span className="text-[10px] text-slate-500">Version 2.0.0</span>
+              </div>
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="System Online"></div>
+            </>
+          ) : (
             <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" title="System Online"></div>
-          </div>
-        )}
+          )}
+        </div>
       </SidebarFooter>
     </Sidebar>
   );

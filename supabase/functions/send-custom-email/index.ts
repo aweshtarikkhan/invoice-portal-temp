@@ -33,9 +33,11 @@ serve(async (req) => {
   try {
     const { to, subject, html, attachments, orgId }: CustomEmailRequest = await req.json();
 
-    if (!to || !subject || !html || !orgId) {
-      throw new Error("Missing required parameters");
+    if (!to || !subject || !html) {
+      throw new Error("Missing required parameters (to, subject, html)");
     }
+
+    const effectiveOrgId = orgId || "platform";
 
     // Call the central dispatcher function
     const dispatcherRes = await fetch(`${supabaseUrl}/functions/v1/send-email-dispatcher`, {
@@ -45,7 +47,7 @@ serve(async (req) => {
         Authorization: `Bearer ${supabaseServiceKey}`,
       },
       body: JSON.stringify({
-        orgId,
+        orgId: effectiveOrgId,
         to,
         subject,
         html,
@@ -54,7 +56,7 @@ serve(async (req) => {
     });
 
     const result = await dispatcherRes.json();
-    if (!dispatcherRes.ok) {
+    if (!dispatcherRes.ok || result.error || result.success === false) {
       throw new Error(result.error || "Failed to dispatch email");
     }
 

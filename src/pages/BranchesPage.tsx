@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -8,10 +9,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export default function BranchesPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const [list, setList] = useState<any[]>([]);
@@ -45,11 +47,19 @@ export default function BranchesPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Branches</h1>
-        <Button onClick={() => { setEditId(null); setForm({ name: "", code: "", gstin: "", is_default: false }); setOpen(true); }}>
-          <Plus className="h-4 w-4 mr-1" /> Add Branch
-        </Button>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Branches</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Manage multiple branch locations and GSTINs</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Settings
+          </Button>
+          <Button size="sm" onClick={() => { setEditId(null); setForm({ name: "", code: "", gstin: "", is_default: false }); setOpen(true); }}>
+            <Plus className="h-4 w-4 mr-1" /> Add Branch
+          </Button>
+        </div>
       </div>
 
       <Card>

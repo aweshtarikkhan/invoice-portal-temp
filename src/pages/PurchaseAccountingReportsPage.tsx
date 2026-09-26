@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { Loader2, DollarSign, CreditCard, Clock, Receipt } from "lucide-react";
+import { Loader2, DollarSign, CreditCard, Clock, Receipt, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { format, parseISO } from "date-fns";
 
 export default function PurchaseAccountingReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [loading, setLoading] = useState(true);
   
@@ -107,9 +110,14 @@ export default function PurchaseAccountingReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Purchase & Accounting Reports</h1>
-        <p className="text-muted-foreground">Overview of your purchases, payables, and business expenses.</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Purchase & Accounting Reports</h1>
+          <p className="text-muted-foreground">Overview of your purchases, payables, and business expenses.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

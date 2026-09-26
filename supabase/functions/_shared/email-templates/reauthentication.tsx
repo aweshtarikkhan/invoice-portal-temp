@@ -2,12 +2,12 @@
 
 import * as React from 'npm:react@18.3.1'
 import {
-  Body, Container, Head, Heading, Hr, Html, Link, Preview, Section, Text,
+  Body, Container, Head, Heading, Hr, Html, Img, Link, Preview, Section, Text,
 } from 'npm:@react-email/components@0.0.22'
 
 interface Props { token: string }
-const BRAND = 'SatahInvoice'
-const SITE_URL = 'https://satahinvoice.com'
+const BRAND = 'Aassay Biz'
+const SITE_URL = 'https://aassaybiz.com'
 
 export const ReauthenticationEmail = ({ token }: Props) => (
   <Html lang="en" dir="ltr">
@@ -15,7 +15,16 @@ export const ReauthenticationEmail = ({ token }: Props) => (
     <Preview>Your {BRAND} verification code: {token}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Section style={header}><Text style={logo}>{BRAND}</Text><Text style={tagline}>Invoicing made simple</Text></Section>
+        <Section style={header}>
+          <Img
+            src="https://aassaybiz.com/logo.png"
+            alt="Aassay Biz"
+            width="170"
+            height="auto"
+            style={{ margin: '0 auto 8px', display: 'block' }}
+          />
+          <Text style={tagline}>Everything you need. One smart platform</Text>
+        </Section>
         <Section style={card}>
           <Heading style={h1}>Verification code 🔢</Heading>
           <Text style={text}>Use the code below to confirm your identity. This code expires shortly.</Text>
@@ -23,7 +32,7 @@ export const ReauthenticationEmail = ({ token }: Props) => (
           <Hr style={hr} />
           <Text style={footer}>If you didn't request this code, you can safely ignore this email.</Text>
         </Section>
-        <Text style={brandFooter}>© {new Date().getFullYear()} {BRAND} · <Link href={SITE_URL} style={brandLink}>satahinvoice.com</Link></Text>
+        <Text style={brandFooter}>© {new Date().getFullYear()} {BRAND} · Everything you need. One smart platform</Text>
       </Container>
     </Body>
   </Html>
@@ -34,7 +43,7 @@ const main = { backgroundColor: '#ffffff', fontFamily: "'Inter', -apple-system, 
 const container = { maxWidth: '560px', margin: '0 auto', padding: '32px 20px' }
 const header = { textAlign: 'center' as const, padding: '8px 0 24px' }
 const logo = { fontSize: '26px', fontWeight: 700 as const, color: '#1d4ed8', margin: '0', letterSpacing: '-0.5px' }
-const tagline = { fontSize: '12px', color: '#64748b', margin: '4px 0 0', textTransform: 'uppercase' as const, letterSpacing: '1.5px' }
+const tagline = { fontSize: '13px', color: '#64748b', margin: '4px 0 0', fontWeight: 600 as const, letterSpacing: '0.3px' }
 const card = { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '32px 28px' }
 const h1 = { fontSize: '22px', fontWeight: 700 as const, color: '#0f172a', margin: '0 0 16px' }
 const text = { fontSize: '15px', color: '#334155', lineHeight: '1.6', margin: '0 0 16px' }

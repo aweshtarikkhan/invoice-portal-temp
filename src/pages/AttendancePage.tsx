@@ -114,6 +114,7 @@ export default function AttendancePage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   // --- HR Chat state ---
+  const [activeTab, setActiveTab] = useState("monthly");
   const [hrEmployee, setHrEmployee] = useState<any>(null);
   const [chatSelectedEmp, setChatSelectedEmp] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
@@ -122,6 +123,7 @@ export default function AttendancePage() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const [unreadMap, setUnreadMap] = useState<Record<string, number>>({});
+  const [lastMessageTimeMap, setLastMessageTimeMap] = useState<Record<string, number>>({});
 
   const fetchDailyLogs = async (dateStr: string) => {
     if (!org?.id) return;
@@ -330,25 +332,8 @@ export default function AttendancePage() {
           .eq("auth_user_id", user.id)
           .maybeSingle();
           
-        if (!data) {
-          const { data: newEmp } = await (supabase as any)
-            .from("employees")
-            .insert({
-              org_id: org.id,
-              auth_user_id: user.id,
-              name: "HR Admin",
-              designation: "HR Admin",
-              email: user.email || "",
-              monthly_salary: 0,
-              paid_leaves_per_month: 0,
-              is_active: true,
-              basic_percent: 50,
-              hra_percent: 30
-            })
-            .select()
-            .single();
-          data = newEmp;
-        }
+        // HR Admin auto-creation removed as per user request
+        // data will remain null if no employee profile exists for this user
         
         setHrEmployee(data || null);
     };
@@ -370,15 +355,72 @@ export default function AttendancePage() {
     setUnreadMap(counts);
   };
 
+  const totalUnread = useMemo(() => {
+    return Object.values(unreadMap).reduce((a, b) => a + b, 0);
+  }, [unreadMap]);
+
+  // Synchronize unread badge with sidebar
   useEffect(() => {
-    if (hrEmployee) loadUnreadCounts();
+    if (activeTab === "hr-chat") {
+      window.dispatchEvent(new CustomEvent("hr-chat-unread", { detail: { count: 0 } }));
+    } else {
+      window.dispatchEvent(new CustomEvent("hr-chat-unread", { detail: { count: totalUnread } }));
+    }
+  }, [totalUnread, activeTab]);
+
+  // Dynamic sorting: whoever sent the latest message or has unread messages jumps to the TOP!
+  const sortedChatEmployees = useMemo(() => {
+    return [...employees].sort((a, b) => {
+      const unreadA = unreadMap[a.id] || 0;
+      const unreadB = unreadMap[b.id] || 0;
+      if (unreadA > 0 && unreadB === 0) return -1;
+      if (unreadB > 0 && unreadA === 0) return 1;
+      const timeA = lastMessageTimeMap[a.id] || 0;
+      const timeB = lastMessageTimeMap[b.id] || 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return a.name.localeCompare(b.name);
+    });
+  }, [employees, unreadMap, lastMessageTimeMap]);
+
+  const chatSelectedEmpRef = useRef(chatSelectedEmp);
+  useEffect(() => {
+    chatSelectedEmpRef.current = chatSelectedEmp;
+  }, [chatSelectedEmp]);
+
+  const playNotificationSound = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+      osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (e) {
+      // Audio autoplay policy
+    }
+  };
+
+  useEffect(() => {
+    if (!hrEmployee) return;
+    loadUnreadCounts();
+    const interval = setInterval(loadUnreadCounts, 5000);
+    return () => clearInterval(interval);
   }, [hrEmployee]);
 
-  // --- HR Chat: load messages for selected employee ---
+  // --- HR Chat: load messages for selected employee + 2.5s fast polling ---
   useEffect(() => {
     if (!hrEmployee || !chatSelectedEmp) { setChatMessages([]); return; }
-    const loadMsgs = async () => {
-      setChatLoading(true);
+    let isSubscribed = true;
+    const loadMsgs = async (showLoading = true) => {
+      if (showLoading) setChatLoading(true);
       const { data } = await (supabase as any)
         .from("chat_messages")
         .select("*, sender:employees!sender_id(id, name)")
@@ -386,8 +428,29 @@ export default function AttendancePage() {
           `and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.id})`
         )
         .order("created_at", { ascending: true });
-      setChatMessages(data || []);
-      // Mark as read
+      if (!isSubscribed) return;
+      if (data) {
+        setChatMessages((prev) => {
+          // Merge data with prev using Map to PREVENT message flickering/disappearing
+          const map = new Map<string, any>();
+          for (const m of prev) {
+            map.set(m.id, m);
+          }
+          for (const d of data) {
+            // Remove matching optimistic temp message
+            for (const [k, v] of map.entries()) {
+              if (String(k).startsWith("temp-") && v.message === d.message && v.sender_id === d.sender_id) {
+                map.delete(k);
+              }
+            }
+            map.set(d.id, { ...map.get(d.id), ...d });
+          }
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+      }
+      // Mark as read immediately
       await (supabase as any)
         .from("chat_messages")
         .update({ status: "read" })
@@ -395,21 +458,31 @@ export default function AttendancePage() {
         .eq("receiver_id", hrEmployee.id)
         .eq("status", "sent");
       setUnreadMap((prev) => ({ ...prev, [chatSelectedEmp.id]: 0 }));
-      setChatLoading(false);
+      if (showLoading && isSubscribed) setChatLoading(false);
     };
-    loadMsgs();
-  }, [hrEmployee, chatSelectedEmp]);
+
+    loadMsgs(true);
+
+    const pollInterval = setInterval(() => {
+      loadMsgs(false);
+    }, 2500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(pollInterval);
+    };
+  }, [hrEmployee?.id, chatSelectedEmp?.id]);
 
   // --- HR Chat: scroll to bottom ---
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  // --- HR Chat: realtime subscription ---
+  // --- HR Chat: realtime subscription (stable channel) ---
   useEffect(() => {
     if (!hrEmployee) return;
     const channel = supabase
-      .channel("hr-chat-realtime")
+      .channel(`hr-chat-realtime-${hrEmployee.id}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages" },
@@ -419,45 +492,94 @@ export default function AttendancePage() {
             msg.receiver_id === hrEmployee.id || msg.sender_id === hrEmployee.id;
           if (!isForHR || msg.group_id) return;
 
+          const activeEmp = chatSelectedEmpRef.current;
           const otherId =
             msg.sender_id === hrEmployee.id ? msg.receiver_id : msg.sender_id;
 
-          if (chatSelectedEmp && otherId === chatSelectedEmp.id) {
-            // Fetch sender name
-            const { data: senderData } = await (supabase as any)
-              .from("employees")
-              .select("id, name")
-              .eq("id", msg.sender_id)
-              .single();
-            setChatMessages((prev) => [
-              ...prev,
-              { ...msg, sender: senderData },
-            ]);
-            // Mark as read immediately
+          // Update last activity timestamp so this employee immediately jumps to top
+          setLastMessageTimeMap((prev) => ({ ...prev, [otherId]: Date.now() }));
+
+          if (activeEmp && otherId === activeEmp.id) {
+            let senderName = activeEmp.name;
+            if (msg.sender_id === hrEmployee.id) {
+              senderName = "You";
+            }
+            setChatMessages((prev) => {
+              if (prev.some((m) => m.id === msg.id)) return prev;
+              const filtered = prev.filter(m => !(String(m.id).startsWith("temp-") && m.message === msg.message && m.sender_id === msg.sender_id));
+              return [...filtered, { ...msg, sender: { id: msg.sender_id, name: senderName } }];
+            });
+
             if (msg.sender_id !== hrEmployee.id) {
+              playNotificationSound();
+              // Mark as read immediately
               await (supabase as any)
                 .from("chat_messages")
                 .update({ status: "read" })
                 .eq("id", msg.id);
             }
           } else if (msg.sender_id !== hrEmployee.id) {
+            playNotificationSound();
+            const senderEmp = employees.find((e) => e.id === msg.sender_id);
+            const senderName = senderEmp?.name || "Employee";
+            
             // Update unread badge
             setUnreadMap((prev) => ({
               ...prev,
               [msg.sender_id]: (prev[msg.sender_id] || 0) + 1,
             }));
+
+            // Show Toast notification to HR
+            toast({
+              title: `💬 New message from ${senderName}`,
+              description: msg.message || "Sent an attachment",
+            });
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chat_messages" },
+        (payload) => {
+          const updated = payload.new as any;
+          setChatMessages((prev) =>
+            prev.map((m) => (m.id === updated.id ? { ...m, status: updated.status } : m))
+          );
+        }
+      )
       .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [hrEmployee, chatSelectedEmp]);
 
-  // --- HR Chat: send message ---
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [hrEmployee?.id, employees]);
+
+  // --- HR Chat: send message with 0ms optimistic update ---
   const sendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || !hrEmployee || !chatSelectedEmp) return;
+    const text = chatInput.trim();
+    if (!text || !hrEmployee || !chatSelectedEmp) return;
+
+    const tempId = "temp-" + Date.now();
+    const optimisticMsg: any = {
+      id: tempId,
+      org_id: hrEmployee.org_id,
+      sender_id: hrEmployee.id,
+      receiver_id: chatSelectedEmp.id,
+      message: text,
+      status: "sent",
+      created_at: new Date().toISOString(),
+      sender: { id: hrEmployee.id, name: "You" },
+    };
+
+    // Instant 0ms display!
+    setChatMessages((prev) => [...prev, optimisticMsg]);
+    setChatInput("");
     setChatSending(true);
+
+    // Keep this employee at the top
+    setLastMessageTimeMap((prev) => ({ ...prev, [chatSelectedEmp.id]: Date.now() }));
+
     try {
       // Ensure connection exists (accept any pending one or create accepted)
       const { data: existingConn } = await (supabase as any)
@@ -466,7 +588,7 @@ export default function AttendancePage() {
         .or(
           `and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.id})`
         )
-        .single();
+        .maybeSingle();
 
       if (!existingConn) {
         await (supabase as any).from("chat_connections").insert({
@@ -482,15 +604,46 @@ export default function AttendancePage() {
           .eq("id", existingConn.id);
       }
 
-      await (supabase as any).from("chat_messages").insert({
+      const { data: insertedMsg, error } = await (supabase as any).from("chat_messages").insert({
         org_id: hrEmployee.org_id,
         sender_id: hrEmployee.id,
         receiver_id: chatSelectedEmp.id,
-        message: chatInput.trim(),
+        message: text,
         status: "sent",
-      });
-      setChatInput("");
+      }).select("*, sender:employees!sender_id(id, name)").single();
+
+      if (error) throw error;
+
+      if (insertedMsg) {
+        setChatMessages((prev) => {
+          const map = new Map<string, any>();
+          for (const m of prev) {
+            if (m.id === tempId) {
+              map.set(insertedMsg.id, { ...insertedMsg, sender: optimisticMsg.sender });
+            } else {
+              map.set(m.id, m);
+            }
+          }
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          );
+        });
+
+        // Insert notification for employee attendance portal
+        if (chatSelectedEmp.auth_user_id) {
+          await (supabase as any).from("notifications").insert({
+            org_id: hrEmployee.org_id,
+            user_id: chatSelectedEmp.auth_user_id,
+            title: "HR Admin",
+            message: text.substring(0, 100),
+            type: "chat",
+            is_read: false,
+            reference_id: insertedMsg.id,
+          });
+        }
+      }
     } catch (err: any) {
+      setChatMessages((prev) => prev.filter((m) => m.id !== tempId));
       toast({ title: "Failed to send", description: err.message, variant: "destructive" });
     } finally {
       setChatSending(false);
@@ -1182,7 +1335,7 @@ export default function AttendancePage() {
       </div>
 
       
-      <Tabs defaultValue="monthly" className="w-full">
+      <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); if (val === 'hr-chat') { window.dispatchEvent(new CustomEvent('hr-chat-unread', { detail: { count: 0 } })); } }} className="w-full">
         <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="roster">Roster Planner</TabsTrigger>
@@ -1199,12 +1352,13 @@ export default function AttendancePage() {
 
           <TabsTrigger value="holidays">Company Holidays</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="hr-chat" className="flex items-center gap-1.5">
+          <TabsTrigger value="hr-chat" className="flex items-center gap-1.5 relative">
             <MessageSquare className="h-4 w-4" />
             HR Chat
-            {Object.values(unreadMap).reduce((a, b) => a + b, 0) > 0 && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
-                {Object.values(unreadMap).reduce((a, b) => a + b, 0)}
+            {totalUnread > 0 && activeTab !== "hr-chat" && (
+              <span className="relative flex h-2.5 w-2.5 ml-1">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
               </span>
             )}
           </TabsTrigger>
@@ -2151,28 +2305,48 @@ export default function AttendancePage() {
               {employees.length === 0 ? (
                 <div className="p-4 text-sm text-muted-foreground">No employees found.</div>
               ) : (
-                employees.map((emp) => {
+                sortedChatEmployees.map((emp) => {
                   const unread = unreadMap[emp.id] || 0;
                   const isSelected = chatSelectedEmp?.id === emp.id;
                   return (
                     <button
                       key={emp.id}
-                      onClick={() => setChatSelectedEmp(emp)}
+                      onClick={() => {
+                        setChatSelectedEmp(emp);
+                        setUnreadMap((prev) => ({ ...prev, [emp.id]: 0 }));
+                        if (hrEmployee) {
+                          (supabase as any)
+                            .from("chat_messages")
+                            .update({ status: "read" })
+                            .eq("sender_id", emp.id)
+                            .eq("receiver_id", hrEmployee.id)
+                            .eq("status", "sent")
+                            .then();
+                        }
+                      }}
                       className={`w-full text-left px-4 py-3 flex items-center gap-3 border-b transition-colors hover:bg-blue-50 ${
                         isSelected ? "bg-blue-100 border-l-4 border-l-blue-500" : "border-l-4 border-transparent"
                       }`}
                     >
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-200">
                         <UserCircle2 className="h-5 w-5 text-slate-500" />
+                        {unread > 0 && (
+                          <span className="absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full bg-red-500 border-2 border-white animate-pulse" />
+                        )}
                       </div>
                       <div className="flex-1 overflow-hidden">
-                        <p className="truncate text-sm font-medium">{emp.name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="truncate text-sm font-medium">{emp.name}</p>
+                          {unread > 0 && (
+                            <span className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
+                          )}
+                        </div>
                         <p className="truncate text-[11px] text-muted-foreground">
                           {(emp as any).designation || "Employee"}
                         </p>
                       </div>
                       {unread > 0 && (
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                        <span className="flex h-5 min-w-[20px] px-1 shrink-0 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
                           {unread}
                         </span>
                       )}

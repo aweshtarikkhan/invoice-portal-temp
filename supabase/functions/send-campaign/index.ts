@@ -129,6 +129,57 @@ Deno.serve(async (req) => {
           );
         } else if (campaign.channel === "sms") {
           providerId = await sendSms(r.to_address, body);
+        } else if (campaign.channel === "email") {
+          const subject = campaign.template?.name || campaign.name || "Announcement from Aassay Biz";
+          const html = `
+            <div style="background-color: #f1f5f9; padding: 32px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+              <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); margin: 0 auto;">
+                <tr>
+                  <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px 28px; text-align: center;">
+                    <div style="background-color: #ffffff; display: inline-block; padding: 8px 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12); margin-bottom: 16px;">
+                      <img src="https://aassaybiz.com/logo.png" alt="Aassay Biz" style="height: 38px; max-height: 38px; width: auto; max-width: 200px; display: block; object-fit: contain; margin: 0 auto;" />
+                    </div>
+                    <div style="font-size: 13px; font-weight: 500; color: #bfdbfe; margin-bottom: 6px;">Everything you need. One smart platform</div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 22px; font-weight: 700; letter-spacing: -0.5px;">${subject}</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding: 28px 24px;">
+                    ${r.name ? `<p style="font-size: 15px; color: #334155; margin: 0 0 16px 0;">Dear <strong>${r.name}</strong>,</p>` : ""}
+                    <div style="font-size: 15px; color: #334155; line-height: 1.7;">
+                      ${body.replace(/\n/g, '<br/>')}
+                    </div>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 12px; color: #64748b;">
+                    <p style="margin: 0 0 6px 0;">Have any questions? Reply directly to this email.</p>
+                    <p style="margin: 0; color: #94a3b8; font-size: 11px;">Powered by <a href="https://aassaybiz.com" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 600;">Aassay Biz</a> &bull; Everything you need. One smart platform</p>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          `;
+
+          const emailRes = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/send-email-dispatcher`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({
+              orgId: campaign.org_id,
+              to: r.to_address,
+              subject,
+              html,
+              text: body,
+            }),
+          });
+          const resData = await emailRes.json().catch(() => ({}));
+          if (!emailRes.ok || resData.error) {
+            throw new Error(resData.error || `Email failed with status ${emailRes.status}`);
+          }
+          providerId = resData.messageId || "aws-ses";
         } else {
           throw new Error(`Channel ${campaign.channel} not supported via this function`);
         }

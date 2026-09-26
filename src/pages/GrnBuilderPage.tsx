@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { logStockMovements } from "@/lib/stock";
 import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
@@ -264,7 +264,12 @@ export default function GrnBuilderPage() {
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{id ? "Edit GRN" : "New Goods Receipt"}</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/grns")} title="Back to GRNs">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-semibold">{id ? "Edit GRN" : "New Goods Receipt"}</h1>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/grns")}>Cancel</Button>
           <Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save GRN"}</Button>

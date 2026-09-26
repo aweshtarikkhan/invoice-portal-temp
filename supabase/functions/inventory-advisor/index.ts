@@ -27,8 +27,18 @@ Deno.serve(async (req) => {
     }
 
     const { items, currency, threshold, language } = await req.json();
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
+    let GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      const { data: geminiSetting } = await supabase
+        .from('platform_settings')
+        .select('value')
+        .eq('key', 'gemini_api_key')
+        .maybeSingle();
+      if (geminiSetting?.value) {
+        GEMINI_API_KEY = geminiSetting.value;
+      }
+    }
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured. Please set GEMINI_API_KEY in server environment or platform_settings.');
 
     // Cap input size to prevent runaway prompts
     const rawItems = Array.isArray(items) ? items.slice(0, 100) : [];

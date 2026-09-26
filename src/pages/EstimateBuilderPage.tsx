@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2 } from "lucide-react";
+import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
@@ -412,10 +412,6 @@ export default function EstimateBuilderPage() {
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
-      <div className="bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex items-center gap-2 text-sm font-medium border border-blue-200 dark:border-blue-800/50 mb-4">
-        <span className="text-lg">💡</span>
-        Aap is app ko offline billing ke liye bhi use kar sakte hain, bina kisi GST setup ke!
-      </div>
       <ContactPromptDialog
         open={contactPromptOpen}
         onOpenChange={setContactPromptOpen}
@@ -430,7 +426,12 @@ export default function EstimateBuilderPage() {
       />
       
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{id ? "Edit Quotation" : "New Quotation"}</h1>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/quotations")} title="Back to Quotations">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-2xl font-bold">{id ? "Edit Quotation" : "New Quotation"}</h1>
+        </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate("/quotations")}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>

@@ -20,7 +20,11 @@ export async function getOrCreatePortalToken(
     .insert({ org_id: orgId, entity_type: entityType, entity_id: entityId })
     .select("token")
     .single();
-  if (error) return null;
+  if (error) {
+    console.error("Failed to create portal token:", error);
+    toast({ title: "Portal Token Error", description: error.message, variant: "destructive" });
+    return null;
+  }
   return data?.token ?? null;
 }
 

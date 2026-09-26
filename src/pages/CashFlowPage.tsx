@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, addMonths, isWithinInterval } from "date-fns";
 
 export default function CashFlowPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const cur = (org as any)?.currency || "INR";
   const [txns, setTxns] = useState<any[]>([]);
@@ -60,7 +64,15 @@ export default function CashFlowPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Cash Flow</h1>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Cash Flow</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Track your cash inflows and outflows across all bank accounts.</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card><CardContent className="pt-4"><div className="text-xs text-muted-foreground">Total Cash & Bank</div><div className="text-2xl font-semibold">{formatCurrency(totalBalance, cur)}</div></CardContent></Card>

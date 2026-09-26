@@ -334,12 +334,15 @@ export default function AdminPanelPage() {
     if (!editingMember) return;
     setIsUpdatingMember(true);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('organization_members')
         .update({ permissions: editingPermissions })
-        .eq('id', editingMember.member_id);
+        .eq('id', editingMember.member_id)
+        .select()
+        .single();
 
       if (error) throw error;
+      if (!data) throw new Error("Update failed. You may not have permission to modify this user.");
       
       await loadTeamMembers();
       setEditingMember(null);
@@ -856,8 +859,10 @@ export default function AdminPanelPage() {
                               <button
                                 onClick={async () => {
                                   if (confirm(`Are you sure you want to remove ${member.email}?`)) {
-                                    await supabase.from('organization_members').delete().eq('id', member.member_id);
-                                    loadTeamMembers();
+                                    const { data, error } = await supabase.from('organization_members').delete().eq('id', member.member_id).select();
+                                    if (error) alert("Failed to remove user: " + error.message);
+                                    else if (!data || data.length === 0) alert("Failed to remove user. You may not have permission.");
+                                    else loadTeamMembers();
                                   }
                                 }}
                                 className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"

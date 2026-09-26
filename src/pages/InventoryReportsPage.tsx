@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
-import { Package, AlertTriangle, ArrowRightLeft, DollarSign, Download, FileText } from "lucide-react";
+import { Package, AlertTriangle, ArrowRightLeft, DollarSign, Download, FileText, ArrowLeft } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
 export default function InventoryReportsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [items, setItems] = useState<any[]>([]);
   const [movements, setMovements] = useState<any[]>([]);
@@ -129,7 +131,11 @@ export default function InventoryReportsPage() {
       <PageHeader
         title="Inventory Reports"
         description="View analytics and KPIs for your inventory and stock movements."
-      />
+      >
+        <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Reports
+        </Button>
+      </PageHeader>
       
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card>

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { Buffer } from "node:buffer";
 import nodemailer from "npm:nodemailer@6.9.10";
 
 import handlebars from "npm:handlebars@4.7.8";
@@ -76,8 +77,8 @@ serve(async (req) => {
       .maybeSingle();
 
     const providerType = settings?.provider_type || "default";
-    const fromName = settings?.from_name || "Assay Biz";
-    const fromEmail = settings?.from_email || "no-reply@satahinvoice.com";
+    const fromName = settings?.from_name || "Aassay Biz";
+    const fromEmail = settings?.from_email || "no-reply@aassaybiz.com";
 
     let sendSuccess = false;
     let senderAddress = `${fromName} <${fromEmail}>`;
@@ -109,12 +110,27 @@ serve(async (req) => {
         text: finalText,
       };
 
-      if (attachments && attachments.length > 0) {
-        mailOptions.attachments = attachments.map((a) => ({
-          filename: a.filename,
-          content: Buffer.from(a.content, "base64"),
-          contentType: a.content_type,
-        }));
+      const formattedAttachments = attachments && attachments.length > 0
+        ? attachments.map((a) => {
+            try {
+              return {
+                filename: a.filename,
+                content: Buffer.from(a.content, "base64"),
+                contentType: a.content_type || "application/pdf",
+              };
+            } catch {
+              return {
+                filename: a.filename,
+                content: a.content,
+                encoding: "base64",
+                contentType: a.content_type || "application/pdf",
+              };
+            }
+          })
+        : undefined;
+
+      if (formattedAttachments) {
+        mailOptions.attachments = formattedAttachments;
       }
 
       await transporter.sendMail(mailOptions);
@@ -127,7 +143,7 @@ serve(async (req) => {
       }
 
       const domain = (settings?.domain_name || "").toLowerCase().trim();
-      const effectiveFrom = domain ? `no-reply@${domain}` : (fromEmail || "no-reply@test.satahinvoice.com");
+      const effectiveFrom = domain ? `no-reply@${domain}` : (fromEmail || "no-reply@aassaybiz.com");
       senderAddress = `"${fromName}" <${effectiveFrom}>`;
 
       const transporter = nodemailer.createTransport({
@@ -148,12 +164,27 @@ serve(async (req) => {
         text: finalText,
       };
 
-      if (attachments && attachments.length > 0) {
-        mailOptions.attachments = attachments.map((a) => ({
-          filename: a.filename,
-          content: Buffer.from(a.content, "base64"),
-          contentType: a.content_type,
-        }));
+      const formattedAttachments = attachments && attachments.length > 0
+        ? attachments.map((a) => {
+            try {
+              return {
+                filename: a.filename,
+                content: Buffer.from(a.content, "base64"),
+                contentType: a.content_type || "application/pdf",
+              };
+            } catch {
+              return {
+                filename: a.filename,
+                content: a.content,
+                encoding: "base64",
+                contentType: a.content_type || "application/pdf",
+              };
+            }
+          })
+        : undefined;
+
+      if (formattedAttachments) {
+        mailOptions.attachments = formattedAttachments;
       }
 
       const info = await transporter.sendMail(mailOptions);
@@ -161,7 +192,7 @@ serve(async (req) => {
       resendId = info?.messageId || "aws-ses";
     } else {
       // Default: AWS SES platform verified email
-      senderAddress = `"${fromName}" <no-reply@test.satahinvoice.com>`;
+      senderAddress = `"${fromName}" <no-reply@aassaybiz.com>`;
 
       const transporter = nodemailer.createTransport({
         host: "email-smtp.ap-south-1.amazonaws.com",
@@ -181,12 +212,27 @@ serve(async (req) => {
         text: finalText,
       };
 
-      if (attachments && attachments.length > 0) {
-        mailOptions.attachments = attachments.map((a) => ({
-          filename: a.filename,
-          content: Buffer.from(a.content, "base64"),
-          contentType: a.content_type,
-        }));
+      const formattedAttachments = attachments && attachments.length > 0
+        ? attachments.map((a) => {
+            try {
+              return {
+                filename: a.filename,
+                content: Buffer.from(a.content, "base64"),
+                contentType: a.content_type || "application/pdf",
+              };
+            } catch {
+              return {
+                filename: a.filename,
+                content: a.content,
+                encoding: "base64",
+                contentType: a.content_type || "application/pdf",
+              };
+            }
+          })
+        : undefined;
+
+      if (formattedAttachments) {
+        mailOptions.attachments = formattedAttachments;
       }
 
       const info = await transporter.sendMail(mailOptions);
@@ -226,9 +272,9 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error("Email Dispatcher error:", error);
-    return new Response(JSON.stringify({ error: error.message || error.toString() }), {
+    return new Response(JSON.stringify({ success: false, error: error.message || error.toString() }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 200,
+      status: 500,
     });
   }
 });

@@ -43,9 +43,18 @@ export function DeliveryChallanModal({
 
   // Generate WhatsApp Message text for driver / logistics
   const generateWhatsAppMessage = () => {
+    const formatAddress = (addr: any): string => {
+      if (!addr) return "";
+      if (typeof addr === "string") return addr;
+      if (typeof addr === "object") {
+        return [addr.street, addr.city, addr.state, addr.zip || addr.pincode, addr.country].filter(Boolean).join(", ");
+      }
+      return String(addr);
+    };
+
     const orgName = org?.name || "Sender";
     const clientName = client?.display_name || "Consignee";
-    const dest = challan.destination || client?.state || "Destination";
+    const dest = formatAddress(challan.destination) || client?.state || "Destination";
     const vehicle = challan.vehicle_number || "N/A";
     const eway = challan.eway_bill_number || "N/A";
     const date = challan.challan_date || "Today";

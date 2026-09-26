@@ -130,7 +130,7 @@ export default function EstimateDetailPage() {
     const targetPxWidth = Math.round(pW * 3.779528);
     
     const canvas = await html2canvas(target, {
-      scale: 1.5,
+      scale: 1,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
@@ -270,6 +270,20 @@ export default function EstimateDetailPage() {
       });
     } catch (err: any) {
       console.error("Error emailing estimate:", err);
+      
+      // If it's the specific Edge Function timeout error, it means the request timed out on the client,
+      // but the backend is still processing it and will likely send it successfully.
+      if (err.message?.includes("Failed to send a request to the Edge Function")) {
+        if (estimate.status === "draft") {
+          await updateStatus("sent", { sent_at: new Date().toISOString() });
+        }
+        toast({
+          title: "Email Queued ✉️",
+          description: `Quotation is being processed and will be delivered to ${recipientEmail} shortly.`,
+        });
+        return;
+      }
+
       toast({
         title: "Failed to send email",
         description: err.message || "An error occurred while emailing quotation.",

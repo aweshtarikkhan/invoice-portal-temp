@@ -146,7 +146,7 @@ export function PublicFooter() {
           Chat on WhatsApp
         </span>
         <a
-          href={\`https://wa.me/\${(socials?.phone ? socials.phone.replace(/[^0-9]/g, "") : "") || "919424825919"}?text=Hello%20Assay%20Biz,%20I%20would%20like%20to%20know%20more%20about%20your%20software.\`}
+          href={\`https://wa.me/\${(socials?.phone ? socials.phone.replace(/[^0-9]/g, "") : "") || "917806025875"}?text=Hello%20Assay%20Biz,%20I%20would%20like%20to%20know%20more%20about%20your%20software.\`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Contact support on WhatsApp"

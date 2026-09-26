@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/shared/EmptyState";
-import { ScrollText } from "lucide-react";
+import { ScrollText, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 
 const actionColors: Record<string, string> = {
@@ -26,6 +28,7 @@ const actionColors: Record<string, string> = {
 };
 
 export default function AuditLogsPage() {
+  const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +64,11 @@ export default function AuditLogsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Audit Logs" description="Track all changes across your organization" />
+      <PageHeader title="Audit Logs" description="Track all changes across your organization">
+        <Button variant="outline" size="sm" onClick={() => navigate("/settings")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back to Settings
+        </Button>
+      </PageHeader>
 
       <div className="flex gap-3">
         <Input

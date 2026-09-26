@@ -344,12 +344,7 @@ export function AddWarehouseDialog({
                 <SelectContent className="max-h-60">
                   {INDIAN_STATES.map((s) => (
                     <SelectItem key={s.code + s.name} value={s.name}>
-                      <div className="flex items-center justify-between gap-3 w-full">
-                        <span>{s.name}</span>
-                        <span className="font-mono text-[11px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded">
-                          {s.code}
-                        </span>
-                      </div>
+                      {s.name} ({s.code})
                     </SelectItem>
                   ))}
                 </SelectContent>

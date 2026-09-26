@@ -21,6 +21,40 @@ import {
 import { format, subDays, isAfter, isSameDay } from "date-fns";
 import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
+function computeShiftStatus(clockInTime: string, shift: any): string {
+  if (!clockInTime) return "absent";
+  try {
+    const d = new Date(clockInTime);
+    if (isNaN(d.getTime())) return "present";
+    const clockInMins = d.getHours() * 60 + d.getMinutes();
+
+    const effectiveShift = shift || {
+      start_time: "09:00",
+      grace_minutes: 15,
+      late_end: "10:30",
+      half_day_end: "14:00",
+    };
+
+    const toMins = (t: string) => {
+      if (!t) return 0;
+      const [h, m] = t.slice(0, 5).split(":").map(Number);
+      return h * 60 + m;
+    };
+    const startTimeMins = toMins(effectiveShift.start_time || "09:00");
+    const graceMins = effectiveShift.grace_minutes ?? 15;
+    const graceEnd = startTimeMins + graceMins;
+    const lateEnd = toMins(effectiveShift.late_end || "10:30");
+    const halfEnd = toMins(effectiveShift.half_day_end || "14:00");
+
+    if (clockInMins <= graceEnd) return "present";
+    if (clockInMins <= lateEnd) return "late";
+    if (clockInMins <= halfEnd) return "half_day";
+    return "half_day";
+  } catch {
+    return "present";
+  }
+}
+
 export default function DashboardPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
@@ -32,7 +66,7 @@ export default function DashboardPage() {
   const [expenses, setExpenses] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
-  const [attendance, setAttendance] = useState<any[]>([]);
+  const [todayHRStats, setTodayHRStats] = useState({ present: 0, absent: 0, onLeave: 0, late: 0, total: 0 });
   const [leads, setLeads] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
 
@@ -42,15 +76,22 @@ export default function DashboardPage() {
       setLoading(true);
       await seedHrCrmData(org.id);
 
-      const [invRes, payRes, expRes, billRes, empRes, attRes, leadRes, actRes] = await Promise.all([
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+
+      const [invRes, payRes, expRes, billRes, empRes, leadRes, actRes, hrAttRes, clockinRes, leavesRes, shiftsRes, empShiftsRes] = await Promise.all([
         supabase.from("invoices").select("*").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("business_expenses").select("*").eq("org_id", org.id),
         supabase.from("bills").select("*").eq("org_id", org.id),
         supabase.from("employees").select("*").eq("org_id", org.id).eq("is_active", true),
-        supabase.from("attendance").select("*").eq("org_id", org.id),
         supabase.from("leads").select("*").eq("org_id", org.id),
         supabase.from("activities").select("*").eq("org_id", org.id),
+        // HR Data for today
+        supabase.from("attendance").select("*").eq("org_id", org.id).eq("attendance_date", todayStr),
+        supabase.from("attendances").select("*").eq("org_id", org.id).eq("date", todayStr),
+        supabase.from("leaves").select("*").eq("org_id", org.id).eq("status", "approved"),
+        supabase.from("shifts").select("*").eq("org_id", org.id).order("is_default", { ascending: false }),
+        supabase.from("employee_shifts").select("*, shifts(*)").eq("org_id", org.id),
       ]);
 
       setInvoices(invRes.data || []);
@@ -58,9 +99,102 @@ export default function DashboardPage() {
       setExpenses(expRes.data || []);
       setBills(billRes.data || []);
       setEmployees(empRes.data || []);
-      setAttendance(attRes.data || []);
       setLeads(leadRes.data || []);
       setActivities(actRes.data || []);
+
+      // Calculate HR Stats for today
+      const orgDefaultShift = (shiftsRes?.data || []).find((s: any) => s.is_default) || shiftsRes?.data?.[0] || null;
+      const shiftMap: Record<string, any> = {};
+      (empShiftsRes?.data || []).forEach((es: any) => {
+        shiftMap[es.employee_id] = es.shifts;
+      });
+
+      const mergedMap: Record<string, any> = {};
+
+      // 1. Manual Attendance Overrides
+      (hrAttRes?.data || []).forEach((r: any) => {
+        if (!r.employee_id) return;
+        mergedMap[r.employee_id] = {
+          status: r.override_status || r.status || "present",
+          clock_in_time: r.clock_in_time || r.check_in_time || null
+        };
+      });
+
+      // 2. Clock-ins
+      (clockinRes?.data || []).forEach((r: any) => {
+        if (!r.employee_id) return;
+        const shift = shiftMap[r.employee_id] || orgDefaultShift;
+        let calculatedStatus = r.status;
+        if (r.clock_in_time && (!calculatedStatus || calculatedStatus === "present")) {
+          calculatedStatus = computeShiftStatus(r.clock_in_time, shift);
+        }
+
+        const existing = mergedMap[r.employee_id];
+        if (existing) {
+          existing.clock_in_time = r.clock_in_time || existing.clock_in_time;
+          if ((!existing.status || existing.status === "absent" || existing.status === "present") && r.clock_in_time) {
+            existing.status = calculatedStatus || "present";
+          }
+          if (existing.status === "present" && (calculatedStatus === "late" || calculatedStatus === "half_day" || calculatedStatus === "half-day")) {
+            existing.status = calculatedStatus;
+          }
+        } else {
+          mergedMap[r.employee_id] = {
+            status: calculatedStatus || "present",
+            clock_in_time: r.clock_in_time || null
+          };
+        }
+      });
+
+      // 3. Approved Leaves
+      (leavesRes?.data || []).forEach((l: any) => {
+        if (!l.employee_id || !l.start_date) return;
+        const s = new Date(l.start_date);
+        const e = new Date(l.end_date || l.start_date);
+        const today = new Date();
+        // Reset time for accurate date comparison
+        s.setHours(0,0,0,0);
+        e.setHours(23,59,59,999);
+        if (today >= s && today <= e) {
+           const existing = mergedMap[l.employee_id];
+           if (!existing || !existing.clock_in_time) {
+             mergedMap[l.employee_id] = { status: "leave" };
+           }
+        }
+      });
+
+      let presentCount = 0;
+      let absentCount = 0;
+      let onLeaveCount = 0;
+      let lateCount = 0;
+
+      const allEmployees = empRes.data || [];
+      allEmployees.forEach((emp) => {
+        const att = mergedMap[emp.id];
+        if (!att) {
+          absentCount++;
+          return;
+        }
+        const s = att.status?.toLowerCase() || "absent";
+        if (["present", "wfh", "od"].includes(s)) {
+          presentCount++;
+        } else if (["late", "half_day", "half-day"].includes(s)) {
+          presentCount++; // Consider late/half day as present for overall headcount
+          lateCount++;
+        } else if (["leave", "paid_leave", "casual", "sick", "el_pl", "comp_off", "maternity", "approved_leave"].includes(s)) {
+          onLeaveCount++;
+        } else {
+          absentCount++; // absent, lwp, ncns etc
+        }
+      });
+
+      setTodayHRStats({
+        present: presentCount,
+        absent: absentCount,
+        onLeave: onLeaveCount,
+        late: lateCount,
+        total: allEmployees.length
+      });
       
       setLoading(false);
     };
@@ -121,14 +255,7 @@ export default function DashboardPage() {
     { name: "Overdue", value: overdueAmount > 0 ? overdueAmount : 1, color: "#ef4444" },
   ];
 
-  // HR Data
-  const todayStr = format(new Date(), "yyyy-MM-dd");
-  const todayAttendance = attendance.filter(a => (a.date || a.attendance_date || "").startsWith(todayStr));
-  const presentCount = todayAttendance.filter(a => a.status === "present" || a.status === "half_day" || a.status === "late" || a.status === "wfh" || a.status === "od").length;
-  const absentCount = todayAttendance.filter(a => a.status === "absent" || a.status === "lwp" || a.status === "ncns").length;
-  const onLeaveCount = todayAttendance.filter(a => a.status === "leave" || a.status === "paid_leave" || a.status === "casual" || a.status === "sick" || a.status === "el_pl" || a.status === "comp_off" || a.status === "maternity" || a.status === "approved_leave").length;
-  const totalEmps = employees.length || 1;
-  const attendanceRate = Math.round((presentCount / totalEmps) * 100) || 0;
+  // HR Data is now calculated in useEffect and stored in todayHRStats
 
   // CRM Data
   const filteredLeads = leads.filter(l => isInRange(l.created_at));
@@ -388,28 +515,28 @@ export default function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <div className="text-2xl font-bold">{totalEmps}</div>
+                <div className="text-2xl font-bold">{todayHRStats.total}</div>
                 <div className="text-xs text-slate-500">Total</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-emerald-600">{presentCount}</div>
+                <div className="text-2xl font-bold text-emerald-600">{todayHRStats.present}</div>
                 <div className="text-xs text-slate-500">Present</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-rose-600">{absentCount}</div>
+                <div className="text-2xl font-bold text-rose-600">{todayHRStats.absent}</div>
                 <div className="text-xs text-slate-500">Absent</div>
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-600">{onLeaveCount}</div>
+                <div className="text-2xl font-bold text-blue-600">{todayHRStats.onLeave}</div>
                 <div className="text-xs text-slate-500">On Leave</div>
               </div>
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs font-medium">
                 <span>Attendance Rate</span>
-                <span>{attendanceRate}%</span>
+                <span>{Math.round((todayHRStats.present / (todayHRStats.total || 1)) * 100) || 0}%</span>
               </div>
-              <Progress value={attendanceRate} className="h-1.5" />
+              <Progress value={Math.round((todayHRStats.present / (todayHRStats.total || 1)) * 100) || 0} className="h-1.5" />
             </div>
           </CardContent>
         </Card>

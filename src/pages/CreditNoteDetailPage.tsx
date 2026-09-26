@@ -10,7 +10,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Ban, Share2, FileDown } from "lucide-react";
+import { Edit, Ban, Share2, FileDown, ArrowLeft } from "lucide-react";
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
 
 export default function CreditNoteDetailPage() {
@@ -76,6 +76,9 @@ export default function CreditNoteDetailPage() {
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <PageHeader title={`Credit Note ${cn.credit_note_number}`}>
+        <Button variant="outline" size="sm" onClick={() => navigate("/credit-notes")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate(`/credit-notes/${id}/edit`)}>
           <Edit className="mr-1 h-4 w-4" /> Edit
         </Button>

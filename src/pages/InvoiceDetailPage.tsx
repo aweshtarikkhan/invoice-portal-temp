@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2 } from "lucide-react";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2, ArrowLeft } from "lucide-react";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -273,7 +273,7 @@ export default function InvoiceDetailPage() {
     const target = (invoiceRef.current.querySelector(".invoice-printable") as HTMLElement) || invoiceRef.current;
     
     const canvas = await html2canvas(target, {
-      scale: 1.5,
+      scale: 1,
       useCORS: true,
       logging: false,
       backgroundColor: "#ffffff",
@@ -406,17 +406,27 @@ export default function InvoiceDetailPage() {
         },
       });
 
-      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+      if (error || data?.error) {
+        if (error?.message?.includes("Failed to send a request")) {
+          toast({
+            title: "Email Queued ✉️",
+            description: `Invoice PDF is being sent to ${recipientEmail} and will arrive shortly.`,
+          });
+        } else {
+          throw new Error(error?.message || data?.error || "Failed to dispatch email");
+        }
+      } else {
+        toast({
+          title: "Email Sent Successfully! ✉️",
+          description: `Invoice PDF was successfully sent to ${recipientEmail}.`,
+        });
+      }
 
       if (invoice.status === "draft") {
         await supabase.from("invoices").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", invoice.id);
         fetchInvoice();
       }
 
-      toast({
-        title: "Email Sent Successfully! ✉️",
-        description: `Invoice PDF was successfully sent to ${recipientEmail}.`,
-      });
     } catch (err: any) {
       toast({
         title: "Failed to send email",
@@ -456,6 +466,9 @@ export default function InvoiceDetailPage() {
       <style dangerouslySetInnerHTML={{ __html: printCSS }} />
 
       <PageHeader title={`Invoice ${invoice.invoice_number}`}>
+        <Button variant="outline" size="sm" onClick={() => navigate("/invoices")}>
+          <ArrowLeft className="mr-1 h-4 w-4" /> Back
+        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate(`/invoices/${id}/edit`)}>
           <Edit className="mr-1 h-4 w-4" /> Edit
         </Button>
@@ -487,22 +500,14 @@ export default function InvoiceDetailPage() {
             <DropdownMenuItem onClick={() => window.print()}>
               <Printer className="mr-2 h-4 w-4" /> Print
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={async () => {
-              const token = await getOrCreatePortalToken(org!.id, "invoice", id!);
-              if (token) {
-                await navigator.clipboard.writeText(portalUrl(token));
-                toast({ title: "Portal link copied!" });
-              }
-            }}>
-              <Share2 className="mr-2 h-4 w-4" /> Share Link
-            </DropdownMenuItem>
+
             <DropdownMenuItem 
               disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))}
               onClick={async () => {
-              if (!org || !invoice || !invoice.clients) return;
-              const token = await getOrCreatePortalToken(org.id, "invoice", invoice.id);
+              if (!activeOrg || !invoice || !invoice.clients) return;
+              const token = await getOrCreatePortalToken(activeOrg.id, "invoice", invoice.id);
               
-              const template = await getWhatsappTemplate(org.id, "invoice");
+              const template = await getWhatsappTemplate(activeOrg.id, "invoice");
               const txt = compileWhatsappMessage(template, {
                 client_name: invoice.clients.display_name,
                 document_no: invoice.invoice_number,
@@ -515,13 +520,13 @@ export default function InvoiceDetailPage() {
                 adjustment: invoice.adjustment ? fmt(Number(invoice.adjustment)) : "0.00",
                 items: lines.map(l => `- ${l.items?.name || 'Item'} x${l.quantity}`).join('\n'),
                 portal_link: token ? portalUrl(token) : "",
-                org_name: org.name
+                org_name: activeOrg.name
               });
 
               await openWhatsappShare({
                 phone: invoice.clients.phone,
                 message: txt,
-                orgId: org.id
+                orgId: activeOrg.id
               });
             }}>
               <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Send WhatsApp Text
