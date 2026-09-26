@@ -18,6 +18,7 @@ import { PublicHeader } from "@/components/public/PublicHeader";
 import { PublicFooter } from "@/components/public/PublicFooter";
 import { HeroDashboardMockup } from "@/components/public/HeroDashboardMockup";
 import { BookDemoDialog } from "@/components/public/BookDemoDialog";
+import { AIChatWidget } from "@/components/public/AIChatWidget";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
 import { usePlatformSocials, formatSocialUrl } from "@/hooks/use-platform-socials";
 import { useToast } from "@/hooks/use-toast";
@@ -1868,6 +1869,9 @@ export default function LandingPage() {
 
       {/* Book a Demo Modal */}
       <BookDemoDialog open={isDemoDialogOpen} onOpenChange={setIsDemoDialogOpen} />
+      
+      {/* AI Chatbot Widget */}
+      <AIChatWidget />
     </div>
   );
 }
