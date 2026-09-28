@@ -14,13 +14,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft } from "lucide-react";
+import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft, Lock } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedEstimates, normalizePlanKey, canSendDirectEmailOrWhatsApp } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent,
 } from "@dnd-kit/core";
@@ -215,6 +218,26 @@ export default function EstimateBuilderPage() {
   const [contactPromptOpen, setContactPromptOpen] = useState(false);
   const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
   const [pendingAction, setPendingAction] = useState<"email" | null>(null);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in estimate builder:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
+
+  const plan = normalizePlanKey(subscriptionPlan || org?.subscription_plan || 'free');
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -339,6 +362,15 @@ export default function EstimateBuilderPage() {
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   const handleActionClick = (action: "email") => {
+    if (action === "email" && !canSendDirectEmailOrWhatsApp(plan, activeOrgPlans)) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     const client = clients.find(c => c.id === clientId);
     if (!client) {
       toast({ title: "Select a client first", variant: "destructive" });
@@ -357,6 +389,26 @@ export default function EstimateBuilderPage() {
     if (!clientId) { toast({ title: "Select a client", variant: "destructive" }); return; }
     if (!lines.some((l) => l.name.trim())) { toast({ title: "Add at least one line item", variant: "destructive" }); return; }
     setSaving(true);
+
+    if (!id) {
+      const isUnlimited = hasUnlimitedEstimates(plan, activeOrgPlans);
+      if (!isUnlimited) {
+        const { count } = await supabase
+          .from("estimates")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org!.id);
+        if ((count || 0) >= 100) {
+          toast({
+            title: "Quotation Limit Reached (100/100)",
+            description: "In this plan you can only create up to 100 quotations. Upgrade to Business Accounting or Business Suite for unlimited quotations.",
+            variant: "destructive",
+          });
+          setShowUpgradeModal(true);
+          setSaving(false);
+          return;
+        }
+      }
+    }
 
     const payload = {
       org_id: org!.id, client_id: clientId, estimate_number: estimateNumber, status,
@@ -450,6 +502,7 @@ export default function EstimateBuilderPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => handleActionClick("email")}>
                   <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
@@ -616,6 +669,12 @@ export default function EstimateBuilderPage() {
           </CardContent>
         </Card>
       </div>
+
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
     </div>
   );
 }

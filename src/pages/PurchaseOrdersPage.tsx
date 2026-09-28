@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Trash2, Download, FileText } from "lucide-react";
+import { Plus, Eye, Trash2, Download, FileText, Lock, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedPurchaseOrders, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 const poImportFields: ImportField[] = [
   { key: "po_number", label: "PO Number", required: true },
@@ -40,6 +43,29 @@ export default function PurchaseOrdersPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in PO:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
+
+  const isUnlimited = hasUnlimitedPurchaseOrders(plan, activeOrgPlans);
+  const poLimitReached = !isUnlimited && rows.length >= 100;
+  const remainingPOs = isUnlimited ? Infinity : Math.max(0, 100 - rows.length);
 
   const load = async () => {
     if (!org?.id) return;
@@ -160,9 +186,55 @@ export default function PurchaseOrdersPage() {
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Download className="mr-2 h-4 w-4" /> Import
           </Button>
-          <Button onClick={() => navigate("/purchase-orders/new")}><Plus className="h-4 w-4 mr-1" /> New PO</Button>
+          <Button 
+            onClick={() => {
+              if (poLimitReached) {
+                setShowUpgradeModal(true);
+              } else {
+                navigate("/purchase-orders/new");
+              }
+            }}
+            className={poLimitReached ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+          >
+            {poLimitReached ? <Lock className="mr-1 h-4 w-4" /> : <Plus className="h-4 w-4 mr-1" />}
+            New PO
+          </Button>
         </div>
       </div>
+
+      {/* PO Quota Badge / Limit Alert */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {isUnlimited ? (
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300">
+            Unlimited Purchase Orders
+          </Badge>
+        ) : (
+          <Badge 
+            variant="outline" 
+            className={poLimitReached 
+              ? "bg-rose-50 text-rose-700 border-rose-300 font-semibold cursor-pointer" 
+              : "bg-blue-50 text-blue-700 border-blue-300 font-semibold"
+            }
+            onClick={() => poLimitReached && setShowUpgradeModal(true)}
+          >
+            {rows.length} / 100 Purchase Orders Used ({remainingPOs} Remaining)
+            {poLimitReached && " - Click to Upgrade"}
+          </Badge>
+        )}
+      </div>
+
+      {poLimitReached && (
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-lg p-3.5 flex items-center justify-between gap-3 text-sm text-rose-800 dark:text-rose-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span><strong>Purchase Order Limit Reached ({rows.length}/100 Used):</strong> You have reached your limit of 100 purchase orders on the Free Plan. Upgrade to Business Suite for unlimited purchase orders.</span>
+          </div>
+          <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white shrink-0" onClick={() => setShowUpgradeModal(true)}>
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
+
       <Card>
         <CardHeader><CardTitle className="text-base">All Purchase Orders</CardTitle></CardHeader>
         <CardContent>
@@ -232,6 +304,12 @@ export default function PurchaseOrdersPage() {
             load();
             return { success: s, errors: e, failedRows };
         }}
+      />
+
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
       />
     </div>
   );

@@ -17,13 +17,15 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, MoreHorizontal, FileText, ArrowRightLeft, Trash2, Upload, Download, MessageCircle, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Search, MoreHorizontal, FileText, ArrowRightLeft, Trash2, Upload, Download, MessageCircle, CheckCircle, XCircle, Lock, AlertCircle } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { format, parseISO, differenceInDays } from "date-fns";
+import { Badge } from "@/components/ui/badge";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedEstimates, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -66,6 +68,29 @@ export default function EstimatesPage() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState("all");
   const [importOpen, setImportOpen] = useState(false);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in estimates:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
+
+  const plan = normalizePlanKey(subscriptionPlan || org?.subscription_plan || 'free');
+  const isUnlimited = useMemo(() => hasUnlimitedEstimates(plan, activeOrgPlans), [plan, activeOrgPlans]);
+  const estimateLimitReached = !isUnlimited && estimates.length >= 100;
+  const remainingEstimates = isUnlimited ? Infinity : Math.max(0, 100 - estimates.length);
 
   const fetchEstimates = async () => {
     if (!org?.id) return;
@@ -186,10 +211,54 @@ export default function EstimatesPage() {
         <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
           <Upload className="mr-1 h-4 w-4" /> Import
         </Button>
-        <Button size="sm" onClick={() => navigate("/quotations/new")}>
-          <Plus className="mr-1 h-4 w-4" /> New Quotation
+        <Button 
+          size="sm" 
+          onClick={() => {
+            if (estimateLimitReached) {
+              setShowUpgradeModal(true);
+            } else {
+              navigate("/quotations/new");
+            }
+          }}
+          className={estimateLimitReached ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+        >
+          {estimateLimitReached ? <Lock className="mr-1 h-4 w-4" /> : <Plus className="mr-1 h-4 w-4" />}
+          New Quotation
         </Button>
       </PageActionBar>
+
+      {/* Quotation Quota Badge / Limit Alert */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {isUnlimited ? (
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300">
+            Unlimited Quotations
+          </Badge>
+        ) : (
+          <Badge 
+            variant="outline" 
+            className={estimateLimitReached 
+              ? "bg-rose-50 text-rose-700 border-rose-300 font-semibold cursor-pointer" 
+              : "bg-blue-50 text-blue-700 border-blue-300 font-semibold"
+            }
+            onClick={() => estimateLimitReached && setShowUpgradeModal(true)}
+          >
+            {estimates.length} / 100 Quotations Used ({remainingEstimates} Remaining)
+            {estimateLimitReached && " - Click to Upgrade"}
+          </Badge>
+        )}
+      </div>
+
+      {estimateLimitReached && (
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-lg p-3.5 flex items-center justify-between gap-3 text-sm text-rose-800 dark:text-rose-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span><strong>Quotation Limit Reached ({estimates.length}/100 Used):</strong> You have reached your limit of 100 quotations on the Free Plan. Upgrade to Business Accounting or Business Suite for unlimited quotations.</span>
+          </div>
+          <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white shrink-0" onClick={() => setShowUpgradeModal(true)}>
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       <SummaryRibbon
         label="Quotation Summary"
@@ -405,6 +474,12 @@ export default function EstimatesPage() {
           fetchEstimates();
           return { success, errors, failedRows };
         }}
+      />
+
+      <PlanSelectorModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        orgId={org?.id}
       />
     </div>
   );

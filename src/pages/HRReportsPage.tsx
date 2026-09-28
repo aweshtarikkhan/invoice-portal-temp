@@ -499,18 +499,25 @@ export default function HRReportsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={payrollData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="month" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
-                  <RechartsTooltip 
-                    contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#111827' }}
-                    formatter={(value: number) => [formatCurrency(value), 'Cost']}
-                  />
-                  <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {payrollData.length > 0 && payrollData.some((d) => d.cost > 0) ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={payrollData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis dataKey="month" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value)} />
+                    <RechartsTooltip 
+                      contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#111827' }}
+                      formatter={(value: number) => [formatCurrency(value), 'Cost']}
+                    />
+                    <Bar dataKey="cost" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-sm text-gray-400 gap-1">
+                  <span className="font-medium">Sufficient data not available</span>
+                  <span className="text-xs text-gray-400/80">Generate payslips under Payroll to view monthly cost trends.</span>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

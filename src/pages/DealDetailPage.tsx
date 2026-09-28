@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Building2, DollarSign, Calendar, Target, TrendingUp, FileText, Check, X, Phone, Mail, Users, ClipboardList, StickyNote, MessageSquare, Clock, Plus, Edit, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
+import { triggerDealWonAutomations } from "@/lib/crm-automations";
 
 const ACTIVITY_TYPES = [
   { v: "call", l: "Call", icon: Phone },
@@ -124,6 +125,9 @@ export default function DealDetailPage() {
       toast({ title: "Move failed", variant: "destructive" });
     } else {
       toast({ title: "Stage updated" });
+      if (stage?.is_won && org) {
+        triggerDealWonAutomations({ org, deal: { ...deal, ...patch }, stage });
+      }
       loadData();
     }
   };

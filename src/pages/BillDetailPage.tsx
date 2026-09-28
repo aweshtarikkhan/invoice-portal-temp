@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download, Mail, Loader2 } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download, Mail, Loader2, Lock } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +24,9 @@ import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 import { useCallback } from "react";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import { useSubscription } from "@/hooks/use-subscription";
+import { canSendDirectEmailOrWhatsApp, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 export default function BillDetailPage() {
   const org = useAppStore((s) => s.organization);
@@ -41,6 +44,26 @@ export default function BillDetailPage() {
   const [payMethod, setPayMethod] = useState("bank_transfer");
   const [payRef, setPayRef] = useState("");
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+  const canSend = canSendDirectEmailOrWhatsApp(plan, activeOrgPlans);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in bill detail:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
 
   const load = async () => {
     const { data: b } = await (supabase as any).from("bills").select("*").eq("id", id).maybeSingle();
@@ -237,6 +260,15 @@ export default function BillDetailPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const handleSendEmail = async () => {
+    if (!canSend) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     if (!bill || !org || !vendor) return;
     const recipientEmail = vendor.email;
     if (!recipientEmail) {
@@ -342,20 +374,30 @@ export default function BillDetailPage() {
           <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
             {isSendingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
             {isSendingEmail ? "Sending..." : "Email Bill"}
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4 mr-1" /> Print</Button>
           <Button variant="outline" onClick={async () => {
             const blob = await generatePDFBlob();
             if (blob) {
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = `${bill.bill_number || "purchase-invoice"}.pdf`;
-              a.click();
-              URL.revokeObjectURL(url);
+               const url = URL.createObjectURL(blob);
+               const a = document.createElement("a");
+               a.href = url;
+               a.download = `${bill.bill_number || "purchase-invoice"}.pdf`;
+               a.click();
+               URL.revokeObjectURL(url);
             }
           }}><Download className="h-4 w-4 mr-1" /> Download PDF</Button>
           <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
+            if (!canSend) {
+              toast({
+                title: "Feature Locked 🔒",
+                description: "Sending documents via WhatsApp is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via WhatsApp.",
+                variant: "destructive"
+              });
+              setShowUpgradeModal(true);
+              return;
+            }
             if (!org || !bill) return;
             const vendorName = vendor?.display_name || vendor?.name || "Vendor";
             const template = await getWhatsappTemplate(org.id, "bill");
@@ -379,7 +421,10 @@ export default function BillDetailPage() {
               message: txt,
               orgId: org.id
             });
-          }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
+          }}>
+            <MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
+          </Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={() => navigate(`/bills/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}
@@ -463,7 +508,13 @@ export default function BillDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
     </div>
   );
 }
+
 

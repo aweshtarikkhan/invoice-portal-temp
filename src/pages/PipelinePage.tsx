@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Pencil, Trash2, Settings2, GripVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
+import { triggerDealWonAutomations } from "@/lib/crm-automations";
 
 const emptyOpp = { title: "", stage_id: "", lead_id: "", amount: "0", expected_close_date: "", probability: "0", notes: "" };
 
@@ -90,9 +91,18 @@ export default function PipelinePage() {
     const q = editId
       ? (supabase as any).from("opportunities").update(payload).eq("id", editId)
       : (supabase as any).from("opportunities").insert(payload);
-    const { error } = await q;
+    const { data: savedData, error } = await q.select();
     if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
-    else { setOpen(false); load(); toast({ title: editId ? "Opportunity updated" : "Opportunity added" }); if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "opportunity", entityId: editId || undefined, action: editId ? "update" : "create", description: `Opportunity ${payload.title} ${editId ? "updated" : "added"}` }); }
+    else { 
+      setOpen(false); 
+      load(); 
+      toast({ title: editId ? "Opportunity updated" : "Opportunity added" }); 
+      if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "opportunity", entityId: editId || undefined, action: editId ? "update" : "create", description: `Opportunity ${payload.title} ${editId ? "updated" : "added"}` }); 
+      if (stage?.is_won && org) {
+        const savedOpp = savedData?.[0] || { id: editId, ...payload };
+        triggerDealWonAutomations({ org, deal: savedOpp, stage });
+      }
+    }
   };
 
   const remove = async (id: string) => {
@@ -109,7 +119,15 @@ export default function PipelinePage() {
     if (stage) patch.probability = stage.win_probability;
     setOpps((prev) => prev.map((o) => (o.id === oppId ? { ...o, ...patch } : o)));
     const { error } = await (supabase as any).from("opportunities").update(patch).eq("id", oppId);
-    if (error) { toast({ title: "Move failed", description: error.message, variant: "destructive" }); load(); } else { if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "opportunity", entityId: oppId, action: "update", description: `Opportunity moved to stage ${stage?.name || stageId}` }); }
+    if (error) { 
+      toast({ title: "Move failed", description: error.message, variant: "destructive" }); 
+      load(); 
+    } else { 
+      if (org && user) await logAudit({ orgId: org.id, userId: user.id, entityType: "opportunity", entityId: oppId, action: "update", description: `Opportunity moved to stage ${stage?.name || stageId}` }); 
+      if (stage?.is_won && org) {
+        triggerDealWonAutomations({ org, deal: { ...opp, ...patch }, stage });
+      }
+    }
   };
 
   const stageTotals = (stageId: string) => {

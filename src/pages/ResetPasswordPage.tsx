@@ -115,6 +115,11 @@ export default function ResetPasswordPage() {
     const hashParams = new URLSearchParams(hash.replace(/^#/, ""));
     const searchParams = new URLSearchParams(window.location.search);
 
+    const emailParam = searchParams.get("email") || hashParams.get("email");
+    if (emailParam) {
+      setInviteEmail(emailParam);
+    }
+
     // Prevent double-processing of evaluateSession from both verifyOtp and onAuthStateChange
     let sessionEvaluated = false;
     const safeEvaluateSession = (session: any, linkType: string | null) => {
@@ -130,7 +135,6 @@ export default function ResetPasswordPage() {
 
     if (errorParam || errorCode) {
       // Even if URL has error params, check if there's already a valid session
-      // (user may have clicked the link before and it worked, now clicking again)
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (session?.user) {
           const linkType = searchParams.get("type") || hashParams.get("type") || "recovery";
@@ -146,7 +150,34 @@ export default function ResetPasswordPage() {
       return;
     }
 
-    // 2. Check for token_hash in search params or hash (direct verifyOtp flow)
+    // 2. Check for PKCE exchange code (if Supabase auth redirected with ?code=...)
+    const code = searchParams.get("code");
+    if (code) {
+      const linkType = searchParams.get("type") || hashParams.get("type") || "recovery";
+      if (linkType === "invite" || linkType.includes("invite")) {
+        setIsInvite(true);
+      }
+      supabase.auth.exchangeCodeForSession(code).then(({ data, error }) => {
+        if (!error && data?.session) {
+          safeEvaluateSession(data.session, linkType);
+        } else {
+          console.warn("PKCE code exchange error, checking existing session:", error?.message);
+          supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session?.user) {
+              safeEvaluateSession(session, linkType);
+            } else {
+              setLinkError(error?.message || "Invitation link code has expired or is invalid.");
+              setReady(true);
+            }
+          });
+        }
+      }).catch((err) => {
+        console.warn("PKCE exchange exception:", err);
+      });
+      return;
+    }
+
+    // 3. Check for token_hash in search params or hash (direct verifyOtp flow)
     const tokenHash = searchParams.get("token_hash") || hashParams.get("token_hash");
     const linkType = searchParams.get("type") || hashParams.get("type") || "recovery";
 
@@ -160,29 +191,22 @@ export default function ResetPasswordPage() {
         type: linkType as any,
       }).then(({ data, error }) => {
         if (error) {
-          // verifyOtp failed - but maybe Supabase client already auto-processed the token
-          // via its internal auth state handler, or user already has a valid session.
-          // Wait a moment then check for an existing session before showing error.
           console.warn("verifyOtp failed, checking for existing session:", error.message);
           setTimeout(() => {
-            if (sessionEvaluated) return; // onAuthStateChange already handled it
+            if (sessionEvaluated) return;
             supabase.auth.getSession().then(({ data: { session } }) => {
-              if (sessionEvaluated) return; // double-check after async
+              if (sessionEvaluated) return;
               if (session?.user) {
-                // Session exists! User is authenticated - use this session
-                console.log("Found existing session after verifyOtp failure, using it");
                 safeEvaluateSession(session, linkType);
               } else {
-                // No session at all - token is truly expired/invalid
                 setLinkError(error.message || "This invitation or reset link has expired or is invalid.");
                 setReady(true);
               }
             });
-          }, 500); // Brief delay to let onAuthStateChange fire first if it's going to
+          }, 800);
         } else if (data?.session) {
           safeEvaluateSession(data.session, linkType);
         } else {
-          // No error but no session - check if session was set by auth state change
           setTimeout(() => {
             if (sessionEvaluated) return;
             supabase.auth.getSession().then(({ data: { session } }) => {
@@ -193,10 +217,9 @@ export default function ResetPasswordPage() {
                 setReady(true);
               }
             });
-          }, 500);
+          }, 800);
         }
       }).catch((err) => {
-        // Network error or unexpected failure - still check for session
         setTimeout(() => {
           if (sessionEvaluated) return;
           supabase.auth.getSession().then(({ data: { session } }) => {
@@ -208,12 +231,12 @@ export default function ResetPasswordPage() {
               setReady(true);
             }
           });
-        }, 500);
+        }, 800);
       });
       return;
     }
 
-    // 3. Check for hash tokens (legacy redirect flow)
+    // 4. Check for hash tokens (legacy redirect flow)
     const accessToken = hashParams.get("access_token");
     const refreshToken = hashParams.get("refresh_token");
     const type = hashParams.get("type");
@@ -229,22 +252,48 @@ export default function ResetPasswordPage() {
         })
         .catch(() => setReady(true));
     } else {
-      // Check existing session
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session?.user) {
-          safeEvaluateSession(session, type);
-        } else {
-          setLinkError("No active invitation or reset link found. Please request a new link.");
-          setReady(true);
+      // Allow a brief grace period for auth initialization and storage hydration
+      const timer = setTimeout(() => {
+        if (sessionEvaluated) return;
+        supabase.auth.getSession().then(({ data: { session } }) => {
+          if (sessionEvaluated) return;
+          if (session?.user) {
+            safeEvaluateSession(session, type);
+          } else {
+            setLinkError("No active invitation or reset link found. If you have already set up your account, please sign in.");
+            setReady(true);
+          }
+        });
+      }, 1000);
+
+      // Listen to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        if (session?.user?.email) {
+          setInviteEmail(session.user.email);
+          setLinkError(null);
+        }
+        if (event === "PASSWORD_RECOVERY") {
+          setIsInvite(false);
+          if (!sessionEvaluated) {
+            sessionEvaluated = true;
+            setReady(true);
+          }
+        } else if (event === "SIGNED_IN" && session) {
+          const urlType = searchParams.get("type") || hashParams.get("type") || type;
+          safeEvaluateSession(session, urlType);
         }
       });
+
+      return () => {
+        clearTimeout(timer);
+        subscription.unsubscribe();
+      };
     }
 
     // Also listen to auth changes (when Supabase client auto-processes token from URL)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user?.email) {
         setInviteEmail(session.user.email);
-        // If we had a link error but now got a valid session, clear the error
         setLinkError(null);
       }
       if (event === "PASSWORD_RECOVERY") {
@@ -387,34 +436,40 @@ export default function ResetPasswordPage() {
             <Card className="border border-slate-200 shadow-xl rounded-2xl overflow-hidden bg-white">
               <div className="h-2 bg-gradient-to-r from-red-500 via-amber-500 to-orange-500" />
               <CardHeader className="text-center pt-8 pb-4 px-6">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 border border-red-100 text-red-600 shadow-sm">
-                  <ShieldAlert className="h-8 w-8 text-red-500" />
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 shadow-sm">
+                  <ShieldAlert className="h-8 w-8 text-amber-600" />
                 </div>
                 <CardTitle className="text-xl font-bold text-slate-900">
-                  Link Expired or Invalid
+                  Invitation Link Used or Expired
                 </CardTitle>
                 <CardDescription className="text-sm text-slate-600 mt-2">
                   {linkError}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="px-6 py-2 text-center text-xs text-slate-500 space-y-2">
+              <CardContent className="px-6 py-2 text-center text-xs text-slate-500 space-y-3">
+                {inviteEmail && (
+                  <div className="bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-700 font-medium break-all">
+                    Email: <span className="font-bold text-slate-900">{inviteEmail}</span>
+                  </div>
+                )}
                 <p>
-                  Security links are single-use only. If you have already used this link or if it has expired, you can easily request a new one below.
+                  Security invitation links are single-use. If you have already set your password or have an active account on Aassay Biz, you can sign in directly with your email and password.
                 </p>
               </CardContent>
               <CardFooter className="flex flex-col gap-2.5 p-6 pt-4">
                 <Button 
-                  onClick={() => navigate("/forgot-password")}
-                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 rounded-lg shadow-sm"
+                  onClick={() => navigate("/login")}
+                  className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold py-2.5 rounded-lg shadow-sm flex items-center justify-center gap-2"
                 >
-                  Request Password Reset
+                  <span>Sign In to Workspace</span>
+                  <ArrowRight className="h-4 w-4" />
                 </Button>
                 <Button 
                   variant="outline"
-                  onClick={() => navigate("/login")}
+                  onClick={() => navigate(`/forgot-password${inviteEmail ? `?email=${encodeURIComponent(inviteEmail)}` : ''}`)}
                   className="w-full border-slate-200 text-slate-700 hover:bg-slate-100 font-medium py-2.5 rounded-lg"
                 >
-                  Back to Sign In
+                  Request Fresh Password Link
                 </Button>
               </CardFooter>
             </Card>

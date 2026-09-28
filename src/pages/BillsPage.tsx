@@ -5,12 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Trash2, Download } from "lucide-react";
+import { Plus, Eye, Trash2, Download, Lock, AlertCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedBills, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 const billImportFields: ImportField[] = [
   { key: "bill_number", label: "Invoice Number", required: true },
@@ -41,6 +44,29 @@ export default function BillsPage() {
   const [bills, setBills] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [importOpen, setImportOpen] = useState(false);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in bills:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
+
+  const plan = normalizePlanKey(subscriptionPlan || org?.subscription_plan || 'free');
+  const isUnlimited = hasUnlimitedBills(plan, activeOrgPlans);
+  const billLimitReached = !isUnlimited && bills.length >= 100;
+  const remainingBills = isUnlimited ? Infinity : Math.max(0, 100 - bills.length);
 
   const load = async () => {
     if (!org?.id) return;
@@ -80,9 +106,54 @@ export default function BillsPage() {
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <Download className="mr-2 h-4 w-4" /> Import
           </Button>
-          <Button onClick={() => navigate("/bills/new")}><Plus className="h-4 w-4 mr-1" /> New Purchase Invoice</Button>
+          <Button 
+            onClick={() => {
+              if (billLimitReached) {
+                setShowUpgradeModal(true);
+              } else {
+                navigate("/bills/new");
+              }
+            }}
+            className={billLimitReached ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
+          >
+            {billLimitReached ? <Lock className="h-4 w-4 mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+            New Purchase Invoice
+          </Button>
         </div>
       </div>
+
+      {/* Quota Badge & Limit Alert */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {isUnlimited ? (
+          <Badge variant="outline" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300">
+            Unlimited Purchase Invoices
+          </Badge>
+        ) : (
+          <Badge 
+            variant="outline" 
+            className={billLimitReached 
+              ? "bg-rose-50 text-rose-700 border-rose-300 font-semibold cursor-pointer" 
+              : "bg-blue-50 text-blue-700 border-blue-300 font-semibold"
+            }
+            onClick={() => billLimitReached && setShowUpgradeModal(true)}
+          >
+            {bills.length} / 100 Purchase Invoices Used ({remainingBills} Remaining)
+            {billLimitReached && " - Click to Upgrade"}
+          </Badge>
+        )}
+      </div>
+
+      {billLimitReached && (
+        <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 rounded-lg p-3.5 flex items-center justify-between gap-3 text-sm text-rose-800 dark:text-rose-300">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
+            <span><strong>Purchase Invoice Limit Reached ({bills.length}/100 Used):</strong> You have reached your limit of 100 purchase invoices on the Free Plan. Upgrade to Business Accounting or Business Suite for unlimited purchase invoices.</span>
+          </div>
+          <Button size="sm" className="bg-rose-600 hover:bg-rose-700 text-white shrink-0" onClick={() => setShowUpgradeModal(true)}>
+            Upgrade Plan
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-3">
         <Card><CardContent className="pt-4"><div className="text-xs text-muted-foreground">Total Purchase Invoices</div><div className="text-2xl font-semibold">{bills.length}</div></CardContent></Card>
@@ -166,8 +237,13 @@ export default function BillsPage() {
             }
             load();
             return { success: s, errors: e, failedRows };
-
           }}
+      />
+
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
       />
     </div>
   );

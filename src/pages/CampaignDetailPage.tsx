@@ -23,10 +23,21 @@ export default function CampaignDetailPage() {
 
   const sendNow = async () => {
     const t = toast.loading("Sending...");
-    const { data, error } = await supabase.functions.invoke("send-campaign", { body: { campaign_id: id } });
-    toast.dismiss(t);
-    if (error) return toast.error(error.message);
-    toast.success(`Sent: ${data?.sent}, Failed: ${data?.failed}`);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-campaign", { body: { campaign_id: id } });
+      toast.dismiss(t);
+      if (error) return toast.error(error.message || "Failed to send");
+      if (data?.sent > 0) {
+        toast.success(`Sent: ${data?.sent} message${data?.sent === 1 ? '' : 's'}${data?.failed ? `, Failed: ${data?.failed}` : ''}`);
+      } else if (data?.failed > 0) {
+        toast.error(`Sending failed for ${data?.failed} recipient${data?.failed === 1 ? '' : 's'}`);
+      } else {
+        toast.warning("No pending recipients found to send.");
+      }
+    } catch (e: any) {
+      toast.dismiss(t);
+      toast.error(e.message || "Failed to send");
+    }
     load();
   };
 

@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
-import { seedHrCrmData } from "@/lib/seed-hr-crm";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
@@ -67,6 +66,8 @@ export default function DashboardPage() {
   const [bills, setBills] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [todayHRStats, setTodayHRStats] = useState({ present: 0, absent: 0, onLeave: 0, late: 0, total: 0 });
+  const [leaves, setLeaves] = useState<any[]>([]);
+  const [regularizations, setRegularizations] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
 
@@ -74,11 +75,10 @@ export default function DashboardPage() {
     if (!org?.id) return;
     const loadData = async () => {
       setLoading(true);
-      await seedHrCrmData(org.id);
 
       const todayStr = format(new Date(), "yyyy-MM-dd");
 
-      const [invRes, payRes, expRes, billRes, empRes, leadRes, actRes, hrAttRes, clockinRes, leavesRes, shiftsRes, empShiftsRes] = await Promise.all([
+      const [invRes, payRes, expRes, billRes, empRes, leadRes, actRes, hrAttRes, clockinRes, leavesRes, shiftsRes, empShiftsRes, regRes] = await Promise.all([
         supabase.from("invoices").select("*").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("business_expenses").select("*").eq("org_id", org.id),
@@ -89,9 +89,10 @@ export default function DashboardPage() {
         // HR Data for today
         supabase.from("attendance").select("*").eq("org_id", org.id).eq("attendance_date", todayStr),
         supabase.from("attendances").select("*").eq("org_id", org.id).eq("date", todayStr),
-        supabase.from("leaves").select("*").eq("org_id", org.id).eq("status", "approved"),
+        supabase.from("leaves").select("*").eq("org_id", org.id),
         supabase.from("shifts").select("*").eq("org_id", org.id).order("is_default", { ascending: false }),
         supabase.from("employee_shifts").select("*, shifts(*)").eq("org_id", org.id),
+        supabase.from("attendance_regularizations").select("*").eq("org_id", org.id).eq("status", "pending"),
       ]);
 
       setInvoices(invRes.data || []);
@@ -101,6 +102,8 @@ export default function DashboardPage() {
       setEmployees(empRes.data || []);
       setLeads(leadRes.data || []);
       setActivities(actRes.data || []);
+      setLeaves(leavesRes.data || []);
+      setRegularizations(regRes.data || []);
 
       // Calculate HR Stats for today
       const orgDefaultShift = (shiftsRes?.data || []).find((s: any) => s.is_default) || shiftsRes?.data?.[0] || null;
@@ -147,7 +150,9 @@ export default function DashboardPage() {
       });
 
       // 3. Approved Leaves
-      (leavesRes?.data || []).forEach((l: any) => {
+      (leavesRes?.data || [])
+        .filter((l: any) => l.status === "approved")
+        .forEach((l: any) => {
         if (!l.employee_id || !l.start_date) return;
         const s = new Date(l.start_date);
         const e = new Date(l.end_date || l.start_date);
@@ -225,10 +230,36 @@ export default function DashboardPage() {
   const paymentReceived = filteredPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalExpenses = filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalOutstanding = filteredInvoices.reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
-  const overdueAmount = filteredInvoices
-    .filter(i => i.status === "overdue" || (i.due_date && new Date(i.due_date) < new Date() && i.balance_due > 0))
-    .reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
+  
+  // Real Action Required Calculations
+  const overdueInvoices = invoices.filter(
+    (i) => i.status === "overdue" || (i.due_date && new Date(i.due_date) < new Date() && Number(i.balance_due || 0) > 0)
+  );
+  const overdueInvoicesCount = overdueInvoices.length;
+  const overdueAmount = overdueInvoices.reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
   const netCashFlow = paymentReceived - totalExpenses;
+
+  const unpaidBills = bills.filter(
+    (b) => Number(b.balance_due || 0) > 0 && b.status !== "paid" && b.status !== "cancelled"
+  );
+  const unpaidBillsCount = unpaidBills.length;
+  const unpaidBillsAmount = unpaidBills.reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
+
+  const pendingLeaves = leaves.filter((l) => l.status === "pending");
+  const pendingRegs = regularizations.filter((r) => r.status === "pending");
+  const attendanceIssuesCount = pendingLeaves.length + pendingRegs.length;
+
+  const followUpLeads = leads.filter(
+    (l) => l.status === "new" || l.status === "contacted" || l.priority === "hot"
+  );
+  const followUpLeadsCount = followUpLeads.length;
+  const hotLeadsCount = followUpLeads.filter((l) => l.priority === "hot").length;
+
+  const hasAnyActionRequired =
+    overdueInvoicesCount > 0 ||
+    unpaidBillsCount > 0 ||
+    attendanceIssuesCount > 0 ||
+    followUpLeadsCount > 0;
 
   // Chart Data: Revenue vs Expenses
   const chartDataMap: Record<string, { date: string; revenue: number; expense: number }> = {};
@@ -257,11 +288,83 @@ export default function DashboardPage() {
 
   // HR Data is now calculated in useEffect and stored in todayHRStats
 
-  // CRM Data
-  const filteredLeads = leads.filter(l => isInRange(l.created_at));
-  const newLeadsCount = filteredLeads.length;
+  // CRM Data - Accurate counts from real database records
+  const totalLeadsCount = leads.length;
+  const newLeadsCount = leads.filter((l) => l.status === "new").length;
+  const contactedLeadsCount = leads.filter((l) => l.status === "contacted").length;
+  const qualifiedLeadsCount = leads.filter((l) => l.status === "qualified").length;
+
+  // Real CRM Activities counts
+  const callActivitiesCount = activities.filter((a) => (a.activity_type || a.type) === "call").length;
+  const emailActivitiesCount = activities.filter((a) => (a.activity_type || a.type) === "email").length;
+  const meetingTaskActivitiesCount = activities.filter((a) => {
+    const t = a.activity_type || a.type;
+    return t === "meeting" || t === "task";
+  }).length;
 
   const fmtCurrency = (val: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(val);
+
+  // Dynamic Recent Activity Timeline
+  const recentActivities = useMemo(() => {
+    const list: any[] = [];
+
+    (invoices || []).slice(0, 10).forEach((inv) => {
+      list.push({
+        id: `inv-${inv.id}`,
+        icon: FileText,
+        color: "text-blue-500",
+        bg: "bg-blue-50",
+        title: `Invoice ${inv.invoice_number || ""} created`,
+        amount: fmtCurrency(Number(inv.total || 0)),
+        date: new Date(inv.created_at || inv.issue_date),
+      });
+    });
+
+    (payments || []).slice(0, 10).forEach((pay) => {
+      list.push({
+        id: `pay-${pay.id}`,
+        icon: Wallet,
+        color: "text-emerald-500",
+        bg: "bg-emerald-50",
+        title: pay.payment_number ? `Payment ${pay.payment_number} received` : "Payment received",
+        amount: `+ ${fmtCurrency(Number(pay.amount || 0))}`,
+        date: new Date(pay.payment_date || pay.created_at),
+      });
+    });
+
+    (leads || []).slice(0, 5).forEach((ld) => {
+      list.push({
+        id: `lead-${ld.id}`,
+        icon: UserPlus,
+        color: "text-purple-500",
+        bg: "bg-purple-50",
+        title: `Lead: ${ld.name || "Prospect added"}`,
+        amount: ld.estimated_value ? fmtCurrency(Number(ld.estimated_value)) : "",
+        date: new Date(ld.created_at),
+      });
+    });
+
+    (activities || []).slice(0, 5).forEach((act) => {
+      list.push({
+        id: `act-${act.id}`,
+        icon: Phone,
+        color: "text-amber-500",
+        bg: "bg-amber-50",
+        title: act.subject || act.title || "CRM Activity recorded",
+        amount: "",
+        date: new Date(act.created_at),
+      });
+    });
+
+    return list
+      .filter((item) => !isNaN(item.date.getTime()))
+      .sort((a, b) => b.date.getTime() - a.date.getTime())
+      .slice(0, 5)
+      .map((item) => ({
+        ...item,
+        time: format(item.date, "dd MMM, hh:mm a"),
+      }));
+  }, [invoices, payments, leads, activities]);
 
   return (
     <div className="p-6 space-y-6 max-w-[1600px] mx-auto bg-slate-50 min-h-screen">
@@ -331,7 +434,7 @@ export default function DashboardPage() {
 
       {/* 2. Top KPI Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 2xl:grid-cols-6 gap-3 sm:gap-4">
-        <KPICard title="Total Revenue" value={fmtCurrency(totalRevenue)} icon={IndianRupee} trend="+12.5%" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
+        <KPICard title="Total Sales" value={fmtCurrency(totalRevenue)} icon={IndianRupee} trend="+12.5%" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
         <KPICard title="Payment Received" value={fmtCurrency(paymentReceived)} icon={Wallet} trend="+8.2%" isUp={true} color="text-emerald-600" bg="bg-emerald-100" />
         <KPICard title="Total Expenses" value={fmtCurrency(totalExpenses)} icon={ShoppingCart} trend="-2.4%" isUp={false} color="text-rose-600" bg="bg-rose-100" />
         <KPICard title="Outstanding (Pending)" value={fmtCurrency(totalOutstanding)} icon={FileText} trend="+5.1%" isUp={true} color="text-blue-600" bg="bg-blue-100" />
@@ -438,14 +541,83 @@ export default function DashboardPage() {
           </Card>
 
         <Card className="shadow-sm hover:shadow-md transition-shadow duration-300 border-slate-200/60 rounded-2xl">
-          <CardHeader>
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-base font-semibold">Action Required</CardTitle>
+            {hasAnyActionRequired ? (
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-50 text-rose-600 border border-rose-200/60">
+                {(overdueInvoicesCount > 0 ? 1 : 0) + (unpaidBillsCount > 0 ? 1 : 0) + (attendanceIssuesCount > 0 ? 1 : 0) + (followUpLeadsCount > 0 ? 1 : 0)} pending
+              </span>
+            ) : (
+              <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> All caught up
+              </span>
+            )}
           </CardHeader>
           <CardContent className="space-y-3">
-            <ActionAlert icon={AlertTriangle} iconColor="text-red-500" bgColor="bg-red-50" text="12 invoices are overdue" subtext={fmtCurrency(overdueAmount)} btnText="View Invoices" onClick={() => navigate('/invoices')} />
-            <ActionAlert icon={Wallet} iconColor="text-orange-500" bgColor="bg-orange-50" text="4 vendor payments due this week" subtext="₹45,200" btnText="Review Payments" onClick={() => navigate('/bills')} />
-            <ActionAlert icon={Users} iconColor="text-yellow-600" bgColor="bg-yellow-50" text="3 employee attendance issues" subtext="Needs approval" btnText="Review Attendance" onClick={() => navigate('/attendance')} />
-            <ActionAlert icon={Phone} iconColor="text-purple-500" bgColor="bg-purple-50" text="8 leads need follow-up" subtext="High priority" btnText="Open CRM" onClick={() => navigate('/leads')} />
+            {hasAnyActionRequired ? (
+              <>
+                {overdueInvoicesCount > 0 && (
+                  <ActionAlert
+                    icon={AlertTriangle}
+                    iconColor="text-red-500"
+                    bgColor="bg-red-50"
+                    text={`${overdueInvoicesCount} ${overdueInvoicesCount === 1 ? 'invoice is' : 'invoices are'} overdue`}
+                    subtext={fmtCurrency(overdueAmount)}
+                    btnText="View Invoices"
+                    onClick={() => navigate('/invoices')}
+                  />
+                )}
+                {unpaidBillsCount > 0 && (
+                  <ActionAlert
+                    icon={Wallet}
+                    iconColor="text-orange-500"
+                    bgColor="bg-orange-50"
+                    text={`${unpaidBillsCount} vendor ${unpaidBillsCount === 1 ? 'payment' : 'payments'} pending`}
+                    subtext={fmtCurrency(unpaidBillsAmount)}
+                    btnText="Review Payments"
+                    onClick={() => navigate('/bills')}
+                  />
+                )}
+                {attendanceIssuesCount > 0 && (
+                  <ActionAlert
+                    icon={Users}
+                    iconColor="text-yellow-600"
+                    bgColor="bg-yellow-50"
+                    text={`${attendanceIssuesCount} employee ${attendanceIssuesCount === 1 ? 'attendance issue' : 'attendance issues'}`}
+                    subtext={
+                      pendingLeaves.length > 0 && pendingRegs.length > 0
+                        ? `${pendingLeaves.length} leave, ${pendingRegs.length} regularization`
+                        : pendingLeaves.length > 0
+                        ? `${pendingLeaves.length} leave request pending`
+                        : `${pendingRegs.length} regularization pending`
+                    }
+                    btnText="Review Attendance"
+                    onClick={() => navigate(pendingLeaves.length > 0 ? '/leaves' : '/attendance')}
+                  />
+                )}
+                {followUpLeadsCount > 0 && (
+                  <ActionAlert
+                    icon={Phone}
+                    iconColor="text-purple-500"
+                    bgColor="bg-purple-50"
+                    text={`${followUpLeadsCount} ${followUpLeadsCount === 1 ? 'lead needs' : 'leads need'} follow-up`}
+                    subtext={hotLeadsCount > 0 ? `${hotLeadsCount} high priority` : 'Pending outreach'}
+                    btnText="Open CRM"
+                    onClick={() => navigate('/leads')}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-7 text-center px-4 bg-slate-50/70 rounded-xl border border-dashed border-slate-200">
+                <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 mb-2">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div className="text-sm font-semibold text-slate-800">All caught up!</div>
+                <div className="text-xs text-slate-500 mt-1 max-w-[280px]">
+                  No overdue invoices, pending vendor bills, leave requests, or urgent leads require your attention.
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -550,16 +722,25 @@ export default function DashboardPage() {
             </span>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-900 mb-4">{newLeadsCount} Leads</div>
+            <div className="text-2xl font-bold text-slate-900 mb-4">{totalLeadsCount} Leads</div>
             <div className="flex items-center justify-between gap-1 mb-6 text-xs text-center font-medium text-slate-600">
-              <div className="bg-slate-100 rounded p-1.5 w-full">Total<br/>{newLeadsCount}</div>
-              <div className="bg-blue-50 rounded p-1.5 w-full text-blue-700">Cont.<br/>{Math.floor(newLeadsCount*0.7)}</div>
-              <div className="bg-emerald-50 rounded p-1.5 w-full text-emerald-700">Qual.<br/>{Math.floor(newLeadsCount*0.4)}</div>
+              <div className="bg-slate-100 rounded p-1.5 w-full">Total<br/>{totalLeadsCount}</div>
+              <div className="bg-blue-50 rounded p-1.5 w-full text-blue-700">Cont.<br/>{contactedLeadsCount}</div>
+              <div className="bg-emerald-50 rounded p-1.5 w-full text-emerald-700">Qual.<br/>{qualifiedLeadsCount}</div>
             </div>
             <div className="flex justify-between border-t pt-3">
-              <div className="text-center"><PhoneCall className="w-4 h-4 mx-auto text-slate-400 mb-1" /><span className="text-xs font-semibold">48</span></div>
-              <div className="text-center"><Mail className="w-4 h-4 mx-auto text-slate-400 mb-1" /><span className="text-xs font-semibold">76</span></div>
-              <div className="text-center"><Clock className="w-4 h-4 mx-auto text-slate-400 mb-1" /><span className="text-xs font-semibold">18</span></div>
+              <div className="text-center" title="Phone Calls">
+                <PhoneCall className="w-4 h-4 mx-auto text-slate-400 mb-1" />
+                <span className="text-xs font-semibold text-slate-700">{callActivitiesCount}</span>
+              </div>
+              <div className="text-center" title="Emails Sent">
+                <Mail className="w-4 h-4 mx-auto text-slate-400 mb-1" />
+                <span className="text-xs font-semibold text-slate-700">{emailActivitiesCount}</span>
+              </div>
+              <div className="text-center" title="Tasks & Meetings">
+                <Clock className="w-4 h-4 mx-auto text-slate-400 mb-1" />
+                <span className="text-xs font-semibold text-slate-700">{meetingTaskActivitiesCount}</span>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -572,12 +753,25 @@ export default function DashboardPage() {
             <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <ActivityRow icon={Wallet} color="text-emerald-500" bg="bg-emerald-50" title="Payment received from ABC Ltd." amount="+ ₹45,000" time="Today, 4:32 PM" />
-              <ActivityRow icon={FileText} color="text-blue-500" bg="bg-blue-50" title="Invoice INV-2026-004 created" amount="₹12,400" time="Today, 2:15 PM" />
-              <ActivityRow icon={UserPlus} color="text-purple-500" bg="bg-purple-50" title="New lead assigned to Sales Team" amount="" time="Today, 11:45 AM" />
-              <ActivityRow icon={CheckCircle2} color="text-slate-500" bg="bg-slate-100" title="Daily attendance marked" amount="" time="Today, 9:00 AM" />
-            </div>
+            {recentActivities.length > 0 ? (
+              <div className="space-y-4">
+                {recentActivities.map((act) => (
+                  <ActivityRow
+                    key={act.id}
+                    icon={act.icon}
+                    color={act.color}
+                    bg={act.bg}
+                    title={act.title}
+                    amount={act.amount}
+                    time={act.time}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-slate-400 text-sm">
+                No recent activity recorded yet. Create an invoice, payment, or lead to see timeline updates.
+              </div>
+            )}
           </CardContent>
         </Card>
 

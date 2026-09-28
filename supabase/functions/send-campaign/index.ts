@@ -219,13 +219,38 @@ Deno.serve(async (req) => {
       }
     }
 
+    const { count: totalRecipients } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign_id);
+
+    const { count: sentRecipients } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign_id)
+      .eq("status", "sent");
+
+    const { count: failedRecipients } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign_id)
+      .eq("status", "failed");
+
+    const { count: pendingRecipients } = await supabase
+      .from("campaign_recipients")
+      .select("id", { count: "exact", head: true })
+      .eq("campaign_id", campaign_id)
+      .eq("status", "pending");
+
+    const finalStatus = (pendingRecipients || 0) === 0 ? "completed" : "failed";
+
     await supabase
       .from("campaigns")
       .update({
-        status: "completed",
-        sent_count: sent,
-        failed_count: failed,
-        total_count: (recipients?.length || 0),
+        status: finalStatus,
+        sent_count: sentRecipients ?? sent,
+        failed_count: failedRecipients ?? failed,
+        total_count: totalRecipients ?? (recipients?.length || 0),
       })
       .eq("id", campaign_id);
 

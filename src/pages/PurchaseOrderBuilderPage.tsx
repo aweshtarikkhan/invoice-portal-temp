@@ -19,9 +19,12 @@ import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2, Mail, MessageCircle, ChevronDown, Clock, Printer, Share2, Eye, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ListPlus, FileText, ShoppingCart, Save, Store, Calendar, CheckCircle2, Mail, MessageCircle, ChevronDown, Clock, Printer, Share2, Eye, ArrowLeft, Lock } from "lucide-react";
 import { format, addDays } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedPurchaseOrders, canSendDirectEmailOrWhatsApp, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 
 interface Line {
@@ -48,6 +51,25 @@ export default function PurchaseOrderBuilderPage() {
     const org = useAppStore.getState().organization;
     return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
   });
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in PO builder:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
   const [vendors, setVendors] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);
@@ -197,6 +219,15 @@ export default function PurchaseOrderBuilderPage() {
   };
 
   const handleActionClick = (action: "email") => {
+    if (action === "email" && !canSendDirectEmailOrWhatsApp(plan, activeOrgPlans)) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) {
       toast({ title: "Select a vendor first", variant: "destructive" });
@@ -213,6 +244,28 @@ export default function PurchaseOrderBuilderPage() {
 
   const save = async (status: "draft" | "sent" = "draft", postAction?: "email") => {
     if (!org?.id || !vendorId) { toast({ title: "Vendor required", variant: "destructive" }); return; }
+    if (!lines.some((l) => l.description.trim() || Number(l.rate) > 0 || Number(l.quantity) > 0)) {
+      toast({ title: "Add at least one line item", variant: "destructive" });
+      return;
+    }
+    if (!id) {
+      const isUnlimited = hasUnlimitedPurchaseOrders(plan, activeOrgPlans);
+      if (!isUnlimited) {
+        const { count } = await supabase
+          .from("purchase_orders")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org.id);
+        if ((count || 0) >= 100) {
+          toast({
+            title: "Purchase Order Limit Reached (100)",
+            description: "Free plan allows up to 100 Purchase Orders. Please upgrade to Business Suite for unlimited purchase orders!",
+            variant: "destructive"
+          });
+          setShowUpgradeModal(true);
+          return;
+        }
+      }
+    }
     setSaving(true);
     try {
       const payload: any = {
@@ -315,6 +368,7 @@ export default function PurchaseOrderBuilderPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => handleActionClick("email")}>
                   <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={async () => { await save("sent"); setTimeout(() => window.print(), 500); }}>
@@ -835,6 +889,11 @@ export default function PurchaseOrderBuilderPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
     </div>
   );
 }

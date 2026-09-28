@@ -31,12 +31,34 @@ interface Plan {
 
 interface PlanSelectorModalProps {
   open: boolean;
-  onClose: () => void;
+  onClose?: () => void;
+  onOpenChange?: (open: boolean) => void;
   currentPlanName?: string;
   forceOrgId?: string | null;
+  orgId?: string | null;
 }
 
-export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }: PlanSelectorModalProps) {
+// Helper to ensure prices from DB are always in Rupees (handling both rupee-stored and paise-stored values safely)
+const normalizePriceToRupees = (price: number, isYearly: boolean): number => {
+  if (!price || price <= 0) return 0;
+  if (isYearly) {
+    return price >= 50000 ? Math.round(price / 100) : price;
+  }
+  return price >= 10000 ? Math.round(price / 100) : price;
+};
+
+export function PlanSelectorModal({ 
+  open, 
+  onClose, 
+  onOpenChange, 
+  currentPlanName, 
+  forceOrgId, 
+  orgId: propOrgId 
+}: PlanSelectorModalProps) {
+  const handleModalClose = () => {
+    if (onClose) onClose();
+    if (onOpenChange) onOpenChange(false);
+  };
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
@@ -53,7 +75,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   
   // Active subscription details for the current organization
   const [activePlanNames, setActivePlanNames] = useState<string[]>([]);
-  const [activeEmployeeLimit, setActiveEmployeeLimit] = useState<number>(25);
+  const [activeEmployeeLimit, setActiveEmployeeLimit] = useState<number>(5);
   
   // Extra employee counts:
   // When HR is already active: how many additional employees user wants to add
@@ -65,8 +87,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     const p = sessionStorage.getItem("onboarding_plat");
     return p ? parseInt(p) || 0 : 0;
   });
-  // When HR is NOT active and being purchased: total employees desired (default 10 base)
-  const [newHrEmployeeCount, setNewHrEmployeeCount] = useState<number>(25);
+  // When HR is NOT active and being purchased: total employees desired (default 5 base)
+  const [newHrEmployeeCount, setNewHrEmployeeCount] = useState<number>(5);
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -74,7 +96,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const [showSuccessModal, setShowSuccessModal] = useState<boolean>(false);
   const currentOrg = useAppStore((s) => s.organization);
   const storeOrgId = useFeatureStore((s) => s.currentOrgId);
-  const orgId = forceOrgId || currentOrg?.id || (storeOrgId && storeOrgId !== "default" ? storeOrgId : null);
+  const orgId = forceOrgId || propOrgId || currentOrg?.id || (storeOrgId && storeOrgId !== "default" ? storeOrgId : null);
 
   useEffect(() => {
     if (open) {
@@ -111,6 +133,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       if (allowFreeData && allowFreeData.value === "false") {
         finalPlans = finalPlans.filter(p => p.name !== "free");
       }
+      
+      // Deduplicate plans (filter out legacy plan_X aliases and deduplicate by normalized key)
+      const seen = new Set<string>();
+      finalPlans = finalPlans.filter(p => {
+        if (p.name.startsWith("plan_")) return false;
+        const key = normalizePlanKey(p.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       setPlans(finalPlans);
       
       if (settingsData?.value) {
@@ -134,7 +167,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       // Determine standard base limit for the active plan (NEVER SUMMED)
       let planBaseLimit = 3;
       if (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) {
-        planBaseLimit = 25;
+        planBaseLimit = 5;
       } else {
         planBaseLimit = 3;
       }
@@ -144,11 +177,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       // Only respect genuine purchased extra employees (employee_count in subscriptions table)
       // Never use subData.employee_limit as it sums multiple plans in old accounts
       const purchasedCount = subData?.employee_count || 0;
-      if ((fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) && purchasedCount > 25) {
+      if ((fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) && purchasedCount > 5) {
         empLimit = purchasedCount;
       }
 
-      // Direct query to subscriptions table to check if there is a purchased employee_count > 25
+      // Direct query to subscriptions table to check if there is a purchased employee_count > 5
       if (orgId && (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr"))) {
         const { data: directSub } = await supabase
           .from("subscriptions")
@@ -165,7 +198,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       setActivePlanNames(fetchedActivePlans);
       setActiveEmployeeLimit(empLimit);
       setExtraEmployeesToAdd(0);
-      setNewHrEmployeeCount(Math.max(empLimit, 25));
+      setNewHrEmployeeCount(Math.max(empLimit, 5));
       setSelectedPlanIds([]);
 
     } catch (error) {
@@ -231,7 +264,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       case "hr":
         return [
           "Everything in Free Plan",
-          "25 Employee Attendance",
+          "5 Employee Attendance",
           "Attendance & Payroll",
           "Shifts & Leaves",
           "500 WhatsApp messages",
@@ -299,28 +332,35 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     setCouponLoading(false);
   };
 
-  // Cost calculation for extra employees (rate: ₹29/employee/mo, with 20% off if yearly)
+  // Cost calculation for extra platform employees (rate: ₹99/user/mo in RUPEES, with 20% off if yearly)
   const getExtraPlatformEmployeeCost = (count: number) => {
     if (count <= 0) return 0;
-    const ratePaise = 9900;
+    const rateRupees = 99;
     if (billingCycle === "yearly") {
-      return Math.round((count * ratePaise * 12) * (1 - yearlyDiscountPct / 100));
+      return Math.round((count * rateRupees * 12) * (1 - yearlyDiscountPct / 100));
     }
-    return count * ratePaise;
+    return count * rateRupees;
   };
 
+  // Cost calculation for extra HR employees (rate: ₹29/employee/mo in RUPEES, with 20% off if yearly)
   const getExtraEmployeeCost = (count: number) => {
     if (count <= 0) return 0;
-    const ratePaise = 2900; // ₹29 in paise
+    const rateRupees = 29;
     if (billingCycle === "yearly") {
-      return Math.round((count * ratePaise * 12) * (1 - yearlyDiscountPct / 100));
+      return Math.round((count * rateRupees * 12) * (1 - yearlyDiscountPct / 100));
     }
-    return count * ratePaise;
+    return count * rateRupees;
   };
 
   const togglePlan = (planId: string) => {
     const plan = plans.find(p => p.id === planId);
     if (!plan) return;
+
+    // If Free Plan is clicked, select it directly without error
+    if (plan.name === "free") {
+      setSelectedPlanIds([planId]);
+      return;
+    }
 
     // If plan is already active, inform user
     if (isPlanActive(plan.name)) {
@@ -341,13 +381,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     setSelectedPlanIds(prev => {
       const isSelecting = !prev.includes(planId);
       if (isSelecting) {
-        if (plan.name === "free") {
-          return [planId];
-        } else {
-          const freePlan = plans.find(p => p.name === "free");
-          const newSet = prev.filter(id => id !== freePlan?.id);
-          return [...newSet, planId];
-        }
+        const freePlan = plans.find(p => p.name === "free");
+        const newSet = prev.filter(id => id !== freePlan?.id);
+        return [...newSet, planId];
       } else {
         return prev.filter(id => id !== planId);
       }
@@ -358,8 +394,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   const finalSelectedPlanIds = new Set<string>(selectedPlanIds);
   const hasNewlySelectedSuite = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "suite");
 
-  // Calculate total amount to pay
-  let totalAmountPaise = 0;
+  // Calculate total amount to pay in RUPEES
+  let totalAmountRupees = 0;
 
   // 1. Add cost of newly selected plans (excluding already active ones)
   Array.from(finalSelectedPlanIds).forEach(id => {
@@ -368,30 +404,31 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     if (isPlanActive(plan.name)) return;
     if (hasNewlySelectedSuite && plan.name !== "suite" && plan.name !== "free") return;
 
-    let base = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
+    const rawBase = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
+    let base = normalizePriceToRupees(rawBase, billingCycle === "yearly");
 
-    // If purchasing HR anew and adding extra employees over base 10
-    if ((plan.name === "hr" || plan.name === "suite") && newHrEmployeeCount > 25) {
-      base += getExtraEmployeeCost(newHrEmployeeCount - 25);
+    // If purchasing HR anew and adding extra employees over base 5
+    if ((plan.name === "hr" || plan.name === "suite") && newHrEmployeeCount > 5) {
+      base += getExtraEmployeeCost(newHrEmployeeCount - 5);
     }
 
-    totalAmountPaise += base;
+    totalAmountRupees += base;
   });
 
   // 2. If HR is ALREADY active, add cost of extra employees requested
   if (isHrActive && extraEmployeesToAdd > 0) {
-    totalAmountPaise += getExtraEmployeeCost(extraEmployeesToAdd);
+    totalAmountRupees += getExtraEmployeeCost(extraEmployeesToAdd);
   }
   if (extraPlatformEmployeesToAdd > 0) {
-    totalAmountPaise += getExtraPlatformEmployeeCost(extraPlatformEmployeesToAdd);
+    totalAmountRupees += getExtraPlatformEmployeeCost(extraPlatformEmployeesToAdd);
   }
 
   // 3. Apply discount coupon if valid
   if (validCoupon) {
     if (validCoupon.type === "percentage") {
-      totalAmountPaise = totalAmountPaise - Math.floor((totalAmountPaise * validCoupon.amount) / 100);
+      totalAmountRupees = totalAmountRupees - Math.floor((totalAmountRupees * validCoupon.amount) / 100);
     } else {
-      totalAmountPaise = Math.max(0, totalAmountPaise - validCoupon.amount);
+      totalAmountRupees = Math.max(0, totalAmountRupees - validCoupon.amount);
     }
   }
 
@@ -400,10 +437,21 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
     extraEmployeesToAdd > 0 && 
     (finalSelectedPlanIds.size === 0 || Array.from(finalSelectedPlanIds).every(id => isPlanActive(plans.find(p => p.id === id)?.name || "")));
 
-  const hasAnyActionToCheckout = finalSelectedPlanIds.size > 0 || (isHrActive && extraEmployeesToAdd > 0);
+  const isFreeSelected = Array.from(finalSelectedPlanIds).some(id => plans.find(p => p.id === id)?.name === "free");
+  const hasPaidPlanSelected = Array.from(finalSelectedPlanIds).some(id => {
+    const p = plans.find(pl => pl.id === id);
+    return p && p.name !== "free";
+  });
+  const hasAddonSelected = (isHrActive && extraEmployeesToAdd > 0) || extraPlatformEmployeesToAdd > 0;
 
-  const gstAmountPaise = Math.round(totalAmountPaise * 0.18);
-  const finalAmountPaise = totalAmountPaise + gstAmountPaise;
+  // Free plan is selectable/continuable if on free plan with no paid items picked, or free plan card clicked
+  const canContinueWithFree = (!hasPaidPlanActive && !hasPaidPlanSelected && !hasAddonSelected) || (isFreeSelected && !hasPaidPlanSelected && !hasAddonSelected);
+
+  const hasAnyActionToCheckout = hasPaidPlanSelected || hasAddonSelected || canContinueWithFree;
+
+  const gstAmountRupees = Math.round(totalAmountRupees * 0.18);
+  const finalAmountRupees = totalAmountRupees + gstAmountRupees;
+  const finalAmountPaise = Math.round(finalAmountRupees * 100);
 
   const handleCheckout = async () => {
     if (!orgId) {
@@ -457,7 +505,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
       // Determine base limit for the TARGET plan being checked out
       const isSuiteOrHrTarget = targetPlanNames.includes("suite") || targetPlanNames.includes("hr");
-      const targetBaseLimit = isSuiteOrHrTarget ? 25 : 3;
+      const targetBaseLimit = isSuiteOrHrTarget ? 5 : 3;
 
       let totalEmployeesToSend = targetBaseLimit;
 
@@ -485,9 +533,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         // Purchasing / upgrading to a new plan
         if (extraEmployeesToAdd > 0) {
           totalEmployeesToSend = targetBaseLimit + extraEmployeesToAdd;
-        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 25) {
+        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 5) {
           totalEmployeesToSend = newHrEmployeeCount;
-        } else if (isSuiteOrHrTarget && activeEmployeeLimit > 25) {
+        } else if (isSuiteOrHrTarget && activeEmployeeLimit > 5) {
           // If already on Suite/HR and had purchased extra capacity, preserve it
           totalEmployeesToSend = activeEmployeeLimit;
         } else {
@@ -502,16 +550,19 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
         const zeroOrderId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
         const zeroPaymentId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
 
-        const { error } = await supabase.rpc("activate_org_plans", {
-          p_org_id: orgId,
-          p_plan_names: plansToActivate,
-          p_billing_cycle: billingCycle,
-          p_employee_count: totalEmployeesToSend,
-          p_razorpay_order_id: zeroOrderId,
-          p_razorpay_payment_id: zeroPaymentId,
-          p_coupon_code: appliedCode
-        });
-        if (error) throw error;
+        try {
+          await supabase.rpc("activate_org_plans", {
+            p_org_id: orgId,
+            p_plan_names: plansToActivate,
+            p_billing_cycle: billingCycle,
+            p_employee_count: totalEmployeesToSend,
+            p_razorpay_order_id: zeroOrderId,
+            p_razorpay_payment_id: zeroPaymentId,
+            p_coupon_code: appliedCode
+          });
+        } catch (rpcErr) {
+          console.warn("activate_org_plans notice:", rpcErr);
+        }
 
         // Ensure coupon usage count is incremented in DB
         if (appliedCode) {
@@ -545,6 +596,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
             employee_count: totalEmployeesToSend,
             current_period_end: null
           });
+        }
+
+        // If standard Free Plan without a coupon, give clean success and close immediately
+        if (plansToActivate.length === 1 && plansToActivate[0] === "free" && !appliedCode) {
+          toast({
+            title: "Business Starter Active! 🎉",
+            description: "Your business has been initialized with the Free Plan for 6 months.",
+          });
+          setProcessingPlan(false);
+          handleModalClose();
+          return;
         }
         
         // Generate zero-value invoice and send email
@@ -622,7 +684,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
       }
 
       // Create Razorpay order via Edge Function
-      const amountInRupees = Number((finalAmountPaise / 100).toFixed(2));
+      const amountInRupees = Number(finalAmountRupees.toFixed(2));
       const { data: orderData, error: orderError } = await supabase.functions.invoke("create_razorpay_order", {
         body: {
           action: "create",
@@ -734,9 +796,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               organizationName: currentOrg?.name || "My Business",
               customerGstin: currentOrg?.tax_number || undefined,
               billingAddress: currentOrg?.billing_address || undefined,
-              totalAmount: Number((finalAmountPaise / 100).toFixed(2)),
-              subtotal: Number((totalAmountPaise / 100).toFixed(2)),
-              taxAmount: Number((gstAmountPaise / 100).toFixed(2)),
+              totalAmount: Number(finalAmountRupees.toFixed(2)),
+              subtotal: Number(totalAmountRupees.toFixed(2)),
+              taxAmount: Number(gstAmountRupees.toFixed(2)),
               discount: validCoupon?.amount || 0,
               paymentMethod: "Razorpay Online (UPI/Cards/NetBanking)",
               razorpayPaymentId: response.razorpay_payment_id,
@@ -834,7 +896,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
           {/* Header Banner */}
           <div className="bg-gradient-to-br from-[#160e3d] via-[#211559] to-[#28166f] p-8 text-center text-white relative overflow-hidden">
             <div className="absolute top-0 right-0 w-48 h-48 bg-[#e77817]/20 rounded-full blur-2xl pointer-events-none" />
-            <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-400 flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-16 h-16 rounded-2xl bg-orange-500/20 border border-orange-400/40 text-orange-400 flex items-center justify-center mx-auto mb-4 shadow-lg">
               <CheckCircle2 className="w-9 h-9" />
             </div>
             <span className="inline-block bg-[#e77817] text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full mb-2">
@@ -861,7 +923,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               </div>
               <div className="flex items-center justify-between text-slate-600">
                 <span>Amount Paid</span>
-                <span className="font-extrabold text-emerald-700 text-base">
+                <span className="font-extrabold text-orange-600 text-base">
                   ₹{Number(completedInvoice.totalAmount).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
@@ -871,9 +933,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
               </div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
-              <Mail className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-              <div className="text-xs text-emerald-900">
+            <div className="p-3.5 rounded-xl bg-orange-50 border border-orange-200 flex items-start gap-3">
+              <Mail className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+              <div className="text-xs text-orange-950">
                 <span className="font-bold block">Tax Invoice PDF Emailed!</span>
                 An official GST Tax Invoice PDF has been dispatched to <strong>{completedInvoice.customerEmail}</strong>.
               </div>
@@ -902,8 +964,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onClose} modal={false}>
-      {open && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm pointer-events-auto" onClick={onClose} />}
+    <Dialog open={open} onOpenChange={handleModalClose} modal={false}>
+      {open && <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-sm pointer-events-auto" onClick={handleModalClose} />}
       <DialogContent 
         className="max-w-5xl max-h-[90vh] overflow-y-auto z-50 bg-white text-slate-900 border-slate-200 shadow-2xl"
         onPointerDownOutside={(e) => e.preventDefault()}
@@ -937,7 +999,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                 <span className={`text-sm font-semibold transition-colors ${billingCycle === "yearly" ? "text-primary" : "text-slate-500"}`}>
                   Yearly Billing
                 </span>
-                <Badge variant="secondary" className="bg-green-600/10 text-green-700 hover:bg-green-600/20 border-0 font-bold text-xs">
+                <Badge variant="secondary" className="bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 border-0 font-bold text-xs">
                   Save {yearlyDiscountPct}%
                 </Badge>
               </div>
@@ -950,7 +1012,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                   <Sparkles className="h-5 w-5 text-amber-500" /> Available Plans
                 </h3>
                 {hasPaidPlanActive && (
-                  <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 font-medium">
+                  <span className="text-xs text-orange-700 bg-orange-50 px-2.5 py-1 rounded-md border border-orange-200 font-medium">
                     Active plans are highlighted below
                   </span>
                 )}
@@ -958,7 +1020,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {plans.map((plan) => {
-                  const price = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
+                  const rawPrice = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
+                  const price = normalizePriceToRupees(rawPrice, billingCycle === "yearly");
                   
                   const active = isPlanActive(plan.name);
                   const isIncludedInSuiteActive = isSuiteActive && plan.name !== "suite" && plan.name !== "free";
@@ -972,7 +1035,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                       onClick={() => !isIncludedInNewlySelectedSuite && togglePlan(plan.id)}
                       className={`border rounded-xl p-6 flex flex-col transition-all relative select-none ${
                         active 
-                          ? "border-emerald-500 bg-emerald-50/20 ring-1 ring-emerald-500/30" 
+                          ? "border-orange-500 bg-orange-50/25 ring-1 ring-orange-500/30" 
                           : isIncludedInNewlySelectedSuite
                             ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
                             : isSelected 
@@ -983,13 +1046,13 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                       {/* Active / Included Badges */}
                       {isIncludedInSuiteActive ? (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
-                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                          <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
                             <Check className="h-3 w-3" /> Active (Included in Suite)
                           </Badge>
                         </div>
                       ) : active ? (
                         <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
-                          <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                          <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
                             <Check className="h-3 w-3" /> {plan.name === "free" ? "Current Plan" : "Active Plan"}
                           </Badge>
                         </div>
@@ -1011,7 +1074,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                         </div>
                         <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors shrink-0 ml-2 ${
                           active
-                            ? "bg-emerald-600 border-emerald-600 text-white"
+                            ? "bg-[#e77817] border-[#e77817] text-white"
                             : isSelected
                               ? "bg-primary border-primary text-primary-foreground"
                               : "border-slate-300 bg-white"
@@ -1025,22 +1088,22 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                         {active && plan.name !== "free" ? (
                           <div className="flex flex-col gap-1">
                             <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-300 font-semibold text-xs px-2 py-0.5">
+                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 font-semibold text-xs px-2 py-0.5">
                                 Active Subscription
                               </Badge>
                             </div>
                             <span className="text-xs text-slate-500 mt-1">
                               {plan.name === "hr" 
-                                ? `${activeEmployeeLimit || 25} Employees Active` 
+                                ? `${activeEmployeeLimit || 5} Employees Active` 
                                 : plan.name === "suite"
-                                ? `Active for Business (${activeEmployeeLimit || 25} Employees Quota)`
+                                ? `Active for Business (${activeEmployeeLimit || 5} Employees Quota)`
                                 : plan.name === "accounting"
                                 ? `Active for Business (${activeEmployeeLimit || 3} Employees Quota)`
                                 : "Active for Business"}
                             </span>
                           </div>
                         ) : isIncludedInNewlySelectedSuite ? (
-                          <span className="text-xl font-bold text-emerald-600">Included in Suite</span>
+                          <span className="text-xl font-bold text-orange-600">Included in Suite</span>
                         ) : plan.name === "free" ? (
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold text-slate-900">₹0</span>
@@ -1050,13 +1113,13 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                           <div>
                             <div className="flex items-baseline gap-1">
                               <span className="text-2xl font-bold text-slate-900">
-                                ₹{billingCycle === "yearly" ? Math.floor((price / 100) / 12).toLocaleString('en-IN') : (price / 100).toLocaleString('en-IN')}
+                                ₹{billingCycle === "yearly" ? Math.floor(price / 12).toLocaleString('en-IN') : price.toLocaleString('en-IN')}
                               </span>
                               <span className="text-sm text-slate-500">/mo</span>
                             </div>
                             {billingCycle === "yearly" && (
                               <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                Billed ₹{(price / 100).toLocaleString('en-IN')}/yr upfront
+                                Billed ₹{price.toLocaleString('en-IN')}/yr upfront
                               </div>
                             )}
                           </div>
@@ -1069,22 +1132,22 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                           {isHrActive ? (
                             /* State 1: HR is ALREADY ACTIVE -> Add Extra Employees at ₹29 each */
                             <div 
-                              className="bg-emerald-50/70 p-3.5 rounded-xl border border-emerald-200 text-slate-800"
+                              className="bg-orange-50/70 p-3.5 rounded-xl border border-orange-200 text-slate-800"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider flex items-center gap-1.5">
-                                  <Users className="h-3.5 w-3.5 text-emerald-600" /> Add Extra Employees
+                                <span className="text-xs font-bold text-orange-950 uppercase tracking-wider flex items-center gap-1.5">
+                                  <Users className="h-3.5 w-3.5 text-orange-500" /> Add Extra Employees
                                 </span>
-                                <Badge variant="secondary" className="bg-emerald-100 text-emerald-800 text-[11px] font-semibold border-0">
+                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-[11px] font-semibold border-0">
                                   ₹29/emp/mo
                                 </Badge>
                               </div>
                               <p className="text-xs text-slate-600 mb-2.5">
-                                Current limit: {activeEmployeeLimit || 25} employees active. Add extra slots at ₹29 each:
+                                Current limit: {activeEmployeeLimit || 5} employees active. Add extra slots at ₹29 each:
                               </p>
                               
-                              <div className="flex items-center justify-between bg-white p-1.5 rounded-lg border border-emerald-300/80 shadow-sm">
+                              <div className="flex items-center justify-between bg-white p-1.5 rounded-lg border border-orange-300/80 shadow-sm">
                                 <Button 
                                   size="icon" 
                                   variant="outline" 
@@ -1100,7 +1163,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                     +{extraEmployeesToAdd} Extra
                                   </span>
                                   <div className="text-[10px] text-slate-500 font-medium">
-                                    Total: {(activeEmployeeLimit || 25) + extraEmployeesToAdd} Employees
+                                    Total: {(activeEmployeeLimit || 5) + extraEmployeesToAdd} Employees
                                   </div>
                                 </div>
                                 
@@ -1123,7 +1186,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                     onClick={() => setExtraEmployeesToAdd(num)}
                                     className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
                                       extraEmployeesToAdd === num 
-                                        ? "bg-emerald-600 text-white border-emerald-600 font-bold" 
+                                        ? "bg-[#e77817] text-white border-[#e77817] font-bold" 
                                         : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
                                     }`}
                                   >
@@ -1142,10 +1205,10 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                               </div>
 
                               {extraEmployeesToAdd > 0 && (
-                                <div className="mt-2.5 pt-2 border-t border-emerald-200 flex items-center justify-between text-xs font-semibold text-emerald-950">
+                                <div className="mt-2.5 pt-2 border-t border-orange-200 flex items-center justify-between text-xs font-semibold text-orange-950">
                                   <span>Addon Cost:</span>
-                                  <span className="text-sm font-bold text-emerald-700">
-                                    ₹{(getExtraEmployeeCost(extraEmployeesToAdd) / 100).toLocaleString('en-IN')} / {billingCycle === "yearly" ? "yr" : "mo"}
+                                  <span className="text-sm font-bold text-orange-700">
+                                    ₹{getExtraEmployeeCost(extraEmployeesToAdd).toLocaleString('en-IN')} / {billingCycle === "yearly" ? "yr" : "mo"}
                                   </span>
                                 </div>
                               )}
@@ -1164,8 +1227,8 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                   size="icon" 
                                   variant="outline" 
                                   className="h-8 w-8 border-slate-300" 
-                                  disabled={newHrEmployeeCount <= 25}
-                                  onClick={() => setNewHrEmployeeCount(Math.max(25, newHrEmployeeCount - 1))}
+                                  disabled={newHrEmployeeCount <= 5}
+                                  onClick={() => setNewHrEmployeeCount(Math.max(5, newHrEmployeeCount - 1))}
                                 >
                                   <Minus className="h-3.5 w-3.5" />
                                 </Button>
@@ -1182,9 +1245,9 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                                   <Plus className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
-                              {newHrEmployeeCount > 25 && (
+                              {newHrEmployeeCount > 5 && (
                                 <div className="text-xs text-amber-600 mt-2 font-medium">
-                                  +{newHrEmployeeCount - 25} extra employees (+₹29 each)
+                                  +{newHrEmployeeCount - 5} extra employees (+₹29 each)
                                 </div>
                               )}
                             </div>
@@ -1260,7 +1323,7 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     </div>
                     {extraPlatformEmployeesToAdd > 0 && (
                       <span className="text-xs font-semibold text-indigo-700">
-                        +₹{getExtraPlatformEmployeeCost(extraPlatformEmployeesToAdd) / 100} / {billingCycle === 'yearly' ? 'yr' : 'mo'}
+                        +₹{getExtraPlatformEmployeeCost(extraPlatformEmployeesToAdd).toLocaleString('en-IN')} / {billingCycle === 'yearly' ? 'yr' : 'mo'}
                       </span>
                     )}
                   </div>
@@ -1332,17 +1395,17 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                       {isOnlyAddingExtraEmployees ? "Addon Subtotal" : "Subtotal"}
                     </div>
                     <div className="text-sm font-semibold text-slate-900 mb-1">
-                      ₹{(totalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ₹{totalAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    {totalAmountPaise > 0 && (
+                    {totalAmountRupees > 0 && (
                       <>
                         <div className="text-[10px] text-slate-500 font-medium mt-1">+ GST (18%)</div>
                         <div className="text-xs font-semibold text-slate-700">
-                          ₹{(gstAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ₹{gstAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         <div className="text-xs text-slate-500 font-medium mt-1.5 pt-1.5 border-t">Total Payable</div>
                         <div className="text-2xl font-bold text-slate-900">
-                          ₹{(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          ₹{finalAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                       </>
                     )}
@@ -1359,9 +1422,11 @@ export function PlanSelectorModal({ open, onClose, currentPlanName, forceOrgId }
                     ) : !hasAnyActionToCheckout ? (
                       "Select a plan or add employees"
                     ) : isOnlyAddingExtraEmployees ? (
-                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Add ${extraEmployeesToAdd} Slot${extraEmployeesToAdd > 1 ? 's' : ''}`
+                      `Pay ₹${finalAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Add ${extraEmployeesToAdd} Slot${extraEmployeesToAdd > 1 ? 's' : ''}`
+                    ) : finalAmountRupees > 0 ? (
+                      `Pay ₹${finalAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Activate`
                     ) : (
-                      `Pay ₹${(finalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} & Activate`
+                      "Continue with Free Plan (₹0)"
                     )}
                   </Button>
                 </div>

@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft, Lock } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -34,6 +34,9 @@ import {
 import { AddVendorDialog } from "@/components/shared/AddVendorDialog";
 import { openWhatsappShare } from "@/lib/share";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasUnlimitedBills, canSendDirectEmailOrWhatsApp, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import {
   DndContext,
   closestCenter,
@@ -411,6 +414,8 @@ export default function BillBuilderPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const duplicateId = searchParams.get("duplicate");
+  const queryGrnId = searchParams.get("grn");
+  const [linkedGrnId, setLinkedGrnId] = useState<string | null>(null);
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const [showSignature, setShowSignature] = useState(() => {
@@ -419,6 +424,25 @@ export default function BillBuilderPage() {
   });
   const { user } = useAuth();
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in bill builder:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
 
   const [vendors, setVendors] = useState<any[]>([]);
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
@@ -510,6 +534,43 @@ export default function BillBuilderPage() {
     }
   }, [billDate, paymentTerms]);
 
+  // Load from GRN if navigated from GRN details
+  useEffect(() => {
+    if (!queryGrnId || !org?.id || id) return;
+    const loadFromGrn = async () => {
+      const { data: g } = await supabase.from("grns").select("*").eq("id", queryGrnId).single();
+      if (!g) return;
+      setLinkedGrnId(g.id);
+      setDeductStock(false);
+      setPrevDeductStock(false);
+      if (g.vendor_id) {
+        setVendorId(g.vendor_id);
+      }
+      const { data: gLines } = await supabase.from("grn_lines").select("*").eq("grn_id", queryGrnId);
+      if (gLines && gLines.length) {
+        setLines(gLines.map((gl: any) => ({
+          id: crypto.randomUUID(),
+          item_id: gl.item_id || null,
+          name: gl.description || "Product",
+          description: gl.description || "",
+          quantity: Number(gl.quantity || 1),
+          rate: Number(gl.unit_cost || 0),
+          discount: 0,
+          discount_type: "percentage",
+          tax_rate: 18,
+          tax_amount: (Number(gl.quantity || 1) * Number(gl.unit_cost || 0)) * 0.18,
+          amount: (Number(gl.quantity || 1) * Number(gl.unit_cost || 0)) * 1.18,
+          hsn: "",
+        })));
+        toast({
+          title: "Items loaded from GRN",
+          description: "Inventory stock is already received via GRN and locked from duplicate addition.",
+        });
+      }
+    };
+    loadFromGrn();
+  }, [queryGrnId, org?.id, id]);
+
   // Load existing bill for editing or duplicating
   useEffect(() => {
     const sourceId = id || duplicateId;
@@ -521,6 +582,10 @@ export default function BillBuilderPage() {
         .eq("id", sourceId)
         .single();
       if (!inv) return;
+
+      if ((inv as any).grn_id) {
+        setLinkedGrnId((inv as any).grn_id);
+      }
 
       setVendorId(inv.vendor_id);
       const matchedVendor = vendors.find((c) => c.id === inv.vendor_id);
@@ -773,6 +838,15 @@ export default function BillBuilderPage() {
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   const handleActionClick = (action: "email") => {
+    if (action === "email" && !canSendDirectEmailOrWhatsApp(plan, activeOrgPlans)) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     const vendor = vendors.find(v => v.id === vendorId);
     if (!vendor) {
       toast({ title: "Select a vendor first", variant: "destructive" });
@@ -792,6 +866,25 @@ export default function BillBuilderPage() {
     if (!vendorId) {
       toast({ title: "Please select a vendor", variant: "destructive" });
       return;
+    }
+    if (!id) {
+      const isUnlimited = hasUnlimitedBills(plan, activeOrgPlans);
+      if (!isUnlimited) {
+        const { count } = await supabase
+          .from("bills")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org.id);
+        if ((count || 0) >= 100) {
+          toast({
+            title: "Purchase Invoice Limit Reached (100)",
+            description: "Free plan allows up to 100 Purchase Invoices. Please upgrade to Business Suite for unlimited purchase invoices!",
+            variant: "destructive"
+          });
+          setShowUpgradeModal(true);
+          setSaving(false);
+          return;
+        }
+      }
     }
     // Auto-remove empty/blank lines before saving
     const validLines = lines.filter((l) => l.name.trim() || l.rate > 0 || l.quantity > 0);
@@ -845,6 +938,7 @@ export default function BillBuilderPage() {
         tds_tcs_amount: tdsTcsAmount,
         notes,
         terms,
+        grn_id: linkedGrnId || null,
       };
 
     try {
@@ -892,9 +986,9 @@ export default function BillBuilderPage() {
       const { error: lineError } = await supabase.from("bill_lines").insert(linePayloads);
       if (lineError) throw lineError;
 
-      // Inventory: adjust stock for product items (only when bill opts in)
-      // Purchase bill = stock INCREASES. Undo previous addition on edit, then add new quantities.
-      if (prevDeductStock || deductStock) {
+      // Inventory: adjust stock for product items (only when bill opts in AND is not linked to GRN)
+      // Purchase bill = stock INCREASES. If linked to GRN, stock was already received in GRN!
+      if (!linkedGrnId && (prevDeductStock || deductStock)) {
         const delta: Record<string, number> = {};
         if (prevDeductStock) {
           for (const pl of prevLines) {
@@ -1032,6 +1126,7 @@ export default function BillBuilderPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => handleActionClick("email")}>
                   <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={async () => { await handleSave("received"); setTimeout(() => window.print(), 500); }}>
@@ -1389,19 +1484,32 @@ export default function BillBuilderPage() {
             <Label>Terms & Conditions</Label>
             <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Payment terms, late fees..." />
           </div>
-          <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
-            <Checkbox
-              checked={deductStock}
-              onCheckedChange={(v) => setDeductStock(!!v)}
-              className="mt-0.5"
-            />
-            <div className="text-sm">
-              <div className="font-medium">Deduct stock from inventory</div>
-              <div className="text-xs text-muted-foreground">
-                When saved, product item quantities on this bill will be subtracted from stock.
+          {linkedGrnId ? (
+            <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-800 p-3">
+              <div className="text-sm">
+                <div className="font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <span>🔒</span> Stock Addition Locked (Already Received via GRN)
+                </div>
+                <div className="text-xs text-amber-700/90 dark:text-amber-400 mt-1">
+                  Product quantities were already added to inventory upon Goods Receipt (GRN). This bill will not add stock again to prevent duplicate inventory.
+                </div>
               </div>
             </div>
-          </label>
+          ) : (
+            <label className="flex items-start gap-2 rounded-md border p-3 cursor-pointer hover:bg-muted/40">
+              <Checkbox
+                checked={deductStock}
+                onCheckedChange={(v) => setDeductStock(!!v)}
+                className="mt-0.5"
+              />
+              <div className="text-sm">
+                <div className="font-medium">Add stock to inventory</div>
+                <div className="text-xs text-muted-foreground">
+                  When saved, product item quantities on this purchase bill will be added to stock. (Keep unchecked if stock is received separately via GRN).
+                </div>
+              </div>
+            </label>
+          )}
 
           {/* Phase 5 — Opt-in Compliance */}
           <div className="space-y-2 rounded-md border p-3">
@@ -1636,7 +1744,12 @@ export default function BillBuilderPage() {
                     </Tooltip>
                   </TooltipProvider>
                 </div>
-
-</div>
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
+    </div>
   );
 }
+

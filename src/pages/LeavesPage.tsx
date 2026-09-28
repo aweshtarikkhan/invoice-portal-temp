@@ -179,11 +179,11 @@ export default function LeavesPage() {
           currentUsed += leaveReq.days;
           
           // Auto-mark each leave day in both attendance and attendances tables
-          const start = new Date(leaveReq.start_date);
-          const end = new Date(leaveReq.end_date || leaveReq.start_date);
+          const start = parseISO(String(leaveReq.start_date).split('T')[0]);
+          const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
           const datesToMark: string[] = [];
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            datesToMark.push(d.toISOString().split('T')[0]);
+            datesToMark.push(format(d, 'yyyy-MM-dd'));
           }
           
           for (const dateStr of datesToMark) {
@@ -214,10 +214,10 @@ export default function LeavesPage() {
           currentUsed = Math.max(0, currentUsed - leaveReq.days);
           
           // Revert attendance records back to absent for those days
-          const start = new Date(leaveReq.start_date);
-          const end = new Date(leaveReq.end_date || leaveReq.start_date);
+          const start = parseISO(String(leaveReq.start_date).split('T')[0]);
+          const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = d.toISOString().split('T')[0];
+            const dateStr = format(d, 'yyyy-MM-dd');
             await (supabase as any).from('attendance').upsert({
               org_id: org.id,
               employee_id: leaveReq.employee_id,
@@ -288,12 +288,13 @@ export default function LeavesPage() {
     }
   };
 
-  // Group balances per employee
-  const balancesByEmp = employees.map((emp) => {
+  // Group balances per employee — keyed by emp.id for O(1) lookup
+  const balancesByEmp: Record<string, Record<string, any>> = {};
+  employees.forEach((emp) => {
     const empBals = balances.filter((b) => b.employee_id === emp.id);
     const byType: Record<string, any> = {};
     empBals.forEach((b) => { byType[b.leave_type] = b; });
-    return { emp, byType };
+    balancesByEmp[emp.id] = byType;
   });
 
   const getBalance = (byType: Record<string, any>, type: string) => {

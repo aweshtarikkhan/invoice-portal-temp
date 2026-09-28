@@ -300,7 +300,16 @@ export default function LandingPage() {
     
     // Fetch active plans
     supabase.from("plans").select("*").eq("is_active", true).order("sort_order").then(({ data }) => {
-      if (data) setDbPlans(data);
+      if (data) {
+        const seen = new Set<string>();
+        const deduped = data.filter((p: any) => {
+          if (p.name.startsWith("plan_")) return false;
+          if (seen.has(p.name)) return false;
+          seen.add(p.name);
+          return true;
+        });
+        setDbPlans(deduped);
+      }
     });
   }, []);
 
@@ -1212,7 +1221,7 @@ export default function LandingPage() {
                             </div>
                             <div className="flex items-center gap-2.5">
                               <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
-                              <span>25 Employee Attendance</span>
+                              <span>5 Employee Attendance</span>
                             </div>
                             
                             <div className="flex items-center justify-between w-full bg-emerald-50/50 p-2 rounded-lg border border-emerald-100/50 mt-1" onClick={(e) => e.stopPropagation()}>

@@ -62,6 +62,9 @@ const VendorDetailPage = lazy(() => import("./pages/VendorDetailPage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const BillBuilderPage = lazy(() => import("./pages/BillBuilderPage"));
 const BillDetailPage = lazy(() => import("./pages/BillDetailPage"));
+const DebitNotesPage = lazy(() => import("./pages/DebitNotesPage"));
+const DebitNoteBuilderPage = lazy(() => import("./pages/DebitNoteBuilderPage"));
+const DebitNoteDetailPage = lazy(() => import("./pages/DebitNoteDetailPage"));
 const ChartOfAccountsPage = lazy(() => import("./pages/ChartOfAccountsPage"));
 const JournalEntriesPage = lazy(() => import("./pages/JournalEntriesPage"));
 const BranchesPage = lazy(() => import("./pages/BranchesPage"));
@@ -267,6 +270,10 @@ const App = () => (
                 <Route path="/grns/new" element={<GrnBuilderPage />} />
                 <Route path="/grns/:id" element={<GrnDetailPage />} />
                 <Route path="/grns/:id/edit" element={<GrnBuilderPage />} />
+                <Route path="/debit-notes" element={<DebitNotesPage />} />
+                <Route path="/debit-notes/new" element={<DebitNoteBuilderPage />} />
+                <Route path="/debit-notes/:id" element={<DebitNoteDetailPage />} />
+                <Route path="/debit-notes/:id/edit" element={<DebitNoteBuilderPage />} />
                 <Route path="/expenses" element={<BusinessExpensesPage />} />
               </Route>
               <Route element={<FeatureGuard featureKey="accounting" featureName="Banking" />}>

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { postInvoiceJournal } from "@/lib/accounting";
 import { useAppStore } from "@/store/app-store";
 import { useSubscription } from "@/hooks/use-subscription";
-import { hasUnlimitedInvoices, normalizePlanKey } from "@/lib/subscription";
+import { hasUnlimitedInvoices, normalizePlanKey, canSendDirectEmailOrWhatsApp } from "@/lib/subscription";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { useAuth } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -25,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
 
@@ -433,6 +433,7 @@ export default function InvoiceBuilderPage() {
   const [searchParams] = useSearchParams();
   const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
+  const userRole = useAppStore((s) => s.userRole);
   const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
   const { toast } = useToast();
   const { user, profile } = useAuth();
@@ -941,6 +942,15 @@ export default function InvoiceBuilderPage() {
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   const handleActionClick = (action: "email" | "whatsapp") => {
+    if (!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans)) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: `Direct document ${action === "email" ? "emailing" : "sharing via WhatsApp"} is a premium feature. Please upgrade to Business Suite or Business Integration.`,
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     if (action === "whatsapp" && !(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))) {
       toast({ title: "Access Denied", description: "You don't have permission to use WhatsApp features.", variant: "destructive" });
       return;
@@ -1006,7 +1016,11 @@ export default function InvoiceBuilderPage() {
   };
 
   const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email" | "whatsapp") => {
-    if (profile && (!profile.address_line || !profile.pincode)) {
+    const isOrgOwner = (org as any)?.owner_id === (user?.id || profile?.user_id) || userRole === "owner";
+    const hasOrgAddress = Boolean(profile?.address_line || (org?.address as any)?.street || (org?.address as any)?.address_line);
+    const hasOrgPincode = Boolean(profile?.pincode || (org?.address as any)?.postal_code || (org?.address as any)?.pincode);
+
+    if (isOrgOwner && (!hasOrgAddress || !hasOrgPincode)) {
       toast({
         title: "Profile Incomplete",
         description: "Please complete your Address and PIN Code in Settings before creating invoices.",
@@ -1460,9 +1474,11 @@ export default function InvoiceBuilderPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => handleActionClick("email")}>
                   <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleActionClick("whatsapp")}>
                   <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Save and WhatsApp
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>
@@ -2415,9 +2431,11 @@ export default function InvoiceBuilderPage() {
               <DropdownMenuContent align="end" className="w-52">
                 <DropdownMenuItem onClick={() => handleActionClick("email")}>
                   <Mail className="mr-2 h-4 w-4 text-blue-600" /> Save and Email
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleActionClick("whatsapp")}>
                   <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Save and WhatsApp
+                  {!canSendDirectEmailOrWhatsApp(plan, activeOrgPlans) && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
                 </DropdownMenuItem>
 
                 <DropdownMenuItem onClick={async () => { await handleSave("sent"); setTimeout(() => window.print(), 500); }}>

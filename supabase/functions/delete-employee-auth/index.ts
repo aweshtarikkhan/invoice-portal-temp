@@ -38,10 +38,13 @@ serve(async (req) => {
       throw new Error('auth_user_id is required')
     }
 
-    // Delete the auth user — this frees their email for re-use on any new business
-    const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id)
-    if (deleteError) {
-      throw deleteError
+    // Only delete the auth user if it is a namespaced attendance user, protecting invoice accounts
+    const { data: targetUser } = await supabaseAdmin.auth.admin.getUserById(auth_user_id);
+    if (targetUser?.user?.email?.startsWith('attendance_')) {
+      const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(auth_user_id)
+      if (deleteError) {
+        throw deleteError
+      }
     }
 
     return new Response(

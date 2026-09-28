@@ -3,14 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, MessageSquare, Search, Clock, CheckCircle2, Ticket, X, RefreshCw, ArrowLeft } from "lucide-react";
+import { Plus, Search, CheckCircle2, Ticket, X, RefreshCw, ArrowLeft, Users, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 
@@ -22,11 +22,18 @@ export default function SupportTicketsPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<any[]>([]);
+  const [leads, setLeads] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   
   // Dialog state
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
-  const [newTicket, setNewTicket] = useState({ client_id: "", subject: "", priority: "medium", message: "" });
+  const [newTicket, setNewTicket] = useState({
+    contact_type: "client", // "client" | "lead"
+    contact_id: "",
+    subject: "",
+    priority: "medium",
+    message: ""
+  });
   const [submitting, setSubmitting] = useState(false);
 
   // Status and detail state
@@ -40,31 +47,71 @@ export default function SupportTicketsPage() {
   useEffect(() => {
     if (org?.id) {
       fetchTickets();
-      fetchClients();
+      fetchContacts();
     }
   }, [org?.id]);
 
   const fetchTickets = async () => {
+    if (!org?.id) return;
     setLoading(true);
-    const { data, error } = await (supabase as any)
-      .from("tickets")
-      .select("*, clients(display_name, email)")
-      .eq("org_id", org!.id)
-      .order("created_at", { ascending: false });
-      
-    if (!error && data) {
-      setTickets(data);
+    try {
+      const { data, error } = await (supabase as any)
+        .from("tickets")
+        .select("*, clients(id, display_name, email, phone), leads(id, name, email, phone, company)")
+        .eq("org_id", org.id)
+        .order("created_at", { ascending: false });
+        
+      if (!error && data) {
+        setTickets(data);
+      } else {
+        console.warn("fetchTickets joined query issue:", error);
+        const { data: rawTickets, error: rawErr } = await (supabase as any)
+          .from("tickets")
+          .select("*")
+          .eq("org_id", org.id)
+          .order("created_at", { ascending: false });
+          
+        if (!rawErr && rawTickets) {
+          const [{ data: allClients }, { data: allLeads }] = await Promise.all([
+            (supabase as any).from("clients").select("id, display_name, email, phone").eq("org_id", org.id),
+            (supabase as any).from("leads").select("id, name, email, phone, company").eq("org_id", org.id)
+          ]);
+            
+          const clientMap = new Map((allClients || []).map((c: any) => [c.id, c]));
+          const leadMap = new Map((allLeads || []).map((l: any) => [l.id, l]));
+          const enriched = rawTickets.map((t: any) => ({
+            ...t,
+            clients: clientMap.get(t.client_id) || null,
+            leads: leadMap.get(t.lead_id) || null,
+          }));
+          setTickets(enriched);
+        } else {
+          console.error("fetchTickets fallback failed:", rawErr);
+        }
+      }
+    } catch (err) {
+      console.error("fetchTickets exception:", err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  const fetchClients = async () => {
-    const { data } = await (supabase as any)
-      .from("clients")
-      .select("id, display_name")
-      .eq("org_id", org!.id)
-      .order("display_name");
-    if (data) setClients(data);
+  const fetchContacts = async () => {
+    if (!org?.id) return;
+    const [{ data: clientData }, { data: leadData }] = await Promise.all([
+      (supabase as any)
+        .from("clients")
+        .select("id, display_name, company_name, email, phone")
+        .eq("org_id", org.id)
+        .order("display_name"),
+      (supabase as any)
+        .from("leads")
+        .select("id, name, company, email, phone")
+        .eq("org_id", org.id)
+        .order("name"),
+    ]);
+    if (clientData) setClients(clientData);
+    if (leadData) setLeads(leadData);
   };
 
   const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
@@ -130,8 +177,12 @@ export default function SupportTicketsPage() {
   };
 
   const handleCreateTicket = async () => {
-    if (!newTicket.client_id || !newTicket.subject || !newTicket.message) {
-      toast({ title: "Please fill all required fields", variant: "destructive" });
+    if (!newTicket.contact_id || !newTicket.subject.trim() || !newTicket.message.trim()) {
+      toast({ 
+        title: "Please fill all required fields", 
+        description: "Please select a customer or lead, issue subject, and details.", 
+        variant: "destructive" 
+      });
       return;
     }
     
@@ -143,17 +194,28 @@ export default function SupportTicketsPage() {
         return;
       }
 
+      const ticketPayload: any = {
+        org_id: org!.id,
+        subject: newTicket.subject.trim(),
+        priority: newTicket.priority,
+        created_by: currentUserId,
+        status: "open"
+      };
+
+      if (newTicket.contact_type === "client") {
+        ticketPayload.client_id = newTicket.contact_id;
+        ticketPayload.lead_id = null;
+      } else {
+        ticketPayload.lead_id = newTicket.contact_id;
+        ticketPayload.client_id = null;
+      }
+
       // 1. Create Ticket
       const { data: ticket, error: ticketErr } = await (supabase as any)
         .from("tickets")
-        .insert({
-          org_id: org!.id,
-          client_id: newTicket.client_id,
-          subject: newTicket.subject,
-          priority: newTicket.priority,
-          created_by: currentUserId,
-          status: "open"
-        }).select().single();
+        .insert(ticketPayload)
+        .select()
+        .single();
         
       if (ticketErr) {
         toast({ title: "Failed to create ticket", description: ticketErr.message, variant: "destructive" });
@@ -161,20 +223,26 @@ export default function SupportTicketsPage() {
       }
       
       // 2. Add initial message
-      if (newTicket.message && ticket?.id) {
+      if (newTicket.message.trim() && ticket?.id) {
         await (supabase as any)
           .from("ticket_messages")
           .insert({
             ticket_id: ticket.id,
             sender_type: "agent",
             sender_id: currentUserId,
-            message: newTicket.message
+            message: newTicket.message.trim()
           });
       }
         
+      const createdTicket = {
+        ...ticket,
+        clients: newTicket.contact_type === "client" ? clients.find(c => c.id === newTicket.contact_id) || null : null,
+        leads: newTicket.contact_type === "lead" ? leads.find(l => l.id === newTicket.contact_id) || null : null,
+      };
+      setTickets(prev => [createdTicket, ...prev.filter(t => t.id !== ticket.id)]);
       toast({ title: "Ticket created successfully" });
       setIsNewTicketOpen(false);
-      setNewTicket({ client_id: "", subject: "", priority: "medium", message: "" });
+      setNewTicket({ contact_type: "client", contact_id: "", subject: "", priority: "medium", message: "" });
       fetchTickets();
     } catch (err: any) {
       console.error("Error creating ticket:", err);
@@ -185,8 +253,13 @@ export default function SupportTicketsPage() {
   };
 
   const filteredTickets = tickets.filter(t => {
+    const clientName = t.clients?.display_name || "";
+    const leadName = t.leads?.name || "";
+    const leadCompany = t.leads?.company || "";
     const matchesSearch = t.subject.toLowerCase().includes(search.toLowerCase()) ||
-      t.clients?.display_name?.toLowerCase().includes(search.toLowerCase());
+      clientName.toLowerCase().includes(search.toLowerCase()) ||
+      leadName.toLowerCase().includes(search.toLowerCase()) ||
+      leadCompany.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (statusFilter === "all") return true;
     if (statusFilter === "in_progress") return t.status === "in_progress" || t.status === "pending";
@@ -199,7 +272,7 @@ export default function SupportTicketsPage() {
         <div className="flex justify-between items-center gap-4">
           <div>
             <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Support Tickets</h1>
-            <p className="text-muted-foreground mt-1">Manage customer issues and support requests.</p>
+            <p className="text-muted-foreground mt-1">Manage customer & lead issues and support requests.</p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => navigate(-1)}>
@@ -216,7 +289,7 @@ export default function SupportTicketsPage() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
               <Input
-                placeholder="Search tickets by subject or customer..."
+                placeholder="Search tickets by subject, customer, or lead..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 bg-slate-50/50 border-slate-200"
@@ -258,124 +331,204 @@ export default function SupportTicketsPage() {
                 <p className="text-sm mt-1">Create a new ticket or switch filters.</p>
               </div>
             ) : (
-              filteredTickets.map(ticket => (
-                <div 
-                  key={ticket.id} 
-                  onClick={() => handleOpenTicket(ticket)}
-                  className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`p-2.5 rounded-full mt-1 shrink-0 ${
-                      ticket.status === 'open' ? 'bg-amber-100 text-amber-600' : 
-                      ticket.status === 'in_progress' || ticket.status === 'pending' ? 'bg-blue-100 text-blue-600' :
-                      ticket.status === 'resolved' ? 'bg-emerald-100 text-emerald-600' : 
-                      'bg-slate-100 text-slate-500'
-                    }`}>
-                      <Ticket className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
-                        {ticket.subject}
-                      </div>
-                      <div className="text-sm text-slate-500 mt-0.5">
-                        {ticket.clients?.display_name || "Unknown Customer"} • Created {format(new Date(ticket.created_at), "MMM d, yyyy")}
-                      </div>
-                    </div>
-                  </div>
+              filteredTickets.map(ticket => {
+                const isLead = !!ticket.leads && !ticket.clients;
+                const contactName = ticket.clients?.display_name || ticket.leads?.name || "Unknown Contact";
+                const companyInfo = ticket.leads?.company || "";
 
-                  <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
-                    <Badge variant="outline" className={
-                      ticket.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
-                      ticket.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
-                      'border-slate-200 text-slate-700'
-                    }>
-                      {ticket.priority?.toUpperCase()}
-                    </Badge>
-
-                    {/* Status Dropdown */}
-                    <Select 
-                      value={ticket.status} 
-                      onValueChange={(val) => handleUpdateStatus(ticket.id, val)}
-                    >
-                      <SelectTrigger className={`h-7 px-2 text-xs font-semibold rounded-md border-0 text-white ${
-                        ticket.status === 'open' ? 'bg-amber-500 hover:bg-amber-600' :
-                        ticket.status === 'in_progress' || ticket.status === 'pending' ? 'bg-blue-600 hover:bg-blue-700' :
-                        ticket.status === 'resolved' ? 'bg-emerald-600 hover:bg-emerald-700' :
-                        'bg-slate-500 hover:bg-slate-600'
+                return (
+                  <div 
+                    key={ticket.id} 
+                    onClick={() => handleOpenTicket(ticket)}
+                    className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group"
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`p-2.5 rounded-full mt-1 shrink-0 ${
+                        ticket.status === 'open' ? 'bg-amber-100 text-amber-600' : 
+                        ticket.status === 'in_progress' || ticket.status === 'pending' ? 'bg-blue-100 text-blue-600' :
+                        ticket.status === 'resolved' ? 'bg-emerald-100 text-emerald-600' : 
+                        'bg-slate-100 text-slate-500'
                       }`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="open">🟡 Open</SelectItem>
-                        <SelectItem value="in_progress">🔵 In Progress</SelectItem>
-                        <SelectItem value="resolved">🟢 Resolved</SelectItem>
-                        <SelectItem value="closed">⚪ Closed</SelectItem>
-                      </SelectContent>
-                    </Select>
+                        <Ticket className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
+                          {ticket.subject}
+                        </div>
+                        <div className="text-sm text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-slate-700">{contactName}</span>
+                          {companyInfo && <span className="text-xs text-slate-400">({companyInfo})</span>}
+                          
+                          {isLead ? (
+                            <Badge variant="outline" className="text-[10px] text-purple-700 bg-purple-50 border-purple-200 py-0 h-4">
+                              Lead
+                            </Badge>
+                          ) : ticket.clients ? (
+                            <Badge variant="outline" className="text-[10px] text-blue-700 bg-blue-50 border-blue-200 py-0 h-4">
+                              Customer
+                            </Badge>
+                          ) : null}
 
-                    {/* Quick Action Button */}
-                    {ticket.status !== "closed" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 font-medium gap-1"
-                        onClick={() => handleUpdateStatus(ticket.id, "closed")}
-                        title="Close this ticket"
+                          <span className="text-slate-300">•</span>
+                          <span>Created {format(new Date(ticket.created_at), "MMM d, yyyy")}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+                      <Badge variant="outline" className={
+                        ticket.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
+                        ticket.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
+                        'border-slate-200 text-slate-700'
+                      }>
+                        {ticket.priority?.toUpperCase()}
+                      </Badge>
+
+                      {/* Status Dropdown */}
+                      <Select 
+                        value={ticket.status} 
+                        onValueChange={(val) => handleUpdateStatus(ticket.id, val)}
                       >
-                        <X className="w-3.5 h-3.5" /> Close
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 font-medium gap-1"
-                        onClick={() => handleUpdateStatus(ticket.id, "open")}
-                        title="Reopen this ticket"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" /> Reopen
-                      </Button>
-                    )}
+                        <SelectTrigger className={`h-7 px-2 text-xs font-semibold rounded-md border-0 text-white ${
+                          ticket.status === 'open' ? 'bg-amber-500 hover:bg-amber-600' :
+                          ticket.status === 'in_progress' || ticket.status === 'pending' ? 'bg-blue-600 hover:bg-blue-700' :
+                          ticket.status === 'resolved' ? 'bg-emerald-600 hover:bg-emerald-700' :
+                          'bg-slate-500 hover:bg-slate-600'
+                        }`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="open">🟡 Open</SelectItem>
+                          <SelectItem value="in_progress">🔵 In Progress</SelectItem>
+                          <SelectItem value="resolved">🟢 Resolved</SelectItem>
+                          <SelectItem value="closed">⚪ Closed</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* Quick Action Button */}
+                      {ticket.status !== "closed" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 font-medium gap-1"
+                          onClick={() => handleUpdateStatus(ticket.id, "closed")}
+                          title="Close this ticket"
+                        >
+                          <X className="w-3.5 h-3.5" /> Close
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2.5 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 font-medium gap-1"
+                          onClick={() => handleUpdateStatus(ticket.id, "open")}
+                          title="Reopen this ticket"
+                        >
+                          <RefreshCw className="w-3.5 h-3.5" /> Reopen
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </Card>
 
         {/* New Ticket Dialog */}
         <Dialog open={isNewTicketOpen} onOpenChange={setIsNewTicketOpen}>
-          <DialogContent className="sm:max-w-[500px]">
+          <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
-              <DialogTitle>Create Support Ticket</DialogTitle>
+              <DialogTitle className="text-xl font-bold text-slate-900">Create Support Ticket</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-3">
+              {/* Customer vs Lead Segmented Toggle */}
               <div className="space-y-2">
-                <Label>Customer</Label>
-                <Select value={newTicket.client_id} onValueChange={(val) => setNewTicket({...newTicket, client_id: val})}>
-                  <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
-                  <SelectContent>
-                    {clients.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.display_name}</SelectItem>
-                    ))}
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700">Select Contact</Label>
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                    <button
+                      type="button"
+                      onClick={() => setNewTicket({ ...newTicket, contact_type: "client", contact_id: "" })}
+                      className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        newTicket.contact_type === "client" 
+                          ? "bg-white text-blue-700 shadow-sm" 
+                          : "text-slate-600 hover:text-slate-900"
+                      }`}
+                    >
+                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                      Customers ({clients.length})
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setNewTicket({ ...newTicket, contact_type: "lead", contact_id: "" })}
+                      className={`flex items-center gap-1.5 px-3 py-1 text-xs font-medium rounded-md transition-all ${
+                        newTicket.contact_type === "lead" 
+                          ? "bg-white text-purple-700 shadow-sm" 
+                          : "text-slate-600 hover:text-purple-700"
+                      }`}
+                    >
+                      <UserPlus className="w-3.5 h-3.5 text-purple-600" />
+                      Leads ({leads.length})
+                    </button>
+                  </div>
+                </div>
+
+                <Select 
+                  value={newTicket.contact_id} 
+                  onValueChange={(val) => setNewTicket({ ...newTicket, contact_id: val })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={newTicket.contact_type === "client" ? "Select customer / client..." : "Select CRM lead..."} />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {newTicket.contact_type === "client" ? (
+                      clients.length > 0 ? (
+                        clients.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.display_name} {c.company_name ? `• ${c.company_name}` : ""}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-3 text-xs text-slate-400 text-center">No customers registered yet.</div>
+                      )
+                    ) : (
+                      leads.length > 0 ? (
+                        leads.map(l => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.name} {l.company ? `• ${l.company}` : ""}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <div className="p-3 text-xs text-slate-400 text-center">No CRM leads found.</div>
+                      )
+                    )}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <Label>Subject</Label>
-                <Input value={newTicket.subject} onChange={e => setNewTicket({...newTicket, subject: e.target.value})} placeholder="Issue summary" />
+                <Input 
+                  value={newTicket.subject} 
+                  onChange={e => setNewTicket({...newTicket, subject: e.target.value})} 
+                  placeholder="Issue summary" 
+                />
               </div>
+
               <div className="space-y-2">
                 <Label>Priority</Label>
                 <Select value={newTicket.priority} onValueChange={(val) => setNewTicket({...newTicket, priority: val})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="low">🟢 Low</SelectItem>
+                    <SelectItem value="medium">🟡 Medium</SelectItem>
+                    <SelectItem value="high">🟠 High</SelectItem>
+                    <SelectItem value="urgent">🔴 Urgent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-2">
                 <Label>Initial Message</Label>
                 <textarea 
@@ -405,12 +558,32 @@ export default function SupportTicketsPage() {
                     <Ticket className="w-5 h-5 text-indigo-600" />
                     {selectedTicket?.subject}
                   </DialogTitle>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Customer: <span className="font-semibold text-slate-700">{selectedTicket?.clients?.display_name || "Unknown"}</span>
-                    {selectedTicket?.created_at && (
-                      <> • Created {format(new Date(selectedTicket.created_at), "dd MMM yyyy, hh:mm a")}</>
+                  <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
+                    <span>Contact:</span>
+                    <span className="font-semibold text-slate-800">
+                      {selectedTicket?.clients?.display_name || selectedTicket?.leads?.name || "Unknown"}
+                    </span>
+                    {selectedTicket?.leads?.company && (
+                      <span className="text-slate-400">({selectedTicket.leads.company})</span>
                     )}
-                  </p>
+
+                    {selectedTicket?.leads && !selectedTicket?.clients ? (
+                      <Badge variant="outline" className="text-[10px] text-purple-700 bg-purple-50 border-purple-200 py-0 h-4">
+                        Lead
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] text-blue-700 bg-blue-50 border-blue-200 py-0 h-4">
+                        Customer
+                      </Badge>
+                    )}
+
+                    {selectedTicket?.created_at && (
+                      <>
+                        <span className="text-slate-300">•</span>
+                        <span>Created {format(new Date(selectedTicket.created_at), "dd MMM yyyy, hh:mm a")}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline" className={

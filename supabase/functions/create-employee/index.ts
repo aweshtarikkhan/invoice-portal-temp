@@ -1,5 +1,16 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import nodemailer from "npm:nodemailer@6.9.10"
+
+const sesTransporter = nodemailer.createTransport({
+  host: "email-smtp.ap-south-1.amazonaws.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "AKIA2LJCCXAWLPSYPMPE",
+    pass: "BAxlpu5HTiNPIdt7NRhHnENs2tbnczd/J3PLt/uJfNk5",
+  },
+});
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -224,6 +235,7 @@ serve(async (req) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
+    const attendanceAuthEmail = `attendance_${cleanEmail}`;
 
     // 1. Fetch the employee to ensure they exist and get their name & org_id
     const { data: emp, error: empError } = await supabaseAdmin
@@ -244,13 +256,20 @@ serve(async (req) => {
       .maybeSingle()
     const orgName = orgData?.name || 'Your Organization'
 
-    // 2. Check if an auth user already exists with this email (via RPC or emp.auth_user_id)
-    let auth_user_id: string | null = emp.auth_user_id || null;
+    // 2. Check if an attendance auth user already exists (via RPC or emp.auth_user_id)
+    let auth_user_id: string | null = null;
     let isNewAuthUser = false;
+
+    if (emp.auth_user_id) {
+      const { data: currentAuth } = await supabaseAdmin.auth.admin.getUserById(emp.auth_user_id);
+      if (currentAuth?.user?.email === attendanceAuthEmail) {
+        auth_user_id = emp.auth_user_id;
+      }
+    }
 
     if (!auth_user_id) {
       const { data: existingUserId } = await supabaseAdmin.rpc('get_user_id_by_email', { 
-        user_email: cleanEmail 
+        user_email: attendanceAuthEmail 
       });
       if (existingUserId) {
         auth_user_id = existingUserId;
@@ -258,10 +277,10 @@ serve(async (req) => {
     }
 
     if (auth_user_id) {
-      // Re-use existing auth user — update their password & metadata so they can log into attendance portal
+      // Re-use existing attendance auth user — update password & metadata
       const updatePayload: any = {
         email_confirm: true,
-        user_metadata: { name: emp.name }
+        user_metadata: { name: emp.name, portal: 'attendance' }
       };
       if (password) {
         updatePayload.password = password;
@@ -275,18 +294,17 @@ serve(async (req) => {
         console.warn('Could not update user password:', updatePwErr);
       }
     } else {
-      // 3. Create the auth user fresh
+      // 3. Create the attendance auth user fresh
       const { data: authData, error: createError } = await supabaseAdmin.auth.admin.createUser({
-        email: cleanEmail,
+        email: attendanceAuthEmail,
         password: password || '123456@Ak',
         email_confirm: true,
-        user_metadata: { name: emp.name }
+        user_metadata: { name: emp.name, portal: 'attendance' }
       });
 
       if (createError) {
-        // Fallback: If it says already registered, resolve via RPC again
         if (createError.message?.toLowerCase().includes('already') || createError.message?.toLowerCase().includes('registered')) {
-          const { data: retryUserId } = await supabaseAdmin.rpc('get_user_id_by_email', { user_email: cleanEmail });
+          const { data: retryUserId } = await supabaseAdmin.rpc('get_user_id_by_email', { user_email: attendanceAuthEmail });
           if (retryUserId) {
             auth_user_id = retryUserId;
             if (password) {
@@ -361,40 +379,43 @@ serve(async (req) => {
         portalUrl: 'https://attendance.aassaybiz.com'
       })
 
-      const sendEmployeeEmailTask = (async () => {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          await fetch(`${supabaseUrl}/functions/v1/send-email-dispatcher`, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`,
-              'apikey': supabaseServiceKey,
-            },
-            body: JSON.stringify({
-              orgId: emp.org_id,
-              to: email,
-              subject: `Attendance Portal Access & Login Details - ${orgName}`,
-              html: emailHtml,
-            }),
-          });
-          clearTimeout(timeoutId);
-        } catch (mailErr: any) {
-          console.warn('Failed to dispatch attendance welcome email:', mailErr);
-        }
-      })();
+      const info = await sesTransporter.sendMail({
+        from: `"Aassay Biz" <no-reply@aassaybiz.com>`,
+        to: email,
+        subject: `Attendance Portal Access & Login Details - ${orgName}`,
+        html: emailHtml,
+      });
 
-      if (typeof (globalThis as any).EdgeRuntime !== 'undefined' && (globalThis as any).EdgeRuntime?.waitUntil) {
-        (globalThis as any).EdgeRuntime.waitUntil(sendEmployeeEmailTask);
-      } else {
-        sendEmployeeEmailTask.catch(() => {});
-      }
+      console.log(`[create-employee] Email successfully sent to ${email}, messageId: ${info?.messageId}`);
       emailSent = true;
     } catch (mailErr: any) {
-      console.warn('Failed to dispatch attendance welcome email:', mailErr);
-      emailError = mailErr.message;
+      console.warn('[create-employee] SES send error, attempting dispatcher fallback:', mailErr);
+      try {
+        await fetch(`${supabaseUrl}/functions/v1/send-email-dispatcher`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseServiceKey}`,
+            'apikey': supabaseServiceKey,
+          },
+          body: JSON.stringify({
+            orgId: emp.org_id,
+            to: email,
+            subject: `Attendance Portal Access & Login Details - ${orgName}`,
+            html: generateAttendanceEmailHtml({
+              employeeName: emp.name,
+              orgName,
+              email,
+              password,
+              portalUrl: 'https://attendance.aassaybiz.com'
+            }),
+          }),
+        });
+        emailSent = true;
+      } catch (fallbackErr: any) {
+        console.error('[create-employee] Dispatcher fallback failed:', fallbackErr);
+        emailError = mailErr.message;
+      }
     }
 
     return new Response(

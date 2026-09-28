@@ -5,7 +5,7 @@ import { useAppStore } from "@/store/app-store";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
-import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle, Mail, Loader2 } from "lucide-react";
+import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle, Mail, Loader2, Lock } from "lucide-react";
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
@@ -17,6 +17,9 @@ import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { useToast } from "@/hooks/use-toast";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
+import { useSubscription } from "@/hooks/use-subscription";
+import { canSendDirectEmailOrWhatsApp, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 export default function PurchaseOrderDetailPage() {
   const org = useAppStore((s) => s.organization);
@@ -29,6 +32,26 @@ export default function PurchaseOrderDetailPage() {
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const invoiceRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+  const canSend = canSendDirectEmailOrWhatsApp(plan, activeOrgPlans);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in PO detail:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
 
   useEffect(() => {
     (async () => {
@@ -223,6 +246,15 @@ export default function PurchaseOrderDetailPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const handleSendEmail = async () => {
+    if (!canSend) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     if (!po || !org || !po.vendors) return;
     const recipientEmail = po.vendors.email;
     if (!recipientEmail) {
@@ -335,8 +367,18 @@ export default function PurchaseOrderDetailPage() {
           <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
             {isSendingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
             {isSendingEmail ? "Sending..." : "Email PO"}
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
+            if (!canSend) {
+              toast({
+                title: "Feature Locked 🔒",
+                description: "Sending documents via WhatsApp is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via WhatsApp.",
+                variant: "destructive"
+              });
+              setShowUpgradeModal(true);
+              return;
+            }
             if (!org || !po || !po.vendors) return;
             
             const template = await getWhatsappTemplate(org.id, "purchase_order");
@@ -360,7 +402,10 @@ export default function PurchaseOrderDetailPage() {
               message: txt,
               orgId: org.id
             });
-          }}><MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp</Button>
+          }}>
+            <MessageCircle className="h-4 w-4 mr-1 text-emerald-600" /> WhatsApp
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
+          </Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
           <Button variant="outline" onClick={handlePrint}><Printer className="h-4 w-4 mr-1" />Print / Download PDF</Button>
           <Button variant="outline" onClick={() => navigate(`/purchase-orders/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
@@ -416,6 +461,12 @@ export default function PurchaseOrderDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
     </div>
   );
 }

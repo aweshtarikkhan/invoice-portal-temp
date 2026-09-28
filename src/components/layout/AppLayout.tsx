@@ -261,15 +261,15 @@ export function AppLayout() {
             let resolvedEmpLimit = 3;
 
             if (resolvedPlanName === 'suite') {
-              resolvedEmpLimit = 25;
+              resolvedEmpLimit = 5;
               const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
-              if (extraOrPurchased > 25) {
+              if (extraOrPurchased > 5) {
                 resolvedEmpLimit = extraOrPurchased;
               }
             } else if (resolvedPlanName === 'hr') {
-              resolvedEmpLimit = 3;
+              resolvedEmpLimit = 5;
               const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
-              if (extraOrPurchased > 3) {
+              if (extraOrPurchased > 5) {
                 resolvedEmpLimit = extraOrPurchased;
               }
             } else {
@@ -283,7 +283,7 @@ export function AppLayout() {
             if (resolvedPlanName === 'suite') {
               features = ADMIN_FEATURE_GROUPS.map(g => g.key);
             } else if (resolvedPlanName === 'free') {
-              features = features.filter(f => f !== 'reports');
+              features = features.filter(f => f !== 'reports' && f !== 'outreach' && f !== 'marketing');
             }
             useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setOrgFeatures(activeOrgId, features);
@@ -343,12 +343,11 @@ export function AppLayout() {
             } else if (!subData.plan_name || subData.plan_name === 'free') {
               if (!features.includes('people')) features.push('people');
               if (!features.includes('crm')) features.push('crm');
-              if (!features.includes('marketing')) features.push('marketing');
-              features = features.filter(f => f !== 'reports');
+              features = features.filter(f => f !== 'reports' && f !== 'outreach' && f !== 'marketing');
             }
             const isSuiteOrHr = resolvedPlanName === 'suite' || resolvedPlanName === 'hr';
             const empLimit = isSuiteOrHr 
-              ? (Math.max(subData.employee_limit || 0, subData.employee_count || 0) || 25) 
+              ? (Math.max(subData.employee_limit || 0, subData.employee_count || 0) || 5) 
               : 3;
             useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setOrgFeatures(profile.org_id, features);
@@ -509,19 +508,33 @@ export function AppLayout() {
     "/message-logs",
     "/promotion-reports"
   ];
+
+  const OUTREACH_ROUTES = [
+    "/emails",
+    "/chats",
+    "/crm/integrations"
+  ];
   
   let isRouteRestricted = false;
+  let restrictedTitle = "Feature Locked";
+  let restrictedDesc = "This feature is not available on the Free plan. Please upgrade to a premium plan to access it.";
+
   if (isFreePlan && REPORTS_ROUTES.includes(location.pathname)) {
     isRouteRestricted = true;
   }
   if (!isMarketingPlan && MARKETING_ROUTES.includes(location.pathname)) {
     isRouteRestricted = true;
   }
+  if (isFreePlan && OUTREACH_ROUTES.some(p => location.pathname === p || location.pathname.startsWith(p + "/"))) {
+    isRouteRestricted = true;
+    restrictedTitle = "Business Integration Locked";
+    restrictedDesc = "Business Integration (Official WhatsApp, Email & Lead APIs) is not available on the Free plan. Please upgrade to Business Suite or an add-on plan to access it.";
+  }
 
   const mainContent = isRouteRestricted ? (
     <LockedFeature 
-      title="Feature Locked"
-      description="This feature is not available on the Free plan. Please upgrade to a premium plan to access it."
+      title={restrictedTitle}
+      description={restrictedDesc}
       onUpgradeClick={() => setShowPlanModal(true)}
     />
   ) : (
@@ -539,21 +552,6 @@ export function AppLayout() {
             <div className="flex items-center gap-3">
               <CommandPalette />
               
-              {/* Prominent Account ID in Top-Right Header */}
-              {profile && (
-                <div 
-                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-mono font-bold tracking-wide shadow-xs cursor-pointer hover:bg-blue-100 transition-colors"
-                  title="Click to copy your unique 6-digit Account ID"
-                  onClick={() => {
-                    const accId = profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0");
-                    navigator.clipboard.writeText(accId);
-                    toast({ title: "Account ID Copied!", description: `Account ID #${accId} copied to clipboard.` });
-                  }}
-                >
-                  <span className="text-[10px] font-sans font-medium text-blue-500 uppercase">ID</span>
-                  <span>#{profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0")}</span>
-                </div>
-              )}
 
               {isPlatformAdmin && (
                 <Button
@@ -658,25 +656,35 @@ export function AppLayout() {
           </header>
           <TrialBanner onUpgrade={() => setShowPlanModal(true)} />
 
-          {/* Incomplete Profile Alert Banner */}
-          {profile && (!profile.address_line || !profile.pincode) && (
-            <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 px-6 py-2.5 flex items-center justify-between text-xs sm:text-sm">
-              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-medium">
-                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
-                <span>
-                  <strong>Complete your Profile:</strong> Please add your complete Address & PIN Code in Settings to enable invoice generation.
-                </span>
+          {/* Incomplete Profile Alert Banner - Only shown to business owners, never to invited employees */}
+          {(() => {
+            const isOrgOwner = (org as any)?.owner_id === (user?.id || profile?.user_id) || userRole === "owner";
+            const hasAddress = Boolean(profile?.address_line || (org?.address as any)?.street || (org?.address as any)?.address_line);
+            const hasPincode = Boolean(profile?.pincode || (org?.address as any)?.postal_code || (org?.address as any)?.pincode);
+
+            if (!isOrgOwner || (hasAddress && hasPincode)) {
+              return null;
+            }
+
+            return (
+              <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 px-6 py-2.5 flex items-center justify-between text-xs sm:text-sm">
+                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-medium">
+                  <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span>
+                    <strong>Complete Business Profile:</strong> Please add your complete Address & PIN Code in Settings to enable invoice generation.
+                  </span>
+                </div>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => navigate("/settings?tab=profile")}
+                  className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 font-semibold h-7 text-xs shrink-0"
+                >
+                  Complete Profile
+                </Button>
               </div>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                onClick={() => navigate("/settings?tab=profile")}
-                className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 font-semibold h-7 text-xs shrink-0"
-              >
-                Complete Profile
-              </Button>
-            </div>
-          )}
+            );
+          })()}
           <main className="flex-1 overflow-auto px-6 py-6">
             {mainContent}
           </main>

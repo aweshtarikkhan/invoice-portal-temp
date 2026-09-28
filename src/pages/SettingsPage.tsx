@@ -22,7 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell, Landmark, CreditCard, Pencil, LogOut, Copy, Check, MapPin, Hash } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell, Landmark, CreditCard, Pencil, LogOut, Copy, Check, MapPin, Hash, Lock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -32,6 +32,10 @@ import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
 import { WhatsAppSettingsTab } from "@/components/settings/WhatsAppSettingsTab";
 import SupportPage from "@/pages/SupportPage";
 import { useToast } from "@/hooks/use-toast";
+import { LockedFeature } from "@/components/subscription/LockedFeature";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { useSubscription } from "@/hooks/use-subscription";
+import { hasModuleAccess } from "@/lib/subscription";
 
 
 
@@ -46,6 +50,10 @@ export default function SettingsPage() {
   const currentTab = rawTab === "organization" ? "profile" : rawTab;
   const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const effectivePlan = subscriptionPlan || org?.subscription_plan || 'free';
+  const isIntegrationUnlocked = hasModuleAccess(effectivePlan, 'outreach');
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
@@ -453,19 +461,41 @@ export default function SettingsPage() {
       <Tabs value={currentTab} onValueChange={(tab) => setSearchParams({ tab })}>
         <TabsList className="flex flex-wrap gap-1 h-auto p-1.5">
           <TabsTrigger value="profile">Profile & Organization</TabsTrigger>
-          <TabsTrigger value="email">Email Settings</TabsTrigger>
-          <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-1.5">
+            Email Settings
+            {!isIntegrationUnlocked && <Lock className="h-3 w-3 text-amber-500" />}
+          </TabsTrigger>
+          <TabsTrigger value="whatsapp" className="flex items-center gap-1.5">
+            WhatsApp
+            {!isIntegrationUnlocked && <Lock className="h-3 w-3 text-amber-500" />}
+          </TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
           <TabsTrigger value="taxes">Tax Rates</TabsTrigger>
           <TabsTrigger value="support">Help & Support</TabsTrigger>
         </TabsList>
 
         <TabsContent value="email" className="space-y-6 mt-4">
-          <EmailSettingsTab />
+          {!isIntegrationUnlocked ? (
+            <LockedFeature
+              title="Email Settings Locked"
+              description="Custom SMTP email server configuration and automatic document delivery via email requires Business Suite or Business Integration add-on."
+              onUpgradeClick={() => setShowUpgradeModal(true)}
+            />
+          ) : (
+            <EmailSettingsTab />
+          )}
         </TabsContent>
 
         <TabsContent value="whatsapp" className="space-y-6 mt-4">
-          <WhatsAppSettingsTab orgId={org?.id} />
+          {!isIntegrationUnlocked ? (
+            <LockedFeature
+              title="WhatsApp Integration Locked"
+              description="WhatsApp automated document sharing and notifications require Business Suite or Business Integration add-on."
+              onUpgradeClick={() => setShowUpgradeModal(true)}
+            />
+          ) : (
+            <WhatsAppSettingsTab orgId={org?.id} />
+          )}
         </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-4">
@@ -1255,6 +1285,11 @@ export default function SettingsPage() {
         onWarehouseAdded={() => {
           toast({ title: "Warehouse added successfully" });
         }}
+      />
+      <PlanSelectorModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        orgId={org?.id}
       />
     </div>
   );

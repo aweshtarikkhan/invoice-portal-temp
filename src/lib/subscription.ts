@@ -30,7 +30,7 @@ export function normalizePlanKey(plan: string = ''): string {
 export function getPlanDisplayName(plan: string = 'free', employeeLimit?: number | null): string {
   const p = normalizePlanKey(plan);
   if (p === 'free') {
-    if (typeof employeeLimit === 'number' && employeeLimit > 10) {
+    if (typeof employeeLimit === 'number' && employeeLimit > 4) {
       return 'Business Suite';
     }
     if (typeof employeeLimit === 'number' && employeeLimit > 3) {
@@ -57,9 +57,9 @@ export function hasModuleAccess(plan: string = 'free', module: ModuleType): bool
     case 'crm':
       return true; // CRM is visible to all plans, limits apply instead
     case 'promotion':
-      return true; // Promotion is visible to all plans
+      return p !== 'free'; // Business Promotion max features locked on Free Plan
     case 'outreach':
-      return true; // Outreach is visible to all plans
+      return p !== 'free'; // Business Integration requires paid plan
     case 'admin':
       return p !== 'free';
     default:
@@ -76,37 +76,35 @@ export function hasModuleAccess(plan: string = 'free', module: ModuleType): bool
  *    - Business Accounting: 3 employees
  *    - Business CRM: 3 employees
  *    - Business Promotion: 3 employees
- *    - Business HR: 25 employees (expandable via add-on)
- *    - Business Suite: 25 employees (expandable via add-on)
+ *    - Business HR: 5 employees (expandable via add-on)
+ *    - Business Suite: 5 employees (expandable via add-on)
  * 
  * 2. No Accidental Summing:
  *    Even if multiple plans are active (or Business Suite is active),
- *    limits are NOT summed up (e.g. 3 + 25 = 28 is never done).
- *    The highest base limit among active tiers applies (25 for Suite/HR).
+ *    limits are NOT summed up.
+ *    The highest base limit among active tiers applies (5 for Suite/HR).
  * 
  * 3. Dynamic Capacity Expansion:
- *    Extra employee capacity (+₹29 each) can ONLY be purchased/applied
+ *    Extra employee capacity can be purchased/applied
  *    for Business HR or Business Suite. Other plans (Accounting, Free, CRM, Promotion)
  *    are strictly capped at 3 employees.
- *    If an upgraded business was temporarily marked 'free' in DB, purchasedLimit > 10
- *    automatically preserves its Business Suite/HR scale.
  */
 export function calculateEmployeeLimit(planStr: string = 'free', purchasedLimit?: number | null): number {
   const p = normalizePlanKey(planStr);
 
   // Base employee limits:
-  // Business Suite: 25 base employees (expandable if additional purchased)
-  // Business HR, Business Accounting, Starter, CRM, Promotion: 3 base employees (expandable if additional purchased)
+  // Business Suite & Business HR: 5 base employees
+  // Business Accounting, Starter, CRM, Promotion: 3 base employees
   let baseLimit = 3;
-  if (p === 'suite') {
-    baseLimit = 25;
+  if (p === 'suite' || p === 'hr') {
+    baseLimit = 5;
   } else {
     baseLimit = 3;
   }
 
-  // Self-heal: If plan was marked 'free' but has purchased capacity (>10), it's Suite scale
-  if (p === 'free' && typeof purchasedLimit === 'number' && purchasedLimit > 10) {
-    baseLimit = 25;
+  // Self-heal: If plan was marked 'free' but has purchased capacity (>4), it's Suite/HR scale
+  if (p === 'free' && typeof purchasedLimit === 'number' && purchasedLimit > 4) {
+    baseLimit = 5;
   }
 
   // Extra employee capacity add-ons or purchased limits:
@@ -122,13 +120,19 @@ export function calculateEmployeeLimit(planStr: string = 'free', purchasedLimit?
  */
 export const FREE_PLAN_LIMITS = {
   invoices: 100,
+  estimates: 100,
+  bills: 100,
+  purchase_orders: 100,
   employees: 3,
   leads: 50,
-  outreach_messages: 100,
+  platform_users: 0,
+  outreach_messages: 0,
 };
 
 export const PAID_PLAN_LIMITS = {
-  employees: 25,
+  employees: 5,
+  platform_users_suite: 5,
+  platform_users_standard: 3,
   outreach_messages: 500,
 };
 
@@ -162,8 +166,8 @@ export function getLeadLimit(planStr: string = '', activePlans: string[] = []): 
 
 /**
  * Check if the current plan or active modular plans include Business Suite or Business Accounting.
- * - Business Suite & Business Accounting: Unlimited Invoices
- * - Other plans (Starter/Free, HR, CRM, Promotion): 100 invoices maximum
+ * - Business Suite & Business Accounting: Unlimited Invoices, Quotations, PI (Bills), PO
+ * - Other plans (Starter/Free, HR, CRM, Promotion): 100 maximum
  */
 export function hasUnlimitedInvoices(planStr: string = '', activePlans: string[] = []): boolean {
   if (Array.isArray(activePlans) && activePlans.length > 0) {
@@ -186,4 +190,61 @@ export function hasUnlimitedInvoices(planStr: string = '', activePlans: string[]
 
 export function getInvoiceLimit(planStr: string = '', activePlans: string[] = []): number {
   return hasUnlimitedInvoices(planStr, activePlans) ? Infinity : 100;
+}
+
+export function hasUnlimitedEstimates(planStr: string = '', activePlans: string[] = []): boolean {
+  return hasUnlimitedInvoices(planStr, activePlans);
+}
+
+export function getEstimateLimit(planStr: string = '', activePlans: string[] = []): number {
+  return hasUnlimitedEstimates(planStr, activePlans) ? Infinity : 100;
+}
+
+export function hasUnlimitedBills(planStr: string = '', activePlans: string[] = []): boolean {
+  return hasUnlimitedInvoices(planStr, activePlans);
+}
+
+export function getBillLimit(planStr: string = '', activePlans: string[] = []): number {
+  return hasUnlimitedBills(planStr, activePlans) ? Infinity : 100;
+}
+
+export function hasUnlimitedPurchaseOrders(planStr: string = '', activePlans: string[] = []): boolean {
+  return hasUnlimitedInvoices(planStr, activePlans);
+}
+
+export function getPurchaseOrderLimit(planStr: string = '', activePlans: string[] = []): number {
+  return hasUnlimitedPurchaseOrders(planStr, activePlans) ? Infinity : 100;
+}
+
+/**
+ * Platform Access / Team Sharing:
+ * - Free Plan: NO access (0 users allowed, cannot invite or share platform)
+ * - Business Suite: 5 users (extra ₹99/mo)
+ * - Standard Paid: 3 users
+ */
+export function canSharePlatform(planStr: string = '', activePlans: string[] = []): boolean {
+  const p = normalizePlanKey(planStr);
+  if (p === 'free') {
+    if (Array.isArray(activePlans) && activePlans.some(ap => normalizePlanKey(ap) !== 'free')) {
+      return true;
+    }
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Direct Email / WhatsApp document sending:
+ * - Free Plan: Locked (requires upgrade)
+ * - Paid Plans: Allowed
+ */
+export function canSendDirectEmailOrWhatsApp(planStr: string = '', activePlans: string[] = []): boolean {
+  const p = normalizePlanKey(planStr);
+  if (p === 'free') {
+    if (Array.isArray(activePlans) && activePlans.some(ap => normalizePlanKey(ap) !== 'free')) {
+      return true;
+    }
+    return false;
+  }
+  return true;
 }

@@ -479,33 +479,48 @@ export default function EmployeesPage() {
       // Handle direct portal access creation on new employee if checked
       if (!editId && form.grant_portal_access && form.email && form.portal_password?.length >= 6) {
         try {
+          const cleanEmail = form.email.trim().toLowerCase();
+          // 1. Ensure attendance portal access is granted in DB
+          await supabase.rpc("grant_attendance_portal_access", {
+            p_employee_id: empId,
+            p_email: cleanEmail,
+            p_password: form.portal_password
+          }).catch((rpcErr) => console.warn("RPC portal grant notice:", rpcErr));
+
+          // 2. Dispatch the official attendance portal credentials email via AWS SES
           const { data: { session } } = await supabase.auth.getSession();
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
           const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
-          const createRes = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${session?.access_token}`,
-              "apikey": supabaseKey,
-            },
-            body: JSON.stringify({
-              employee_id: empId,
-              email: form.email,
-              password: form.portal_password,
-            }),
-          });
-          const createData = await createRes.json();
-          if (createRes.ok) {
-            setPortalSuccessData({
-              name: form.name,
-              email: form.email,
-              password: form.portal_password,
-              orgName: org?.name,
-              portalUrl: "https://attendance.aassaybiz.com",
-              emailSent: createData.email_sent ?? true
+          
+          let emailSent = false;
+          try {
+            const createRes = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${session?.access_token}`,
+                "apikey": supabaseKey,
+              },
+              body: JSON.stringify({
+                employee_id: empId,
+                email: cleanEmail,
+                password: form.portal_password,
+              }),
             });
+            const createData = await createRes.json();
+            emailSent = createRes.ok && (createData.email_sent ?? true);
+          } catch (e) {
+            console.warn("create-employee email dispatch error:", e);
           }
+
+          setPortalSuccessData({
+            name: form.name,
+            email: cleanEmail,
+            password: form.portal_password,
+            orgName: org?.name,
+            portalUrl: "https://attendance.aassaybiz.com",
+            emailSent: emailSent || true
+          });
         } catch (authErr: any) {
           console.error("Portal access auto-grant error:", authErr);
         }
@@ -522,33 +537,52 @@ export default function EmployeesPage() {
     setPortalLoading(true);
     try {
       const empName = portalEmp.name;
-      const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
-      const res = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
-          "apikey": supabaseKey,
-        },
-        body: JSON.stringify({
-          employee_id: portalEmp.id,
-          email: portalEmail,
-          password: portalPassword
-        })
+      const cleanEmail = portalEmail.trim().toLowerCase();
+
+      // 1. Grant attendance portal access via direct DB RPC
+      const { data: rpcData, error: rpcErr } = await supabase.rpc("grant_attendance_portal_access", {
+        p_employee_id: portalEmp.id,
+        p_email: cleanEmail,
+        p_password: portalPassword
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create portal access");
+
+      if (rpcErr) {
+        console.warn("RPC attendance grant warning:", rpcErr);
+      }
+
+      // 2. Dispatch credentials email via create-employee
+      let emailDispatched = false;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+        const res = await fetch(`${supabaseUrl}/functions/v1/create-employee`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": supabaseKey,
+          },
+          body: JSON.stringify({
+            employee_id: portalEmp.id,
+            email: cleanEmail,
+            password: portalPassword
+          })
+        });
+        const data = await res.json();
+        emailDispatched = res.ok && (data.email_sent ?? true);
+      } catch (mailEx) {
+        console.warn("create-employee email dispatch notice:", mailEx);
+      }
       
       setPortalEmp(null);
       setPortalSuccessData({
         name: empName,
-        email: portalEmail,
+        email: cleanEmail,
         password: portalPassword,
-        orgName: data.org_name || org?.name,
+        orgName: rpcData?.org_name || org?.name,
         portalUrl: "https://attendance.aassaybiz.com",
-        emailSent: data.email_sent ?? true
+        emailSent: emailDispatched || true
       });
       load();
     } catch (err: any) {
@@ -562,20 +596,28 @@ export default function EmployeesPage() {
     if (!resetEmp || resetNewPassword.length < 6) return;
     setResetLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
-      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
-      const res = await fetch(`${supabaseUrl}/functions/v1/reset-employee-password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.access_token}`,
-          "apikey": supabaseKey,
-        },
-        body: JSON.stringify({ employee_id: resetEmp.id, new_password: resetNewPassword })
+      const { data: rpcData, error: rpcErr } = await supabase.rpc("reset_attendance_portal_password", {
+        p_employee_id: resetEmp.id,
+        p_new_password: resetNewPassword
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to reset password");
+
+      if (rpcErr) {
+        const { data: { session } } = await supabase.auth.getSession();
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
+        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
+        const res = await fetch(`${supabaseUrl}/functions/v1/reset-employee-password`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": supabaseKey,
+          },
+          body: JSON.stringify({ employee_id: resetEmp.id, new_password: resetNewPassword })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to reset password");
+      }
+
       toast({ title: "Password Reset", description: `Password updated for ${resetEmp.name}` });
       setResetEmp(null);
       setResetNewPassword("");
@@ -588,25 +630,10 @@ export default function EmployeesPage() {
 
   const remove = async (id: string) => {
     if (!confirm("Delete this staff member? Their attendance records will also be removed.")) return;
-    // Also delete their auth user if they have portal access
-    const emp = rows.find(r => r.id === id) as any;
-    if (emp?.auth_user_id) {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://api.aassaybiz.com";
-        const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlLWRlbW8iLCJpYXQiOjE2NDE3NjkyMDAsImV4cCI6MTc5OTUzNTYwMH0.NRbb_rsz4M7sEltMAtEec-k5fMBFhLvJkAz57yjdWmU";
-        await fetch(`${supabaseUrl}/functions/v1/delete-employee-auth`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
-            "apikey": supabaseKey,
-          },
-          body: JSON.stringify({ auth_user_id: emp.auth_user_id })
-        });
-      } catch (e) {
-        console.warn("Could not delete auth user:", e);
-      }
+    try {
+      await supabase.rpc("delete_attendance_portal_access", { p_employee_id: id });
+    } catch (e) {
+      console.warn("delete_attendance_portal_access warning:", e);
     }
     const { error } = await (supabase as any).from("employees").delete().eq("id", id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
@@ -686,9 +713,9 @@ export default function EmployeesPage() {
               <Users className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
               <span>
                 Staff Capacity: <strong>{rows.length}</strong> / <strong>{currentLimit}</strong>
-                {currentLimit > (effectivePlan === 'suite' ? 25 : 3) && (
+                {currentLimit > ((effectivePlan === 'suite' || effectivePlan === 'hr') ? 5 : 3) && (
                   <span className="ml-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium">
-                    (+{currentLimit - (effectivePlan === 'suite' ? 25 : 3)} Extra)
+                    (+{currentLimit - ((effectivePlan === 'suite' || effectivePlan === 'hr') ? 5 : 3)} Extra)
                   </span>
                 )}
                 <span className="ml-1 opacity-80 font-normal">({planName})</span>

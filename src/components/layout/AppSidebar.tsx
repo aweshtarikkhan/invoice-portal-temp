@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useSubscription } from "@/hooks/use-subscription";
+import { normalizePlanKey } from "@/lib/subscription";
 import { ArrowUpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { SocialMediaLinks } from "@/components/shared/SocialMediaLinks";
@@ -51,6 +52,7 @@ import {
   MessageSquareQuote,
   Sparkles,
   HelpCircle,
+  RotateCcw,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -93,6 +95,7 @@ const purchaseItems = [
   { title: "Purchase Orders", url: "/purchase-orders", icon: ClipboardList, addUrl: "/purchase-orders/new" },
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
   { title: "Purchase Invoice", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
+  { title: "Debit Notes", url: "/debit-notes", icon: RotateCcw, addUrl: "/debit-notes/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
 ];
 
@@ -265,19 +268,60 @@ export function AppSidebar() {
   });
 
     // Default groups (always visible for admins, or if explicitly given permission)
-  const isSuiteActive = subscriptionPlan?.toLowerCase().trim() === 'suite' || 
-                        subscriptionPlan?.toLowerCase().trim() === 'plan_3' || 
-                        subscriptionPlan?.toLowerCase().includes('suite') ||
-                        subscriptionPlan?.toLowerCase().includes('flagship');
+  const effectivePlan = subscriptionPlan || (org as any)?.subscription_plan || 'free';
+  const isFreePlan = effectivePlan.toLowerCase() === 'free';
+  const isSuiteActive = effectivePlan.toLowerCase().trim() === 'suite' || 
+                        effectivePlan.toLowerCase().trim() === 'plan_3' || 
+                        effectivePlan.toLowerCase().includes('suite') ||
+                        effectivePlan.toLowerCase().includes('flagship');
+
+  const activePlans = effectivePlan.toLowerCase().split('+').map(p => normalizePlanKey(p));
+  const hasPlan = (p: string) => isSuiteActive || activePlans.includes(p);
+
+  const isItemLocked = (url: string) => {
+    if (isSuiteActive) return false;
+    
+    // Admin Panel
+    if (url === "/admin" || url.startsWith("/admin/")) {
+      return isFreePlan;
+    }
+
+    // Business Integration (Official WhatsApp, Email, CRM integrations)
+    if (["/emails", "/chats", "/crm/integrations"].some(u => url === u || url.startsWith(u + "/"))) {
+      if (url === "/crm/integrations") {
+        return !hasPlan("crm");
+      }
+      return isFreePlan;
+    }
+
+    // Business Promotion
+    if (["/campaigns", "/marketing/templates", "/journeys", "/message-logs", "/promotion-reports"].some(u => url === u || url.startsWith(u + "/"))) {
+      return !hasPlan("promotion");
+    }
+
+    // Business HR
+    if (["/employee-documents", "/payroll"].some(u => url === u || url.startsWith(u + "/"))) {
+      return !hasPlan("hr");
+    }
+
+    // Business CRM
+    if (["/crm-reports", "/pipeline"].some(u => url === u || url.startsWith(u + "/"))) {
+      return !hasPlan("crm");
+    }
+
+    // Purchases & Banking
+    if (["/vendors", "/purchase-orders", "/grns", "/bills", "/debit-notes", "/expenses", "/accounts", "/journal", "/bank-accounts", "/cash-flow"].some(u => url === u || url.startsWith(u + "/"))) {
+      return !hasPlan("accounting");
+    }
+
+    return false;
+  };
 
   const defaultGroups = [
     { key: "sales", label: "Sales", items: salesItems.filter(i => i.title !== "WhatsApp Chats" || userRole === 'admin' || userRole === 'owner' || userPermissions.includes('whatsapp_access')) },
     { key: "catalog", label: "Inventory Management", items: catalogVisible },
   ].map(g => {
     let hasPlatformFeature = platformFeatures.includes(g.key);
-    if (g.key === 'outreach' && subscriptionPlan && subscriptionPlan !== 'free') {
-      hasPlatformFeature = true;
-    }
     return { ...g, isLocked: (!isSuiteActive && (!isGroupEnabled(g.key) || !hasPlatformFeature)) || !isGroupAccessible(g.key) };
   });
 
@@ -291,7 +335,7 @@ export function AppSidebar() {
       if (g.icon === "Users") icon = Users;
       if (g.icon === "Warehouse") icon = Warehouse;
 
-      const isOutreachUnlocked = g.key === 'outreach' && !!subscriptionPlan && subscriptionPlan !== 'free';
+      const isOutreachUnlocked = g.key === 'outreach' && !isFreePlan;
 
       return {
         key: g.key,
@@ -567,6 +611,9 @@ export function AppSidebar() {
                           {!collapsed && (
                             <span className="text-sm flex items-center justify-between w-full">
                               <span>{t(item.title)}</span>
+                              {isItemLocked(item.url) && (
+                                <Lock className="h-3 w-3 text-amber-500 ml-auto shrink-0" title="Locked - Upgrade Plan" />
+                              )}
                               {item.url === "/attendance" && unreadHrChatCount > 0 && (
                                 <span className="relative flex h-2.5 w-2.5 ml-2">
                                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
@@ -605,12 +652,14 @@ export function AppSidebar() {
                             onClick={() => {
                               if (!isSubLocked) {
                                 toggleGroup(sub.key, isSubOpen);
+                              } else {
+                                window.dispatchEvent(new Event('open-plan-modal'));
                               }
                             }} 
                             isActive={isSubActive}
                             className={cn(
                               "hover:bg-[#1e293b] text-slate-400 hover:text-white rounded-lg transition-colors",
-                              isSubLocked ? "opacity-60 cursor-not-allowed" : "cursor-pointer",
+                              isSubLocked ? "opacity-60 cursor-pointer" : "cursor-pointer",
                               collapsed ? "h-8 w-8 p-0 flex items-center justify-center" : "h-9"
                             )}
                             tooltip={t(sub.label)}
@@ -653,7 +702,14 @@ export function AppSidebar() {
                                     )}
                                   >
                                     <item.icon className={cn("shrink-0", collapsed ? "h-4 w-4 opacity-80" : "h-3.5 w-3.5 opacity-70")} />
-                                    {!collapsed && <span className="text-sm">{t(item.title)}</span>}
+                                    {!collapsed && (
+                                      <span className="text-sm flex items-center justify-between w-full">
+                                        <span>{t(item.title)}</span>
+                                        {isItemLocked(item.url) && (
+                                          <Lock className="h-3 w-3 text-amber-500 ml-auto shrink-0" title="Locked - Upgrade Plan" />
+                                        )}
+                                      </span>
+                                    )}
                                   </NavLink>
                                 </SidebarMenuButton>
                                 {!collapsed && item.addUrl && (
@@ -755,7 +811,14 @@ export function AppSidebar() {
                               )}
                             >
                               <Shield className="h-4 w-4 shrink-0 opacity-80" />
-                              {!collapsed && <span className="text-sm">{t("Admin Panel")}</span>}
+                              {!collapsed && (
+                                <span className="text-sm flex items-center justify-between w-full">
+                                  <span>{t("Admin Panel")}</span>
+                                  {isFreePlan && (
+                                    <Lock className="h-3 w-3 text-amber-500 ml-auto shrink-0" title="Locked - Upgrade Plan" />
+                                  )}
+                                </span>
+                              )}
                             </NavLink>
                           </SidebarMenuButton>
                         </SidebarMenuItem>
@@ -767,7 +830,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
-        {(!subscriptionPlan || subscriptionPlan === 'free') && (
+        {isFreePlan && (
           <div className={collapsed ? "p-1 flex justify-center mt-2 mb-2" : "px-4 mt-2 mb-2"}>
             <button
               onClick={() => window.dispatchEvent(new Event('open-plan-modal'))}

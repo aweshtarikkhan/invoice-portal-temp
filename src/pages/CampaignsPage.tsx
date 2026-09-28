@@ -65,23 +65,6 @@ export default function CampaignsPage() {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ name: "", channel: "sms", template_id: "", audience_type: "all_clients" });
 
-  const seedDefaultTemplates = async (orgId: string) => {
-    const defaultTemplates = [
-      { org_id: orgId, name: "Special Offer / Festive Discount", channel: "sms", category: "promotional", body: "Hi {{name}}, enjoy special discounts on our services this season! Visit us or contact us today." },
-      { org_id: orgId, name: "Payment Reminder Notice", channel: "sms", category: "billing", body: "Dear {{name}}, this is a gentle reminder regarding your pending invoice. Please clear at your earliest convenience." },
-      { org_id: orgId, name: "Festival Greetings & Promotion", channel: "whatsapp", category: "festive", body: "Warm festival greetings to you and your family! We have exclusive offers waiting for you." },
-      { org_id: orgId, name: "Exclusive Client Newsletter", channel: "email", category: "marketing", body: "Dear {{name}}, thank you for being a valued client. Check out our latest updates and promotional offers." },
-      { org_id: orgId, name: "New Product / Service Launch", channel: "whatsapp", category: "announcement", body: "Hi {{name}}, we are excited to announce our new offerings. Reply to this message to know more!" },
-    ];
-    try {
-      const { data } = await supabase.from("message_templates").insert(defaultTemplates).select("id,name,channel");
-      return data || [];
-    } catch (e) {
-      console.error("Failed to seed templates", e);
-      return [];
-    }
-  };
-
   const load = async () => {
     if (!org) return;
     const [c, t, cl, ld] = await Promise.all([
@@ -90,11 +73,7 @@ export default function CampaignsPage() {
       supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org.id),
       (supabase as any).from("leads").select("id,name,phone,email,company").eq("org_id", org.id),
     ]);
-    let templateList = t.data || [];
-    if (templateList.length === 0) {
-      const seeded = await seedDefaultTemplates(org.id);
-      if (seeded && seeded.length > 0) templateList = seeded;
-    }
+    const templateList = t.data || [];
     setCampaigns(c.data || []);
     setTemplates(templateList);
     setClients(cl.data || []);
@@ -103,35 +82,46 @@ export default function CampaignsPage() {
   useEffect(() => { load(); }, [org?.id]);
 
   const buildAudience = async (channel: string, audience_type: string) => {
-    const addrKey = channel === "email" ? "email" : "phone";
-
-    const toRecipient = (id: string | null, displayName: string, phone: string | null, email: string | null) => {
-      const addr = channel === "email" ? (email || null) : (phone || null);
+    const toRecipient = (
+      clientId: string | null,
+      leadId: string | null,
+      displayName: string,
+      phone: string | null,
+      email: string | null
+    ) => {
+      const addr = channel === "email" ? (email?.trim() || null) : (phone?.trim() || null);
       if (!addr) return null;
-      return { client_id: id, name: displayName, to_address: addr, vars: { name: displayName }, org_id: org!.id };
+      return { 
+        client_id: clientId, 
+        lead_id: leadId,
+        name: displayName, 
+        to_address: addr, 
+        vars: { name: displayName }, 
+        org_id: org!.id 
+      };
     };
 
-    let items: (ReturnType<typeof toRecipient>)[] = [];
+    let items: any[] = [];
 
     if (audience_type === "all_clients") {
       let list = clients.length ? clients : (await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id)).data || [];
-      items = list.map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+      items = list.map((c: any) => toRecipient(c.id, null, c.display_name, c.phone, c.email));
     } else if (audience_type === "all_leads") {
       let list = leads.length ? leads : ((await (supabase as any).from("leads").select("id,name,phone,email").eq("org_id", org!.id)).data || []);
-      items = list.map((l: any) => toRecipient(l.id, l.name, l.phone, l.email));
+      items = list.map((l: any) => toRecipient(null, l.id, l.name, l.phone, l.email));
     } else if (audience_type === "overdue") {
       const allClients = clients.length ? clients : (await supabase.from("clients").select("id,display_name,phone,email").eq("org_id", org!.id)).data || [];
       const { data: ovd } = await supabase.from("invoices").select("client_id").eq("org_id", org!.id).gt("balance_due", 0).lt("due_date", new Date().toISOString().split("T")[0]);
       const ids = new Set((ovd || []).map((i: any) => i.client_id));
-      items = allClients.filter((c: any) => ids.has(c.id)).map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+      items = allClients.filter((c: any) => ids.has(c.id)).map((c: any) => toRecipient(c.id, null, c.display_name, c.phone, c.email));
     } else if (audience_type === "custom_clients") {
-      items = clients.filter((c: any) => selectedClientIds.includes(c.id)).map((c: any) => toRecipient(c.id, c.display_name, c.phone, c.email));
+      items = clients.filter((c: any) => selectedClientIds.includes(c.id)).map((c: any) => toRecipient(c.id, null, c.display_name, c.phone, c.email));
     } else if (audience_type === "custom_leads") {
-      items = leads.filter((l: any) => selectedLeadIds.includes(l.id)).map((l: any) => toRecipient(l.id, l.name, l.phone, l.email));
+      items = leads.filter((l: any) => selectedLeadIds.includes(l.id)).map((l: any) => toRecipient(null, l.id, l.name, l.phone, l.email));
     } else if (audience_type === "prospects") {
       items = prospects
         .filter(p => channel === "email" ? !!p.email : !!p.phone)
-        .map(p => ({ client_id: null, name: p.name, to_address: channel === "email" ? p.email : p.phone, vars: { name: p.name }, org_id: org!.id }));
+        .map(p => ({ client_id: null, lead_id: null, name: p.name, to_address: channel === "email" ? p.email : p.phone, vars: { name: p.name }, org_id: org!.id }));
     }
 
     return items.filter(Boolean) as any[];
@@ -140,7 +130,9 @@ export default function CampaignsPage() {
   const create = async () => {
     if (!form.name || !form.template_id) return toast.error("Name & template required");
     const audience = await buildAudience(form.channel, form.audience_type);
-    if (audience.length === 0) return toast.error("No recipients with valid contact info found. Please ensure clients/leads have phone or email.");
+    if (audience.length === 0) {
+      return toast.error(`No recipients with valid ${form.channel === 'email' ? 'email address' : 'phone number'} found.`);
+    }
 
     const { data: campaign, error } = await supabase.from("campaigns").insert({
       org_id: org!.id,
@@ -150,12 +142,17 @@ export default function CampaignsPage() {
       audience_type: form.audience_type === "overdue" ? "overdue" : (form.audience_type.includes("custom") || form.audience_type === "prospects" ? "manual" : "all"),
       total_count: audience.length,
     }).select().single();
-    if (error || !campaign) return toast.error(error?.message || "Failed");
+    if (error || !campaign) return toast.error(error?.message || "Failed to create campaign");
 
     const recipients = audience.map((r) => ({ ...r, campaign_id: campaign.id }));
-    await supabase.from("campaign_recipients").insert(recipients);
+    const { error: recError } = await (supabase as any).from("campaign_recipients").insert(recipients);
+    if (recError) {
+      console.error("Failed to insert campaign recipients:", recError);
+      await supabase.from("campaigns").delete().eq("id", campaign.id);
+      return toast.error("Failed to save recipients: " + recError.message);
+    }
 
-    toast.success(`Campaign created with ${audience.length} recipients`);
+    toast.success(`Campaign created with ${audience.length} recipient${audience.length === 1 ? '' : 's'}`);
     setOpen(false);
     setForm({ name: "", channel: "sms", template_id: "", audience_type: "all_clients" });
     setSelectedClientIds([]);
@@ -168,10 +165,22 @@ export default function CampaignsPage() {
   const sendNow = async (id: string) => {
     if (!confirm("Send this campaign now to all pending recipients?")) return;
     const t = toast.loading("Sending...");
-    const { data, error } = await supabase.functions.invoke("send-campaign", { body: { campaign_id: id } });
-    toast.dismiss(t);
-    if (error) return toast.error(error.message || "Failed");
-    toast.success(`Sent: ${data?.sent}, Failed: ${data?.failed}`);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-campaign", { body: { campaign_id: id } });
+      toast.dismiss(t);
+      if (error) {
+        toast.error(error.message || "Failed to send");
+      } else if (data?.sent > 0) {
+        toast.success(`Sent: ${data?.sent} message${data?.sent === 1 ? '' : 's'}${data?.failed ? `, Failed: ${data?.failed}` : ''}`);
+      } else if (data?.failed > 0) {
+        toast.error(`Failed to send: ${data?.failed} messages failed`);
+      } else {
+        toast.warning("No pending recipients found to send.");
+      }
+    } catch (e: any) {
+      toast.dismiss(t);
+      toast.error(e.message || "Failed to send campaign");
+    }
     load();
   };
 
@@ -221,7 +230,12 @@ export default function CampaignsPage() {
                   <TableCell>{c.sent_count} / {c.total_count} {c.failed_count > 0 && <span className="text-red-600 text-xs">({c.failed_count} failed)</span>}</TableCell>
                   <TableCell className="text-xs">{format(new Date(c.created_at), "dd MMM HH:mm")}</TableCell>
                   <TableCell onClick={(e) => e.stopPropagation()} className="space-x-1">
-                    {c.status === "draft" && <Button size="sm" onClick={() => sendNow(c.id)}><Send className="h-3 w-3 mr-1" />Send</Button>}
+                    {(c.status === "draft" || c.status === "failed" || (c.total_count > 0 && c.total_count > c.sent_count)) && (
+                      <Button size="sm" onClick={() => sendNow(c.id)}>
+                        <Send className="h-3 w-3 mr-1" />
+                        {c.status === "draft" ? "Send" : "Retry"}
+                      </Button>
+                    )}
                     <Button size="icon" variant="ghost" onClick={() => remove(c.id)}><Trash2 className="h-4 w-4" /></Button>
                   </TableCell>
                 </TableRow>

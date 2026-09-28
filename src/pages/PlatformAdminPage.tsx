@@ -262,7 +262,7 @@ export default function PlatformAdminPage() {
     try {
       const { data, error } = await supabase
         .from("tickets")
-        .select("*, organizations(id, name, email), clients(id, display_name, email, phone)")
+        .select("*, organizations(id, name, email), clients(id, display_name, email, phone), leads(id, name, email, phone, company)")
         .order("created_at", { ascending: false });
       if (!error && data) {
         setTickets(data);
@@ -749,7 +749,8 @@ export default function PlatformAdminPage() {
     if (!error && (user.org_id || targetOrgId)) {
       const effOrgId = user.org_id || (res as any)?.org_id || targetOrgId;
       if (effOrgId && !effOrgId.startsWith('temp-org')) {
-        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", effOrgId);
+        const effPlan = newPlans.includes('suite') || newPlans.includes('plan_3') ? 'suite' : (newPlans.length > 0 ? newPlans.join('+') : 'free');
+        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any, subscription_plan: effPlan }).eq("id", effOrgId);
       }
     }
 
@@ -856,7 +857,8 @@ export default function PlatformAdminPage() {
     if (!error && (user.org_id || targetOrgId)) {
       const effOrgId = user.org_id || (res as any)?.org_id || targetOrgId;
       if (effOrgId && !effOrgId.startsWith('temp-org')) {
-        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", effOrgId);
+        const effPlan = planArray.includes('suite') || planArray.includes('plan_3') ? 'suite' : (planArray.length > 0 ? planArray.join('+') : 'free');
+        await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any, subscription_plan: effPlan }).eq("id", effOrgId);
       }
     }
 
@@ -931,10 +933,29 @@ export default function PlatformAdminPage() {
   };
 
   const handlePlansChange = async (orgId: string, currentPlans: string[], toggledPlan: string) => {
-    let newPlans = currentPlans.includes(toggledPlan) 
-      ? currentPlans.filter(p => p !== toggledPlan)
-      : [...currentPlans, toggledPlan];
+    const normalizePlanKey = (p: string) => {
+      if (p === 'plan_2') return 'accounting';
+      if (p === 'plan_3') return 'suite';
+      if (p === 'plan_4') return 'hr';
+      if (p === 'plan_5') return 'crm';
+      if (p === 'plan_6') return 'promotion';
+      return p;
+    };
+
+    const normalizedCurrent = (currentPlans || []).map(normalizePlanKey);
+
+    let newPlans = normalizedCurrent.includes(toggledPlan) 
+      ? normalizedCurrent.filter(p => p !== toggledPlan)
+      : [...normalizedCurrent, toggledPlan];
       
+    // If user checks a paid plan, remove 'free'
+    if (newPlans.length > 1 && newPlans.includes('free') && toggledPlan !== 'free') {
+      newPlans = newPlans.filter(p => p !== 'free');
+    }
+    // If user checks 'free', reset to only 'free'
+    if (toggledPlan === 'free' && newPlans.includes('free')) {
+      newPlans = ['free'];
+    }
     if (newPlans.length === 0) newPlans = ['free'];
 
     const calculatedFeatures = computeFeaturesForPlans(newPlans);
@@ -962,12 +983,26 @@ export default function PlatformAdminPage() {
       };
     });
 
-    await supabase.rpc("admin_set_plans", {
+    const { error: rpcError } = await supabase.rpc("admin_set_plans", {
       p_org_id: orgId,
       p_plan_names: newPlans,
     });
-    await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any }).eq("id", orgId);
-    fetchDashboardData(false);
+
+    if (rpcError) {
+      console.error("admin_set_plans error:", rpcError);
+      toast({ title: "Failed to update plans", description: rpcError.message, variant: "destructive" });
+      await fetchDashboardData(false);
+      return;
+    }
+
+    const effPlan = newPlans.includes('suite') || newPlans.includes('plan_3') ? 'suite' : (newPlans.length > 0 ? newPlans.join('+') : 'free');
+    await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any, subscription_plan: effPlan }).eq("id", orgId);
+
+    toast({ 
+      title: "Plan Updated", 
+      description: `Assigned: ${newPlans.map(p => PLAN_DISPLAY_NAMES[p] || p).join(", ")}` 
+    });
+    await fetchDashboardData(false);
   };
   
   const availablePlans = [
@@ -1375,13 +1410,21 @@ export default function PlatformAdminPage() {
           ) : (
             (() => {
               const q = orgSearch.trim().toLowerCase();
+              const cleanQ = q.replace(/^#/, "");
               const filtered = q
                 ? dashData.organizations.filter(o =>
                     o.name?.toLowerCase().includes(q) ||
                     o.owner?.email?.toLowerCase().includes(q) ||
                     o.email?.toLowerCase().includes(q) ||
-                    o.owner?.account_id?.toLowerCase().includes(q) ||
-                    `#${o.owner?.account_id || ""}`.toLowerCase().includes(q)
+                    String(o.owner?.account_id || "").toLowerCase().includes(cleanQ) ||
+                    String((o as any).owner_account_id || "").toLowerCase().includes(cleanQ) ||
+                    `#${o.owner?.account_id || (o as any).owner_account_id || ""}`.toLowerCase().includes(q) ||
+                    o.id?.toLowerCase().includes(q) ||
+                    (dashData.users || []).some(u => u.org_id === o.id && (
+                      String(u.account_id || "").toLowerCase().includes(cleanQ) ||
+                      u.email?.toLowerCase().includes(q) ||
+                      `${u.first_name || ""} ${u.last_name || ""}`.toLowerCase().includes(q)
+                    ))
                   )
                 : dashData.organizations;
 
@@ -1414,9 +1457,9 @@ export default function PlatformAdminPage() {
                             {org.owner && (
                               <span className="flex items-center gap-1.5">
                                 <UserCircle className="w-3 h-3" /> {org.owner.name?.trim() || org.owner.email}
-                                {org.owner.account_id && (
+                                {(org.owner?.account_id || (org as any).owner_account_id) && (
                                   <Badge variant="outline" className="font-mono text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-200 px-1.5 py-0">
-                                    #{org.owner.account_id}
+                                    #{org.owner?.account_id || (org as any).owner_account_id}
                                   </Badge>
                                 )}
                               </span>
@@ -1482,7 +1525,15 @@ export default function PlatformAdminPage() {
                           <PopoverContent className="w-[200px] p-3 bg-slate-100 border-slate-200 shadow-xl rounded-xl z-[9999]" align="end">
                             <div className="space-y-3">
                               {availablePlans.map(plan => {
-                                const currentPlans = (org as any).subscription_plan_names || (sub.plan_name ? [sub.plan_name] : ['free']);
+                                const rawPlans = (org as any).subscription_plan_names || (sub.plan_name ? [sub.plan_name] : ['free']);
+                                const currentPlans = rawPlans.map((p: string) => {
+                                  if (p === 'plan_2') return 'accounting';
+                                  if (p === 'plan_3') return 'suite';
+                                  if (p === 'plan_4') return 'hr';
+                                  if (p === 'plan_5') return 'crm';
+                                  if (p === 'plan_6') return 'promotion';
+                                  return p;
+                                });
                                 const isChecked = currentPlans.includes(plan.id);
                                 return (
                                   <div key={plan.id} className="flex items-center space-x-2">
@@ -2804,7 +2855,10 @@ export default function PlatformAdminPage() {
                       const orgE = (t.organizations?.email || '').toLowerCase();
                       const cliN = (t.clients?.display_name || '').toLowerCase();
                       const cliE = (t.clients?.email || '').toLowerCase();
-                      return subj.includes(q) || orgN.includes(q) || orgE.includes(q) || cliN.includes(q) || cliE.includes(q);
+                      const leadN = (t.leads?.name || '').toLowerCase();
+                      const leadE = (t.leads?.email || '').toLowerCase();
+                      const leadC = (t.leads?.company || '').toLowerCase();
+                      return subj.includes(q) || orgN.includes(q) || orgE.includes(q) || cliN.includes(q) || cliE.includes(q) || leadN.includes(q) || leadE.includes(q) || leadC.includes(q);
                     });
 
                     if (filtered.length === 0) {
@@ -2841,13 +2895,13 @@ export default function PlatformAdminPage() {
                           </span>
                         </TableCell>
 
-                        {/* Customer */}
+                        {/* Customer / Lead */}
                         <TableCell>
-                          <span className="text-xs text-slate-700 block truncate max-w-[140px]">
-                            {t.clients?.display_name || "—"}
+                          <span className="text-xs font-semibold text-slate-800 block truncate max-w-[140px]">
+                            {t.clients?.display_name || t.leads?.name || "—"}
                           </span>
                           <span className="text-[10px] text-slate-400 block truncate max-w-[140px]">
-                            {t.clients?.email || t.clients?.phone || "—"}
+                            {t.clients ? "Customer" : t.leads ? `Lead ${t.leads.company ? `(${t.leads.company})` : ""}` : "—"}
                           </span>
                         </TableCell>
 
@@ -3134,7 +3188,8 @@ export default function PlatformAdminPage() {
                   <p className="text-xs text-slate-500 mt-1">
                     Org: <span className="font-semibold text-slate-800">{selectedPlatformTicket.organizations?.name || "Unknown"}</span>
                     {" • "}
-                    Customer: <span className="font-semibold text-slate-800">{selectedPlatformTicket.clients?.display_name || "—"}</span>
+                    Contact: <span className="font-semibold text-slate-800">{selectedPlatformTicket.clients?.display_name || selectedPlatformTicket.leads?.name || "—"}</span>
+                    {selectedPlatformTicket.leads && !selectedPlatformTicket.clients && " (Lead)"}
                     {selectedPlatformTicket.created_at && (
                       <> • Created {format(new Date(selectedPlatformTicket.created_at), "dd MMM yyyy, hh:mm a")}</>
                     )}

@@ -21,7 +21,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2, ArrowLeft } from "lucide-react";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2, ArrowLeft, Lock } from "lucide-react";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -35,6 +35,9 @@ import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 import { getOrCreatePortalToken, portalUrl } from "@/lib/share";
+import { useSubscription } from "@/hooks/use-subscription";
+import { canSendDirectEmailOrWhatsApp, normalizePlanKey } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 export default function InvoiceDetailPage() {
   const { id } = useParams();
@@ -43,6 +46,26 @@ export default function InvoiceDetailPage() {
   const org = useAppStore((s) => s.organization);
   const { toast } = useToast();
   const { user } = useAuth();
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const plan = normalizePlanKey(subscriptionPlan);
+  const canSend = canSendDirectEmailOrWhatsApp(plan, activeOrgPlans);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in invoice detail:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
 
   const [invoice, setInvoice] = useState<any>(null);
   const [lines, setLines] = useState<any[]>([]);
@@ -326,6 +349,15 @@ export default function InvoiceDetailPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const handleSendEmail = async () => {
+    if (!canSend) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     if (!invoice || !activeOrg) return;
     const recipientEmail = invoice.clients?.email;
     if (!recipientEmail) {
@@ -478,6 +510,7 @@ export default function InvoiceDetailPage() {
         <Button variant="outline" size="sm" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
           {isSendingEmail ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Mail className="mr-1 h-4 w-4" />}
           {isSendingEmail ? "Sending..." : "Email Invoice"}
+          {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
         </Button>
         {invoice.status !== "void" && invoice.status !== "paid" && (
           <Button size="sm" onClick={() => setPaymentDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white">
@@ -493,6 +526,7 @@ export default function InvoiceDetailPage() {
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={handleSendEmail} disabled={isSendingEmail}>
               <Mail className="mr-2 h-4 w-4 text-blue-600" /> Email PDF to Client
+              {!canSend && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => setDuplicateDialogOpen(true)}>
               <Copy className="mr-2 h-4 w-4" /> Duplicate
@@ -504,6 +538,15 @@ export default function InvoiceDetailPage() {
             <DropdownMenuItem 
               disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))}
               onClick={async () => {
+              if (!canSend) {
+                toast({
+                  title: "Feature Locked 🔒",
+                  description: "Sending documents via WhatsApp is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via WhatsApp.",
+                  variant: "destructive"
+                });
+                setShowUpgradeModal(true);
+                return;
+              }
               if (!activeOrg || !invoice || !invoice.clients) return;
               const token = await getOrCreatePortalToken(activeOrg.id, "invoice", invoice.id);
               
@@ -530,6 +573,7 @@ export default function InvoiceDetailPage() {
               });
             }}>
               <MessageCircle className="mr-2 h-4 w-4 text-emerald-600" /> Send WhatsApp Text
+              {!canSend && <Lock className="ml-auto h-3.5 w-3.5 text-amber-500" />}
             </DropdownMenuItem>
             
             {invoice.status === "draft" && (
@@ -686,6 +730,12 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <PlanSelectorModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        orgId={org?.id}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import {
   UserCog, Users, Send, BarChart3, Loader2, AlertCircle, ChevronDown,
   AlertTriangle, Crown, CheckCircle2, XCircle, Mail, Edit2
 } from "lucide-react";
+import { toast } from "sonner";
 
 const ICON_MAP: Record<string, any> = {
   FileText, Package, ShoppingCart, Calculator,
@@ -69,8 +70,13 @@ export default function AdminPanelPage() {
   
   // Edit member state
   const [editingMember, setEditingMember] = useState<any>(null);
+  const [editingRole, setEditingRole] = useState<string>("Staff");
   const [editingPermissions, setEditingPermissions] = useState<string[]>([]);
   const [isUpdatingMember, setIsUpdatingMember] = useState(false);
+
+  // Actions loading states
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [resendingEmailId, setResendingEmailId] = useState<string | null>(null);
 
   const [fetchedTeamMembers, setFetchedTeamMembers] = useState<any[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
@@ -330,24 +336,113 @@ export default function AdminPanelPage() {
     );
   };
 
+  const handleRemoveMember = async (member: any) => {
+    if (member.role === 'owner') {
+      toast.error("Cannot Remove Owner: The business owner cannot be removed from their own organization.");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to remove ${member.email} from this business? They will lose platform access immediately.`)) {
+      return;
+    }
+
+    setRemovingMemberId(member.member_id);
+    try {
+      // 1. Call secure RPC function
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('remove_organization_member', {
+        p_member_id: member.member_id
+      });
+
+      if (rpcErr) {
+        // Fallback to direct delete using non-recursive RLS policy
+        const { error: directErr } = await supabase
+          .from('organization_members')
+          .delete()
+          .eq('id', member.member_id);
+        if (directErr) throw directErr;
+      }
+
+      toast.success(`${member.email} has been removed from this business.`);
+      await loadTeamMembers();
+    } catch (err: any) {
+      console.error("Failed to remove member:", err);
+      toast.error("Failed to remove user: " + (err.message || "Unknown error"));
+    } finally {
+      setRemovingMemberId(null);
+    }
+  };
+
+  const handleResendInvite = async (member: any) => {
+    const targetOrgId = selectedTeamOrgId || currentOrgId;
+    if (!targetOrgId || !member.email) return;
+
+    setResendingEmailId(member.member_id);
+    try {
+      const isCaRole = member.role === "ca_cs" || member.role === "CA/CS" || member.role?.toLowerCase().includes("ca");
+      const normalizedRole = isCaRole ? "ca_cs" : member.role?.toLowerCase().replace(/\s+/g, '_');
+
+      const { data, error } = await supabase.functions.invoke("invite-team-member", {
+        body: {
+          email: member.email,
+          role: normalizedRole,
+          org_id: targetOrgId,
+          permissions: member.permissions || []
+        }
+      });
+
+      if (error) {
+        let errorMsg = error.message;
+        try {
+          if (error.context && typeof error.context.json === "function") {
+            const body = await error.context.json();
+            if (body?.error) errorMsg = body.error;
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
+      }
+
+      toast.success(`Fresh invitation email sent successfully to ${member.email}!`);
+      await loadTeamMembers();
+    } catch (err: any) {
+      console.error("Failed to resend invite:", err);
+      toast.error("Failed to resend email: " + (err.message || "Please try again"));
+    } finally {
+      setResendingEmailId(null);
+    }
+  };
+
   const handleUpdateMember = async () => {
     if (!editingMember) return;
     setIsUpdatingMember(true);
     try {
-      const { data, error } = await supabase
-        .from('organization_members')
-        .update({ permissions: editingPermissions })
-        .eq('id', editingMember.member_id)
-        .select()
-        .single();
+      const isCaRole = editingRole === "CA/CS" || editingRole === "ca_cs" || editingRole?.toLowerCase().includes("ca");
+      const normalizedRole = isCaRole ? "ca_cs" : editingRole.toLowerCase().replace(/\s+/g, '_');
 
-      if (error) throw error;
-      if (!data) throw new Error("Update failed. You may not have permission to modify this user.");
-      
+      // 1. Try secure RPC function first
+      const { data: rpcData, error: rpcErr } = await supabase.rpc('update_organization_member_access', {
+        p_member_id: editingMember.member_id,
+        p_role: normalizedRole,
+        p_permissions: editingPermissions
+      });
+
+      if (rpcErr) {
+        // Fallback to direct update
+        const { error: directErr } = await supabase
+          .from('organization_members')
+          .update({
+            role: normalizedRole as any,
+            permissions: editingPermissions
+          })
+          .eq('id', editingMember.member_id);
+
+        if (directErr) throw directErr;
+      }
+
+      toast.success(`Access and permissions updated for ${editingMember.email}!`);
       await loadTeamMembers();
       setEditingMember(null);
     } catch (err: any) {
-      alert("Failed to update permissions: " + err.message);
+      toast.error("Failed to update access: " + err.message);
     } finally {
       setIsUpdatingMember(false);
     }
@@ -376,16 +471,16 @@ export default function AdminPanelPage() {
       if (data && userId) {
         setNewBusinessName("");
         
-        // 2. Add the user to organization_members for this new business as Owner
+        // 2. Ensure the user is in organization_members for this new business as Owner with all permissions
         const allFeatures = [...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS].map(g => g.key);
-        const { error: memberError } = await supabase
+        const { error: memberError } = await (supabase as any)
           .from("organization_members")
-          .insert({
+          .upsert({
             org_id: data.id,
             user_id: userId,
             role: "owner",
             permissions: allFeatures
-          });
+          }, { onConflict: "org_id,user_id" });
 
         if (memberError) {
           console.error("Failed to add owner to organization_members:", memberError);
@@ -400,13 +495,15 @@ export default function AdminPanelPage() {
         if (!profileError) {
           addMyOrganization({ id: data.id, name: data.name });
           setNewOrgIdToUpgrade(data.id);
+          toast.success(`Business "${data.name}" created successfully!`);
+          await loadAllOrgsWithPlans();
           // Open the plan selector modal for payment if they want to upgrade
           setShowPlanModal(true);
         }
       }
     } catch (err: any) {
       console.error("Failed to create business:", err.message);
-      alert("Failed to create business: " + err.message);
+      toast.error("Failed to create business: " + (err.message || "Unknown error"));
     } finally {
       setIsCreatingBusiness(false);
     }
@@ -845,31 +942,67 @@ export default function AdminPanelPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1.5">
+                              {/* Resend invite button for pending users */}
+                              {member.status?.toLowerCase().includes('pending') && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleResendInvite(member)}
+                                  disabled={resendingEmailId === member.member_id}
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-orange-700 bg-orange-50 hover:bg-orange-100 border border-orange-200 rounded-lg transition-colors cursor-pointer disabled:opacity-50 mr-1"
+                                  title="Resend invitation email to this employee"
+                                >
+                                  {resendingEmailId === member.member_id ? (
+                                    <Loader2 className="h-3.5 w-3.5 animate-spin text-orange-600" />
+                                  ) : (
+                                    <Mail className="h-3.5 w-3.5 text-orange-600" />
+                                  )}
+                                  <span>Resend Invite</span>
+                                </button>
+                              )}
+
+                              {/* Edit access button */}
                               <button
+                                type="button"
                                 onClick={() => {
                                   setEditingMember(member);
+                                  let mappedRole = "Staff";
+                                  const r = (member.role || "").toLowerCase();
+                                  if (r === "ca_cs" || r === "ca/cs" || r.includes("ca")) mappedRole = "CA/CS";
+                                  else if (r.includes("manager")) mappedRole = "Manager";
+                                  else if (r.includes("accountant")) mappedRole = "Accountant";
+                                  else if (r.includes("sales")) mappedRole = "Sales Executive";
+                                  else if (r === "admin") mappedRole = "Admin";
+                                  else if (r === "owner") mappedRole = "Owner";
+                                  setEditingRole(mappedRole);
                                   setEditingPermissions(member.permissions || []);
                                 }}
-                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                                title="Edit access"
+                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer"
+                                title="Edit role & permissions"
                               >
                                 <Edit2 className="h-4 w-4" />
                               </button>
-                              <button
-                                onClick={async () => {
-                                  if (confirm(`Are you sure you want to remove ${member.email}?`)) {
-                                    const { data, error } = await supabase.from('organization_members').delete().eq('id', member.member_id).select();
-                                    if (error) alert("Failed to remove user: " + error.message);
-                                    else if (!data || data.length === 0) alert("Failed to remove user. You may not have permission.");
-                                    else loadTeamMembers();
-                                  }
-                                }}
-                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Remove user"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
+
+                              {/* Remove user button */}
+                              {member.role !== 'owner' ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMember(member)}
+                                  disabled={removingMemberId === member.member_id}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                                  title="Remove user from business"
+                                >
+                                  {removingMemberId === member.member_id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin text-red-600" />
+                                  ) : (
+                                    <Trash2 className="h-4 w-4" />
+                                  )}
+                                </button>
+                              ) : (
+                                <span className="p-2 text-amber-500/70 cursor-not-allowed" title="Business Owner cannot be removed">
+                                  <Crown className="h-4 w-4" />
+                                </span>
+                              )}
                             </div>
                           </div>
                           
@@ -1325,13 +1458,58 @@ export default function AdminPanelPage() {
           <div className="space-y-4">
             <div>
               <h3 className="text-lg font-bold text-slate-900">Edit Member Access</h3>
-              <p className="text-xs text-slate-500">Update permissions for {editingMember?.email}</p>
+              <p className="text-xs text-slate-500">Update role & permissions for <span className="font-semibold text-slate-800">{editingMember?.email}</span></p>
+            </div>
+
+            {/* Role Selector */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-700">User Role</label>
+              <select
+                value={editingRole}
+                onChange={(e) => setEditingRole(e.target.value)}
+                disabled={editingMember?.role === 'owner'}
+                className="w-full text-xs border border-slate-300 rounded-lg px-3 py-2 bg-white text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-500"
+              >
+                <option value="Staff">Staff</option>
+                <option value="Manager">Manager</option>
+                <option value="Accountant">Accountant</option>
+                <option value="Sales Executive">Sales Executive</option>
+                <option value="Admin">Admin</option>
+                <option value="CA/CS">CA/CS (Chartered Accountant / Advisor)</option>
+              </select>
+              {editingMember?.role === 'owner' && (
+                <p className="text-[11px] text-amber-600 font-medium">Business Owner role cannot be changed.</p>
+              )}
             </div>
             
-            <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-slate-700">Feature Permissions</label>
-              <div className="max-h-60 overflow-y-auto pr-2 grid gap-2">
-                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
+            {/* Permissions */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-700">Feature Permissions</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const allKeys = ["settings_access", "whatsapp_access", ...DEFAULT_FEATURE_GROUPS.map(g => g.key), ...ADMIN_FEATURE_GROUPS.map(g => g.key)];
+                      setEditingPermissions(Array.from(new Set(allKeys)));
+                    }}
+                    className="text-[10px] text-indigo-600 hover:text-indigo-800 font-semibold"
+                  >
+                    Select All
+                  </button>
+                  <span className="text-slate-300 text-xs">|</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditingPermissions([])}
+                    className="text-[10px] text-slate-500 hover:text-slate-700 font-medium"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-60 overflow-y-auto pr-2 grid gap-2 border border-slate-100 rounded-xl p-2 bg-slate-50/50">
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 hover:border-slate-300 transition-colors">
                   <input
                     type="checkbox"
                     checked={editingPermissions.includes("settings_access")}
@@ -1340,7 +1518,7 @@ export default function AdminPanelPage() {
                   />
                   <span className="truncate font-medium">Settings Access</span>
                 </label>
-                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
+                <label className="flex items-center gap-2.5 text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 hover:border-slate-300 transition-colors">
                   <input
                     type="checkbox"
                     checked={editingPermissions.includes("whatsapp_access")}
@@ -1349,17 +1527,19 @@ export default function AdminPanelPage() {
                   />
                   <span className="truncate font-medium">WhatsApp Access</span>
                 </label>
-                {[...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS.filter(g => selectedOrgFeatures.includes(g.key))].map(group => (
-                  <label key={group.key} className="flex items-center gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-100 hover:border-slate-300 transition-colors">
-                    <input
-                      type="checkbox"
-                      checked={editingPermissions.includes(group.key)}
-                      onChange={() => toggleEditPermission(group.key)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span className="truncate font-medium">{group.label}</span>
-                  </label>
-                ))}
+                {[...DEFAULT_FEATURE_GROUPS, ...ADMIN_FEATURE_GROUPS]
+                  .filter((g, idx, arr) => arr.findIndex(t => t.key === g.key) === idx)
+                  .map(group => (
+                    <label key={group.key} className="flex items-center gap-2.5 text-xs text-slate-700 bg-white p-2.5 rounded-lg border border-slate-200 cursor-pointer hover:bg-slate-50 hover:border-slate-300 transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={editingPermissions.includes(group.key)}
+                        onChange={() => toggleEditPermission(group.key)}
+                        className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="truncate font-medium">{group.label}</span>
+                    </label>
+                  ))}
               </div>
             </div>
 

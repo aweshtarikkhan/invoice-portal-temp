@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown, MessageCircle, Mail, Loader2, Download } from "lucide-react";
+import { ArrowLeft, Edit, ArrowRightLeft, Send, XCircle, CheckCircle, FileDown, MessageCircle, Mail, Loader2, Download, Lock } from "lucide-react";
 import { format } from "date-fns";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -20,6 +20,9 @@ import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
+import { useSubscription } from "@/hooks/use-subscription";
+import { normalizePlanKey, canSendDirectEmailOrWhatsApp } from "@/lib/subscription";
+import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 
 const statusVariants: Record<string, "default" | "info" | "success" | "warning" | "danger" | "muted"> = {
   draft: "muted", sent: "info", viewed: "default", accepted: "success",
@@ -36,6 +39,27 @@ export default function EstimateDetailPage() {
   const [lines, setLines] = useState<any[]>([]);
   const [client, setClient] = useState<any>(null);
   const [taxRates, setTaxRates] = useState<any[]>([]);
+  const { subscriptionPlan } = useSubscription();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!org?.id) return;
+    const fetchOrgSub = async () => {
+      try {
+        const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: org.id });
+        if (subData?.all_plans && Array.isArray(subData.all_plans)) {
+          setActiveOrgPlans(subData.all_plans);
+        }
+      } catch (e) {
+        console.error("Error fetching sub in estimate detail:", e);
+      }
+    };
+    fetchOrgSub();
+  }, [org?.id]);
+
+  const plan = normalizePlanKey(subscriptionPlan || org?.subscription_plan || 'free');
+  const canSend = canSendDirectEmailOrWhatsApp(plan, activeOrgPlans);
 
   const fetchData = async () => {
     if (!id) return;
@@ -187,6 +211,15 @@ export default function EstimateDetailPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
   const handleSendEmail = async () => {
+    if (!canSend) {
+      toast({
+        title: "Feature Locked 🔒",
+        description: "Direct document emailing is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via Email.",
+        variant: "destructive"
+      });
+      setShowUpgradeModal(true);
+      return;
+    }
     if (!estimate || !org || !client) return;
     const recipientEmail = client.email;
     if (!recipientEmail) {
@@ -315,9 +348,15 @@ export default function EstimateDetailPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
+          <Button 
+            variant="outline" 
+            onClick={handleSendEmail} 
+            disabled={isSendingEmail} 
+            className="text-blue-600 hover:text-blue-700"
+          >
             {isSendingEmail ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Mail className="mr-1 h-4 w-4" />}
             {isSendingEmail ? "Sending..." : "Email Quotation"}
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           {estimate.status === "draft" && (
             <>
@@ -345,7 +384,19 @@ export default function EstimateDetailPage() {
             </Button>
           )}
 
-          <Button variant="outline" disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} onClick={async () => {
+          <Button 
+            variant="outline" 
+            disabled={!(useAppStore.getState().userRole === 'admin' || useAppStore.getState().userRole === 'owner' || useAppStore.getState().userPermissions.includes('whatsapp_access'))} 
+            onClick={async () => {
+              if (!canSend) {
+                toast({
+                  title: "Feature Locked 🔒",
+                  description: "Sending documents via WhatsApp is a premium feature. Please upgrade to Business Suite or Business Integration to send directly via WhatsApp.",
+                  variant: "destructive"
+                });
+                setShowUpgradeModal(true);
+                return;
+              }
               if (!org || !estimate || !client) return;
               const token = await getOrCreatePortalToken(org.id, "estimate", estimate.id);
               
@@ -370,8 +421,10 @@ export default function EstimateDetailPage() {
                 message: txt,
                 orgId: org.id
               });
-            }}>
+            }}
+          >
             <MessageCircle className="mr-1 h-4 w-4 text-emerald-600" /> Send WhatsApp Text
+            {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           <Button variant="outline" onClick={() => window.print()}>
             <FileDown className="mr-1 h-4 w-4" /> Save PDF
@@ -410,6 +463,12 @@ export default function EstimateDetailPage() {
           <CardContent><p className="text-sm text-muted-foreground whitespace-pre-wrap">{estimate.notes}</p></CardContent>
         </Card>
       )}
+
+      <PlanSelectorModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)} 
+        orgId={org?.id}
+      />
     </div>
   );
 }

@@ -25,6 +25,7 @@ import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
+import { triggerLeadCreatedAutomations } from "@/lib/crm-automations";
 
 const leadImportFields: ImportField[] = [
   { key: "name", label: "Lead Name", required: true },
@@ -226,55 +227,9 @@ export default function LeadsPage() {
       load();
       toast({ title: editId ? "Lead updated" : "Lead added" });
       
-      // Automation: Welcome Email for New Leads
-      if (!editId && payload.email) {
-        (supabase as any)
-          .from("crm_automations")
-          .select("*")
-          .eq("org_id", payload.org_id)
-          .eq("trigger_event", "lead_created")
-          .eq("action_type", "send_email")
-          .eq("is_active", true)
-          .single()
-          .then(({ data: autoData }: any) => {
-            if (autoData) {
-              const subject = `Welcome to ${org?.name || "Aassay Biz"}, ${payload.name}!`;
-              const html = buildBrandedEmailHtml({
-                logoUrl: org?.logo_url || "https://aassaybiz.com/logo.png",
-                companyName: org?.name || "Aassay Biz",
-                companyEmail: org?.email || "support@aassaybiz.com",
-                badgeText: "CRM WELCOME",
-                title: `Welcome, ${payload.name}!`,
-                subtitle: `Thank you for connecting with ${org?.name || "Aassay Biz"}`,
-                recipientName: payload.name,
-                introText: `Thank you for your interest in our solutions and services. A dedicated representative from our team will review your requirements and reach out to you shortly.`,
-                customBodyHtml: `
-                  <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-                    <p style="margin: 0 0 8px; font-weight: 600; color: #0f172a;">What happens next?</p>
-                    <ul style="margin: 0; padding-left: 20px; color: #475569; font-size: 14px; line-height: 1.6;">
-                      <li>Our team is reviewing your information.</li>
-                      <li>We will connect via phone or email to discuss how we can help.</li>
-                      <li>In the meantime, feel free to explore our offerings or reply to this email.</li>
-                    </ul>
-                  </div>
-                `,
-              });
-              supabase.functions.invoke("send-custom-email", {
-                body: { to: payload.email, subject, html, orgId: payload.org_id }
-              });
-              
-              // Log activity
-              (supabase as any).from("activities").insert({
-                org_id: payload.org_id,
-                lead_id: null,
-                activity_type: "email",
-                title: "Sent Welcome Email (Automated)",
-                notes: "Automatically sent welcome email based on CRM Automations rule.",
-                status: "completed",
-                created_by: payload.owner_id
-              }).then();
-            }
-          });
+      // CRM Automations: Welcome Email & WhatsApp for New Leads
+      if (!editId) {
+        triggerLeadCreatedAutomations({ org, lead: payload });
       }
     }
   };

@@ -160,15 +160,17 @@ export default function ShiftsPage() {
     try {
       if (!shiftId || shiftId === "none") {
         // Remove assignment
-        await (supabase as any).from("employee_shifts").delete().eq("employee_id", empId);
+        const { error: delErr } = await (supabase as any).from("employee_shifts").delete().eq("employee_id", empId);
+        if (delErr) throw new Error(delErr.message);
         await supabase.from("employees").update({ shift_id: null }).eq("id", empId);
         setEmpShifts((prev) => { const n = { ...prev }; delete n[empId]; return n; });
       } else {
         // Upsert assignment
-        await (supabase as any).from("employee_shifts").upsert(
+        const { error: upsertErr } = await (supabase as any).from("employee_shifts").upsert(
           { org_id: org.id, employee_id: empId, shift_id: shiftId, effective_from: new Date().toISOString().split("T")[0] },
           { onConflict: "employee_id" }
         );
+        if (upsertErr) throw new Error(upsertErr.message);
         await supabase.from("employees").update({ shift_id: shiftId }).eq("id", empId);
         setEmpShifts((prev) => ({ ...prev, [empId]: shiftId }));
       }

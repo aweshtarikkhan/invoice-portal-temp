@@ -1,9 +1,45 @@
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.0'
+import nodemailer from "npm:nodemailer@6.9.10"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+const sesTransporter = nodemailer.createTransport({
+  host: "email-smtp.ap-south-1.amazonaws.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "AKIA2LJCCXAWLPSYPMPE",
+    pass: "BAxlpu5HTiNPIdt7NRhHnENs2tbnczd/J3PLt/uJfNk5",
+  },
+});
+
+async function sendSesEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  const senderAddress = `"Aassay Biz" <no-reply@aassaybiz.com>`;
+  try {
+    const info = await sesTransporter.sendMail({
+      from: senderAddress,
+      to,
+      subject,
+      html,
+    });
+    console.log(`[invite-team-member] Email sent to ${to}, messageId: ${info?.messageId}`);
+    return true;
+  } catch (err) {
+    console.error(`[invite-team-member] SES send error to ${to}:`, err);
+    return false;
+  }
 }
 
 serve(async (req) => {
@@ -115,6 +151,7 @@ serve(async (req) => {
     }
 
     const businessName = orgData?.name || 'Workspace';
+    const roleDisplay = normalizedRole === 'ca_cs' ? 'CA/CS' : rawRole;
 
     const rawOrigin = req.headers.get('origin') || req.headers.get('referer') || '';
     const cleanOrigin = rawOrigin ? rawOrigin.split('#')[0].replace(/\/$/, '') : '';
@@ -122,8 +159,10 @@ serve(async (req) => {
     const targetOrigin = (cleanOrigin && !cleanOrigin.includes('localhost')) ? cleanOrigin : platformUrl;
     const redirectTo = `${targetOrigin}/reset-password`;
 
-    let invitedUserId = null;
+    let invitedUserId: string | null = null;
     let isExisting = false;
+    let linkData: any = null;
+    let linkType = 'invite';
 
     if (existingUserId) {
       // Check if user has confirmed email / set password
@@ -133,45 +172,84 @@ serve(async (req) => {
       invitedUserId = existingUserId;
       isExisting = isConfirmed;
 
-      // If user exists in DB but was never confirmed / never completed invite, resend invite
-      // Use generateLink instead of inviteUserByEmail to avoid creating duplicate users
-      // and invalidating existing tokens
+      // If user exists in DB but was never confirmed / never completed invite or password setup, generate link
       if (!isConfirmed) {
         try {
-          const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+          const res = await supabaseAdmin.auth.admin.generateLink({
             type: 'invite',
             email: cleanEmail,
-            options: { redirectTo: redirectTo }
+            options: { redirectTo }
           });
-          if (linkError) {
-            console.warn('generateLink for re-invite failed, falling back to inviteUserByEmail:', linkError.message);
-            // Fallback: use inviteUserByEmail if generateLink fails
-            await supabaseAdmin.auth.admin.inviteUserByEmail(cleanEmail, {
-              redirectTo: redirectTo
-            }).catch((err) => console.warn('Resend invite notice:', err));
+          if (!res.error && res.data?.properties?.hashed_token) {
+            linkData = res.data;
+            linkType = 'invite';
           }
-          // generateLink sends the email automatically
         } catch (err) {
-          console.warn('Re-invite error:', err);
+          console.warn('generateLink invite failed for existing unconfirmed user:', err);
+        }
+
+        // Fallback to magiclink if invite type failed
+        if (!linkData?.properties?.hashed_token) {
+          try {
+            const res = await supabaseAdmin.auth.admin.generateLink({
+              type: 'magiclink',
+              email: cleanEmail,
+              options: { redirectTo }
+            });
+            if (!res.error && res.data?.properties?.hashed_token) {
+              linkData = res.data;
+              linkType = 'magiclink';
+            }
+          } catch (magicErr) {
+            console.warn('generateLink magiclink fallback error:', magicErr);
+          }
         }
       }
     } else {
-      // User doesn't exist, invite them with redirect to reset-password for password creation
-      const { data: authData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(cleanEmail, {
-        redirectTo: redirectTo
-      })
-
-      if (inviteError) {
-        throw inviteError
+      // User doesn't exist yet: generate invite link (this also registers the user in auth.users)
+      try {
+        const res = await supabaseAdmin.auth.admin.generateLink({
+          type: 'invite',
+          email: cleanEmail,
+          options: { redirectTo }
+        });
+        if (!res.error && res.data?.properties?.hashed_token) {
+          linkData = res.data;
+          linkType = 'invite';
+          invitedUserId = res.data.user.id;
+        }
+      } catch (genErr) {
+        console.warn('generateLink invite for new user error:', genErr);
       }
-      invitedUserId = authData.user.id
+
+      // If generateLink didn't return a user, create user explicitly
+      if (!invitedUserId) {
+        const { data: newUserData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          email_confirm: false
+        });
+        if (createError && !existingUserId) {
+          throw createError;
+        }
+        invitedUserId = newUserData?.user?.id || existingUserId;
+
+        const res = await supabaseAdmin.auth.admin.generateLink({
+          type: 'magiclink',
+          email: cleanEmail,
+          options: { redirectTo }
+        });
+        if (res.data?.properties?.hashed_token) {
+          linkData = res.data;
+          linkType = 'magiclink';
+        }
+      }
     }
 
     if (!invitedUserId) {
       throw new Error('Failed to resolve user ID');
     }
 
-    // Insert into organization_members
+    // Insert or update organization_members
     const { error: insertError } = await supabaseAdmin
       .from('organization_members')
       .insert({
@@ -179,20 +257,20 @@ serve(async (req) => {
         user_id: invitedUserId,
         role: normalizedRole,
         permissions: permissions || []
-      })
+      });
 
     if (insertError) {
-      // If they are already in the org, just update their role and permissions
+      // If they are already in the org, update their role and permissions
       if (insertError.code === '23505') { 
-         const { error: updateError } = await supabaseAdmin
-           .from('organization_members')
-           .update({ role: normalizedRole, permissions: permissions || [] })
-           .eq('org_id', org_id)
-           .eq('user_id', invitedUserId)
+        const { error: updateError } = await supabaseAdmin
+          .from('organization_members')
+          .update({ role: normalizedRole, permissions: permissions || [] })
+          .eq('org_id', org_id)
+          .eq('user_id', invitedUserId);
            
-         if (updateError) throw updateError;
+        if (updateError) throw updateError;
       } else {
-         throw insertError
+        throw insertError;
       }
     }
 
@@ -219,25 +297,23 @@ serve(async (req) => {
         });
     }
 
-    // If this is an existing user, send notification email with direct workspace access link
+    // Dispatch the appropriate email reliably via AWS SES nodemailer
     if (isExisting) {
+      // Case 1: Existing confirmed user (e.g. employee with attendance login, or already registered)
       let accessUrl = `${targetOrigin}/dashboard`;
       try {
-        const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+        const { data: directLink } = await supabaseAdmin.auth.admin.generateLink({
           type: 'magiclink',
           email: cleanEmail,
-          options: {
-            redirectTo: `${targetOrigin}/dashboard`
-          }
+          options: { redirectTo: `${targetOrigin}/dashboard` }
         });
-        if (!linkErr && linkData?.properties?.action_link) {
-          accessUrl = linkData.properties.action_link;
+        if (directLink?.properties?.action_link) {
+          accessUrl = directLink.properties.action_link;
         }
       } catch (linkEx) {
-        console.warn('generateLink fallback:', linkEx);
+        console.warn('generateLink for existing user fallback:', linkEx);
       }
 
-      const roleDisplay = normalizedRole === 'ca_cs' ? 'CA/CS' : rawRole;
       const emailHtml = `
         <div style="background-color: #f8fafc; padding: 40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
           <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); margin: 0 auto;">
@@ -258,7 +334,7 @@ serve(async (req) => {
                 </p>
                 <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
                   <p style="font-size: 14px; color: #166534; margin: 0; font-weight: 500;">
-                    ✅ <strong>Already Registered:</strong> Because you already have an account on Aassay Biz, this business workspace has been automatically added to your profile.
+                    ✅ <strong>Already Registered:</strong> Because your email is already registered on Aassay Biz, this business workspace has been automatically linked to your account.
                   </p>
                 </div>
                 <div style="text-align: center; margin: 28px 0;">
@@ -280,46 +356,82 @@ serve(async (req) => {
         </div>
       `;
 
-      const sendEmailTask = (async () => {
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 6000);
-          await fetch(`${supabaseUrl}/functions/v1/send-email-dispatcher`, {
-            method: 'POST',
-            signal: controller.signal,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${supabaseServiceKey}`
-            },
-            body: JSON.stringify({
-              orgId: org_id,
-              to: cleanEmail,
-              subject: `Access Granted: You have been added to ${businessName} on Aassay Biz`,
-              html: emailHtml
-            })
-          });
-          clearTimeout(timeoutId);
-        } catch (mailEx) {
-          console.warn('Failed to send existing user access email:', mailEx);
-        }
-      })();
+      await sendSesEmail({
+        to: cleanEmail,
+        subject: `Access Granted: You have been added to ${businessName} on Aassay Biz`,
+        html: emailHtml
+      });
 
-      if (typeof (globalThis as any).EdgeRuntime !== 'undefined' && (globalThis as any).EdgeRuntime?.waitUntil) {
-        (globalThis as any).EdgeRuntime.waitUntil(sendEmailTask);
-      } else {
-        sendEmailTask.catch(() => {});
-      }
+    } else {
+      // Case 2: New user OR unconfirmed user (employee needing to set password)
+      // Use direct token_hash link to frontend URL so email security scanners will NOT consume the one-time OTP!
+      const hashedToken = linkData?.properties?.hashed_token;
+      const directHashLink = hashedToken
+        ? `${targetOrigin}/reset-password?token_hash=${hashedToken}&type=${linkType}&email=${encodeURIComponent(cleanEmail)}`
+        : (linkData?.properties?.action_link || `${targetOrigin}/reset-password?email=${encodeURIComponent(cleanEmail)}`);
+
+      const inviteEmailHtml = `
+        <div style="background-color: #f8fafc; padding: 40px 16px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #1e293b;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 560px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05); margin: 0 auto;">
+            <tr>
+              <td style="background: linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%); padding: 32px 24px; text-align: center; border-bottom: 4px solid #e77817;">
+                <div style="background-color: #ffffff; display: inline-block; padding: 8px 20px; border-radius: 10px; margin-bottom: 12px; border: 1px solid rgba(231, 120, 23, 0.2);">
+                  <img src="https://aassaybiz.com/email-logo.png" alt="Aassay Biz" width="160" height="38" border="0" style="height: 36px; width: auto; max-width: 180px; display: block; object-fit: contain; margin: 0 auto; border: 0;" />
+                </div>
+                <h1 style="margin: 8px 0 0 0; color: #ffffff; font-size: 20px; font-weight: 800;">Team Member Invitation</h1>
+                <p style="margin: 4px 0 0 0; color: #bfdbfe; font-size: 13px; font-weight: 500;">Everything you need. One smart platform</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 32px 28px;">
+                <p style="font-size: 15px; color: #334155; margin: 0 0 16px 0;">Hello,</p>
+                <p style="font-size: 15px; color: #475569; line-height: 1.6; margin: 0 0 20px 0;">
+                  You have been invited to join <strong>${businessName}</strong> as <strong>${roleDisplay}</strong> on Aassay Biz.
+                </p>
+                <p style="font-size: 14px; color: #64748b; line-height: 1.6; margin: 0 0 24px 0;">
+                  Please click the button below to accept the invitation, set your account password, and access your workspace.
+                </p>
+                <div style="text-align: center; margin: 28px 0;">
+                  <a href="${directHashLink}" style="background: linear-gradient(135deg, #e77817 0%, #ea580c 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 10px; font-weight: 700; font-size: 15px; display: inline-block; box-shadow: 0 4px 12px rgba(231, 120, 23, 0.3);">
+                    Accept Invitation &amp; Set Password &rarr;
+                  </a>
+                </div>
+                <div style="background-color: #f1f5f9; border-radius: 8px; padding: 12px 16px; margin: 20px 0;">
+                  <p style="font-size: 12px; color: #64748b; margin: 0; line-height: 1.5;">
+                    🔒 <strong>Security Note:</strong> This invitation link is unique to <strong>${cleanEmail}</strong>. If you already have an account or password set, you can also sign in directly at <a href="${targetOrigin}/login" style="color: #2563eb; font-weight: 600;">aassaybiz.com</a>.
+                  </p>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td style="background-color: #f8fafc; border-top: 1px solid #e2e8f0; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                Aassay Biz &bull; Everything you need. One smart platform
+              </td>
+            </tr>
+          </table>
+        </div>
+      `;
+
+      await sendSesEmail({
+        to: cleanEmail,
+        subject: `Invitation to join ${businessName} on Aassay Biz`,
+        html: inviteEmailHtml
+      });
     }
 
     return new Response(
-      JSON.stringify({ success: true, message: isExisting ? 'Existing user added to business successfully' : 'User invited successfully' }),
+      JSON.stringify({ 
+        success: true, 
+        message: isExisting ? 'Existing user added to business and notified successfully' : 'User invited and invitation email dispatched successfully' 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
-    )
+    );
 
-  } catch (error) {
+  } catch (error: any) {
+    console.error('[invite-team-member] Error:', error.message);
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
-    )
+    );
   }
-})
+});

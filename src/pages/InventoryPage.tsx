@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon, Warehouse, Plus } from "lucide-react";
+import { Package, Search, AlertTriangle, PackageX, PackagePlus, Sparkles, Database, Wrench, Pencil, Trash2, History, Infinity as InfinityIcon, Warehouse, Plus, ArrowLeftRight } from "lucide-react";
 import { logStockMovements } from "@/lib/stock";
 import { useAuth } from "@/lib/auth";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { CatalogNav } from "@/components/shared/CatalogNav";
 import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
+import { TransferStockDialog } from "@/components/shared/TransferStockDialog";
 import ReactMarkdown from "react-markdown";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -36,10 +37,13 @@ export default function InventoryPage() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [tab, setTab] = useState<"all" | "products" | "services" | "low">("all");
+  const [tab, setTab] = useState<"all" | "products" | "services" | "low" | "transfers">("all");
   const [sortKey, setSortKey] = useState<string>("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [branches, setBranches] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<any[]>([]);
   const [target, setTarget] = useState<any>(null);
   const [adjustQty, setAdjustQty] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
@@ -59,14 +63,18 @@ export default function InventoryPage() {
   const fetchItems = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const [itemsRes, whRes, movesRes] = await Promise.all([
+    const [itemsRes, whRes, movesRes, branchRes, trfRes] = await Promise.all([
       supabase.from("items").select("id, name, sku, unit, stock_quantity, unit_price, purchase_price, category, type, description, hsn_code").eq("org_id", org.id).order("type", { ascending: false }).order("name"),
       supabase.from("warehouses").select("id, name").eq("org_id", org.id),
-      supabase.from("stock_movements").select("item_id, warehouse_id, change_qty").eq("org_id", org.id)
+      supabase.from("stock_movements").select("item_id, warehouse_id, change_qty").eq("org_id", org.id),
+      supabase.from("branches").select("id, name, code, is_default").eq("org_id", org.id).eq("is_active", true),
+      supabase.from("stock_transfers" as any).select("*, from_branch:from_branch_id(name), to_branch:to_branch_id(name), lines:stock_transfer_lines(quantity, item_id, items(name))").eq("org_id", org.id).order("created_at", { ascending: false }),
     ]);
     
     setItems(itemsRes.data || []);
     setWarehouses(whRes.data || []);
+    setBranches(branchRes.data || []);
+    setTransfers(trfRes.data || []);
     
     if (movesRes.data) {
        const wStock: Record<string, Record<string, { qty: number, value: number }>> = {};
@@ -260,6 +268,15 @@ export default function InventoryPage() {
               + Warehouse
             </Button>
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setTransferOpen(true)}
+            title="Inter-Branch Stock Transfer"
+          >
+            <ArrowLeftRight className="mr-1.5 h-4 w-4 text-muted-foreground" />
+            Transfer Stock
+          </Button>
           <Button size="sm" onClick={() => { setEditTarget(null); setAddOpen(true); }}>
             <PackagePlus className="mr-1.5 h-4 w-4" /> Add Product
           </Button>
@@ -292,6 +309,7 @@ export default function InventoryPage() {
             <TabsTrigger value="products">Products</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
             <TabsTrigger value="low">Low Stock</TabsTrigger>
+            <TabsTrigger value="transfers">Branch Transfers</TabsTrigger>
           </TabsList>
         </Tabs>
         <div className="relative sm:w-80">
@@ -309,6 +327,59 @@ export default function InventoryPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : tab === "transfers" ? (
+            transfers.length === 0 ? (
+              <EmptyState
+                icon={ArrowLeftRight}
+                title="No Branch Transfers Yet"
+                description="Transfer stock between branches like Bhopal and Indore to keep branch inventories balanced."
+                actionLabel="Transfer Stock"
+                onAction={() => setTransferOpen(true)}
+              />
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">TRANSFER #</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">DATE</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">FROM BRANCH</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">TO BRANCH</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">ITEMS & QTY</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">STATUS</TableHead>
+                    <TableHead className="text-[11px] tracking-wider text-muted-foreground">NOTES</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transfers.map((trf) => (
+                    <TableRow key={trf.id} className="hover:bg-muted/40">
+                      <TableCell className="font-semibold text-primary">{trf.transfer_number}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{trf.transfer_date}</TableCell>
+                      <TableCell className="font-medium">{trf.from_branch?.name || "Bhopal"}</TableCell>
+                      <TableCell className="font-medium text-emerald-600">{trf.to_branch?.name || "Indore"}</TableCell>
+                      <TableCell>
+                        {trf.lines && trf.lines.length > 0 ? (
+                          trf.lines.map((l: any, idx: number) => (
+                            <span key={idx} className="inline-block bg-muted px-2 py-0.5 rounded text-xs font-medium mr-1.5">
+                              {l.items?.name || "Product"}: {l.quantity}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Stock units</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400">
+                          {trf.status?.toUpperCase() || "COMPLETED"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                        {trf.notes || "—"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )
           ) : filtered.length === 0 ? (
             <EmptyState
               icon={Package}
@@ -525,6 +596,14 @@ export default function InventoryPage() {
         onWarehouseAdded={() => {
           toast({ title: "Warehouse added successfully" });
         }}
+      />
+
+      <TransferStockDialog
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        branches={branches}
+        items={items}
+        onTransferSuccess={fetchItems}
       />
     </div>
   );

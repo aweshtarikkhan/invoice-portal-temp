@@ -22,6 +22,7 @@ import { formatCurrency } from "@/lib/currency";
 import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock, MessageSquare, UserCircle2, Calculator, Edit3, Sparkles, HardHat } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { SalariesTab } from "@/components/payroll/SalariesTab";
+import { safeFormatTime, safeFormatDate, toHHmm } from "@/lib/utils";
 
 type Status = string;
 
@@ -154,16 +155,59 @@ export default function AttendancePage() {
     }
   }, [org]);
 
-  const monthStart = useMemo(() => startOfMonth(parseISO(month + "-01")), [month]);
-  const monthEnd = useMemo(() => endOfMonth(monthStart), [monthStart]);
-  const days = useMemo(() => eachDayOfInterval({ start: monthStart, end: monthEnd }), [monthStart, monthEnd]);
+  const monthStart = useMemo(() => {
+    try {
+      if (!month || typeof month !== "string") return startOfMonth(new Date());
+      const parsed = parseISO(month.length === 7 ? month + "-01" : month);
+      if (isNaN(parsed.getTime())) return startOfMonth(new Date());
+      return startOfMonth(parsed);
+    } catch {
+      return startOfMonth(new Date());
+    }
+  }, [month]);
+
+  const monthEnd = useMemo(() => {
+    try {
+      return endOfMonth(monthStart);
+    } catch {
+      return endOfMonth(new Date());
+    }
+  }, [monthStart]);
+
+  const days = useMemo(() => {
+    try {
+      return eachDayOfInterval({ start: monthStart, end: monthEnd });
+    } catch {
+      const now = new Date();
+      return eachDayOfInterval({ start: startOfMonth(now), end: endOfMonth(now) });
+    }
+  }, [monthStart, monthEnd]);
 
   // Helper: compute attendance status from clock-in time + shift rules
   const computeShiftStatus = (clockInTime: string, shift: any, defaultShift?: any): Status => {
     if (!clockInTime) return "absent";
-    const d = new Date(clockInTime);
-    const clockInMins = d.getHours() * 60 + d.getMinutes();
-    
+    let clockInMins = NaN;
+    try {
+      const d = new Date(clockInTime);
+      if (!isNaN(d.getTime())) {
+        clockInMins = d.getHours() * 60 + d.getMinutes();
+      }
+    } catch {}
+
+    if (isNaN(clockInMins)) {
+      const match = String(clockInTime).match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+      if (match) {
+        let h = parseInt(match[1], 10);
+        const m = parseInt(match[2], 10);
+        const ampm = match[3]?.toUpperCase();
+        if (ampm === "PM" && h < 12) h += 12;
+        if (ampm === "AM" && h === 12) h = 0;
+        clockInMins = h * 60 + m;
+      }
+    }
+
+    if (isNaN(clockInMins)) return "present";
+
     // Effective shift: employee shift -> org default shift -> office default
     const effectiveShift = shift || defaultShift || {
       start_time: "09:00",
@@ -325,17 +369,60 @@ export default function AttendancePage() {
       if (!org?.id) return;
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // 1. Try to find employee by auth_user_id
       let { data } = await (supabase as any)
+        .from("employees")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("auth_user_id", user.id)
+        .maybeSingle();
+
+      // 2. Try to find by email and link auth_user_id
+      if (!data && user.email) {
+        const { data: byEmail } = await (supabase as any)
           .from("employees")
           .select("*")
           .eq("org_id", org.id)
-          .eq("auth_user_id", user.id)
+          .ilike("email", user.email)
           .maybeSingle();
-          
-        // HR Admin auto-creation removed as per user request
-        // data will remain null if no employee profile exists for this user
-        
-        setHrEmployee(data || null);
+        if (byEmail) {
+          data = byEmail;
+          await (supabase as any).from("employees").update({ auth_user_id: user.id }).eq("id", byEmail.id);
+        }
+      }
+
+      // 3. Fallback: Any staff in org designated HR, Admin, or Owner
+      if (!data) {
+        const { data: hrStaff } = await (supabase as any)
+          .from("employees")
+          .select("*")
+          .eq("org_id", org.id)
+          .or("designation.ilike.%hr%,designation.ilike.%admin%,designation.ilike.%owner%")
+          .limit(1)
+          .maybeSingle();
+        if (hrStaff) {
+          data = hrStaff;
+        }
+      }
+
+      // 4. Fallback: Main account manager (DO NOT auto-create employee profile in database)
+      if (!data) {
+        const hrName = user.user_metadata?.first_name 
+          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ""}`.trim()
+          : (user.email?.split("@")[0] || "HR Admin");
+        data = {
+          id: user.id,
+          org_id: org.id,
+          name: hrName,
+          email: user.email,
+          designation: "HR & Admin",
+          auth_user_id: user.id,
+          is_manager: true,
+        };
+      }
+
+      setHrEmployee(data || null);
     };
     loadHrEmployee();
   }, [org?.id]);
@@ -370,7 +457,8 @@ export default function AttendancePage() {
 
   // Dynamic sorting: whoever sent the latest message or has unread messages jumps to the TOP!
   const sortedChatEmployees = useMemo(() => {
-    return [...employees].sort((a, b) => {
+    const list = employees.filter((e) => e.id !== hrEmployee?.id && (!hrEmployee?.auth_user_id || e.auth_user_id !== hrEmployee.auth_user_id));
+    return [...list].sort((a, b) => {
       const unreadA = unreadMap[a.id] || 0;
       const unreadB = unreadMap[b.id] || 0;
       if (unreadA > 0 && unreadB === 0) return -1;
@@ -380,7 +468,7 @@ export default function AttendancePage() {
       if (timeA !== timeB) return timeB - timeA;
       return a.name.localeCompare(b.name);
     });
-  }, [employees, unreadMap, lastMessageTimeMap]);
+  }, [employees, unreadMap, lastMessageTimeMap, hrEmployee]);
 
   const chatSelectedEmpRef = useRef(chatSelectedEmp);
   useEffect(() => {
@@ -423,7 +511,7 @@ export default function AttendancePage() {
       if (showLoading) setChatLoading(true);
       const { data } = await (supabase as any)
         .from("chat_messages")
-        .select("*, sender:employees!sender_id(id, name)")
+        .select("*")
         .or(
           `and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.id})`
         )
@@ -443,7 +531,12 @@ export default function AttendancePage() {
                 map.delete(k);
               }
             }
-            map.set(d.id, { ...map.get(d.id), ...d });
+            const senderName = d.sender_id === hrEmployee.id ? "You" : (chatSelectedEmp.name || "Employee");
+            map.set(d.id, { 
+              ...map.get(d.id), 
+              ...d, 
+              sender: { id: d.sender_id, name: senderName } 
+            });
           }
           return Array.from(map.values()).sort(
             (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
@@ -610,7 +703,7 @@ export default function AttendancePage() {
         receiver_id: chatSelectedEmp.id,
         message: text,
         status: "sent",
-      }).select("*, sender:employees!sender_id(id, name)").single();
+      }).select().single();
 
       if (error) throw error;
 
@@ -917,7 +1010,7 @@ export default function AttendancePage() {
           dateList.push(format(cur, "yyyy-MM-dd"));
         }
 
-        if (newStatus === "approved") {
+        if (newStatus === "approved" && leaveReq.status !== "approved") {
           let attStatus = "paid_leave";
           if (leaveReq.leave_type === "half_day") attStatus = "half_day";
           else if (leaveReq.leave_type === "wfh") attStatus = "wfh";
@@ -1139,16 +1232,43 @@ export default function AttendancePage() {
     }
   };
 
-  const formatTime = (iso: string) => format(parseISO(iso), "hh:mm a");
+  const formatTime = (isoOrTime: any) => safeFormatTime(isoOrTime);
 
   const calculateHours = (inTime: string, outTime: string) => {
     try {
-      const start = new Date(inTime).getTime();
-      const end = new Date(outTime).getTime();
-      const diffMs = end - start;
-      if (isNaN(diffMs) || diffMs <= 0) return "-";
-      const hrs = Math.floor(diffMs / (1000 * 60 * 60));
-      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const sMins = (() => {
+        const str = String(inTime).trim();
+        const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (m) {
+          let h = parseInt(m[1], 10);
+          if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12;
+          if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0;
+          return h * 60 + parseInt(m[2], 10);
+        }
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d.getHours() * 60 + d.getMinutes();
+        return NaN;
+      })();
+
+      const eMins = (() => {
+        const str = String(outTime).trim();
+        const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+        if (m) {
+          let h = parseInt(m[1], 10);
+          if (m[3]?.toUpperCase() === "PM" && h < 12) h += 12;
+          if (m[3]?.toUpperCase() === "AM" && h === 12) h = 0;
+          return h * 60 + parseInt(m[2], 10);
+        }
+        const d = new Date(str);
+        if (!isNaN(d.getTime())) return d.getHours() * 60 + d.getMinutes();
+        return NaN;
+      })();
+
+      if (isNaN(sMins) || isNaN(eMins)) return "-";
+      const diffMins = eMins - sMins;
+      if (diffMins <= 0) return "-";
+      const hrs = Math.floor(diffMins / 60);
+      const mins = diffMins % 60;
       return `${hrs}h ${mins}m`;
     } catch {
       return "-";
@@ -1191,7 +1311,7 @@ export default function AttendancePage() {
               <div className="flex items-start justify-between border-b pb-3">
                 <div>
                   <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(parseISO(selectedClockInfo.date), "MMMM dd, yyyy")}</p>
+                  <p className="font-medium">{safeFormatDate(selectedClockInfo.date, "MMMM dd, yyyy")}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted-foreground">Status</p>
@@ -1247,7 +1367,7 @@ export default function AttendancePage() {
               <div className="bg-slate-50 p-3 rounded-lg border">
                 <p className="text-sm font-semibold text-slate-800">{manualPunchEmp.name}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                  <span>Date: <strong className="text-slate-700">{format(parseISO(dailyDate), "dd MMM yyyy")}</strong></span>
+                  <span>Date: <strong className="text-slate-700">{safeFormatDate(dailyDate, "dd MMM yyyy")}</strong></span>
                   {(manualPunchEmp as any).wage_type === "daily" && (
                     <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-[10px]">Daily Wager (₹{(manualPunchEmp as any).daily_rate || (manualPunchEmp as any).monthly_salary}/day)</Badge>
                   )}
@@ -1788,16 +1908,8 @@ export default function AttendancePage() {
                                 className="h-7 text-xs font-medium gap-1"
                                 onClick={() => {
                                   setManualPunchEmp(emp);
-                                  if (log?.clock_in_time) {
-                                    try { setManualPunchIn(format(new Date(log.clock_in_time), "HH:mm")); } catch {}
-                                  } else {
-                                    setManualPunchIn("09:00");
-                                  }
-                                  if (log?.clock_out_time) {
-                                    try { setManualPunchOut(format(new Date(log.clock_out_time), "HH:mm")); } catch {}
-                                  } else {
-                                    setManualPunchOut("18:00");
-                                  }
+                                  setManualPunchIn(toHHmm(log?.clock_in_time, "09:00"));
+                                  setManualPunchOut(toHHmm(log?.clock_out_time, "18:00"));
                                 }}
                               >
                                 <Edit3 className="w-3 h-3 text-primary" />
@@ -1840,7 +1952,7 @@ export default function AttendancePage() {
                       </div>
                     </div>
                     <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-300 text-xs">
-                      {format(new Date(dailyDate), "dd MMM yyyy")}
+                      {safeFormatDate(dailyDate, "dd MMM yyyy")}
                     </Badge>
                   </div>
                   <CardContent className="p-0 overflow-auto">
@@ -1861,8 +1973,8 @@ export default function AttendancePage() {
                           const log = dailyLogs[emp.id];
                           const hasClockIn = !!log?.clock_in_time;
                           const hasClockOut = !!log?.clock_out_time;
-                          const existingIn = hasClockIn ? format(new Date(log.clock_in_time), "HH:mm") : "";
-                          const existingOut = hasClockOut ? format(new Date(log.clock_out_time), "HH:mm") : "";
+                          const existingIn = hasClockIn ? toHHmm(log.clock_in_time, "") : "";
+                          const existingOut = hasClockOut ? toHHmm(log.clock_out_time, "") : "";
                           const wageType = (emp as any).wage_type as "daily" | "hourly";
                           const dailyRate = Number((emp as any).daily_rate) || 0;
                           const hourlyRate = Number((emp as any).hourly_rate) || 0;
@@ -2062,13 +2174,13 @@ export default function AttendancePage() {
                         )}
                       </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
-                        {format(parseISO(reg.date), 'MMM dd, yyyy')}
+                        {safeFormatDate(reg.date, 'MMM dd, yyyy')}
                       </TableCell>
                       <TableCell className="whitespace-nowrap">
                         {reg.requested_clock_in ? (
                           <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <Clock className="w-3 h-3 mr-1 text-emerald-600" />
-                            {format(new Date(reg.requested_clock_in), 'hh:mm a')}
+                            {safeFormatTime(reg.requested_clock_in)}
                           </span>
                         ) : '-'}
                       </TableCell>
@@ -2076,7 +2188,7 @@ export default function AttendancePage() {
                         {reg.requested_clock_out ? (
                           <span className="inline-flex items-center text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
                             <Clock className="w-3 h-3 mr-1 text-amber-600" />
-                            {format(new Date(reg.requested_clock_out), 'hh:mm a')}
+                            {safeFormatTime(reg.requested_clock_out)}
                           </span>
                         ) : '-'}
                       </TableCell>
@@ -2141,7 +2253,7 @@ export default function AttendancePage() {
                       <TableRow key={idx}>
                         <TableCell>
                           <div className="font-medium">{fest.name}</div>
-                          <div className="text-xs text-muted-foreground">{format(parseISO(fest.date), "MMM dd, yyyy")}</div>
+                          <div className="text-xs text-muted-foreground">{safeFormatDate(fest.date, "MMM dd, yyyy")}</div>
                         </TableCell>
                         <TableCell className="text-right">
                           <Button 
@@ -2185,7 +2297,7 @@ export default function AttendancePage() {
                   holidays.map(h => (
                     <TableRow key={h.id}>
                       <TableCell className="font-medium">{h.name}</TableCell>
-                      <TableCell>{format(parseISO(h.date), "MMMM dd, yyyy")} ({format(parseISO(h.date), "EEEE")})</TableCell>
+                      <TableCell>{safeFormatDate(h.date, "MMMM dd, yyyy")} ({safeFormatDate(h.date, "EEEE")})</TableCell>
                       <TableCell className="capitalize">{h.type}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => removeHoliday(h.id)}>Remove</Button>
@@ -2408,7 +2520,7 @@ export default function AttendancePage() {
                             </div>
                             <span className="text-[10px] text-muted-foreground px-1">
                               {isHR ? "You" : msg.sender?.name} •{" "}
-                              {format(new Date(msg.created_at), "hh:mm a")}
+                              {safeFormatTime(msg.created_at)}
                               {isHR && (
                                 <span className="ml-1">
                                   {msg.status === "read" ? " ✓✓" : " ✓"}
@@ -2502,7 +2614,7 @@ export default function AttendancePage() {
                   {detailRecords.map((r, i) => (
                     <TableRow key={i} className="hover:bg-slate-50">
                       <TableCell>
-                        <div className="font-medium">{format(parseISO(r.date), "MMM dd, yyyy")}</div>
+                        <div className="font-medium">{safeFormatDate(r.date, "MMM dd, yyyy")}</div>
                         <div className="text-xs text-muted-foreground">{r.dayName}</div>
                       </TableCell>
                       <TableCell>
@@ -2520,7 +2632,7 @@ export default function AttendancePage() {
                       <TableCell>
                         {r.clockIn ? (
                           <div className="flex items-center gap-1 text-emerald-700 text-sm">
-                            <Clock className="w-3 h-3" /> {format(new Date(r.clockIn), "hh:mm a")}
+                            <Clock className="w-3 h-3" /> {safeFormatTime(r.clockIn)}
                           </div>
                         ) : "-"}
                       </TableCell>
@@ -2528,7 +2640,7 @@ export default function AttendancePage() {
                       <TableCell>
                         {r.clockOut ? (
                           <div className="flex items-center gap-1 text-amber-700 text-sm">
-                            <Clock className="w-3 h-3" /> {format(new Date(r.clockOut), "hh:mm a")}
+                            <Clock className="w-3 h-3" /> {safeFormatTime(r.clockOut)}
                           </div>
                         ) : "-"}
                       </TableCell>

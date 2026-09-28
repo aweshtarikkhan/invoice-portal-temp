@@ -60,6 +60,7 @@ import { SalaryStructureDialog } from "./SalaryStructureDialog";
 import { PayslipModal } from "./PayslipModal";
 import { WagerSlipModal } from "./WagerSlipModal";
 import { postPayrollJournal, postWagerPaymentJournal, PayrollJournalData } from "@/lib/accounting";
+import { safeFormatTime, toHHmm, safeFormatDate } from "@/lib/utils";
 
 export function SalariesTab() {
   const org = useAppStore((s) => s.organization);
@@ -1463,7 +1464,7 @@ export function SalariesTab() {
                         </TableCell>
 
                         <TableCell className="text-xs text-muted-foreground">
-                          {format(parseISO(run.created_at), "dd MMM yyyy, hh:mm a")}
+                          {safeFormatDate(run.created_at, "dd MMM yyyy, hh:mm a")}
                         </TableCell>
 
                         <TableCell className="text-center">
@@ -1554,9 +1555,9 @@ export function SalariesTab() {
                   ) : (
                     selectedOtBreakdown.overtime_breakdown.map((row, idx) => (
                       <TableRow key={idx} className="text-xs">
-                        <TableCell className="font-medium">{format(parseISO(row.date), "dd MMM yyyy")}</TableCell>
-                        <TableCell className="font-mono">{row.clock_in ? format(parseISO(row.clock_in), "hh:mm a") : "-"}</TableCell>
-                        <TableCell className="font-mono">{row.clock_out ? format(parseISO(row.clock_out), "hh:mm a") : "-"}</TableCell>
+                        <TableCell className="font-medium">{safeFormatDate(row.date, "dd MMM yyyy")}</TableCell>
+                        <TableCell className="font-mono">{safeFormatTime(row.clock_in)}</TableCell>
+                        <TableCell className="font-mono">{safeFormatTime(row.clock_out)}</TableCell>
                         <TableCell className="text-right font-semibold">{row.worked_hours}h</TableCell>
                         <TableCell className="text-right text-muted-foreground">{row.standard_hours}h</TableCell>
                         <TableCell className="text-right font-bold text-amber-700">+{row.overtime_hours}h</TableCell>
@@ -1856,11 +1857,11 @@ export function SalariesTab() {
                         </TableCell>
 
                         <TableCell className="font-mono text-xs">
-                          {d.clock_in ? format(parseISO(d.clock_in), "hh:mm a") : "-"}
+                          {safeFormatTime(d.clock_in)}
                         </TableCell>
 
                         <TableCell className="font-mono text-xs">
-                          {d.clock_out ? format(parseISO(d.clock_out), "hh:mm a") : "-"}
+                          {safeFormatTime(d.clock_out)}
                         </TableCell>
 
                         <TableCell className="text-right font-semibold text-xs">
@@ -1888,12 +1889,12 @@ export function SalariesTab() {
                               setEditingDayDate(d.date);
                               setEditingDayStatus(d.status === "absent" ? "present" : d.status);
                               if (d.clock_in) {
-                                try { setEditingDayIn(format(parseISO(d.clock_in), "HH:mm")); } catch {}
+                                setEditingDayIn(toHHmm(d.clock_in, "09:00"));
                               } else {
                                 setEditingDayIn("09:00");
                               }
                               if (d.clock_out) {
-                                try { setEditingDayOut(format(parseISO(d.clock_out), "HH:mm")); } catch {}
+                                setEditingDayOut(toHHmm(d.clock_out, "18:00"));
                               } else {
                                 setEditingDayOut("18:00");
                               }

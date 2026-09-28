@@ -7,6 +7,15 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
+// Helper to ensure prices from DB are in Rupees
+const normalizePriceToRupees = (price: number, isYearly: boolean): number => {
+  if (!price || price <= 0) return 0;
+  if (isYearly) {
+    return price >= 50000 ? Math.round(price / 100) : price;
+  }
+  return price >= 10000 ? Math.round(price / 100) : price;
+};
+
 export function PlansManager() {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -61,11 +70,11 @@ export function PlansManager() {
                   <Input 
                     type="number" 
                     className="bg-slate-100 border-slate-200 text-slate-800"
-                    value={plan.price_monthly / 100} 
+                    value={normalizePriceToRupees(plan.price_monthly, false)} 
                     onChange={e => {
                       const newPlans = [...plans];
                       const idx = newPlans.findIndex(p => p.id === plan.id);
-                      newPlans[idx].price_monthly = (parseInt(e.target.value) || 0) * 100;
+                      newPlans[idx].price_monthly = parseInt(e.target.value) || 0;
                       setPlans(newPlans);
                     }}
                   />
@@ -78,11 +87,11 @@ export function PlansManager() {
                   <Input 
                     type="number" 
                     className="bg-slate-100 border-slate-200 text-slate-800"
-                    value={plan.price_yearly / 100} 
+                    value={normalizePriceToRupees(plan.price_yearly, true)} 
                     onChange={e => {
                       const newPlans = [...plans];
                       const idx = newPlans.findIndex(p => p.id === plan.id);
-                      newPlans[idx].price_yearly = (parseInt(e.target.value) || 0) * 100;
+                      newPlans[idx].price_yearly = parseInt(e.target.value) || 0;
                       setPlans(newPlans);
                     }}
                   />

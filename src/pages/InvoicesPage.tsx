@@ -74,6 +74,7 @@ const statusTabs = ["all", "outstanding", "dueToday", "dueIn30", "overdue", "dra
 export default function InvoicesPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
+  const userRole = useAppStore((s) => s.userRole);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -148,7 +149,11 @@ export default function InvoicesPage() {
   const remainingInvoices = isUnlimited ? Infinity : Math.max(0, 100 - invoiceCount);
 
   const handleNewInvoiceClick = () => {
-    if (profile && (!profile.address_line || !profile.pincode)) {
+    const isOrgOwner = (org as any)?.owner_id === profile?.user_id || userRole === "owner";
+    const hasOrgAddress = Boolean(profile?.address_line || (org?.address as any)?.street || (org?.address as any)?.address_line);
+    const hasOrgPincode = Boolean(profile?.pincode || (org?.address as any)?.postal_code || (org?.address as any)?.pincode);
+
+    if (isOrgOwner && (!hasOrgAddress || !hasOrgPincode)) {
       setShowIncompleteProfileDialog(true);
       return;
     }
