@@ -53,7 +53,7 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Bank Accounts: Go to Settings -> Invoices -> Bank Accounts tab. Here you can add, edit, or delete saved bank accounts (Bank Name, Account Holder Name, Account Number, IFSC, Branch, UPI).
 
 8. PLATFORM ADMIN (Super Admin Only)
-- Location: Go to /platform-admin or click "Admin Panel" under System & Settings.
+- Location: Go to /platform-admin or click "Platform Admin" in the top header or "Platform Admin Panel" in the user profile menu. Platform Admins can seamlessly switch between the App Dashboard (invoicing & business software) and the Platform Admin panel with a single login ID without logging out. From the Platform Admin navbar, clicking "App Dashboard" instantly returns to invoicing.
 - All Users: Shows all registered users with their Account ID (#1XXXXX). Admins can search by Account ID to view users and all businesses associated with that account. You can click "Change Plan" to quickly upgrade/downgrade a user's subscription, or click "Manage" for a detailed dialog to change their roles and module access.
 - Businesses: Admins can search businesses by Account ID (#1XXXXX), business name, or owner email to find all businesses owned under a specific account.
 - Social Media: Admins can update the official social media links (YouTube, Facebook, Instagram) that appear in the landing page footer.

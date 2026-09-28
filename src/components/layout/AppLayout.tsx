@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle, AlertCircle } from "lucide-react";
+import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle, AlertCircle, Shield } from "lucide-react";
 
 function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { profile, signOut } = useAuth();
@@ -141,7 +141,31 @@ export function AppLayout() {
   }, []);
   const { subscriptionPlan, isOnTrial } = useSubscription();
     const navigate = useNavigate();
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const uid = user?.id || profile?.user_id;
+      if (!uid) return;
+      try {
+        const { data: isAdmin, error } = await supabase
+          .rpc("is_platform_admin", { check_user_id: uid });
+        if (isAdmin === true) {
+          setIsPlatformAdmin(true);
+        } else if (error) {
+          const { data: directCheck } = await supabase
+            .from("platform_admins")
+            .select("id")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (directCheck) setIsPlatformAdmin(true);
+        }
+      } catch {
+        // silent catch
+      }
+    };
+    checkAdmin();
+  }, [user?.id, profile?.user_id]);
 
   useEffect(() => {
     // Safety fallback: Never keep user stuck on loading spinner for more than 2.5 seconds
@@ -531,6 +555,18 @@ export function AppLayout() {
                 </div>
               )}
 
+              {isPlatformAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/platform-admin")}
+                  className="hidden sm:flex items-center gap-1.5 text-xs font-semibold border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 bg-indigo-50/90 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 shadow-xs"
+                >
+                  <Shield className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+                  Platform Admin
+                </Button>
+              )}
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -573,6 +609,18 @@ export function AppLayout() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {isPlatformAdmin && (
+                    <>
+                      <DropdownMenuItem
+                        onClick={() => navigate("/platform-admin")}
+                        className="cursor-pointer font-semibold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/70 my-1 rounded-md"
+                      >
+                        <Shield className="mr-2 h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                        Platform Admin Panel
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                    </>
+                  )}
                   <DropdownMenuItem
                     onClick={() => setShowPlanModal(true)}
                     className="cursor-pointer font-semibold text-amber-600 dark:text-amber-500 hover:text-amber-700 dark:hover:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 focus:bg-amber-500/20 focus:text-amber-700 dark:focus:text-amber-400 my-1 rounded-md"

@@ -7,19 +7,50 @@ import { Button } from "@/components/ui/button";
 import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
 
 export function PlatformAdminLayout() {
-  const { profile, signOut } = useAuth();
+  const { profile, user, loading: authLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const [isSuperAdmin, setIsSuperAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const checkSuperAdmin = async () => {
-      if (!profile?.user_id) return;
-      const { data: isAdmin } = await supabase
-        .rpc("is_platform_admin", { check_user_id: profile.user_id });
-      setIsSuperAdmin(isAdmin === true);
+      const targetUserId = user?.id || profile?.user_id;
+      if (!targetUserId) {
+        if (!authLoading && isMounted) {
+          setIsSuperAdmin(false);
+        }
+        return;
+      }
+      try {
+        const { data: isAdmin, error } = await supabase
+          .rpc("is_platform_admin", { check_user_id: targetUserId });
+        
+        if (error) {
+          console.warn("is_platform_admin RPC error, trying direct table check:", error.message);
+          const { data: directCheck } = await supabase
+            .from("platform_admins")
+            .select("id")
+            .eq("user_id", targetUserId)
+            .maybeSingle();
+          if (isMounted) setIsSuperAdmin(!!directCheck);
+        } else {
+          if (isMounted) setIsSuperAdmin(isAdmin === true);
+        }
+      } catch (err) {
+        console.error("SuperAdmin check failed:", err);
+        if (isMounted) setIsSuperAdmin(false);
+      }
     };
-    checkSuperAdmin();
-  }, [profile?.user_id]);
+
+    if (!authLoading) {
+      checkSuperAdmin();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user?.id, profile?.user_id, authLoading]);
 
   if (isSuperAdmin === null) {
     return (
