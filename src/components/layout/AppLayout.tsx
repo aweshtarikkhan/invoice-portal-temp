@@ -398,8 +398,14 @@ export function AppLayout() {
         title: "Account Deleted",
         description: "Your account has been deleted from the database. You can now register again.",
       });
-      await signOut();
-      navigate("/register", { replace: true });
+      try {
+        await signOut();
+      } catch (e) {
+        // User already wiped from database
+      }
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = "/register";
     } catch (err: any) {
       console.error("Account deletion failed:", err);
       toast({
