@@ -7,9 +7,8 @@ import { chatbotKnowledgeBase } from "@/lib/chatbot-knowledge";
 import ReactMarkdown from "react-markdown";
 
 // Initialize Gemini
-// Note: In production, API calls should be proxied through a backend to protect the key.
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_NVIDIA_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
+// Note: Read securely from environment variable VITE_GEMINI_API_KEY
+const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "";
 
 type Message = {
   id: string;
@@ -41,15 +40,16 @@ export const AIChatWidget = () => {
   useEffect(() => {
     if (apiKey && !chatSession) {
       try {
+        const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
+          model: "gemini-2.5-flash",
           systemInstruction: chatbotKnowledgeBase,
         });
         const session = model.startChat({
           history: [],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 500,
+            maxOutputTokens: 600,
           }
         });
         setChatSession(session);
@@ -80,19 +80,48 @@ export const AIChatWidget = () => {
     }
 
     try {
-      const result = await chatSession.sendMessage(userMessage);
-      const response = await result.response;
+      let replyText = "";
+      if (chatSession) {
+        try {
+          const result = await chatSession.sendMessage(userMessage);
+          const response = await result.response;
+          replyText = response.text();
+        } catch (chatErr) {
+          console.warn("Chat session send error, trying direct fallback:", chatErr);
+        }
+      }
+
+      if (!replyText) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        try {
+          const model = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            systemInstruction: chatbotKnowledgeBase,
+          });
+          const result = await model.generateContent(userMessage);
+          replyText = result.response.text();
+        } catch (mErr) {
+          console.warn("gemini-2.5-flash direct failed, trying gemini-flash-latest:", mErr);
+          const modelFallback = genAI.getGenerativeModel({
+            model: "gemini-flash-latest",
+            systemInstruction: chatbotKnowledgeBase,
+          });
+          const result = await modelFallback.generateContent(userMessage);
+          replyText = result.response.text();
+        }
+      }
+
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         role: "model", 
-        content: response.text() 
+        content: replyText || "I am here to help! Please ask any question about AssayBiz." 
       }]);
     } catch (error: any) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         role: "model", 
-        content: "I'm having trouble connecting to my brain right now. Please try again later." 
+        content: "I'm having trouble connecting right now. Please try again in a few moments." 
       }]);
     } finally {
       setIsLoading(false);

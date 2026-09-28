@@ -566,9 +566,9 @@ export default function HRReportsPage() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
-                  if (!attendance.length) return;
+                  if (!recentAttendance.length) return;
                   const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
-                  const rows = attendance.map(att => [
+                  const rows = recentAttendance.map(att => [
                     att.date || '',
                     `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
                     att.status || '',
@@ -586,9 +586,9 @@ export default function HRReportsPage() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
-                  if (!attendance.length) return;
+                  if (!recentAttendance.length) return;
                   const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
-                  const rows = attendance.map(att => [
+                  const rows = recentAttendance.map(att => [
                     att.date || '',
                     `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
                     att.status || '',

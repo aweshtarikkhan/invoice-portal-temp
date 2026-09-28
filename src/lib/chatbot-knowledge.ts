@@ -38,8 +38,8 @@ Below is the complete manual of the portal. Use this to answer user questions ac
     - Business HR (₹599/mo or ₹5,990/yr): 5 employee attendance capacity base.
     - Business CRM (₹349/mo or ₹3,490/yr): Unlimited leads and deals pipeline.
     - Business Promotion (₹349/mo or ₹3,490/yr): Marketing campaigns, journeys, and poster studio.
-- Business Integration Locking: "Business Integration" (Outreach - Official WhatsApp Chats, Business Email, and CRM API Integrations like IndiaMART/Justdial) is strictly locked on the Free Plan. It requires Business Suite or an add-on module. Free plan users see a lock icon (🔒) on Business Integration in the sidebar and are restricted from accessing `/emails`, `/chats`, or `/crm/integrations`.
-- Admin Panel Locking: The Admin Panel (`/admin` under System & Settings) is locked on the Free Plan with an amber lock icon (🔒). Platform access requires Business Suite (5 users base) or paid plans. Upgrading to Business Suite or assigning paid plans via Platform Admin immediately unlocks it for the business.
+- Business Integration Locking: "Business Integration" (Outreach - Official WhatsApp Chats, Business Email, and CRM API Integrations like IndiaMART/Justdial) is strictly locked on the Free Plan. It requires Business Suite or an add-on module. Free plan users see a lock icon (🔒) on Business Integration in the sidebar and are restricted from accessing '/emails', '/chats', or '/crm/integrations'.
+- Admin Panel Locking: The Admin Panel ('/admin' under System & Settings) is locked on the Free Plan with an amber lock icon (🔒). Platform access requires Business Suite (5 users base) or paid plans. Upgrading to Business Suite or assigning paid plans via Platform Admin immediately unlocks it for the business.
 - Team Member Invitations & Management: Owners and managers can manage platform users from Admin Panel -> Organization Users. Invitations are reliably dispatched via AWS SES. Existing users and employees who already have attendance portal access or an Aassay Biz account receive an immediate "Workspace Access Granted" notification with a direct workspace access link. New users receive an invitation link with client-side token verification (token_hash). Admins can click "Resend Invite" on any pending employee to trigger a fresh invitation email instantly, click "Edit" to modify their role (Staff, Manager, Accountant, Sales Executive, Admin, CA/CS) and customize granular feature permissions with Select All / Clear All controls, or click "Delete" to safely revoke platform access.
 - Top Navbar: Contains links to pages like Brochure, Pamphlet, Pricing, etc.
 
@@ -57,12 +57,12 @@ Below is the complete manual of the portal. Use this to answer user questions ac
   - You can add Bank Account Details (either type them or select from saved accounts via a dropdown).
   - Can be used for offline billing without GST setup.
 - Purchase Invoices / Bills: Go to Purchases -> Purchase Invoices to track bills. When a purchase bill is created from a Goods Receipt (GRN), stock addition is automatically locked with an informative banner to prevent duplicate stock inflation since stock was already received in the GRN.
-- Debit Notes (Purchase Returns): Go to Purchases -> Debit Notes (`/debit-notes`). Record goods returned to vendors, specify returned quantities and rates, and optionally link to a purchase bill. When saved, returned items are automatically deducted from inventory stock, and outstanding vendor bill payables are reduced.
+- Debit Notes (Purchase Returns): Go to Purchases -> Debit Notes ('/debit-notes'). Record goods returned to vendors, specify returned quantities and rates, and optionally link to a purchase bill. When saved, returned items are automatically deducted from inventory stock, and outstanding vendor bill payables are reduced.
 - Estimates: You can create estimates/quotations similar to invoices.
 - Templates: Go to Templates section to see invoice designs (Standard GST, Professional Navy, Corporate Blue, Classic Tabular, Modern Navy Yellow, Modern Teal, Modern Crimson).
 
 3.1 INVENTORY & INTER-BRANCH TRANSFERS
-- Inventory Management: Go to Catalog -> Inventory (`/inventory`). Tracks products and services with real-time stock levels, low-stock alerts, and valuation.
+- Inventory Management: Go to Catalog -> Inventory ('/inventory'). Tracks products and services with real-time stock levels, low-stock alerts, and valuation.
 - Inter-Branch Stock Transfer: In the Inventory page, click "Transfer Stock" to transfer product quantities between branches (e.g., Bhopal Branch to Indore Branch). Select the source branch, destination branch, product, and quantity. It automatically validates available stock, updates branch inventory balances, records transfer vouchers under the "Branch Transfers" tab, and logs complete audit movements.
 
 4. PEOPLE & HR (Business HR)

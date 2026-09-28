@@ -136,7 +136,7 @@ export default function GrnsPage() {
             });
             if (error) { errors++; failedRows.push({ row, reason: error.message || "Failed to insert" }); } else success++;
           }
-          fetchGrns();
+          load();
           return { success, errors, failedRows };
         }}
       />

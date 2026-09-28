@@ -256,9 +256,9 @@ export default function InventoryReportsPage() {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                if (!lowStock.length) return;
+                if (!stats.lowStockItems.length) return;
                 const headers = ["Item Name", "Type", "Quantity"];
-                const rows = lowStock.map(item => [
+                const rows = stats.lowStockItems.map(item => [
                   item.name || '',
                   item.type || '',
                   item.quantity || 0
@@ -273,9 +273,9 @@ export default function InventoryReportsPage() {
               variant="outline" 
               size="sm" 
               onClick={() => {
-                if (!lowStock.length) return;
+                if (!stats.lowStockItems.length) return;
                 const headers = ["Item Name", "Type", "Quantity"];
-                const rows = lowStock.map(item => [
+                const rows = stats.lowStockItems.map(item => [
                   item.name || '',
                   item.type || '',
                   item.quantity || 0

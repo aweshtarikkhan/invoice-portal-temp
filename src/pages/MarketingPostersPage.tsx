@@ -414,6 +414,20 @@ export default function MarketingPostersPage() {
     setActiveElementId(newId);
   };
 
+  const addBusinessPreset = (type: 'name' | 'phone' | 'address') => {
+    if (type === 'name') {
+      const name = org?.name || "Your Business Name";
+      addText(name, 28, 800);
+    } else if (type === 'phone') {
+      const ph = (org as any)?.phone || (profile as any)?.phone || user?.phone || (user?.user_metadata as any)?.phone || "+91 9876543210";
+      addText(ph, 20, 600);
+    } else if (type === 'address') {
+      const addr = (org as any)?.address;
+      const addrText = typeof addr === 'string' ? addr : addr?.street ? `${addr.street}, ${addr.city || ''}` : "Your Business Address";
+      addText(addrText, 16, 500);
+    }
+  };
+
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
