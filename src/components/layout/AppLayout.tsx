@@ -28,7 +28,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle, AlertCircle, Shield } from "lucide-react";
+import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle, AlertCircle, Shield, Trash2, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { profile, signOut } = useAuth();
@@ -126,22 +136,29 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
 
 export function AppLayout() {
   const { profile, user, signOut } = useAuth();
+  const { toast } = useToast();
   const setOrganization = useAppStore((s) => s.setOrganization);
   const setCurrentUserId = useAppStore((s) => s.setCurrentUserId);
+  const userRole = useAppStore((s) => s.userRole);
   const setUserRole = useAppStore((s) => s.setUserRole);
   const setUserPermissions = useAppStore((s) => s.setUserPermissions);
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
-      const [showPlanModal, setShowPlanModal] = useState(false);
+  const [hasNoBusiness, setHasNoBusiness] = useState(false);
+  const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [isEmployeeBlocked, setIsEmployeeBlocked] = useState(false);
+  const navigate = useNavigate();
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const { subscriptionPlan, isOnTrial } = useSubscription();
+
   useEffect(() => {
     const handleOpenPlanModal = () => setShowPlanModal(true);
     window.addEventListener('open-plan-modal', handleOpenPlanModal);
     return () => window.removeEventListener('open-plan-modal', handleOpenPlanModal);
   }, []);
-  const { subscriptionPlan, isOnTrial } = useSubscription();
-    const navigate = useNavigate();
-  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -190,8 +207,17 @@ export function AppLayout() {
         .select("org_id, role, permissions, organizations(id, name, logo_url)")
         .eq("user_id", profile.user_id);
 
-      // If user has no business organizations, check if platform admin and redirect to platform-admin
-      if (!memberOrgs || memberOrgs.length === 0) {
+      // Query all organizations where the user is the direct owner_id
+      const { data: ownedOrgs } = await supabase
+        .from("organizations")
+        .select("id, name, logo_url")
+        .eq("owner_id", profile.user_id);
+
+      const hasMemberOrgs = Boolean(memberOrgs && memberOrgs.length > 0);
+      const hasOwnedOrgs = Boolean(ownedOrgs && ownedOrgs.length > 0);
+
+      // If user has NO organizations at all (neither as member nor owner)
+      if (!hasMemberOrgs && !hasOwnedOrgs) {
         const { data: isAdmin } = await supabase
           .rpc("is_platform_admin", { check_user_id: profile.user_id });
 
@@ -199,22 +225,69 @@ export function AppLayout() {
           navigate("/platform-admin", { replace: true });
           return;
         }
+
+        const { data: directAdmin } = await supabase
+          .from("platform_admins")
+          .select("id")
+          .eq("user_id", profile.user_id)
+          .maybeSingle();
+
+        if (directAdmin) {
+          navigate("/platform-admin", { replace: true });
+          return;
+        }
+
+        // Clean up stale profile.org_id in DB if it was still pointing to a revoked business
+        if (profile.org_id) {
+          await supabase
+            .from("profiles")
+            .update({ org_id: null })
+            .eq("id", profile.id);
+        }
+
+        // Check if pure attendance employee (no portal access allowed)
+        const { data: empRecord } = await (supabase as any)
+          .from("employees")
+          .select("id")
+          .eq("auth_user_id", profile.user_id)
+          .maybeSingle();
+
+        if (empRecord) {
+          await supabase.auth.signOut();
+          setIsEmployeeBlocked(true);
+          setChecking(false);
+          return;
+        }
+
+        // User has NO business - show dedicated screen with Account Deletion!
+        setHasNoBusiness(true);
+        setNeedsSetup(false);
+        setChecking(false);
+        return;
       }
 
-    console.log("[loadOrg] memberOrgs:", memberOrgs, "error:", memberErr);
+      setHasNoBusiness(false);
 
-    if (memberOrgs && memberOrgs.length > 0) {
-      const orgList = memberOrgs
+      // Combine member organizations and owned organizations
+      const memberList = (memberOrgs || [])
         .filter((m) => m.organizations)
         .map((m) => ({ id: (m.organizations as any).id, name: (m.organizations as any).name }));
-      
+
+      const ownedList = (ownedOrgs || []).map((o) => ({ id: o.id, name: o.name }));
+
+      const combinedMap = new Map<string, { id: string; name: string }>();
+      [...ownedList, ...memberList].forEach((o) => {
+        if (o.id && !combinedMap.has(o.id)) combinedMap.set(o.id, o);
+      });
+      const orgList = Array.from(combinedMap.values());
       useAppStore.setState({ myOrganizations: orgList });
 
+      // Determine activeOrgId
       let activeOrgId = profile.org_id;
-      const isValidMemberOrg = activeOrgId && memberOrgs.some((m) => m.org_id === activeOrgId);
+      const isValidOrg = activeOrgId && orgList.some((o) => o.id === activeOrgId);
 
-      if (!isValidMemberOrg) {
-        activeOrgId = memberOrgs[0].org_id;
+      if (!isValidOrg && orgList.length > 0) {
+        activeOrgId = orgList[0].id;
         await supabase
           .from("profiles")
           .update({ org_id: activeOrgId })
@@ -227,15 +300,13 @@ export function AppLayout() {
         .eq("id", activeOrgId)
         .maybeSingle();
 
-      console.log("[loadOrg] activeOrg:", activeOrg, "error:", orgErr);
-
       if (activeOrg) {
         setOrganization(activeOrg as any);
-        const activeMember = memberOrgs.find((m) => m.org_id === activeOrgId);
+        const activeMember = memberOrgs?.find((m) => m.org_id === activeOrgId);
         const isOrgOwner = (activeOrg as any).owner_id === profile.user_id;
         const resolvedRole = isOrgOwner ? "owner" : (activeMember?.role || "staff");
         setUserRole(resolvedRole);
-        setUserPermissions(activeMember?.permissions || []);
+        setUserPermissions(activeMember?.permissions || (isOrgOwner ? ["settings_access", "whatsapp_access"] : []));
 
         if ((activeOrg as any).enabled_features && Array.isArray((activeOrg as any).enabled_features)) {
           useFeatureStore.getState().setOrgFeatures(activeOrgId, (activeOrg as any).enabled_features);
@@ -251,8 +322,6 @@ export function AppLayout() {
           if (subData) {
             let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
             
-            // All plans should at least have basic access to HR, CRM, and Marketing 
-            // (limits are handled inside the respective pages)
             if (!features.includes('people')) features.push('people');
             if (!features.includes('crm')) features.push('crm');
             if (!features.includes('marketing')) features.push('marketing');
@@ -304,84 +373,13 @@ export function AppLayout() {
         } catch (err) {
           console.error("Failed to load subscription features via RPC:", err);
         }
-            
 
         setNeedsSetup(false);
         setChecking(false);
         return;
       }
-    }
 
-    // memberOrgs was empty or org not found in member list — try profile.org_id directly
-    if (profile.org_id) {
-      const { data: fallbackOrg } = await supabase
-        .from("organizations")
-        .select("*")
-        .eq("id", profile.org_id)
-        .maybeSingle();
-
-      console.log("[loadOrg] fallback org by profile.org_id:", fallbackOrg);
-
-      if (fallbackOrg) {
-        setOrganization(fallbackOrg as any);
-        setUserRole("admin"); // Assume admin since they have org_id on profile
-        setUserPermissions(["settings_access", "whatsapp_access"]);
-
-        if ((fallbackOrg as any).enabled_features && Array.isArray((fallbackOrg as any).enabled_features)) {
-          useFeatureStore.getState().setOrgFeatures(profile.org_id, (fallbackOrg as any).enabled_features);
-        } else {
-          useFeatureStore.getState().initOrgFeatures(profile.org_id);
-        }
-
-        try {
-          const { data: subData } = await supabase.rpc("get_my_org_subscription", { p_org_id: profile.org_id });
-          if (subData) {
-            let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
-            let resolvedPlanName = normalizePlanKey(subData.plan_name || '');
-            if (resolvedPlanName === 'suite') {
-              features = ADMIN_FEATURE_GROUPS.map(g => g.key);
-            } else if (!subData.plan_name || subData.plan_name === 'free') {
-              if (!features.includes('people')) features.push('people');
-              if (!features.includes('crm')) features.push('crm');
-              features = features.filter(f => f !== 'reports' && f !== 'outreach' && f !== 'marketing');
-            }
-            const isSuiteOrHr = resolvedPlanName === 'suite' || resolvedPlanName === 'hr';
-            const empLimit = isSuiteOrHr 
-              ? (Math.max(subData.employee_limit || 0, subData.employee_count || 0) || 5) 
-              : 3;
-            useFeatureStore.getState().setPlatformFeatures(features);
-            useFeatureStore.getState().setOrgFeatures(profile.org_id, features);
-            useFeatureStore.getState().setSubscriptionMeta({
-              plan_name: subData.plan_name,
-              status: subData.status,
-              trial_ends_at: subData.trial_ends_at,
-              employee_limit: empLimit,
-              employee_count: subData.employee_count,
-              platform_employee_limit: subData.platform_employee_limit,
-              platform_employee_count: subData.platform_employee_count,
-              invoice_limit: subData.invoice_limit,
-              client_limit: subData.client_limit,
-              item_limit: subData.item_limit,
-              current_period_end: subData.current_period_end,
-            });
-          }
-        } catch (err) {
-          console.error("Failed to load subscription via RPC:", err);
-        }
-
-        setNeedsSetup(false);
-        setChecking(false);
-        return;
-      }
-      // profile.org_id exists but org not found - user has org, don't show setup
-      // Just show dashboard with empty state rather than setup screen
-      setNeedsSetup(false);
-      setChecking(false);
-      return;
-    }
-
-      // Truly no org at all — could be a pure employee or brand new user
-      await checkEmployeeAndBlock();
+      setNeedsSetup(true);
     } catch (err) {
       console.error("[loadOrg] Uncaught error:", err);
     } finally {
@@ -389,44 +387,28 @@ export function AppLayout() {
     }
   };
 
-  const [isEmployeeBlocked, setIsEmployeeBlocked] = useState(false);
-
-  const checkEmployeeAndBlock = async () => {
-    if (!profile?.id) return;
-
-    // If user has an org_id on their profile, they are an org admin/owner
-    // — never block them, even if they're also in the employees table.
-    if (profile.org_id) {
-      setNeedsSetup(true);
-      return;
+  const handleDeleteAccount = async () => {
+    try {
+      setDeletingAccount(true);
+      const { data, error } = await supabase.rpc("delete_my_user_account");
+      if (error) {
+        throw error;
+      }
+      toast({
+        title: "Account Deleted",
+        description: "Your account has been deleted from the database. You can now register again.",
+      });
+      await signOut();
+      navigate("/register", { replace: true });
+    } catch (err: any) {
+      console.error("Account deletion failed:", err);
+      toast({
+        title: "Deletion Failed",
+        description: err.message || "Failed to delete account. Please try again.",
+        variant: "destructive",
+      });
+      setDeletingAccount(false);
     }
-
-    // Check if user is in organization_members (e.g. org created but profile.org_id wasn't set)
-    const { data: memberCheck } = await supabase
-      .from("organization_members")
-      .select("id")
-      .eq("user_id", profile.user_id)
-      .limit(1);
-
-    if (memberCheck && memberCheck.length > 0) {
-      setNeedsSetup(true);
-      return;
-    }
-
-    // Only block pure employee accounts (no org membership at all)
-    // Use profile.user_id (auth.uid) to match employees.auth_user_id
-    const { data: empRecord } = await (supabase as any)
-      .from("employees")
-      .select("id")
-      .eq("auth_user_id", profile.user_id)
-      .maybeSingle();
-
-    if (empRecord) {
-      await supabase.auth.signOut();
-      setIsEmployeeBlocked(true);
-      return;
-    }
-    setNeedsSetup(true);
   };
 
   useEffect(() => {
@@ -435,13 +417,103 @@ export function AppLayout() {
       return;
     }
     loadOrg();
-  }, [profile, profile?.org_id]); // <--- FIXED DEPENDENCIES HERE
+  }, [profile, profile?.org_id]);
 
   if (checking) {
-    
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (hasNoBusiness) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-8">
+        <Card className="w-full max-w-md border-slate-200 dark:border-slate-800 shadow-xl bg-card">
+          <CardHeader className="text-center pb-3">
+            <div className="mx-auto w-14 h-14 bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-full flex items-center justify-center mb-3 text-2xl font-bold shadow-xs">
+              <Building2 className="h-7 w-7" />
+            </div>
+            <CardTitle className="text-xl font-bold text-foreground">
+              You don't have any business
+            </CardTitle>
+            <CardDescription className="text-sm mt-2 text-muted-foreground leading-relaxed">
+              Your account is not linked to any active business, or your platform access has been removed by the administrator.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-2">
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 rounded-lg p-3 text-xs text-amber-800 dark:text-amber-300">
+              <p className="font-semibold mb-1">Notice:</p>
+              Please delete this account to completely clear your record from the database. Once deleted, you or your employer can register or invite you fresh using this email address (<span className="font-medium underline">{user?.email || profile?.email}</span>).
+            </div>
+
+            <Button
+              variant="destructive"
+              className="w-full font-semibold shadow-xs flex items-center justify-center gap-2"
+              onClick={() => setShowDeleteAccountModal(true)}
+              disabled={deletingAccount}
+            >
+              <Trash2 className="h-4 w-4" />
+              {deletingAccount ? "Deleting Account..." : "Delete Account"}
+            </Button>
+
+            <Button
+              variant="outline"
+              className="w-full font-medium"
+              onClick={async () => {
+                await signOut();
+                navigate("/login", { replace: true });
+              }}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
+
+            <div className="text-center pt-2 border-t border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setHasNoBusiness(false);
+                  setNeedsSetup(true);
+                }}
+                className="text-xs text-primary hover:underline font-medium"
+              >
+                Are you a business owner? Set up a new business
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delete Account Confirmation Dialog */}
+        <AlertDialog open={showDeleteAccountModal} onOpenChange={setShowDeleteAccountModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Permanently Delete Account?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span>
+                  This action is permanent and cannot be undone. All your profile and authentication records will be wiped from the system.
+                </span>
+                <span className="block font-medium text-foreground">
+                  After deletion, you will be able to sign up again with this email address.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingAccount}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? "Deleting..." : "Yes, Delete My Account"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }

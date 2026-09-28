@@ -106,6 +106,7 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Social Media: Admins can update the official social media links (YouTube, Facebook, Instagram) that appear in the landing page footer.
 - Contact Inquiries: Admins can see form submissions from the Contact Us page in the "Submitted Form Data" tab -> "Contact Inquiries".
 - Tickets, Ads, Reviews, Partners: Other tabs for managing platform operations.
+- Account Deletion & Revocation Lifecycle: When an employee's business access is revoked or deleted from a company, the user's organization link is completely severed. If they log in and belong to no active business, they are presented with a dedicated "You don't have any business" screen with an option to permanently delete their account. Deleting the account cleans up all auth records and profile entries from the database, freeing up the email so that the user or employer can re-register or issue a fresh invitation with the exact same email address.
 
 --- END OF KNOWLEDGE BASE ---
 `;
