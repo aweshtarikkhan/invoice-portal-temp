@@ -695,9 +695,18 @@ export default function SettingsPage() {
                     Official address printed on Invoices, Quotations, and Tax filings.
                   </CardDescription>
                 </div>
-                <span className="text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2.5 py-1 rounded-full shrink-0">
-                  Required for Invoicing
-                </span>
+                {Boolean(
+                  (profile?.address_line || (org?.address as any)?.street || profileForm.address_line || orgForm.address.street)?.trim() &&
+                  ((profile?.pincode || (org?.address as any)?.zip || profileForm.pincode || orgForm.address.zip)?.trim()?.length === 6)
+                ) ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 px-2.5 py-1 rounded-full shrink-0 border border-emerald-200 dark:border-emerald-800/60">
+                    <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" /> Successfully Submitted
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2.5 py-1 rounded-full shrink-0 border border-amber-200 dark:border-amber-800/60">
+                    Required for Invoicing
+                  </span>
+                )}
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
