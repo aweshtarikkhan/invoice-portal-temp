@@ -22,7 +22,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell, Landmark, CreditCard, Pencil, LogOut } from "lucide-react";
+import { Plus, Trash2, Loader2, Search, Shield, Settings2, Receipt, Building2, Package, User, Mail, Phone, Globe, Warehouse, ExternalLink, Bell, Landmark, CreditCard, Pencil, LogOut, Copy, Check, MapPin, Hash } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -31,25 +31,29 @@ import { INDIAN_GST_SLABS } from "@/lib/constants";
 import { EmailSettingsTab } from "@/components/settings/EmailSettingsTab";
 import { WhatsAppSettingsTab } from "@/components/settings/WhatsAppSettingsTab";
 import SupportPage from "@/pages/SupportPage";
+import { useToast } from "@/hooks/use-toast";
 
 
 
 export default function SettingsPage() {
   const org = useAppStore((s) => s.organization);
   const setOrganization = useAppStore((s) => s.setOrganization);
-  const { profile, user, signOut } = useAuth();
+  const { profile, user, signOut, refreshProfile } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const currentTab = searchParams.get("tab") || "organization";
+  const rawTab = searchParams.get("tab") || "profile";
+  const currentTab = rawTab === "organization" ? "profile" : rawTab;
   const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
     first_name: "", last_name: "", phone: "",
+    address_line: "", city: "", state: "", pincode: "",
   });
   const [profileSaving, setProfileSaving] = useState(false);
+  const [copiedAccountId, setCopiedAccountId] = useState(false);
 
   // Org form
   const [orgForm, setOrgForm] = useState({
@@ -93,58 +97,159 @@ export default function SettingsPage() {
   }, [org?.id]);
 
   useEffect(() => {
+    const orgAddr = (org?.address as any) || {};
+    const sharedPhone = (profile as any)?.phone || user?.phone || (user?.user_metadata as any)?.phone || org?.phone || "";
+    const sharedStreet = (profile as any)?.address_line || orgAddr.street || "";
+    const sharedCity = (profile as any)?.city || orgAddr.city || "";
+    const sharedState = (profile as any)?.state || orgAddr.state || "";
+    const sharedPin = (profile as any)?.pincode || orgAddr.zip || "";
+
     if (profile) {
       setProfileForm({
         first_name: profile.first_name || "",
         last_name: profile.last_name || "",
-        phone: (profile as any).phone || user?.phone || (user?.user_metadata as any)?.phone || "",
+        phone: sharedPhone,
+        address_line: sharedStreet,
+        city: sharedCity,
+        state: sharedState,
+        pincode: sharedPin,
       });
     }
-  }, [profile, user]);
 
-  useEffect(() => {
-    if (!org) return;
-    setOrgForm({
-      name: org.name || "", email: org.email || "", phone: org.phone || "",
-      website: org.website || "", logo_url: org.logo_url || "", tax_number: org.tax_number || "", tax_name: org.tax_number || "",
-      currency_code: "INR", invoice_prefix: org.invoice_prefix || "INV",
-      payment_terms: org.payment_terms || 30, default_notes: org.default_notes || "",
-      default_terms: org.default_terms || "",
-      address: (org.address as any) || { street: "", city: "", state: "", zip: "", country: "" },
-      gst_enabled: org.gst_enabled || false, gst_number: org.gst_number || "",
-      show_client_gst: org.show_client_gst || false, qr_code_enabled: org.qr_code_enabled || false,
-      upi_id: (org as any).upi_id || "",
-      inventory_enabled: (org as any).inventory_enabled || false,
-      low_stock_threshold: Number((org as any).low_stock_threshold ?? 5),
-      multi_warehouse_enabled: (org as any).multi_warehouse_enabled || false,
-      sub_unit_enabled: (org as any).sub_unit_enabled || false,
-      enable_individual_week_offs: (org as any).enable_individual_week_offs || false,
-      automate_overdue_reminders: (org as any).automate_overdue_reminders || false,
-    });
-    fetchTaxRates();
-  }, [org]);
-
-  const saveProfile = async () => {
-    if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email)) {
-      toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
-      return;
+    if (org) {
+      setOrgForm({
+        name: org.name || "", 
+        email: org.email || user?.email || "", 
+        phone: sharedPhone,
+        website: org.website || "", 
+        logo_url: org.logo_url || "", 
+        tax_number: org.tax_number || "", 
+        tax_name: org.tax_number || "",
+        currency_code: "INR", 
+        invoice_prefix: org.invoice_prefix || "INV",
+        payment_terms: org.payment_terms || 30, 
+        default_notes: org.default_notes || "",
+        default_terms: org.default_terms || "",
+        address: { 
+          street: sharedStreet, 
+          city: sharedCity, 
+          state: sharedState, 
+          zip: sharedPin, 
+          country: orgAddr.country || "India" 
+        },
+        gst_enabled: org.gst_enabled || false, 
+        gst_number: org.gst_number || "",
+        show_client_gst: org.show_client_gst || false, 
+        qr_code_enabled: org.qr_code_enabled || false,
+        upi_id: (org as any).upi_id || "",
+        inventory_enabled: (org as any).inventory_enabled || false,
+        low_stock_threshold: Number((org as any).low_stock_threshold ?? 5),
+        multi_warehouse_enabled: (org as any).multi_warehouse_enabled || false,
+        sub_unit_enabled: (org as any).sub_unit_enabled || false,
+        enable_individual_week_offs: (org as any).enable_individual_week_offs || false,
+        automate_overdue_reminders: (org as any).automate_overdue_reminders || false,
+      });
+      fetchTaxRates();
     }
-    if (profile.phone && profile.phone.length < 10) {
+  }, [profile, user, org]);
+
+  const handlePhoneChange = (val: string) => {
+    const cleaned = val.replace(/\D/g, '').slice(0, 10);
+    setProfileForm(prev => ({ ...prev, phone: cleaned }));
+    setOrgForm(prev => ({ ...prev, phone: cleaned }));
+  };
+
+  const handleAddressChange = (field: "street" | "city" | "state" | "zip", value: string) => {
+    setOrgForm(prev => ({
+      ...prev,
+      address: {
+        ...prev.address,
+        [field]: value
+      }
+    }));
+    setProfileForm(prev => ({
+      ...prev,
+      address_line: field === "street" ? value : prev.address_line,
+      city: field === "city" ? value : prev.city,
+      state: field === "state" ? value : prev.state,
+      pincode: field === "zip" ? value : prev.pincode,
+    }));
+  };
+
+  const [isSavingAll, setIsSavingAll] = useState(false);
+
+  const saveAllProfileAndOrg = async () => {
+    const contactPhone = (profileForm.phone || orgForm.phone || "").trim();
+    if (contactPhone && contactPhone.length < 10) {
       toast({ title: "Invalid Phone", description: "Phone number must be at least 10 digits.", variant: "destructive" });
       return;
     }
-    if (!profile?.id) return;
-    setProfileSaving(true);
-    const { error } = await supabase.from("profiles").update({
-      first_name: profileForm.first_name.trim(),
-      last_name: profileForm.last_name.trim(),
-      phone: profileForm.phone.trim() || null,
-    }).eq("id", profile.id);
-    setProfileSaving(false);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Profile updated successfully!" });
+    const pin = (profileForm.pincode || orgForm.address.zip || "").trim();
+    if (pin && pin.length !== 6) {
+      toast({ title: "Invalid PIN Code", description: "PIN Code must be exactly 6 digits.", variant: "destructive" });
+      return;
+    }
+    if (!orgForm.name?.trim()) {
+      toast({ title: "Business Name Required", description: "Please enter your organization or business name.", variant: "destructive" });
+      return;
+    }
+
+    setIsSavingAll(true);
+    try {
+      const street = (profileForm.address_line || orgForm.address.street || "").trim();
+      const city = (profileForm.city || orgForm.address.city || "").trim();
+      const state = (profileForm.state || orgForm.address.state || "").trim();
+
+      if (profile?.id) {
+        const { error: profError } = await supabase.from("profiles").update({
+          first_name: profileForm.first_name.trim(),
+          last_name: profileForm.last_name.trim(),
+          phone: contactPhone || null,
+          address_line: street || null,
+          city: city || null,
+          state: state || null,
+          pincode: pin || null,
+        } as any).eq("id", profile.id);
+
+        if (profError) throw profError;
+        await refreshProfile();
+      }
+
+      if (org?.id) {
+        const { 
+          sub_unit_enabled, 
+          enable_individual_week_offs, 
+          automate_overdue_reminders,
+          ...dbOrgForm 
+        } = orgForm as any;
+
+        const updatedOrgData = {
+          ...dbOrgForm,
+          name: orgForm.name.trim(),
+          phone: contactPhone,
+          email: orgForm.email.trim() || user?.email || "",
+          address: {
+            street,
+            city,
+            state,
+            zip: pin,
+            country: orgForm.address.country || "India",
+          }
+        };
+
+        const { error: orgError } = await supabase.from("organizations").update(updatedOrgData).eq("id", org.id);
+        if (orgError) throw orgError;
+        setOrganization({ ...org, ...updatedOrgData } as any);
+      }
+
+      toast({ 
+        title: "Details Saved Successfully!", 
+        description: "Profile and business organization details have been saved." 
+      });
+    } catch (err: any) {
+      toast({ title: "Error Saving", description: err.message, variant: "destructive" });
+    } finally {
+      setIsSavingAll(false);
     }
   };
 
@@ -183,18 +288,33 @@ export default function SettingsPage() {
     try {
       const details = await fetchGstDetails(orgForm.gst_number);
       const extractedState = stateCodeFromGstin(orgForm.gst_number);
+      const newStreet = details.address || orgForm.address.street || profileForm.address_line;
+      const newCity = details.city || orgForm.address.city || profileForm.city;
+      const newState = extractedState || details.state || orgForm.address.state || profileForm.state;
+      const newZip = details.pincode || orgForm.address.zip || profileForm.pincode;
+      const businessName = details.legalName || details.tradeName || orgForm.name;
+
       setOrgForm(prev => ({
         ...prev,
-        name: details.legalName || details.tradeName || prev.name,
+        name: businessName,
         address: {
           ...prev.address,
-          street: details.address || prev.address.street,
-          city: prev.address.city,
-          state: extractedState || details.state || prev.address.state,
-          zip: details.pincode || prev.address.zip,
+          street: newStreet,
+          city: newCity,
+          state: newState,
+          zip: newZip,
         }
       }));
-      toast({ title: "GST Details Fetched", description: "Business details auto-filled successfully!" });
+
+      setProfileForm(prev => ({
+        ...prev,
+        address_line: newStreet,
+        city: newCity,
+        state: newState,
+        pincode: newZip,
+      }));
+
+      toast({ title: "GST Details Fetched", description: "Business details and address auto-filled successfully!" });
     } catch (err: any) {
       toast({ title: "GST Fetch Failed", description: err.message, variant: "destructive" });
     } finally {
@@ -332,8 +452,7 @@ export default function SettingsPage() {
 
       <Tabs value={currentTab} onValueChange={(tab) => setSearchParams({ tab })}>
         <TabsList className="flex flex-wrap gap-1 h-auto p-1.5">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="organization">Organization</TabsTrigger>
+          <TabsTrigger value="profile">Profile & Organization</TabsTrigger>
           <TabsTrigger value="email">Email Settings</TabsTrigger>
           <TabsTrigger value="whatsapp">WhatsApp</TabsTrigger>
           <TabsTrigger value="invoices">Invoices</TabsTrigger>
@@ -350,77 +469,317 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><User className="h-5 w-5" /> Account Information</CardTitle>
-              <CardDescription>Details from your signup. Email cannot be changed here.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center gap-4 p-4 rounded-lg bg-slate-50 dark:bg-slate-900 border">
-                <div className="h-14 w-14 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xl font-bold text-blue-600 dark:text-blue-400 shrink-0">
-                  {profileForm.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
-                </div>
-                <div className="min-w-0">
-                  <p className="font-semibold text-base truncate">
-                    {[profileForm.first_name, profileForm.last_name].filter(Boolean).join(" ") || "—"}
-                  </p>
-                  <p className="text-sm text-muted-foreground truncate flex items-center gap-1">
-                    <Mail className="h-3.5 w-3.5 shrink-0" /> {user?.email || "—"}
-                  </p>
-                  {org && (
-                    <p className="text-sm text-muted-foreground truncate flex items-center gap-1 mt-0.5">
-                      <Building2 className="h-3.5 w-3.5 shrink-0" /> {org.name}
+          {/* Unique Account ID & Identity Banner */}
+          <Card className="overflow-hidden border-blue-200/70 dark:border-blue-900/60 shadow-sm">
+            <CardContent className="p-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-blue-50/90 via-sky-50/50 to-indigo-50/40 dark:from-blue-950/40 dark:via-slate-900/40 dark:to-indigo-950/30">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-extrabold text-2xl shadow-md shrink-0">
+                    #
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-100/80 dark:bg-blue-900/60 px-2 py-0.5 rounded-full">
+                        Unique Account ID
+                      </span>
+                      {useAppStore.getState().userRole && (
+                        <span className="text-[11px] font-medium text-slate-600 dark:text-slate-300 capitalize bg-white/80 dark:bg-slate-800 px-2 py-0.5 rounded-full border">
+                          {useAppStore.getState().userRole}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-2xl font-extrabold text-blue-950 dark:text-blue-100 font-mono tracking-wide mt-0.5">
+                      {profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0")}
                     </p>
-                  )}
+                  </div>
                 </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 self-start sm:self-center border-blue-300 text-blue-700 hover:bg-blue-100 dark:border-blue-800 dark:text-blue-300 shadow-sm"
+                  onClick={() => {
+                    const accId = profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0");
+                    navigator.clipboard.writeText(accId);
+                    setCopiedAccountId(true);
+                    setTimeout(() => setCopiedAccountId(false), 2000);
+                    toast({ title: "Copied!", description: `Account ID #${accId} copied to clipboard.` });
+                  }}
+                >
+                  {copiedAccountId ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                  {copiedAccountId ? "Copied" : "Copy Account ID"}
+                </Button>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>First Name</Label>
-                  <Input value={profileForm.first_name} onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Last Name</Label>
-                  <Input value={profileForm.last_name} onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })} />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Registered Email</Label>
-                <Input value={user?.email || ""} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed" />
-                <p className="text-xs text-muted-foreground">Email is linked to your login and cannot be changed from here.</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Mobile / Phone Number</Label>
-                <Input
-                  value={profileForm.phone}
-                  onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value.replace(/\D/g, '') })}
-                  placeholder="+91 98765 43210"
-                />
-                <p className="text-xs text-muted-foreground">Your contact number for billing and communications.</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Current Organization</Label>
-                <Input value={org?.name || "—"} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed" />
-                <p className="text-xs text-muted-foreground">To change organization details or address, use the Organization tab above.</p>
-              </div>
-
-              <div className="space-y-2">
-                <Label>User Role</Label>
-                <Input value={useAppStore.getState().userRole || "—"} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed capitalize" />
-              </div>
-
-              <Button onClick={saveProfile} disabled={profileSaving}>
-                {profileSaving ? "Saving..." : "Save Profile"}
-              </Button>
             </CardContent>
           </Card>
 
+          {/* Section 1: Business Details & GST */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Building2 className="h-5 w-5 text-primary" /> Business Details & Branding
+              </CardTitle>
+              <CardDescription>
+                Your business details appear on all invoices, estimates, quotations, and payment receipts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* GST Number with auto-fetch */}
+              <div className="space-y-2 p-4 rounded-xl bg-slate-50/80 dark:bg-slate-900/60 border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                    GSTIN / GST Number
+                    <span className="text-xs font-normal text-muted-foreground">(Optional)</span>
+                  </Label>
+                  <span className="text-xs text-muted-foreground">15 Characters</span>
+                </div>
+                <div className="flex flex-col sm:row gap-2">
+                  <Input 
+                    value={orgForm.gst_number || ""} 
+                    onChange={(e) => {
+                      const val = e.target.value.toUpperCase();
+                      const st = stateCodeFromGstin(val);
+                      setOrgForm(prev => ({ 
+                        ...prev, 
+                        gst_number: val, 
+                        address: { ...prev.address, state: st || prev.address.state } 
+                      }));
+                      if (st) setProfileForm(prev => ({ ...prev, state: st }));
+                    }} 
+                    placeholder="e.g. 22AAAAA0000A1Z5" 
+                    maxLength={15}
+                    className="border-emerald-500/50 focus-visible:ring-emerald-500 max-w-sm uppercase font-mono tracking-wider"
+                  />
+                  <Button 
+                    type="button" 
+                    variant="secondary" 
+                    onClick={handleFetchGst}
+                    disabled={isFetchingGst || (orgForm.gst_number || "").length !== 15}
+                    className="gap-2 shrink-0"
+                  >
+                    {isFetchingGst ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Fetch Business Details
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Enter your GSTIN to auto-fetch trade name, address, and state code directly from GST records.
+                </p>
+              </div>
+
+              {/* Organization Logo */}
+              <div className="space-y-2 border-b pb-6">
+                <Label className="text-sm font-semibold">Business Logo</Label>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pt-1">
+                  {orgForm.logo_url ? (
+                    <div className="relative group border rounded-xl p-2 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex items-center justify-center shrink-0">
+                      <img src={orgForm.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
+                      <button 
+                        type="button"
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                        onClick={() => setOrgForm({ ...orgForm, logo_url: "" })}
+                        title="Remove logo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border border-dashed rounded-xl p-4 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex flex-col items-center justify-center text-muted-foreground text-xs text-center shrink-0">
+                      <Building2 className="h-8 w-8 mb-2 opacity-40 text-primary" />
+                      No logo uploaded
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="org-logo-upload" className="cursor-pointer inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
+                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Upload Logo"}
+                    </Label>
+                    <input id="org-logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
+                    <p className="text-xs text-muted-foreground max-w-sm">
+                      Shown on your Invoices, Quotations, Bills, POs, and Marketing Posters. Recommended: 400x400 PNG/JPG.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Business Name, Email, Website */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Business / Organization Name *</Label>
+                  <Input 
+                    value={orgForm.name} 
+                    onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} 
+                    placeholder="e.g. Assay Solutions Pvt Ltd" 
+                    required 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Official Business Email</Label>
+                  <Input 
+                    type="email" 
+                    value={orgForm.email} 
+                    onChange={(e) => setOrgForm({ ...orgForm, email: e.target.value })} 
+                    placeholder="billing@yourbusiness.com" 
+                  />
+                  <p className="text-[11px] text-muted-foreground">Appears in invoice contact headers.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Business Website</Label>
+                  <Input 
+                    value={orgForm.website} 
+                    onChange={(e) => setOrgForm({ ...orgForm, website: e.target.value })} 
+                    placeholder="https://yourbusiness.com" 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 2: Owner & Contact Information */}
+          <Card>
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base flex items-center gap-2">
+                <User className="h-5 w-5 text-primary" /> Personal & Contact Details
+              </CardTitle>
+              <CardDescription>
+                Owner profile and primary contact phone for communications and SMS/WhatsApp notifications.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>First Name</Label>
+                  <Input 
+                    value={profileForm.first_name} 
+                    onChange={(e) => setProfileForm({ ...profileForm, first_name: e.target.value })} 
+                    placeholder="First Name" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Last Name</Label>
+                  <Input 
+                    value={profileForm.last_name} 
+                    onChange={(e) => setProfileForm({ ...profileForm, last_name: e.target.value })} 
+                    placeholder="Last Name" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Primary Mobile / Contact Phone *</Label>
+                  <Input
+                    value={profileForm.phone || orgForm.phone}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
+                    placeholder="10-digit mobile number"
+                    maxLength={10}
+                  />
+                  <p className="text-[11px] text-muted-foreground">Used for SMS alerts, customer contact, and account verification.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Registered Login Email</Label>
+                  <Input value={user?.email || ""} disabled className="bg-slate-50 dark:bg-slate-900 cursor-not-allowed text-muted-foreground" />
+                  <p className="text-[11px] text-muted-foreground">Primary login email (securely managed by auth).</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 3: Registered Address & Location Details */}
+          <Card>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" /> Registered Address & Location
+                  </CardTitle>
+                  <CardDescription>
+                    Official address printed on Invoices, Quotations, and Tax filings.
+                  </CardDescription>
+                </div>
+                <span className="text-[11px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300 px-2.5 py-1 rounded-full shrink-0">
+                  Required for Invoicing
+                </span>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label>Complete Street Address *</Label>
+                <Input
+                  value={profileForm.address_line || orgForm.address.street}
+                  onChange={(e) => handleAddressChange("street", e.target.value)}
+                  placeholder="Shop/Office No., Building Name, Street, Landmark"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="space-y-2">
+                  <Label>City *</Label>
+                  <Input
+                    value={profileForm.city || orgForm.address.city}
+                    onChange={(e) => handleAddressChange("city", e.target.value)}
+                    placeholder="City"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>State (GST Code) *</Label>
+                  <Select
+                    value={INDIAN_STATES.find(s => s.code === (profileForm.state || orgForm.address.state) || s.name.toLowerCase() === ((profileForm.state || orgForm.address.state) || "").toLowerCase())?.code || (profileForm.state || orgForm.address.state)}
+                    onValueChange={(val) => handleAddressChange("state", val)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {INDIAN_STATES.map((st) => (
+                        <SelectItem key={st.code} value={st.code}>
+                          {st.name} ({st.code})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>PIN Code *</Label>
+                  <Input
+                    value={profileForm.pincode || orgForm.address.zip}
+                    onChange={(e) => handleAddressChange("zip", e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="6-digit PIN"
+                    maxLength={6}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input 
+                    value={orgForm.address.country || "India"} 
+                    onChange={(e) => setOrgForm(prev => ({ ...prev, address: { ...prev.address, country: e.target.value } }))} 
+                    placeholder="India" 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Unified Save Action */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-slate-100 dark:bg-slate-900 border">
+            <div className="text-sm text-muted-foreground">
+              Saves both your personal profile and business organization details together.
+            </div>
+            <Button 
+              size="lg" 
+              onClick={saveAllProfileAndOrg} 
+              disabled={isSavingAll} 
+              className="w-full sm:w-auto font-semibold gap-2 shadow-sm px-8"
+            >
+              {isSavingAll ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {isSavingAll ? "Saving Details..." : "Save All Details"}
+            </Button>
+          </div>
+
+          {/* Sign Out Card */}
           <Card className="border-red-200/60 dark:border-red-900/40">
-            <CardHeader>
+            <CardHeader className="pb-3">
               <CardTitle className="text-base flex items-center gap-2 text-red-600 dark:text-red-400">
                 <LogOut className="h-5 w-5" /> Account Session & Sign Out
               </CardTitle>
@@ -444,129 +803,6 @@ export default function SettingsPage() {
                 <LogOut className="h-4 w-4" />
                 Sign Out
               </Button>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="organization" className="space-y-6 mt-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Business Details</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2 mb-6">
-                <Label className="text-emerald-500 font-semibold">Your GST Number</Label>
-                <div className="flex gap-2">
-                  <Input 
-                    value={orgForm.gst_number || ""} 
-                    onChange={(e) => {
-                      const val = e.target.value.toUpperCase();
-                      const st = stateCodeFromGstin(val);
-                      setOrgForm({ ...orgForm, gst_number: val, address: { ...orgForm.address, state: st || orgForm.address.state } });
-                    }} 
-                    placeholder="e.g. 22AAAAA0000A1Z5" 
-                    maxLength={15}
-                    className="border-emerald-500/50 focus-visible:ring-emerald-500 max-w-sm"
-                  />
-                  <Button 
-                    type="button" 
-                    variant="secondary" 
-                    onClick={handleFetchGst}
-                    disabled={isFetchingGst || (orgForm.gst_number || "").length !== 15}
-                  >
-                    {isFetchingGst ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
-                    Fetch Business Details
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">Enter GST to auto-fetch business name & address. Leave blank if not registered.</p>
-              </div>
-
-              <div className="mb-6 space-y-2 border-b pb-6">
-                <Label className="text-base font-semibold">Organization Logo</Label>
-                <div className="flex items-center gap-6 mt-2">
-                  {orgForm.logo_url ? (
-                    <div className="relative group border rounded-md p-2 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex items-center justify-center">
-                      <img src={orgForm.logo_url} alt="Logo" className="max-w-full max-h-full object-contain" />
-                      <button 
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => setOrgForm({ ...orgForm, logo_url: "" })}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="border border-dashed rounded-md p-4 bg-slate-50 dark:bg-slate-900 w-32 h-32 flex flex-col items-center justify-center text-muted-foreground text-xs text-center">
-                      <Building2 className="h-8 w-8 mb-2 opacity-50" />
-                      No logo
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    <Label htmlFor="org-logo-upload" className="cursor-pointer inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50">
-                      {isUploadingLogo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : "Upload Logo"}
-                    </Label>
-                    <input id="org-logo-upload" type="file" accept="image/*" className="hidden" onChange={handleLogoUpload} disabled={isUploadingLogo} />
-                    <p className="text-xs text-muted-foreground max-w-[200px]">This logo will appear on your Invoices, Quotations, Bills, POs, and Posters. Recommended: 400x400 PNG/JPG.</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Organization Name</Label>
-                  <Input value={orgForm.name} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <Input value={orgForm.email} onChange={(e) => setOrgForm({ ...orgForm, email: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input value={orgForm.phone} onChange={(e) => setOrgForm({ ...orgForm, phone: e.target.value.replace(/\D/g, '') })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Website</Label>
-                  <Input value={orgForm.website} onChange={(e) => setOrgForm({ ...orgForm, website: e.target.value })} />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Street Address</Label>
-                <Input value={orgForm.address.street} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, street: e.target.value } })} />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="space-y-2">
-                  <Label>City</Label>
-                  <Input placeholder="City" value={orgForm.address.city} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, city: e.target.value } })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>PIN Code</Label>
-                  <Input 
-                    placeholder="e.g. 462001" 
-                    maxLength={6} 
-                    value={orgForm.address.zip || ""} 
-                    onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, zip: e.target.value.replace(/\D/g, '') } })} 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>State (GST Code)</Label>
-                  <Select 
-                    value={INDIAN_STATES.find(s => s.code === orgForm.address.state || s.name.toLowerCase() === (orgForm.address.state || "").toLowerCase())?.code || orgForm.address.state} 
-                    onValueChange={(val) => setOrgForm({ ...orgForm, address: { ...orgForm.address, state: val } })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select State" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {INDIAN_STATES.map((st) => (
-                        <SelectItem key={st.code} value={st.code}>{st.name} ({st.code})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Country</Label>
-                  <Input placeholder="Country" value={orgForm.address.country || "India"} onChange={(e) => setOrgForm({ ...orgForm, address: { ...orgForm.address, country: e.target.value } })} />
-                </div>
-              </div>
-              {/* Tax Name and Tax Number removed as per request */}
-              <Button onClick={saveOrg}>Save Changes</Button>
             </CardContent>
           </Card>
         </TabsContent>

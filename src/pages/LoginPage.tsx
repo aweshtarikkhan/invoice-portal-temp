@@ -140,7 +140,7 @@ return (
           <CardHeader className="text-center">
             <img src={logoImg} alt="Aassay Biz Invoices" width={80} height={80} fetchPriority="high" decoding="async" className="mx-auto mb-2 h-20 w-20 object-contain" />
             <CardTitle className="text-2xl">Welcome back</CardTitle>
-            <CardDescription>Sign in to your invoice management account</CardDescription>
+            <CardDescription>Everything you need. One smart platform</CardDescription>
           </CardHeader>
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">

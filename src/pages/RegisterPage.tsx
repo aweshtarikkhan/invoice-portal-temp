@@ -205,7 +205,7 @@ export default function RegisterPage() {
         <CardHeader className="text-center">
           <img src={logoImg} alt="Aassay Biz Invoices" className="mx-auto mb-2 h-20 w-20 object-contain" />
           <CardTitle className="text-2xl">Create your account</CardTitle>
-          <CardDescription>Start managing invoices in minutes</CardDescription>
+          <CardDescription>Everything you need. One smart platform</CardDescription>
         </CardHeader>
         {!otpSent ? (
           <form onSubmit={handleRegister}>

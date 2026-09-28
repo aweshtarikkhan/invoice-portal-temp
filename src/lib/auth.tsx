@@ -4,13 +4,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 
-interface Profile {
+export interface Profile {
   id: string;
   user_id: string;
   org_id: string | null;
   first_name: string | null;
   last_name: string | null;
   avatar_url: string | null;
+  phone?: string | null;
+  account_id?: string | null;
+  address_line?: string | null;
+  city?: string | null;
+  state?: string | null;
+  pincode?: string | null;
 }
 
 interface AuthContextType {
@@ -19,6 +25,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +34,7 @@ const AuthContext = createContext<AuthContextType>({
   profile: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -92,7 +100,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user: session?.user ?? null, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      session, 
+      user: session?.user ?? null, 
+      profile, 
+      loading, 
+      signOut,
+      refreshProfile: async () => {
+        if (session?.user) await fetchProfile(session.user.id);
+      }
+    }}>
       {children}
     </AuthContext.Provider>
   );

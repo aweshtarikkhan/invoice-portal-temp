@@ -33,6 +33,16 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
@@ -425,11 +435,12 @@ export default function InvoiceBuilderPage() {
   const org = useAppStore((s) => s.organization);
   const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const { subscriptionPlan } = useSubscription();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showIncompleteProfileDialog, setShowIncompleteProfileDialog] = useState(false);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
   const [clients, setClients] = useState<any[]>([]);
@@ -995,6 +1006,16 @@ export default function InvoiceBuilderPage() {
   };
 
   const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email" | "whatsapp") => {
+    if (profile && (!profile.address_line || !profile.pincode)) {
+      toast({
+        title: "Profile Incomplete",
+        description: "Please complete your Address and PIN Code in Settings before creating invoices.",
+        variant: "destructive",
+      });
+      setShowIncompleteProfileDialog(true);
+      return;
+    }
+
     if (!clientId) {
       toast({ title: "Select a client", variant: "destructive" });
       return;
@@ -2433,6 +2454,37 @@ export default function InvoiceBuilderPage() {
         onClose={() => setShowUpgradeModal(false)} 
         forceOrgId={org?.id}
       />
+
+      {/* Incomplete Profile Alert Dialog */}
+      <AlertDialog open={showIncompleteProfileDialog} onOpenChange={setShowIncompleteProfileDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-lg">Profile Completion Required</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground">
+                  Address & PIN Code required for invoicing
+                </AlertDialogDescription>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              To comply with billing standards and generate GST-ready invoices, you must complete your <strong>Street Address</strong> and <strong>PIN Code</strong> in your profile settings before creating invoices.
+            </p>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => navigate("/settings?tab=profile")}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              Complete Profile in Settings
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

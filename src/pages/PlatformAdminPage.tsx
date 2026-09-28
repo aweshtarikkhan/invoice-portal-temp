@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { format, subDays, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -48,6 +48,7 @@ import logoImg from "@/assets/logo.png";
 
 interface UserData {
   user_id: string;
+  account_id?: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string;
@@ -69,7 +70,7 @@ interface OrgData {
   created_at: string;
   member_count: number;
   invoice_count: number;
-  owner: { email: string; name: string } | null;
+  owner: { email: string; name: string; account_id?: string | null } | null;
   subscription: {
     plan_name: string;
     enabled_features: string[];
@@ -430,7 +431,45 @@ export default function PlatformAdminPage() {
         return;
       }
       
-      setDashData(data as unknown as DashboardData);
+      let finalDashData = data as unknown as DashboardData;
+      try {
+        const { data: profilesData } = await supabase.from("profiles").select("id, email, account_id");
+        if (profilesData && finalDashData) {
+          const idMap = new Map<string, string>();
+          const emailMap = new Map<string, string>();
+          profilesData.forEach((p: any) => {
+            if (p.id && p.account_id) idMap.set(p.id, p.account_id);
+            if (p.email && p.account_id) emailMap.set(p.email.toLowerCase(), p.account_id);
+          });
+
+          if (finalDashData.users) {
+            finalDashData = {
+              ...finalDashData,
+              users: finalDashData.users.map(u => ({
+                ...u,
+                account_id: idMap.get(u.user_id) || (u.email ? emailMap.get(u.email.toLowerCase()) : null) || (u as any).account_id || null
+              }))
+            };
+          }
+
+          if (finalDashData.organizations) {
+            finalDashData = {
+              ...finalDashData,
+              organizations: finalDashData.organizations.map(o => ({
+                ...o,
+                owner: o.owner ? {
+                  ...o.owner,
+                  account_id: (o.owner.email ? emailMap.get(o.owner.email.toLowerCase()) : null) || o.owner.account_id || null
+                } : null
+              }))
+            };
+          }
+        }
+      } catch (profileErr) {
+        console.warn("Could not augment users with account_id", profileErr);
+      }
+
+      setDashData(finalDashData);
       setFeatureRequests(allReqs);
     setLoading(false);
   };
@@ -1319,7 +1358,7 @@ export default function PlatformAdminPage() {
             <Search className="w-4 h-4 text-slate-400 shrink-0" />
             <input
               type="text"
-              placeholder="Search by business name or email ID..."
+              placeholder="Search by business name, email ID, or Account ID (#1XXXXX)..."
               value={orgSearch}
               onChange={e => setOrgSearch(e.target.value)}
               className="flex-1 outline-none text-sm text-slate-800 placeholder:text-slate-400 bg-transparent"
@@ -1340,7 +1379,9 @@ export default function PlatformAdminPage() {
                 ? dashData.organizations.filter(o =>
                     o.name?.toLowerCase().includes(q) ||
                     o.owner?.email?.toLowerCase().includes(q) ||
-                    o.email?.toLowerCase().includes(q)
+                    o.email?.toLowerCase().includes(q) ||
+                    o.owner?.account_id?.toLowerCase().includes(q) ||
+                    `#${o.owner?.account_id || ""}`.toLowerCase().includes(q)
                   )
                 : dashData.organizations;
 
@@ -1371,8 +1412,13 @@ export default function PlatformAdminPage() {
                           <CardTitle className="text-xl text-slate-800">{org.name}</CardTitle>
                           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
                             {org.owner && (
-                              <span className="flex items-center gap-1">
+                              <span className="flex items-center gap-1.5">
                                 <UserCircle className="w-3 h-3" /> {org.owner.name?.trim() || org.owner.email}
+                                {org.owner.account_id && (
+                                  <Badge variant="outline" className="font-mono text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-200 px-1.5 py-0">
+                                    #{org.owner.account_id}
+                                  </Badge>
+                                )}
                               </span>
                             )}
                             {org.owner?.email && (
@@ -1609,7 +1655,7 @@ export default function PlatformAdminPage() {
                   <Input
                     value={userSearchQuery}
                     onChange={(e) => setUserSearchQuery(e.target.value)}
-                    placeholder="Search by user name, email, business name, or user ID..."
+                    placeholder="Search by name, email, business, user ID, or Account ID (#1XXXXX)..."
                     className="bg-slate-50 border-slate-200 pl-9 text-xs text-slate-800 placeholder:text-slate-500"
                   />
                   {userSearchQuery && (
@@ -1685,7 +1731,9 @@ export default function PlatformAdminPage() {
                     user.first_name?.toLowerCase().includes(searchLower) ||
                     user.last_name?.toLowerCase().includes(searchLower) ||
                     user.org_name?.toLowerCase().includes(searchLower) ||
-                    user.user_id?.toLowerCase().includes(searchLower);
+                    user.user_id?.toLowerCase().includes(searchLower) ||
+                    user.account_id?.toLowerCase().includes(searchLower) ||
+                    `#${user.account_id || ""}`.toLowerCase().includes(searchLower);
 
                   if (!matchesSearch) return false;
 
@@ -1753,9 +1801,16 @@ export default function PlatformAdminPage() {
                                     {(user.first_name?.[0] || user.email?.[0] || "?").toUpperCase()}
                                   </div>
                                   <div>
-                                    <span className="text-slate-800 font-semibold block leading-tight">
-                                      {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User"}
-                                    </span>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-slate-800 font-semibold block leading-tight">
+                                        {[user.first_name, user.last_name].filter(Boolean).join(" ") || "Unnamed User"}
+                                      </span>
+                                      {user.account_id && (
+                                        <Badge variant="outline" className="font-mono text-[10px] font-bold bg-indigo-50 text-indigo-700 border-indigo-200 px-1.5 py-0">
+                                          #{user.account_id}
+                                        </Badge>
+                                      )}
+                                    </div>
                                     <span className="text-[10px] text-slate-500 font-mono">
                                       ID: {user.user_id.slice(0, 8)}...
                                     </span>
@@ -3213,6 +3268,11 @@ export default function PlatformAdminPage() {
                   <div>
                     <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
                       {[selectedUserForModal.first_name, selectedUserForModal.last_name].filter(Boolean).join(" ") || "Registered User"}
+                      {selectedUserForModal.account_id && (
+                        <Badge variant="outline" className="font-mono text-xs font-bold bg-indigo-50 text-indigo-700 border-indigo-200">
+                          #{selectedUserForModal.account_id}
+                        </Badge>
+                      )}
                       <Badge className="bg-indigo-600/30 text-indigo-700 border border-indigo-500/40 text-[10px]">
                         {selectedUserForModal.role ? selectedUserForModal.role.toUpperCase() : "NO ROLE"}
                       </Badge>
@@ -3227,7 +3287,24 @@ export default function PlatformAdminPage() {
 
             <div className="space-y-6 pt-4">
               {/* Profile Credentials Bar */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-[10px] text-slate-500 font-bold uppercase block">Account ID</span>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {selectedUserForModal.account_id ? (
+                      <>
+                        <Badge variant="outline" className="font-mono text-xs font-bold bg-indigo-50 text-indigo-700 border-indigo-200 px-1.5 py-0">
+                          #{selectedUserForModal.account_id}
+                        </Badge>
+                        <button onClick={() => copyText(selectedUserForModal.account_id!, 'acc_id')} className="text-slate-500 hover:text-slate-800">
+                          <Copy className="w-3 h-3" />
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-slate-400 font-mono text-xs">—</span>
+                    )}
+                  </div>
+                </div>
                 <div>
                   <span className="text-[10px] text-slate-500 font-bold uppercase block">User ID</span>
                   <div className="flex items-center gap-1 mt-0.5">

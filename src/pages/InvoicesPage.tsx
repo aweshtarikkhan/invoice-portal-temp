@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useSubscription } from "@/hooks/use-subscription";
+import { useAuth } from "@/lib/auth";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
 import { FREE_PLAN_LIMITS, hasUnlimitedInvoices, normalizePlanKey } from "@/lib/subscription";
 import { Badge } from "@/components/ui/badge";
@@ -82,7 +83,9 @@ export default function InvoicesPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showIncompleteProfileDialog, setShowIncompleteProfileDialog] = useState(false);
   const { subscriptionPlan } = useSubscription();
+  const { profile } = useAuth();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -145,6 +148,10 @@ export default function InvoicesPage() {
   const remainingInvoices = isUnlimited ? Infinity : Math.max(0, 100 - invoiceCount);
 
   const handleNewInvoiceClick = () => {
+    if (profile && (!profile.address_line || !profile.pincode)) {
+      setShowIncompleteProfileDialog(true);
+      return;
+    }
     if (invoiceLimitReached) {
       setShowUpgrade(true);
     } else {
@@ -732,6 +739,37 @@ export default function InvoicesPage() {
         onOpenChange={setShowUpgrade} 
         orgId={org?.id}
       />
+
+      {/* Incomplete Profile Alert Dialog */}
+      <AlertDialog open={showIncompleteProfileDialog} onOpenChange={setShowIncompleteProfileDialog}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                <AlertCircle className="h-5 w-5" />
+              </div>
+              <div>
+                <AlertDialogTitle className="text-lg">Profile Completion Required</AlertDialogTitle>
+                <AlertDialogDescription className="text-xs text-muted-foreground">
+                  Address & PIN Code required for invoicing
+                </AlertDialogDescription>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              To comply with billing standards and generate GST-ready invoices, you must complete your <strong>Street Address</strong> and <strong>PIN Code</strong> in your profile settings before creating invoices.
+            </p>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => navigate("/settings?tab=profile")}
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
+            >
+              Complete Profile in Settings
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

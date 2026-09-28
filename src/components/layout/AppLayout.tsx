@@ -28,7 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle } from "lucide-react";
+import { LogOut, Home, Settings, User, HelpCircle, Building2, ArrowUpCircle, AlertCircle } from "lucide-react";
 
 function OrgSetup({ onComplete }: { onComplete: () => void }) {
   const { profile, signOut } = useAuth();
@@ -51,19 +51,17 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
       return;
     }
 
-    // Handle initial plan and trial
+    // Handle initial plan and trial - default Free plan for 6 months (180 days)
     try {
       const planName = sessionStorage.getItem("onboarding_plan") || "free";
-      if (!sessionStorage.getItem("onboarding_plan")) {
-        sessionStorage.setItem("prompt_plan_selection", "true");
-      }
       const { data: settingsData } = await supabase
         .from("platform_settings")
         .select("value")
         .eq("key", "trial_days")
         .maybeSingle();
 
-      const trialDays = settingsData ? parseInt(settingsData.value) : 14;
+      // Default to 180 days (6 months) for free plan
+      const trialDays = settingsData ? parseInt(settingsData.value) : 180;
 
       if (trialDays > 0) {
         // We need to fetch the org_id to start the trial. 
@@ -143,14 +141,7 @@ export function AppLayout() {
   }, []);
   const { subscriptionPlan, isOnTrial } = useSubscription();
     const navigate = useNavigate();
-  useEffect(() => {
-    if (!needsSetup && !checking) {
-      if (sessionStorage.getItem('prompt_plan_selection') === 'true') {
-        setShowPlanModal(true);
-        sessionStorage.removeItem('prompt_plan_selection');
-      }
-    }
-  }, [needsSetup, checking]);
+
 
   useEffect(() => {
     // Safety fallback: Never keep user stuck on loading spinner for more than 2.5 seconds
@@ -523,6 +514,23 @@ export function AppLayout() {
             <div className="flex-1" />
             <div className="flex items-center gap-3">
               <CommandPalette />
+              
+              {/* Prominent Account ID in Top-Right Header */}
+              {profile && (
+                <div 
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300 text-xs font-mono font-bold tracking-wide shadow-xs cursor-pointer hover:bg-blue-100 transition-colors"
+                  title="Click to copy your unique 6-digit Account ID"
+                  onClick={() => {
+                    const accId = profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0");
+                    navigator.clipboard.writeText(accId);
+                    toast({ title: "Account ID Copied!", description: `Account ID #${accId} copied to clipboard.` });
+                  }}
+                >
+                  <span className="text-[10px] font-sans font-medium text-blue-500 uppercase">ID</span>
+                  <span>#{profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0")}</span>
+                </div>
+              )}
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -543,7 +551,13 @@ export function AppLayout() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
                   <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
+                    <div className="flex flex-col space-y-1.5">
+                      <div className="flex items-center justify-between pb-1.5 mb-1 border-b">
+                        <span className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Account ID</span>
+                        <span className="font-mono font-bold text-xs bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 px-2 py-0.5 rounded">
+                          #{profile?.account_id || "1" + String(profile?.id || "00000").replace(/\D/g, "").slice(0, 5).padStart(5, "0")}
+                        </span>
+                      </div>
                       <p className="text-sm font-semibold leading-none">
                         {[profile?.first_name, profile?.last_name].filter(Boolean).join(" ") || "User"}
                       </p>
@@ -595,6 +609,26 @@ export function AppLayout() {
             </div>
           </header>
           <TrialBanner onUpgrade={() => setShowPlanModal(true)} />
+
+          {/* Incomplete Profile Alert Banner */}
+          {profile && (!profile.address_line || !profile.pincode) && (
+            <div className="bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-900/60 px-6 py-2.5 flex items-center justify-between text-xs sm:text-sm">
+              <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 font-medium">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Complete your Profile:</strong> Please add your complete Address & PIN Code in Settings to enable invoice generation.
+                </span>
+              </div>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => navigate("/settings?tab=profile")}
+                className="border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:text-amber-200 font-semibold h-7 text-xs shrink-0"
+              >
+                Complete Profile
+              </Button>
+            </div>
+          )}
           <main className="flex-1 overflow-auto px-6 py-6">
             {mainContent}
           </main>
