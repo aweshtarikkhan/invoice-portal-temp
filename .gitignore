@@ -28,3 +28,8 @@ dist-ssr
 .env.*
 backend/.env
 backend/node_modules
+*.tar.gz
+*.cjs
+*.py
+docker-compose-ec2.yml
+update-compose.sh

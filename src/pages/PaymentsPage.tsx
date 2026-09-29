@@ -30,6 +30,7 @@ import {
 } from "recharts";
 import { format, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import { revertPaymentBankingTransaction } from "@/lib/banking-sync";
 
 const paymentImportFields: ImportField[] = [
   { key: "payment_number", label: "Payment #", required: true },
@@ -95,7 +96,7 @@ export default function PaymentsPage() {
     if (!org?.id) return;
     setLoading(true);
     const [{ data: payData }, { data: invData }] = await Promise.all([
-      supabase.from("payments").select("*, clients(display_name, id), invoices(invoice_number)").eq("org_id", org.id).order("payment_date", { ascending: false }),
+      supabase.from("payments").select("*, clients(display_name, id), invoices(invoice_number), bank_accounts(name, bank_name, account_number, account_type)").eq("org_id", org.id).order("payment_date", { ascending: false }),
       supabase.from("invoices").select("id, client_id, total, amount_paid, balance_due, due_date, status, invoice_number, clients(display_name, id)").eq("org_id", org.id),
     ]);
     setPayments(payData || []);
@@ -218,7 +219,12 @@ export default function PaymentsPage() {
         await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cId);
       }
 
-      toast({ title: `${ids.length} payment(s) deleted`, description: "Invoice balances have been updated." });
+      // Revert banking transactions & bank balance
+      for (const p of toDelete) {
+        await revertPaymentBankingTransaction(p.id);
+      }
+
+      toast({ title: `${ids.length} payment(s) deleted`, description: "Invoice and bank balances have been updated." });
       setSelected(new Set());
     }
     setDeleting(false);
@@ -477,6 +483,7 @@ export default function PaymentsPage() {
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Customer Name</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Invoice#</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Mode</TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Deposit Account</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Amount</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Unused Amount</TableHead>
                 </TableRow>
@@ -491,6 +498,18 @@ export default function PaymentsPage() {
                     <TableCell className="text-sm">{(p.clients as any)?.display_name}</TableCell>
                     <TableCell className="text-sm">{(p.invoices as any)?.invoice_number || "-"}</TableCell>
                     <TableCell className="text-sm capitalize">{(p.payment_mode || "").replace(/_/g, " ")}</TableCell>
+                    <TableCell className="text-sm">
+                      {p.bank_accounts ? (
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-foreground">
+                            {p.bank_accounts.bank_name ? `${p.bank_accounts.bank_name} ${p.bank_accounts.account_number ? `(..${p.bank_accounts.account_number.slice(-4)})` : ''}` : p.bank_accounts.name}
+                          </span>
+                          <Badge variant="outline" className="text-[10px] py-0 px-1 uppercase">{p.bank_accounts.account_type || 'Bank'}</Badge>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm text-right font-medium">{fmt(Number(p.amount))}</TableCell>
                     <TableCell className="text-sm text-right text-muted-foreground">{fmt(0)}</TableCell>
                   </TableRow>

@@ -276,10 +276,10 @@ export default function BankAccountDetailPage() {
         <Card><CardContent className="pt-4"><div className="text-xs text-muted-foreground">Reconciled</div><div className="text-2xl font-semibold">{stats.reconciled} / {txns.length}</div></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="unrec">
+      <Tabs defaultValue="all">
         <TabsList>
+          <TabsTrigger value="all">All Transactions ({txns.length})</TabsTrigger>
           <TabsTrigger value="unrec">To Reconcile ({stats.unrec})</TabsTrigger>
-          <TabsTrigger value="all">All Transactions</TabsTrigger>
         </TabsList>
         {["unrec", "all"].map(tab => (
           <TabsContent key={tab} value={tab}>

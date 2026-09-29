@@ -150,7 +150,7 @@ export default function BankAccountsPage() {
               <Label>Ledger Account</Label>
               <Select value={form.account_id} onValueChange={v => setForm({ ...form, account_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Link to COA" /></SelectTrigger>
-                <SelectContent>{accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.code} {a.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{accounts.map((a: any) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div><Label>Bank Name</Label><Input value={form.bank_name} onChange={e => setForm({ ...form, bank_name: e.target.value })} /></div>

@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { postBillPaymentJournal } from "@/lib/accounting";
+import { getOrCreateCashAccount } from "@/lib/banking-sync";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
@@ -43,6 +44,55 @@ export default function BillDetailPage() {
   const [payDate, setPayDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [payMethod, setPayMethod] = useState("bank_transfer");
   const [payRef, setPayRef] = useState("");
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+
+  useEffect(() => {
+    if (!org?.id) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("bank_accounts")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("is_active", true)
+        .order("name");
+      const list = data || [];
+      setBankAccounts(list);
+      if (list.length > 0 && !selectedBankAccountId) {
+        const defaultAcct = list.find((a: any) => payMethod === "cash" ? a.account_type === "cash" : a.account_type !== "cash") || list[0];
+        if (defaultAcct) setSelectedBankAccountId(defaultAcct.id);
+      }
+    })();
+  }, [org?.id]);
+
+  const selectedAccount = useMemo(() => {
+    return bankAccounts.find((b) => b.id === selectedBankAccountId);
+  }, [bankAccounts, selectedBankAccountId]);
+
+  const handlePayMethodChange = async (method: string) => {
+    setPayMethod(method);
+    if (method === "cash") {
+      let cashAcc = bankAccounts.find((a) => a.account_type === "cash");
+      if (!cashAcc && org?.id) {
+        cashAcc = await getOrCreateCashAccount(org.id, (org as any)?.currency || "INR");
+        if (cashAcc) {
+          setBankAccounts((prev) => [cashAcc, ...prev.filter((a) => a.id !== cashAcc.id)]);
+        }
+      }
+      if (cashAcc) {
+        setSelectedBankAccountId(cashAcc.id);
+      }
+    } else {
+      const current = bankAccounts.find((a) => a.id === selectedBankAccountId);
+      if (current?.account_type === "cash") {
+        const bankAcc = bankAccounts.find((a) => a.account_type !== "cash");
+        if (bankAcc) {
+          setSelectedBankAccountId(bankAcc.id);
+        }
+      }
+    }
+  };
+
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const { subscriptionPlan } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -87,9 +137,48 @@ export default function BillDetailPage() {
       org_id: org.id, vendor_id: bill.vendor_id, bill_id: bill.id,
       payment_date: payDate, amount: amt, payment_method: payMethod, reference: payRef || null,
       branch_id: bill.branch_id,
+      bank_account_id: selectedBankAccountId || null,
     };
     const { data: pmt, error } = await (supabase as any).from("bill_payments").insert(payload).select().single();
     if (error) { toast({ title: "Failed", description: error.message, variant: "destructive" }); return; }
+
+    // Record debit transaction in bank_transactions & update bank account balance
+    if (selectedBankAccountId && pmt) {
+      try {
+        const { data: account } = await (supabase as any)
+          .from("bank_accounts")
+          .select("current_balance")
+          .eq("id", selectedBankAccountId)
+          .single();
+        const prevBal = Number(account?.current_balance || 0);
+        const newBal = prevBal - amt;
+
+        await (supabase as any).from("bank_transactions").insert({
+          org_id: org.id,
+          bank_account_id: selectedBankAccountId,
+          txn_date: payDate,
+          amount: amt,
+          direction: "debit",
+          description: `Payment for Bill ${bill.vendor_bill_number || bill.bill_number} to ${vendor?.name || 'Vendor'}`,
+          reference: payRef || null,
+          counterparty: vendor?.name || null,
+          balance_after: newBal,
+          source: "bill_payment",
+          reconciled: true,
+          reconciled_at: new Date().toISOString(),
+          matched_type: "bill_payment",
+          matched_id: pmt.id,
+        });
+
+        await (supabase as any).from("bank_accounts").update({
+          current_balance: newBal,
+          updated_at: new Date().toISOString(),
+        }).eq("id", selectedBankAccountId);
+      } catch (err) {
+        console.error("Error updating bank for bill payment:", err);
+      }
+    }
+
     const newPaid = Number(bill.amount_paid) + amt;
     const newDue = Math.max(0, Number(bill.total) - newPaid);
     const status = newDue <= 0 ? "paid" : "partial";
@@ -475,7 +564,7 @@ export default function BillDetailPage() {
             <div><Label>Date</Label><Input type="date" value={payDate} onChange={e => setPayDate(e.target.value)} /></div>
             <div>
               <Label>Method</Label>
-              <Select value={payMethod} onValueChange={setPayMethod}>
+              <Select value={payMethod} onValueChange={handlePayMethodChange}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
@@ -483,6 +572,29 @@ export default function BillDetailPage() {
                   <SelectItem value="upi">UPI</SelectItem>
                   <SelectItem value="cheque">Cheque</SelectItem>
                   <SelectItem value="card">Card</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="flex items-center justify-between">
+                <span>Paid From Account *</span>
+                {selectedAccount && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Bal: {formatCurrency(Number(selectedAccount.current_balance || 0), (org as any)?.currency || "INR")}
+                  </span>
+                )}
+              </Label>
+              <Select value={selectedBankAccountId} onValueChange={setSelectedBankAccountId}>
+                <SelectTrigger><SelectValue placeholder="Select Bank / Account" /></SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <span>{b.bank_name ? `${b.bank_name} ${b.account_number ? `(..${b.account_number.slice(-4)})` : ''}` : b.name}</span>
+                        <span className="text-[10px] text-muted-foreground uppercase px-1 py-0.5 rounded bg-muted/60">{b.account_type || 'Bank'}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

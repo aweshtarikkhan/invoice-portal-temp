@@ -4617,6 +4617,7 @@ export type Database = {
       payments: {
         Row: {
           amount: number
+          bank_account_id: string | null
           branch_id: string | null
           client_id: string
           created_at: string
@@ -4633,6 +4634,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bank_account_id?: string | null
           branch_id?: string | null
           client_id: string
           created_at?: string
@@ -4649,6 +4651,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bank_account_id?: string | null
           branch_id?: string | null
           client_id?: string
           created_at?: string

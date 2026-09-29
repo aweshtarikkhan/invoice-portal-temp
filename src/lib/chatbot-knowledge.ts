@@ -177,5 +177,15 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - GST Calculation: GST % (e.g. 18%, 12%, 5%) is applied directly on the line's Taxable Amount (Taxable * (GST% / 100)).
 - Bottom Summary Calculation: The bottom summary clearly details: Subtotal (sum of taxable values) + Total Taxes (CGST/SGST or IGST) - Overall Global Discount + Shipping & Adjustments = GRAND TOTAL.
 
+12. BANKING, CASH FLOW & PAYMENT RECEIVED
+- Location: Go to Banking in the sidebar (/banking) or Cash Flow in Reports (/reports/cash-flow).
+- Payment Received Destination Account: When recording a payment received from a customer (via Record Payment Received page or Invoice Detail "Record Payment" dialog), users can select the specific Bank Account or Cash in Hand account where the funds were deposited.
+- Bank Account Statements: Every recorded payment automatically creates a real-time credit transaction in the selected bank account. Opening that Bank Account's details in Banking immediately lists the transaction with date, amount, description, and running balance.
+- Cash Payments & Cash Flow: When receiving cash or spending cash, it routes to the "Cash in Hand" account. The Cash Flow page provides live visual charts and tables of all cash and bank inflows and outflows across the organization.
+
+13. CHART OF ACCOUNTS (DIRECT ACCOUNT NAMES)
+- Location: Go to Accounting -> Chart of Accounts (/chart-of-accounts).
+- Direct Account Names: The system displays clean, descriptive Account Names directly without cluttered numerical codes. The "Code" column and input field are removed from the interface, and codes are managed automatically behind the scenes.
+
 --- END OF KNOWLEDGE BASE ---
 `;

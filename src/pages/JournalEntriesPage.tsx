@@ -122,7 +122,7 @@ export default function JournalEntriesPage() {
                         <TableBody>
                           {(lineMap[e.id] || []).map((l: any) => (
                             <TableRow key={l.id}>
-                              <TableCell>{l.accounts?.code} {l.accounts?.name}</TableCell>
+                              <TableCell>{l.accounts?.name || "—"}</TableCell>
                               <TableCell className="text-sm text-muted-foreground">{l.description || "—"}</TableCell>
                               <TableCell className="text-right">{Number(l.debit) > 0 ? formatCurrency(Number(l.debit), (org as any)?.currency || "INR") : "—"}</TableCell>
                               <TableCell className="text-right">{Number(l.credit) > 0 ? formatCurrency(Number(l.credit), (org as any)?.currency || "INR") : "—"}</TableCell>
@@ -156,7 +156,7 @@ export default function JournalEntriesPage() {
                     <TableCell>
                       <Select value={l.account_id} onValueChange={(v) => { const x = [...lines]; x[i].account_id = v; setLines(x); }}>
                         <SelectTrigger className="h-9"><SelectValue placeholder="Select" /></SelectTrigger>
-                        <SelectContent>{accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.code} {a.name}</SelectItem>)}</SelectContent>
+                        <SelectContent>{accounts.map(a => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)}</SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell><Input value={l.description} onChange={e => { const x = [...lines]; x[i].description = e.target.value; setLines(x); }} /></TableCell>

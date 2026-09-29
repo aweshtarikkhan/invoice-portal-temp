@@ -21,8 +21,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { logAudit } from "@/lib/audit";
-import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus, Sparkles, Search, ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowLeft, CreditCard, IndianRupee, AlertCircle, CheckCircle2, Plus, Sparkles, Search, ArrowUp, ArrowDown, Building2, Wallet } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
+import { recordPaymentBankingTransaction, getOrCreateCashAccount } from "@/lib/banking-sync";
 
 const PAYMENT_MODES = [
   { value: "bank_transfer", label: "Bank Transfer" },
@@ -111,6 +112,56 @@ export default function RecordPaymentPage() {
       }
     });
   }, [org?.id]);
+
+  // Load bank and cash accounts
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+
+  useEffect(() => {
+    if (!org?.id) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("bank_accounts")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("is_active", true)
+        .order("name");
+      const list = data || [];
+      setBankAccounts(list);
+      if (list.length > 0) {
+        const defaultAcct = list.find((a: any) => paymentMode === "cash" ? a.account_type === "cash" : a.account_type !== "cash") || list[0];
+        if (defaultAcct) setSelectedBankAccountId(defaultAcct.id);
+      }
+    })();
+  }, [org?.id]);
+
+  const selectedAccount = useMemo(() => {
+    return bankAccounts.find((b) => b.id === selectedBankAccountId);
+  }, [bankAccounts, selectedBankAccountId]);
+
+  const handlePaymentModeChange = async (mode: string) => {
+    setPaymentMode(mode);
+    if (mode === "cash") {
+      let cashAcc = bankAccounts.find((a) => a.account_type === "cash");
+      if (!cashAcc && org?.id) {
+        cashAcc = await getOrCreateCashAccount(org.id, org.currency_code || "INR");
+        if (cashAcc) {
+          setBankAccounts((prev) => [cashAcc, ...prev.filter((a) => a.id !== cashAcc.id)]);
+        }
+      }
+      if (cashAcc) {
+        setSelectedBankAccountId(cashAcc.id);
+      }
+    } else {
+      const current = bankAccounts.find((a) => a.id === selectedBankAccountId);
+      if (current?.account_type === "cash") {
+        const bankAcc = bankAccounts.find((a) => a.account_type !== "cash");
+        if (bankAcc) {
+          setSelectedBankAccountId(bankAcc.id);
+        }
+      }
+    }
+  };
 
   // Load outstanding invoices when client changes
   useEffect(() => {
@@ -302,7 +353,7 @@ export default function RecordPaymentPage() {
         const currentPayNum = formatSequenceNumber(prefix, nextSeq, "PAY");
         recordedPaymentNumbers.push(currentPayNum);
 
-        const { error } = await supabase.from("payments").insert({
+        const { data: insertedPayment, error } = await supabase.from("payments").insert({
           org_id: org.id,
           client_id: clientId,
           invoice_id: inv.id,
@@ -310,16 +361,34 @@ export default function RecordPaymentPage() {
           amount: inv.payment,
           payment_date: paymentDate,
           payment_mode: paymentMode,
+          bank_account_id: selectedBankAccountId || null,
           reference_number: referenceNumber || null,
           notes: notes || null,
           currency_code: org.currency_code,
-        });
+        }).select().single();
 
         if (error) {
           console.error(`Error recording payment for ${inv.invoice_number}:`, error);
           errorMessages.push(`${inv.invoice_number}: ${error.message}`);
           hasError = true;
           continue;
+        }
+
+        // Record banking transaction & update bank balance
+        if (selectedBankAccountId && insertedPayment) {
+          const clientObj = clients.find((c) => c.id === clientId);
+          await recordPaymentBankingTransaction({
+            orgId: org.id,
+            bankAccountId: selectedBankAccountId,
+            amount: inv.payment,
+            paymentDate,
+            invoiceNumber: inv.invoice_number,
+            clientName: clientObj?.display_name,
+            referenceNumber,
+            paymentId: insertedPayment.id,
+            paymentNumber: currentPayNum,
+            notes,
+          });
         }
 
         // Update invoice balance
@@ -439,11 +508,40 @@ export default function RecordPaymentPage() {
           </div>
           <div className="space-y-2">
             <Label>Payment Mode</Label>
-            <Select value={paymentMode} onValueChange={setPaymentMode}>
+            <Select value={paymentMode} onValueChange={handlePaymentModeChange}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 {PAYMENT_MODES.map((m) => (
                   <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center justify-between">
+              <span>Deposit To Account *</span>
+              {selectedAccount && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  Bal: {fmt(Number(selectedAccount.current_balance || 0))}
+                </span>
+              )}
+            </Label>
+            <Select value={selectedBankAccountId} onValueChange={setSelectedBankAccountId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Bank / Account" />
+              </SelectTrigger>
+              <SelectContent>
+                {bankAccounts.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    <div className="flex items-center justify-between gap-3 w-full">
+                      <span className="font-medium">
+                        {b.bank_name ? `${b.bank_name} ${b.account_number ? `(..${b.account_number.slice(-4)})` : ''}` : b.name}
+                      </span>
+                      <span className="text-[11px] text-muted-foreground uppercase px-1.5 py-0.5 rounded bg-muted/60">
+                        {b.account_type || 'Bank'}
+                      </span>
+                    </div>
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

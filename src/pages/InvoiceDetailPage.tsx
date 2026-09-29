@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { getDocumentPreviewClass, getPaperSizeLabel, getPrintPageCSS } from "@/lib/document-templates";
 import { QRCodeSVG } from "qrcode.react";
+import { recordPaymentBankingTransaction, getOrCreateCashAccount } from "@/lib/banking-sync";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
@@ -75,6 +76,55 @@ export default function InvoiceDetailPage() {
   const [paymentForm, setPaymentForm] = useState({
     amount: 0, payment_mode: "bank_transfer", reference_number: "", notes: "", payment_date: new Date().toISOString().split("T")[0],
   });
+  const [bankAccounts, setBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+
+  useEffect(() => {
+    if (!org?.id) return;
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("bank_accounts")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("is_active", true)
+        .order("name");
+      const list = data || [];
+      setBankAccounts(list);
+      if (list.length > 0 && !selectedBankAccountId) {
+        const defaultAcct = list.find((a: any) => paymentForm.payment_mode === "cash" ? a.account_type === "cash" : a.account_type !== "cash") || list[0];
+        if (defaultAcct) setSelectedBankAccountId(defaultAcct.id);
+      }
+    })();
+  }, [org?.id]);
+
+  const selectedAccount = useMemo(() => {
+    return bankAccounts.find((b) => b.id === selectedBankAccountId);
+  }, [bankAccounts, selectedBankAccountId]);
+
+  const handlePaymentModeChange = async (mode: string) => {
+    setPaymentForm(prev => ({ ...prev, payment_mode: mode }));
+    if (mode === "cash") {
+      let cashAcc = bankAccounts.find((a) => a.account_type === "cash");
+      if (!cashAcc && org?.id) {
+        cashAcc = await getOrCreateCashAccount(org.id, org.currency_code || "INR");
+        if (cashAcc) {
+          setBankAccounts((prev) => [cashAcc, ...prev.filter((a) => a.id !== cashAcc.id)]);
+        }
+      }
+      if (cashAcc) {
+        setSelectedBankAccountId(cashAcc.id);
+      }
+    } else {
+      const current = bankAccounts.find((a) => a.id === selectedBankAccountId);
+      if (current?.account_type === "cash") {
+        const bankAcc = bankAccounts.find((a) => a.account_type !== "cash");
+        if (bankAcc) {
+          setSelectedBankAccountId(bankAcc.id);
+        }
+      }
+    }
+  };
+
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
   const [invoiceOrg, setInvoiceOrg] = useState<any>(null);
   const [dataReady, setDataReady] = useState(false);
@@ -145,7 +195,7 @@ export default function InvoiceDetailPage() {
     // Generate payment number
     const payNum = `PAY-${Date.now()}`;
 
-    const { error } = await supabase.from("payments").insert({
+    const { data: insertedPay, error } = await supabase.from("payments").insert({
       org_id: org!.id,
       client_id: invoice.client_id,
       invoice_id: invoice.id,
@@ -154,13 +204,29 @@ export default function InvoiceDetailPage() {
       amount: paymentForm.amount,
       currency_code: invoice.currency_code,
       payment_mode: paymentForm.payment_mode,
+      bank_account_id: selectedBankAccountId || null,
       reference_number: paymentForm.reference_number,
       notes: paymentForm.notes,
-    });
+    }).select().single();
 
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
       return;
+    }
+
+    if (selectedBankAccountId && insertedPay) {
+      await recordPaymentBankingTransaction({
+        orgId: org!.id,
+        bankAccountId: selectedBankAccountId,
+        amount: paymentForm.amount,
+        paymentDate: paymentForm.payment_date,
+        invoiceNumber: invoice.invoice_number,
+        clientName: (invoice.clients as any)?.display_name,
+        referenceNumber: paymentForm.reference_number,
+        paymentId: insertedPay.id,
+        paymentNumber: payNum,
+        notes: paymentForm.notes,
+      });
     }
 
     // Update invoice
@@ -689,15 +755,46 @@ export default function InvoiceDetailPage() {
             </div>
             <div className="space-y-2">
               <Label>Payment Mode</Label>
-              <Select value={paymentForm.payment_mode} onValueChange={(v) => setPaymentForm({ ...paymentForm, payment_mode: v })}>
+              <Select value={paymentForm.payment_mode} onValueChange={(v) => handlePaymentModeChange(v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="cheque">Cheque</SelectItem>
                   <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                   <SelectItem value="credit_card">Credit Card</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
                   <SelectItem value="paypal">PayPal</SelectItem>
                   <SelectItem value="stripe">Stripe</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label className="flex items-center justify-between">
+                <span>Deposit To Account *</span>
+                {selectedAccount && (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    Bal: {fmt(Number(selectedAccount.current_balance || 0))}
+                  </span>
+                )}
+              </Label>
+              <Select value={selectedBankAccountId} onValueChange={setSelectedBankAccountId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select Bank / Account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {bankAccounts.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>
+                      <div className="flex items-center justify-between gap-3 w-full">
+                        <span className="font-medium">
+                          {b.bank_name ? `${b.bank_name} ${b.account_number ? `(..${b.account_number.slice(-4)})` : ''}` : b.name}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground uppercase px-1.5 py-0.5 rounded bg-muted/60">
+                          {b.account_type || 'Bank'}
+                        </span>
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
