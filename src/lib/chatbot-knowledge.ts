@@ -194,5 +194,11 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Top Vendors: Top 5 vendors ranked by purchase volume with bill count.
 - Purchase Documents Breakdown: Interactive tabs to view Recent Purchase Invoices and Recent Purchase Orders with invoice numbers, vendor names, dates, statuses, total amounts, balance due, and direct 1-click links to view each document.
 
+15. INVENTORY & STOCK REPORTS
+- Location: Go to Reports -> Inventory Reports (/reports/inventory).
+- KPIs: Total Items count, Total Stock Value formatted in Indian Rupees (₹) calculated using live stock quantities and purchase/effective costs, Low Stock Items count, and Monthly Stock Movements.
+- Real-Time Live Stock: Accurately syncs with items' stock_quantity and purchase invoices so received goods are immediately counted into inventory.
+- Stock Status Tables: Includes tabs for "All Products" and "Low Stock Alerts" with live stock quantities, units, costs, valuation, and status badges (In Stock, Low Stock, Out of Stock).
+
 --- END OF KNOWLEDGE BASE ---
 `;

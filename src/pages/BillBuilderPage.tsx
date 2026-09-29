@@ -471,8 +471,8 @@ export default function BillBuilderPage() {
   const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
   const [tdsTcsRate, setTdsTcsRate] = useState(0);
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
-  const [deductStock, setDeductStock] = useState(false);
-  const [prevDeductStock, setPrevDeductStock] = useState(false);
+  const [deductStock, setDeductStock] = useState(true);
+  const [prevDeductStock, setPrevDeductStock] = useState(true);
   const [amountPaid, setAmountPaid] = useState(0);
   // Phase 5 — opt-in compliance
   const [generateIrn, setGenerateIrn] = useState(false);
@@ -625,8 +625,8 @@ export default function BillBuilderPage() {
       setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
       setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
       setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
-      setDeductStock(!!(inv as any).deduct_stock);
-      setPrevDeductStock(!!(inv as any).deduct_stock);
+      setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
+      setPrevDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
       setAmountPaid(duplicateId ? 0 : Number(inv.amount_paid || 0));
       
       // Phase 5 compliance load
@@ -950,6 +950,7 @@ export default function BillBuilderPage() {
         tds_tcs_type: tdsTcsType,
         tds_tcs_rate: tdsTcsRate,
         tds_tcs_amount: tdsTcsAmount,
+        deduct_stock: deductStock,
         notes,
         terms,
         grn_id: linkedGrnId || null,
