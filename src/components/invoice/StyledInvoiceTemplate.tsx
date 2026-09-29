@@ -279,20 +279,27 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
             {hasGst && isInterstate && (
               <th style={{ ...thStyle, width: 80 }}>IGST</th>
             )}
-            <th style={{ ...thStyle, width: 100 }}>Amount</th>
+            <th style={{ ...thStyle, width: 100 }}>Subtotal</th>
           </tr>
         </thead>
         <tbody>
           {lines.map((line, idx) => {
-            const taxAmount = Number(line.tax_amount != null ? line.tax_amount : ((Number(line.quantity || 0) * Number(line.rate || 0)) * ((typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0)) / 100)));
+            const lineQty = Number(line.quantity || 0);
+            const lineRate = Number(line.rate || 0);
+            const rawLineTotal = lineQty * lineRate;
+            const itemDisc = line.discount ? (line.discount_type === "percentage" ? rawLineTotal * (Number(line.discount) / 100) : Number(line.discount)) : 0;
+            const lineTaxableAmt = (lineRate > 0 && lineQty > 0)
+              ? Math.max(0, rawLineTotal - itemDisc)
+              : (Number(line.tax_amount || 0) > 0 && Number(line.amount || 0) > Number(line.tax_amount || 0)
+                  ? Number(line.amount) - Number(line.tax_amount)
+                  : Number(line.amount || 0));
+
+            const taxRateVal = typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0);
+            const taxAmount = Number(line.tax_amount != null && Number(line.tax_amount) > 0
+              ? line.tax_amount
+              : (taxRateVal > 0 ? (lineTaxableAmt * (taxRateVal / 100)) : 0));
             const isZeroTax = taxAmount === 0;
             const halfTax = taxAmount / 2;
-            
-            // Try to infer tax rate from amount, if we have rate and amount
-            const lineAmt = Number(line.amount || 1); 
-            // the exact rate is usually not in the line, but we can compute % roughly for display if needed. 
-            // In typical Indian invoices, rate % is shown under the amount, or just the amount.
-            // We will just show the amount.
             
             return (
               <tr key={line.id || idx}>
@@ -336,7 +343,7 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
                   <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(taxAmount)}</td>
                 )}
                 <td style={{ ...tdStyle, fontWeight: 700 }}>
-                  {fmt(hasGst ? lineAmt - taxAmount : lineAmt)}
+                  {fmt(lineTaxableAmt)}
                 </td>
               </tr>
             );

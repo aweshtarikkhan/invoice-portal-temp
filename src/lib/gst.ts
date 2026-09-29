@@ -630,8 +630,12 @@ export function calculateTaxBreakdown(
       } else if (line.tax_id) {
         const tax = taxRates.find((t: any) => t.id === line.tax_id);
         if (tax) rate = Number(tax.rate);
-      } else if (line.amount) {
-        const taxableAmount = line.amount - line.tax_amount;
+      } else if (line.amount || ((line as any).rate && (line as any).quantity)) {
+        const lineQty = Number((line as any).quantity || 0);
+        const lineRate = Number((line as any).rate || 0);
+        const taxableAmount = (lineRate > 0 && lineQty > 0)
+          ? (lineRate * lineQty) - Number((line as any).discount || 0)
+          : (Number(line.amount || 0) > line.tax_amount ? Number(line.amount) - line.tax_amount : Number(line.amount || 0));
         if (taxableAmount > 0) {
           rate = Math.round((line.tax_amount / taxableAmount) * 100);
         }

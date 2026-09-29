@@ -215,11 +215,34 @@ export function ModernTealInvoiceTemplate({
               {hasGst && <th className="py-2 px-2 text-right">Taxable (₹)</th>}
               {hasGst && <th className="py-2 px-2 text-center">GST %</th>}
               {hasGst && <th className="py-2 px-2 text-right">GST (₹)</th>}
-              <th className="py-2 px-2 text-right" style={{backgroundColor: accent}}>Total (₹)</th>
+              <th className="py-2 px-2 text-right" style={{backgroundColor: accent}}>Subtotal (₹)</th>
             </tr>
           </thead>
           <tbody>
-            {lines.map((line, idx) => (
+            {lines.map((line, idx) => {
+              const lineQty = Number(line.quantity || 0);
+              const lineRate = Number(line.rate || 0);
+              const rawLineTotal = lineQty * lineRate;
+              const itemDisc = line.discount ? (line.discount_type === "percentage" ? rawLineTotal * (Number(line.discount) / 100) : Number(line.discount)) : 0;
+              const lineTaxableAmt = (lineRate > 0 && lineQty > 0)
+                ? Math.max(0, rawLineTotal - itemDisc)
+                : (Number(line.tax_amount || 0) > 0 && Number(line.amount || 0) > Number(line.tax_amount || 0)
+                    ? Number(line.amount) - Number(line.tax_amount)
+                    : Number(line.amount || 0));
+
+              const gstPct = line.tax_rate != null
+                ? (typeof line.tax_rate === 'object' ? (line.tax_rate.rate ?? 0) : Number(line.tax_rate))
+                : (lineTaxableAmt > 0 && Number(line.tax_amount || 0) > 0
+                    ? Math.round((Number(line.tax_amount) / lineTaxableAmt) * 100)
+                    : 0);
+
+              const lineTaxAmt = Number(line.tax_amount != null && Number(line.tax_amount) > 0
+                ? line.tax_amount
+                : (gstPct > 0 ? lineTaxableAmt * (gstPct / 100) : 0));
+
+              const lineRowSubtotal = hasGst ? (lineTaxableAmt + lineTaxAmt) : lineTaxableAmt;
+
+              return (
               <tr key={idx} className="border-b border-gray-200">
                 <td className="py-2 px-2 text-center border-r border-gray-200">{idx + 1}</td>
                 <td className="py-2 px-2 border-r border-gray-200">
@@ -236,22 +259,22 @@ export function ModernTealInvoiceTemplate({
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.quantity}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || "PCS"}</td>
                 <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(line.rate).replace('₹', '')}</td>
-                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt((line.amount || 0) - (line.tax_amount || 0)).replace('₹', '')}</td>}
+                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(lineTaxableAmt).replace('₹', '')}</td>}
                 {hasGst && (
                   <td className="py-2 px-2 text-center border-r border-gray-200">
-                    {line.tax_rate != null ? `${typeof line.tax_rate === 'object' ? (line.tax_rate.rate ?? 0) : line.tax_rate}%` : `${(line.amount && line.tax_amount) ? Math.round((line.tax_amount / ((line.amount || 0) - line.tax_amount)) * 100) : 0}%`}
+                    {gstPct > 0 ? `${gstPct}%` : "-"}
                   </td>
                 )}
                 {hasGst && (
                   <td className="py-2 px-2 text-right border-r border-gray-200">
-                    {fmt(line.tax_amount != null ? line.tax_amount : ((Number(line.quantity || 0) * Number(line.rate || 0)) * ((typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0)) / 100))).replace('₹', '')}
+                    {fmt(lineTaxAmt).replace('₹', '')}
                   </td>
                 )}
                 <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
-                  {fmt(line.amount || 0).replace('₹', '')}
+                  {fmt(lineRowSubtotal).replace('₹', '')}
                 </td>
               </tr>
-            ))}
+            );})}
             {/* Blank row for spacing */}
             <tr className="border-b border-gray-200">
                <td colSpan={hasGst ? 10 : 6} className="py-6 border-r border-gray-200"></td>

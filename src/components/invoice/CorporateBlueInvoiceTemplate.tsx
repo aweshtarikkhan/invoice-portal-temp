@@ -303,16 +303,30 @@ export function CorporateBlueInvoiceTemplate({
             <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: hasGst ? "1px solid #2563eb" : "none" }}>RATE (₹)</th>
             {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 70, borderRight: "1px solid #2563eb" }}>GST %</th>}
             {hasGst && <th style={{ padding: "8px 10px", textAlign: "right", width: 110, borderRight: "1px solid #2563eb" }}>GST AMOUNT (₹)</th>}
-            <th style={{ padding: "8px 10px", textAlign: "right", width: 100 }}>TOTAL (₹)</th>
+            <th style={{ padding: "8px 10px", textAlign: "right", width: 100 }}>SUBTOTAL (₹)</th>
           </tr>
         </thead>
         <tbody>
           {lines.map((line, idx) => {
-            const taxAmt = Number(line.tax_amount || 0);
-            const lineAmt = Number(line.amount || 0);
-            const gstRate = typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : (line.tax_rate || line.gst_rate || (taxAmt > 0 && lineAmt > 0 ? Math.round((taxAmt / (lineAmt - taxAmt || lineAmt)) * 100) : 0));
-            // line.amount already includes tax_amount, so amount without GST = line.amount - tax_amount
-            const lineTaxableAmt = lineAmt - taxAmt;
+            const lineQty = Number(line.quantity || 0);
+            const lineRate = Number(line.rate || 0);
+            const rawLineTotal = lineQty * lineRate;
+            const itemDisc = line.discount ? (line.discount_type === "percentage" ? rawLineTotal * (Number(line.discount) / 100) : Number(line.discount)) : 0;
+            const lineTaxableAmt = (lineRate > 0 && lineQty > 0)
+              ? Math.max(0, rawLineTotal - itemDisc)
+              : (Number(line.tax_amount || 0) > 0 && Number(line.amount || 0) > Number(line.tax_amount || 0)
+                  ? Number(line.amount) - Number(line.tax_amount)
+                  : Number(line.amount || 0));
+
+            const gstRate = typeof line.tax_rate === 'object'
+              ? (line.tax_rate?.rate ?? 0)
+              : (line.tax_rate || line.gst_rate || (lineTaxableAmt > 0 && Number(line.tax_amount || 0) > 0 ? Math.round((Number(line.tax_amount) / lineTaxableAmt) * 100) : 0));
+
+            const taxAmt = Number(line.tax_amount != null && Number(line.tax_amount) > 0
+              ? line.tax_amount
+              : (gstRate > 0 ? lineTaxableAmt * (Number(gstRate) / 100) : 0));
+
+            const lineRowSubtotal = hasGst ? (lineTaxableAmt + taxAmt) : lineTaxableAmt;
 
             return (
               <tr key={line.id || idx} style={{ borderBottom: "1px solid #e2e8f0", background: idx % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
@@ -340,7 +354,7 @@ export function CorporateBlueInvoiceTemplate({
                 </td>
                 {hasGst && <td style={{ padding: "8px 6px", textAlign: "center", borderRight: "1px solid #e2e8f0" }}>{gstRate > 0 ? `${gstRate}%` : "-"}</td>}
                 {hasGst && <td style={{ padding: "8px 10px", textAlign: "right", borderRight: "1px solid #e2e8f0" }}>{taxAmt > 0 ? taxAmt.toFixed(2) : "-"}</td>}
-                <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{hasGst ? lineTaxableAmt.toFixed(2) : lineAmt.toFixed(2)}</td>
+                <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: 700, color: "#0f172a" }}>{lineRowSubtotal.toFixed(2)}</td>
               </tr>
             );
           })}

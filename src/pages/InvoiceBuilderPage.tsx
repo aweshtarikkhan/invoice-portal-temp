@@ -791,28 +791,25 @@ export default function InvoiceBuilderPage() {
   }, [clientInvoices]);
 
 
-  const calculateLine = useCallback((line: LineItem, globalDiscountTotal: number, totalSubtotalWithoutDiscount: number): LineItem => {
-    const lineSubtotal = line.quantity * line.rate;
-    // Calculate global discount ratio
-    const ratio = totalSubtotalWithoutDiscount > 0 ? lineSubtotal / totalSubtotalWithoutDiscount : 0;
-    const globalDiscountAllocated = globalDiscountTotal * ratio;
+  const calculateLine = useCallback((line: LineItem): LineItem => {
+    const lineSubtotal = (Number(line.quantity) || 0) * (Number(line.rate) || 0);
     
     // Add item specific discount if applicable
     const itemDiscount = line.discount_type === "percentage"
-      ? lineSubtotal * (line.discount / 100)
-      : line.discount;
+      ? lineSubtotal * ((Number(line.discount) || 0) / 100)
+      : (Number(line.discount) || 0);
       
-    const afterDiscount = Math.max(0, lineSubtotal - itemDiscount - globalDiscountAllocated);
+    const lineTaxable = Math.max(0, lineSubtotal - itemDiscount);
     
     let tax_amount = 0;
-    let computedAmount = afterDiscount;
+    let computedAmount = lineTaxable;
     const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
 
     if (hasGst && line.tax_id) {
       const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
       const taxRateObj = taxRates.find((t: any) => t.id === line.tax_id);
       const rate = slab ? slab.rate : (taxRateObj ? Number(taxRateObj.rate) : 0);
-      const computedTax = afterDiscount * (rate / 100);
+      const computedTax = lineTaxable * (rate / 100);
       
       tax_amount = computedTax;
       computedAmount += tax_amount;
@@ -874,10 +871,10 @@ export default function InvoiceBuilderPage() {
   const totalDiscount = discountType === "percentage" ? rawSubtotal * (discount / 100) : discount;
   
   // Calculate item-wise totals
-  const calculatedLines = lines.map(line => calculateLine(line, totalDiscount, rawSubtotal));
+  const calculatedLines = lines.map(line => calculateLine(line));
   // subtotal after item-level discounts (before global discount)
   const subtotal = rawSubtotal - itemLevelDiscountTotal;
-  const discountedSubtotal = calculatedLines.reduce((s, l) => s + (l.amount - l.tax_amount), 0);
+  const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
   
   // Aggregate Taxes
   const taxBreakdownMap: Record<string, { id: string, name: string, rate: number, amount: number }> = {};

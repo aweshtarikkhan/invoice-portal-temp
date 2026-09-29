@@ -171,5 +171,11 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - If a credit note shows no line items (blank items table), this means it was created with an older version of the app. Edit the credit note and re-add the items, then save again to fix it.
 - Status: Credit notes can be in Draft or Sent status. Status updates automatically on save.
 
+11. INVOICE, QUOTATION & BILL CALCULATIONS
+- Line Item Columns & Headers: In all invoice, quotation, and purchase bill templates, the line items table displays columns for S.No., Description, HSN/SAC, Qty, Unit, Rate (₹), Taxable (₹), GST %, GST (₹), and Subtotal (₹). The line total column is labeled "Subtotal (₹)" (or "Subtotal") so that "Total" / "Grand Total" is exclusively reserved for the bottom financial summary.
+- Taxable Amount Calculation: Taxable Amount for each line item is strictly calculated as (Quantity * Rate - Line Item Discount). Global invoice-level discounts do not reduce the line-item taxable value or line GST calculation.
+- GST Calculation: GST % (e.g. 18%, 12%, 5%) is applied directly on the line's Taxable Amount (Taxable * (GST% / 100)).
+- Bottom Summary Calculation: The bottom summary clearly details: Subtotal (sum of taxable values) + Total Taxes (CGST/SGST or IGST) - Overall Global Discount + Shipping & Adjustments = GRAND TOTAL.
+
 --- END OF KNOWLEDGE BASE ---
 `;

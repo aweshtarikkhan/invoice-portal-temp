@@ -331,7 +331,7 @@ export function ProfessionalNavyInvoiceTemplate({
               <th style={{ ...thStyle, width: "11%" }}>Taxable<br/>Value (₹)</th>
               {hasGst && <th style={{ ...thStyle, width: "6%" }}>GST %</th>}
               {hasGst && <th style={{ ...thStyle, width: "10%" }}>GST<br/>Amount (₹)</th>}
-              <th style={{ ...thStyle, borderRight: "none", width: "12%" }}>Total<br/>Amount (₹)</th>
+              <th style={{ ...thStyle, borderRight: "none", width: "12%" }}>Subtotal<br/>(₹)</th>
             </tr>
           </thead>
           <tbody>

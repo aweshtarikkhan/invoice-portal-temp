@@ -176,7 +176,13 @@ function SortableLine({ line, index, taxRates, items, onChange, onRemove, onAddI
           <span className="text-[10px] text-muted-foreground">Tax</span>
         </div>
         <div className="col-span-2 text-right">
-          <div className="h-9 flex items-center justify-end text-sm font-medium">{fmt(line.amount - (line.tax_amount || 0))}</div>
+          <div className="h-9 flex items-center justify-end text-sm font-medium">
+            {fmt(
+              (Number(line.quantity || 0) * Number(line.rate || 0)) > 0
+                ? Math.max(0, (Number(line.quantity || 0) * Number(line.rate || 0)) - (line.discount ? (line.discount_type === "percentage" ? (Number(line.quantity || 0) * Number(line.rate || 0) * (Number(line.discount) / 100)) : Number(line.discount)) : 0))
+                : (Number(line.amount || 0) > Number(line.tax_amount || 0) ? Number(line.amount) - Number(line.tax_amount) : Number(line.amount || 0))
+            )}
+          </div>
           {line.tax_amount > 0 && <span className="text-[10px] text-muted-foreground">+{fmt(line.tax_amount)} tax</span>}
         </div>
       </div>
@@ -328,14 +334,14 @@ export default function EstimateBuilderPage() {
   }, [id, org?.id]);
 
   const calculateLine = useCallback((line: LineItem): LineItem => {
-    const sub = line.quantity * line.rate;
-    const disc = line.discount_type === "percentage" ? sub * (line.discount / 100) : line.discount;
-    const after = sub - disc;
+    const sub = (Number(line.quantity) || 0) * (Number(line.rate) || 0);
+    const disc = line.discount_type === "percentage" ? sub * ((Number(line.discount) || 0) / 100) : (Number(line.discount) || 0);
+    const after = Math.max(0, sub - disc);
     const slab = INDIAN_GST_SLABS.find((s) => s.id === line.tax_id);
     const tr = taxRates.find((t) => t.id === line.tax_id);
     const rate = slab ? slab.rate : (tr ? Number(tr.rate) : 0);
     const tax = after * (rate / 100);
-    return { ...line, tax_amount: tax, amount: after };
+    return { ...line, tax_amount: tax, amount: after + tax };
   }, [taxRates]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
@@ -361,7 +367,15 @@ export default function EstimateBuilderPage() {
     }
   };
 
-  const subtotal = lines.reduce((s, l) => s + l.amount, 0);
+  const subtotal = lines.reduce((s, l) => {
+    const q = Number(l.quantity) || 0;
+    const r = Number(l.rate) || 0;
+    if (q > 0 && r > 0) {
+      const disc = l.discount_type === "percentage" ? (q * r) * ((Number(l.discount) || 0) / 100) : (Number(l.discount) || 0);
+      return s + Math.max(0, (q * r) - disc);
+    }
+    return s + (Number(l.amount || 0) > Number(l.tax_amount || 0) ? Number(l.amount) - Number(l.tax_amount) : Number(l.amount || 0));
+  }, 0);
   const totalDiscount = discountType === "percentage" ? subtotal * (discount / 100) : discount;
   const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
   let maxTaxRate = 0;
