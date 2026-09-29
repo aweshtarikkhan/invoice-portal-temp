@@ -77,10 +77,18 @@ export default function LoginPage() {
       }
 
       // Check if user is a platform admin
-      const { data: isAdmin } = await supabase
-        .rpc("is_platform_admin", { check_user_id: data.user.id });
+      const userEmail = (data.user.email || "").toLowerCase().trim();
+      let isPlatformAdmin = userEmail === "admin@aassaybiz.com" || userEmail === "awesh.etpl@gmail.com";
 
-      if (isAdmin === true) {
+      if (!isPlatformAdmin) {
+        const { data: isAdmin } = await supabase
+          .rpc("is_platform_admin", { check_user_id: data.user.id });
+        if (isAdmin === true) {
+          isPlatformAdmin = true;
+        }
+      }
+
+      if (isPlatformAdmin) {
         navigate("/platform-admin", { replace: true });
       } else {
         navigate("/dashboard", { replace: true });

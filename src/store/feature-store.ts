@@ -202,7 +202,8 @@ const ORG_FEATURES_STORAGE_KEY = "billflow-org-features";
 const ADMINS_STORAGE_KEY = "billflow-admin-users";
 const TEAM_MEMBERS_STORAGE_KEY = "billflow-team-members";
 
-// Default super admin email
+// Default super admin emails
+const DEFAULT_SUPER_ADMIN_EMAILS = ["awesh.etpl@gmail.com", "admin@aassaybiz.com"];
 const DEFAULT_SUPER_ADMIN_EMAIL = "awesh.etpl@gmail.com";
 
 interface FeatureState {
@@ -268,13 +269,15 @@ const loadAdminEmails = (): string[] => {
     const stored = localStorage.getItem(ADMINS_STORAGE_KEY);
     if (stored) {
       const emails: string[] = JSON.parse(stored);
-      if (!emails.includes(DEFAULT_SUPER_ADMIN_EMAIL)) {
-        emails.push(DEFAULT_SUPER_ADMIN_EMAIL);
-      }
+      DEFAULT_SUPER_ADMIN_EMAILS.forEach((adm) => {
+        if (!emails.includes(adm)) {
+          emails.push(adm);
+        }
+      });
       return emails;
     }
   } catch {}
-  return [DEFAULT_SUPER_ADMIN_EMAIL];
+  return [...DEFAULT_SUPER_ADMIN_EMAILS];
 };
 
 const loadTeamMembers = (): Record<string, TeamMember[]> => {
@@ -464,7 +467,8 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
   // Admin management
   isSuperAdmin: (email: string | null | undefined) => {
     if (!email) return false;
-    return email.toLowerCase().trim() === DEFAULT_SUPER_ADMIN_EMAIL;
+    const normalized = email.toLowerCase().trim();
+    return DEFAULT_SUPER_ADMIN_EMAILS.includes(normalized);
   },
 
   isAdmin: (email: string | null | undefined) => {
@@ -488,7 +492,7 @@ export const useFeatureStore = create<FeatureState>((set, get) => ({
 
   removeAdmin: (email: string) => {
     const normalized = email.toLowerCase().trim();
-    if (normalized === DEFAULT_SUPER_ADMIN_EMAIL) return;
+    if (DEFAULT_SUPER_ADMIN_EMAILS.includes(normalized)) return;
     const current = get().adminEmails;
     const updated = current.filter((e) => e !== normalized);
     try {

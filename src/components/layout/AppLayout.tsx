@@ -162,6 +162,12 @@ export function AppLayout() {
 
   useEffect(() => {
     const checkAdmin = async () => {
+      const targetEmail = (user?.email || profile?.email || "").toLowerCase().trim();
+      if (targetEmail === "admin@aassaybiz.com" || targetEmail === "awesh.etpl@gmail.com") {
+        setIsPlatformAdmin(true);
+        return;
+      }
+
       const uid = user?.id || profile?.user_id;
       if (!uid) return;
       try {
@@ -173,7 +179,7 @@ export function AppLayout() {
           const { data: directCheck } = await supabase
             .from("platform_admins")
             .select("id")
-            .eq("user_id", uid)
+            .or(`id.eq.${uid},user_id.eq.${uid},email.eq.${targetEmail}`)
             .maybeSingle();
           if (directCheck) setIsPlatformAdmin(true);
         }
@@ -218,6 +224,12 @@ export function AppLayout() {
 
       // If user has NO organizations at all (neither as member nor owner)
       if (!hasMemberOrgs && !hasOwnedOrgs) {
+        const targetEmail = (user?.email || profile?.email || "").toLowerCase().trim();
+        if (targetEmail === "admin@aassaybiz.com" || targetEmail === "awesh.etpl@gmail.com") {
+          navigate("/platform-admin", { replace: true });
+          return;
+        }
+
         const { data: isAdmin } = await supabase
           .rpc("is_platform_admin", { check_user_id: profile.user_id });
 
@@ -229,7 +241,7 @@ export function AppLayout() {
         const { data: directAdmin } = await supabase
           .from("platform_admins")
           .select("id")
-          .eq("user_id", profile.user_id)
+          .or(`id.eq.${profile.user_id},user_id.eq.${profile.user_id},email.eq.${targetEmail}`)
           .maybeSingle();
 
         if (directAdmin) {
