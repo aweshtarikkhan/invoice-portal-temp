@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatSequenceNumber } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { INDIAN_GST_SLABS } from "@/lib/constants";
+import { extractEntityState } from "@/lib/gst";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Input } from "@/components/ui/input";
@@ -378,22 +379,57 @@ export default function EstimateBuilderPage() {
   }, 0);
   const totalDiscount = discountType === "percentage" ? subtotal * (discount / 100) : discount;
   const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
+  const selectedClient = clients.find(c => c.id === clientId);
+  const orgState = extractEntityState(org);
+  const clientState = extractEntityState(selectedClient);
+  const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
+
+  const taxBreakdownMap: Record<string, { id: string, name: string, rate: number, amount: number }> = {};
   let maxTaxRate = 0;
   lines.forEach(line => {
     if (line.tax_id) {
-       const tax = taxRates.find((t: any) => t.id === line.tax_id);
-       if (tax) {
-         const rate = Number(tax.rate);
-         if (rate > maxTaxRate) maxTaxRate = rate;
-       }
+      const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
+      const tax = taxRates.find((t: any) => t.id === line.tax_id);
+      const rate = slab ? slab.rate : (tax ? Number(tax.rate) : 0);
+      if (rate > maxTaxRate) maxTaxRate = rate;
+      const taxAmt = Number(line.tax_amount || 0);
+      if (taxAmt > 0) {
+        if (isInterstate) {
+          const key = `IGST_${rate}`;
+          if (!taxBreakdownMap[key]) taxBreakdownMap[key] = { id: key, name: `IGST @ ${rate}%`, rate, amount: 0 };
+          taxBreakdownMap[key].amount += taxAmt;
+        } else {
+          const cgstKey = `CGST_${rate/2}`;
+          const sgstKey = `SGST_${rate/2}`;
+          if (!taxBreakdownMap[cgstKey]) taxBreakdownMap[cgstKey] = { id: cgstKey, name: `CGST @ ${rate/2}%`, rate: rate/2, amount: 0 };
+          if (!taxBreakdownMap[sgstKey]) taxBreakdownMap[sgstKey] = { id: sgstKey, name: `SGST @ ${rate/2}%`, rate: rate/2, amount: 0 };
+          taxBreakdownMap[cgstKey].amount += taxAmt / 2;
+          taxBreakdownMap[sgstKey].amount += taxAmt / 2;
+        }
+      }
     }
   });
 
-  let baseTotalTax = lines.reduce((s, l) => s + l.tax_amount, 0);
   if (maxTaxRate > 0 && shippingCharge > 0) {
-    baseTotalTax += shippingCharge * (maxTaxRate / 100);
+    const extraTaxAmount = shippingCharge * (maxTaxRate / 100);
+    if (extraTaxAmount > 0) {
+      if (isInterstate) {
+        const key = `IGST_${maxTaxRate}`;
+        if (!taxBreakdownMap[key]) taxBreakdownMap[key] = { id: key, name: `IGST @ ${maxTaxRate}%`, rate: maxTaxRate, amount: 0 };
+        taxBreakdownMap[key].amount += extraTaxAmount;
+      } else {
+        const cgstKey = `CGST_${maxTaxRate/2}`;
+        const sgstKey = `SGST_${maxTaxRate/2}`;
+        if (!taxBreakdownMap[cgstKey]) taxBreakdownMap[cgstKey] = { id: cgstKey, name: `CGST @ ${maxTaxRate/2}%`, rate: maxTaxRate/2, amount: 0 };
+        if (!taxBreakdownMap[sgstKey]) taxBreakdownMap[sgstKey] = { id: sgstKey, name: `SGST @ ${maxTaxRate/2}%`, rate: maxTaxRate/2, amount: 0 };
+        taxBreakdownMap[cgstKey].amount += extraTaxAmount / 2;
+        taxBreakdownMap[sgstKey].amount += extraTaxAmount / 2;
+      }
+    }
   }
-  const totalTax = baseTotalTax;
+
+  const taxBreakdown = Object.values(taxBreakdownMap);
+  const totalTax = taxBreakdown.length > 0 ? taxBreakdown.reduce((s, t) => s + t.amount, 0) : lines.reduce((s, l) => s + (l.tax_amount || 0), 0);
   const total = discountedSubtotal + totalTax + shippingCharge + adjustment;
   const currency = org?.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -766,7 +802,19 @@ export default function EstimateBuilderPage() {
                 onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
               />
             </div>
-            <div className="flex justify-between text-sm"><span>Tax</span><span className="font-medium">{fmt(totalTax)}</span></div>
+            {taxBreakdown.length > 0 ? (
+              taxBreakdown.map((tb) => (
+                <div key={tb.id} className="flex justify-between text-sm">
+                  <span>{tb.name}</span>
+                  <span className="font-medium">+{fmt(tb.amount)}</span>
+                </div>
+              ))
+            ) : (
+              <div className="flex justify-between text-sm">
+                <span>Tax</span>
+                <span className="font-medium">{fmt(totalTax)}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <Input className="text-sm h-8 flex-1" value={adjustmentName}
                 onChange={(e) => setAdjustmentName(e.target.value)} />
