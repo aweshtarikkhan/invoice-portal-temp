@@ -135,10 +135,19 @@ function getStatusBadge(status: string, leaveType?: string) {
       </span>
     );
   }
-  if (norm === "leave" || norm === "paid_leave" || norm === "approved_leave") {
+  if (norm === "leave" || norm === "paid_leave" || norm === "approved_leave" || ["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "lwp", "unpaid", "cl", "sl"].includes(norm)) {
+    const label = leaveType 
+      ? `Leave (${leaveType.toUpperCase()})` 
+      : norm === "casual" || norm === "cl" 
+      ? "Casual Leave (CL)" 
+      : norm === "sick" || norm === "sl" 
+      ? "Sick Leave (SL)" 
+      : norm === "lwp" 
+      ? "Leave Without Pay" 
+      : "Leave";
     return (
       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
-        {leaveType ? `Leave (${leaveType})` : "Leave"}
+        {label}
       </span>
     );
   }
@@ -311,31 +320,36 @@ export default function HRReportsPage() {
         } catch {}
       });
 
+      const hrOverriddenKeys = new Set<string>();
       const mergedMap: Record<string, any> = {};
 
-      // 1. Process HR manual attendance records
+      // 1. Process HR manual attendance records (SUPREME: HR manual overrides take highest priority)
       (hrAttRes?.data || []).forEach((r: any) => {
         const rawDate = r.attendance_date;
         if (!rawDate || !r.employee_id) return;
         const dateStr = typeof rawDate === "string" ? rawDate.slice(0, 10) : format(new Date(rawDate), "yyyy-MM-dd");
         const key = `${r.employee_id}|${dateStr}`;
         const emp = empMap[r.employee_id];
+        const statusVal = (r.override_status || r.status || "present").toLowerCase().replace("-", "_");
+
         mergedMap[key] = {
           id: r.id,
           date: dateStr,
           employee_id: r.employee_id,
           employeeName: emp?.name || "—",
           designation: emp?.designation || "",
-          status: (r.override_status || r.status || "present").toLowerCase().replace("-", "_"),
+          status: statusVal,
           clock_in_time: r.clock_in_time || r.check_in_time || null,
           clock_out_time: r.clock_out_time || r.check_out_time || null,
           is_auto_clock_out: !!r.is_auto_clock_out,
           created_at: r.created_at || dateStr,
           hr_note: r.hr_note || r.notes || null,
+          is_hr_override: true,
         };
+        hrOverriddenKeys.add(key);
       });
 
-      // 2. Process clock-in / clock-out records
+      // 2. Process clock-in / clock-out records (punch logs)
       (clockinRes?.data || []).forEach((r: any) => {
         const rawDate = r.date;
         if (!rawDate || !r.employee_id) return;
@@ -364,9 +378,8 @@ export default function HRReportsPage() {
             existing.designation = emp.designation || "";
           }
 
-          const isExplicitHrOverride = existing.hr_note === "hr_override";
-          if (!isExplicitHrOverride) {
-            // Prioritize punch status: if employee came late or half day, reflect it accurately
+          // If HR did NOT explicitly override this record, punch status reflects attendance
+          if (!existing.is_hr_override) {
             if (calculatedStatus === "late" || calculatedStatus === "half_day") {
               existing.status = calculatedStatus;
             } else if (r.status === "late" || r.status === "half_day" || r.status === "half-day") {
@@ -387,12 +400,18 @@ export default function HRReportsPage() {
             clock_out_time: r.clock_out_time || null,
             is_auto_clock_out: isAutoOut,
             created_at: r.created_at || dateStr,
+            is_hr_override: false,
           };
         }
       });
 
-      // 3. Overlay approved leaves
+      // 3. Overlay approved leaves (ONLY if HR has NOT manually overridden this employee & date)
       Object.keys(leaveMap).forEach((key) => {
+        // HR manual override is supreme: do NOT overwrite HR's explicit mark!
+        if (hrOverriddenKeys.has(key)) {
+          return;
+        }
+
         const [empId, dateStr] = key.split("|");
         const leaveInfo = leaveMap[key];
         const emp = empMap[empId];
@@ -400,7 +419,7 @@ export default function HRReportsPage() {
 
         if (mergedMap[key]) {
           if (!mergedMap[key].clock_in_time) {
-            mergedMap[key].status = isHalfDayLeave ? "half_day" : "leave";
+            mergedMap[key].status = isHalfDayLeave ? "half_day" : (leaveInfo.type || "leave");
             mergedMap[key].leaveType = leaveInfo.type;
           }
         } else {
@@ -410,11 +429,12 @@ export default function HRReportsPage() {
             employee_id: empId,
             employeeName: leaveInfo.employeeName || emp?.name || "—",
             designation: leaveInfo.designation || emp?.designation || "",
-            status: isHalfDayLeave ? "half_day" : "leave",
+            status: isHalfDayLeave ? "half_day" : (leaveInfo.type || "leave"),
             leaveType: leaveInfo.type,
             clock_in_time: null,
             clock_out_time: null,
             created_at: dateStr,
+            is_hr_override: false,
           };
         }
       });
@@ -440,7 +460,7 @@ export default function HRReportsPage() {
       const todayStr = format(new Date(), "yyyy-MM-dd");
       let present = 0, absent = 0, late = 0, halfDay = 0, onLeave = 0;
       
-      const activeEmps = (employees || []).filter((e: any) => e.status !== 'inactive' && e.is_active !== false);
+      const activeEmps = (employees || []).filter((e: any) => e.is_active !== false);
       const total = activeEmps.length;
 
       activeEmps.forEach((emp: any) => {
@@ -450,12 +470,23 @@ export default function HRReportsPage() {
           absent++;
         } else {
           const s = (record.status || "").toLowerCase().replace("-", "_");
-          if (s === "half_day") halfDay++;
-          else if (s === "late") late++;
-          else if (s === "present") present++;
-          else if (s === "absent") absent++;
-          else if (s === "leave" || s === "paid_leave" || s === "approved_leave" || s.includes("leave")) onLeave++;
-          else present++; // fallback
+          if (s === "half_day" || s === "half-day" || s === "hd") {
+            halfDay++;
+          } else if (s === "late" || s === "l") {
+            late++;
+          } else if (s === "present" || s === "p" || s === "wfh" || s === "od") {
+            present++;
+          } else if (s === "absent" || s === "ab") {
+            absent++;
+          } else if (
+            s === "leave" || 
+            s.includes("leave") || 
+            ["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "lwp", "unpaid", "cl", "sl", "el", "pl", "al"].includes(s)
+          ) {
+            onLeave++;
+          } else {
+            present++; // fallback
+          }
         }
       });
       
