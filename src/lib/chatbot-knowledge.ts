@@ -196,9 +196,21 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 
 15. INVENTORY & STOCK REPORTS
 - Location: Go to Reports -> Inventory Reports (/reports/inventory).
-- KPIs: Total Items count, Total Stock Value formatted in Indian Rupees (₹) calculated using live stock quantities and purchase/effective costs, Low Stock Items count, and Monthly Stock Movements.
-- Real-Time Live Stock: Accurately syncs with items' stock_quantity and purchase invoices so received goods are immediately counted into inventory.
-- Stock Status Tables: Includes tabs for "All Products" and "Low Stock Alerts" with live stock quantities, units, costs, valuation, and status badges (In Stock, Low Stock, Out of Stock).
+16. GLOBAL SEARCH & NOTIFICATION BAR
+- Topbar Global Search (Cmd+K / "Search anything..."): In the top header bar, users can search across Invoices, Clients, Items & Inventory, Vendors & Suppliers, Employees & Staff, as well as Navigation Pages and Actions. All search results are strictly filtered by the current business (tenant isolation) so that no records from other organizations are ever displayed.
+- Topbar Notification Bar (Bell Icon): Positioned in the header next to the search bar. Displays an unread badge counter for:
+  * Pending Leave Applications (with employee name and dates).
+  * Pending Attendance Regularization Requests (with employee name and date).
+  * Unread Team & HR Chat messages.
+  * System alerts and notifications.
+  * Auto-Delete on Open: Clicking any notification immediately opens the relevant page (/leaves, /attendance, /chats) and automatically clears/deletes that notification from the list. Also provides a "Clear All" button.
+
+17. DATA INTEGRITY, CRM DUPLICATE DETECTION & BEST PRACTICES
+- Duplicate Entry Warning Popup (CRM Clients & Leads): When saving a new customer or lead, if the phone number or email already exists in the business records, the system displays a "Duplicate Entry Detected" warning popup showing the existing contact's name, with options to "Cancel" (to edit details) or "Add Anyway" (to proceed with the entry).
+- Invoice Cancellation & Inventory Restock: When an invoice is cancelled or voided, the system automatically restocks all product line items back into inventory catalog, logs stock movements, sets balance due to ₹0, and preserves the sequential invoice number without breaking audit trails.
+- Customer Opening Balance Preservation: Recording payments or creating invoices never overwrites a client or vendor's historic opening balance.
+- Excess Payment as Customer Advance: When a customer pays more than the invoice balance due, the excess amount is automatically credited as Customer Advance Payment for future bills.
+- Inter-Branch Stock Transfers: Easily transfer stock between branches under Catalog -> Inventory ("Transfer Stock") with automatic stock deduction from origin branch and addition to destination branch.
 
 --- END OF KNOWLEDGE BASE ---
 `;

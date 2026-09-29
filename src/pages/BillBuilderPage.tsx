@@ -1089,13 +1089,6 @@ export default function BillBuilderPage() {
         });
       }
 
-      // Sync vendor opening_balance
-      if (vendorId) {
-        const { data: cBills } = await supabase.from("bills").select("balance_due").eq("vendor_id", vendorId);
-        const totalDue = (cBills || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
-        await supabase.from("vendors").update({ opening_balance: totalDue }).eq("id", vendorId);
-      }
-
       if (postAction === "email") {
         const vendor = vendors.find(v => v.id === vendorId);
         if (vendor?.email) {

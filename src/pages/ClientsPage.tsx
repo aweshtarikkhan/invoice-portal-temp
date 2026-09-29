@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2, ArrowUp, ArrowDown
+  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2, ArrowUp, ArrowDown, AlertTriangle
 } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -153,7 +153,14 @@ export default function ClientsPage() {
     setDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const [duplicateAlert, setDuplicateAlert] = useState<{
+    isOpen: boolean;
+    existingName: string;
+    field: string;
+    value: string;
+  } | null>(null);
+
+  const handleSave = async (bypassDuplicateCheck = false) => {
     const cleanEmail = form.email?.trim();
     if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
@@ -165,6 +172,33 @@ export default function ClientsPage() {
       return;
     }
     if (!form.display_name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+
+    // Case 26: Duplicate Entry Check
+    if (!bypassDuplicateCheck) {
+      const emailLower = cleanEmail?.toLowerCase();
+      const dup = clients.find((c) => {
+        if (editClient && c.id === editClient.id) return false;
+        const cPhone = c.phone?.replace(/\D/g, "");
+        const cEmail = c.email?.trim().toLowerCase();
+        if (cleanPhone && cPhone && cleanPhone === cPhone) return true;
+        if (emailLower && cEmail && emailLower === cEmail) return true;
+        return false;
+      });
+
+      if (dup) {
+        const isPhoneMatch = cleanPhone && dup.phone?.replace(/\D/g, "") === cleanPhone;
+        const matchField = isPhoneMatch ? "Mobile Number" : "Email Address";
+        const matchVal = isPhoneMatch ? form.phone : form.email;
+        setDuplicateAlert({
+          isOpen: true,
+          existingName: dup.display_name || dup.company_name || "Existing Customer",
+          field: matchField,
+          value: matchVal || "",
+        });
+        return;
+      }
+    }
+
     const payload = { ...form, org_id: org!.id };
     if (editClient) {
       const { error } = await supabase.from("clients").update(payload).eq("id", editClient.id);
@@ -614,6 +648,41 @@ export default function ClientsPage() {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSelected} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate entry warning popup (Case 26) */}
+      <AlertDialog open={!!duplicateAlert?.isOpen} onOpenChange={(open) => !open && setDuplicateAlert(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Duplicate Entry Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-sm text-foreground/80 pt-2">
+              <p>
+                A customer with this <strong>{duplicateAlert?.field}</strong> (<span className="font-mono text-primary">{duplicateAlert?.value}</span>) already exists in your business records:
+              </p>
+              <div className="font-semibold text-foreground bg-muted p-2.5 rounded-md border border-border">
+                {duplicateAlert?.existingName}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Do you want to cancel and correct the details, or proceed and save this duplicate customer anyway?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDuplicateAlert(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDuplicateAlert(null);
+                handleSave(true);
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Add Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

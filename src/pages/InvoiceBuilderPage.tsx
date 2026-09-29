@@ -1182,9 +1182,16 @@ export default function InvoiceBuilderPage() {
 
     try {
       let invoiceId = id;
-      // Capture previous lines for stock restoration on edit
+      // Capture previous lines and values for stock restoration and audit diff on edit
       let prevLines: any[] = [];
+      let previousTotal = 0;
+      let previousStatus = "";
       if (id) {
+        const { data: existingInv } = await supabase.from("invoices").select("total, status").eq("id", id).maybeSingle();
+        if (existingInv) {
+          previousTotal = Number(existingInv.total || 0);
+          previousStatus = existingInv.status || "";
+        }
         const { data: existing } = await supabase.from("invoice_lines").select("item_id, quantity").eq("invoice_id", id);
         prevLines = existing || [];
         const { error } = await supabase.from("invoices").update(invoicePayload).eq("id", id);
@@ -1359,20 +1366,32 @@ export default function InvoiceBuilderPage() {
         await saveCustomFieldValues(invoiceId, customFieldValues);
       }
 
-      // Audit log
+      // Audit log with detailed previous vs new value tracking
       if (org && user) {
+        const isUpdate = Boolean(id);
+        const newTotal = Number(invoicePayload.total || 0);
         await logAudit({
-          orgId: org.id, userId: user.id, entityType: "invoice",
-          entityId: invoiceId, action: id ? "update" : "create",
-          description: `Invoice ${invoiceNumber} ${id ? "updated" : "created"} (${status})`,
+          orgId: org.id,
+          userId: user.id,
+          entityType: "invoice",
+          entityId: invoiceId,
+          action: isUpdate ? "update" : "create",
+          description: isUpdate && previousTotal > 0
+            ? `Invoice ${invoiceNumber} updated: Total ₹${previousTotal.toLocaleString("en-IN")} → ₹${newTotal.toLocaleString("en-IN")}`
+            : `Invoice ${invoiceNumber} ${isUpdate ? "updated" : "created"} (${status})`,
+          metadata: isUpdate ? {
+            previous_value: previousTotal,
+            new_value: newTotal,
+            difference: newTotal - previousTotal,
+            previous_status: previousStatus,
+            new_status: status,
+            items_count: validLines.length,
+          } : {
+            new_value: newTotal,
+            status,
+            items_count: validLines.length,
+          }
         });
-      }
-
-      // Sync client opening_balance
-      if (clientId) {
-        const { data: cInvoices } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId);
-        const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
-        await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
       }
 
       // Persist bank details per organization so next invoices have it pre-filled

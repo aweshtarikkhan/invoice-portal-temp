@@ -58,3 +58,96 @@ export async function detectNegativeStock(
   }
   return warnings;
 }
+
+/**
+ * Restores inventory stock for all product line items of an invoice.
+ * Used when an invoice is cancelled, voided, or deleted.
+ */
+export async function restoreInvoiceStock(
+  invoiceId: string,
+  orgId: string,
+  reason: string = "Invoice Cancelled / Restocked",
+  refNumber?: string,
+  userId?: string
+): Promise<{ restoredCount: number }> {
+  try {
+    // 1. Check if invoice exists and has deduct_stock enabled
+    const { data: inv } = await supabase
+      .from("invoices")
+      .select("id, deduct_stock, status, invoice_number")
+      .eq("id", invoiceId)
+      .maybeSingle();
+
+    if (inv && (inv as any).deduct_stock === false) {
+      // Stock was never deducted for this invoice
+      return { restoredCount: 0 };
+    }
+
+    // 2. Fetch all invoice line items
+    const { data: lines } = await supabase
+      .from("invoice_lines")
+      .select("item_id, quantity")
+      .eq("invoice_id", invoiceId);
+
+    if (!lines || lines.length === 0) return { restoredCount: 0 };
+
+    // Group quantities by item_id
+    const qtyByItem: Record<string, number> = {};
+    for (const l of lines) {
+      if (l.item_id && Number(l.quantity) > 0) {
+        qtyByItem[l.item_id] = (qtyByItem[l.item_id] || 0) + Number(l.quantity);
+      }
+    }
+
+    const itemIds = Object.keys(qtyByItem);
+    if (itemIds.length === 0) return { restoredCount: 0 };
+
+    // 3. Fetch current product items
+    const { data: items } = await supabase
+      .from("items")
+      .select("id, type, stock_quantity")
+      .in("id", itemIds);
+
+    const movements: StockMovementInput[] = [];
+    let restoredCount = 0;
+
+    for (const it of items || []) {
+      if (it.type !== "product") continue;
+      const qtyToRestore = qtyByItem[it.id] || 0;
+      if (qtyToRestore <= 0) continue;
+
+      const currentStock = Number(it.stock_quantity || 0);
+      const newStock = currentStock + qtyToRestore;
+
+      // Update item stock in DB
+      await supabase
+        .from("items")
+        .update({ stock_quantity: newStock })
+        .eq("id", it.id);
+
+      movements.push({
+        orgId,
+        itemId: it.id,
+        changeQty: qtyToRestore, // Positive = restocked
+        balanceAfter: newStock,
+        reason: reason || "Invoice Cancelled / Restocked",
+        refType: "invoice",
+        refId: invoiceId,
+        refNumber: refNumber || (inv?.invoice_number || ""),
+        createdBy: userId || null,
+      });
+
+      restoredCount += qtyToRestore;
+    }
+
+    // 4. Log stock movements
+    if (movements.length > 0) {
+      await logStockMovements(movements);
+    }
+
+    return { restoredCount };
+  } catch (err) {
+    console.error("Failed to restore invoice stock:", err);
+    return { restoredCount: 0 };
+  }
+}

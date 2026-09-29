@@ -37,6 +37,7 @@ import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { BulkReminderDialog } from "@/components/shared/BulkReminderDialog";
 import { parseTallyExcel } from "@/lib/tally-parser";
+import { restoreInvoiceStock } from "@/lib/stock";
 
 const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
@@ -274,8 +275,21 @@ export default function InvoicesPage() {
   const handleDeleteSelected = async () => {
     setDeleting(true);
     const ids = Array.from(selected);
-    // Delete related data first
+    let totalRestored = 0;
+
+    // Restore stock and delete related data first
     for (const id of ids) {
+      const inv = invoices.find(i => i.id === id);
+      if (org && inv && inv.status !== "void") {
+        const { restoredCount } = await restoreInvoiceStock(
+          id,
+          org.id,
+          `Invoice ${inv.invoice_number || id} deleted / restocked`,
+          inv.invoice_number,
+          user?.id
+        );
+        totalRestored += restoredCount;
+      }
       await supabase.from("invoice_lines").delete().eq("invoice_id", id);
       await supabase.from("payments").delete().eq("invoice_id", id);
       await supabase.from("portal_tokens").delete().eq("entity_id", id).eq("entity_type", "invoice");
@@ -284,12 +298,50 @@ export default function InvoicesPage() {
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Deleted", description: `${ids.length} invoice(s) deleted.` });
+      toast({ 
+        title: "Deleted", 
+        description: `${ids.length} invoice(s) deleted.${totalRestored > 0 ? ` ${totalRestored} item(s) restocked to inventory.` : ""}` 
+      });
       setInvoices(prev => prev.filter(i => !selected.has(i.id)));
       setSelected(new Set());
     }
     setDeleting(false);
     setDeleteOpen(false);
+  };
+
+  const handleCancelSelected = async () => {
+    if (!org) return;
+    const ids = Array.from(selected);
+    const nonVoidIds = ids.filter(id => {
+      const inv = invoices.find(i => i.id === id);
+      return inv && inv.status !== "void";
+    });
+    if (nonVoidIds.length === 0) {
+      toast({ title: "Already cancelled", description: "Selected invoices are already void/cancelled.", variant: "destructive" });
+      return;
+    }
+    if (!confirm(`Cancel ${nonVoidIds.length} invoice(s)? This will mark them as Void and RESTORE all stock to inventory.`)) return;
+
+    let totalRestored = 0;
+    for (const id of nonVoidIds) {
+      const inv = invoices.find(i => i.id === id);
+      const { restoredCount } = await restoreInvoiceStock(
+        id,
+        org.id,
+        `Invoice ${inv?.invoice_number || id} cancelled / voided`,
+        inv?.invoice_number,
+        user?.id
+      );
+      totalRestored += restoredCount;
+      await supabase.from("invoices").update({ status: "void", balance_due: 0 }).eq("id", id);
+    }
+
+    toast({
+      title: "Invoices Cancelled / Voided",
+      description: `${nonVoidIds.length} invoice(s) marked as void.${totalRestored > 0 ? ` ${totalRestored} item(s) restored to stock.` : ""}`,
+    });
+    setInvoices(prev => prev.map(i => nonVoidIds.includes(i.id) ? { ...i, status: "void", balance_due: 0 } : i));
+    setSelected(new Set());
   };
 
   const handleMarkSent = async () => {
@@ -370,6 +422,16 @@ export default function InvoicesPage() {
               onClick={() => setReminderOpen(true)}
             >
               <MessageCircle className="mr-1 h-4 w-4" /> Send Reminders ({selected.size})
+            </Button>
+          )}
+          {selected.size > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300"
+              onClick={handleCancelSelected}
+            >
+              Cancel / Void ({selected.size})
             </Button>
           )}
           {selected.size > 0 && (
@@ -694,13 +756,6 @@ export default function InvoicesPage() {
               }
             }
             } catch (e: any) { console.error("Import row error:", invNum, e); errors++; failedRows.push({ row: groupRows[0], reason: e.message || "Unknown error" }); }
-          }
-          // Update opening_balance for each client based on their total balance_due
-          const uniqueClientIds = Array.from(new Set(clientMap.values()));
-          for (const cid of uniqueClientIds) {
-            const { data: cInvoices } = await supabase.from("invoices").select("balance_due").eq("client_id", cid);
-            const totalDue = (cInvoices || []).reduce((s: number, inv: any) => s + Number(inv.balance_due), 0);
-            await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cid);
           }
           if (quotaExceededHit) {
             setShowUpgrade(true);

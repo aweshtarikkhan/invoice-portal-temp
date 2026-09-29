@@ -412,10 +412,50 @@ export default function RecordPaymentPage() {
         });
       }
 
-      // Sync client opening_balance
-      const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", clientId).neq("status", "void").neq("status", "draft");
-      const totalDue = (cInvs || []).reduce((s: number, i: any) => s + Number(i.balance_due || 0), 0);
-      await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", clientId);
+      // Record any excess payment as unallocated Customer Advance Credit
+      if (excessAmount > 0.001) {
+        const nextSeq = maxSeq + 1 + selectedInvoices.length;
+        const advancePayNum = formatSequenceNumber(prefix, nextSeq, "PAY");
+        const clientObj = clients.find((c) => c.id === clientId);
+
+        const { data: insertedAdvance } = await supabase.from("payments").insert({
+          org_id: org.id,
+          client_id: clientId,
+          invoice_id: null, // Unallocated customer advance
+          payment_number: advancePayNum,
+          amount: excessAmount,
+          payment_date: paymentDate,
+          payment_mode: paymentMode,
+          bank_account_id: selectedBankAccountId || null,
+          reference_number: referenceNumber || null,
+          notes: `Customer Advance Credit / Excess payment over invoices (Total received: ${fmt(amountNum)}, Invoices applied: ${fmt(totalApplied)}, Advance credit: ${fmt(excessAmount)})`,
+          currency_code: org.currency_code,
+        }).select().single();
+
+        // Record banking transaction for the excess advance
+        if (selectedBankAccountId && insertedAdvance) {
+          await recordPaymentBankingTransaction({
+            orgId: org.id,
+            bankAccountId: selectedBankAccountId,
+            amount: excessAmount,
+            paymentDate,
+            invoiceNumber: "Advance Credit",
+            clientName: clientObj?.display_name,
+            referenceNumber,
+            paymentId: insertedAdvance.id,
+            paymentNumber: advancePayNum,
+            notes: "Excess payment recorded as customer advance credit",
+          });
+        }
+
+        await logAudit({
+          orgId: org.id,
+          userId: user?.id || "",
+          action: "payment_advance",
+          entityType: "payment",
+          description: `Customer advance credit of ${fmt(excessAmount)} recorded for client ${clientObj?.display_name || clientId}`,
+        });
+      }
 
       setSaving(false);
       if (hasError) {
@@ -425,10 +465,17 @@ export default function RecordPaymentPage() {
           variant: "destructive",
         });
       } else {
-        toast({
-          title: "Payment recorded successfully!",
-          description: `Recorded ${fmt(totalApplied)} against ${selectedInvoices.length} invoice(s).`,
-        });
+        if (excessAmount > 0.001) {
+          toast({
+            title: "Payment & Advance Credit Recorded!",
+            description: `Applied ${fmt(totalApplied)} to ${selectedInvoices.length} invoice(s) and recorded ${fmt(excessAmount)} as customer advance credit.`,
+          });
+        } else {
+          toast({
+            title: "Payment recorded successfully!",
+            description: `Recorded ${fmt(totalApplied)} against ${selectedInvoices.length} invoice(s).`,
+          });
+        }
         navigate("/payments");
       }
     } catch (err: any) {

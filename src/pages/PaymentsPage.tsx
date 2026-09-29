@@ -212,13 +212,6 @@ export default function PaymentsPage() {
         }
       }
 
-      // Sync client opening_balance
-      for (const cId of affectedClientIds) {
-        const { data: cInvs } = await supabase.from("invoices").select("balance_due").eq("client_id", cId).neq("status", "void").neq("status", "draft");
-        const totalDue = (cInvs || []).reduce((s, i) => s + Number(i.balance_due || 0), 0);
-        await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cId);
-      }
-
       // Revert banking transactions & bank balance
       for (const p of toDelete) {
         await revertPaymentBankingTransaction(p.id);
@@ -589,18 +582,6 @@ export default function PaymentsPage() {
                 }).eq("id", invoiceId);
               }
             }
-          }
-
-          // Sync client opening_balance for all affected clients
-          const affectedClients = new Set<string>();
-          rows.forEach(r => {
-            const cId = clientMap.get((r.client_name || "").trim().toLowerCase());
-            if (cId) affectedClients.add(cId);
-          });
-          for (const cId of affectedClients) {
-            const { data: cInvs } = await supabase.from("invoices").select("balance_due, status").eq("client_id", cId).neq("status", "void").neq("status", "draft");
-            const totalDue = (cInvs || []).reduce((s, i) => s + Number(i.balance_due || 0), 0);
-            await supabase.from("clients").update({ opening_balance: totalDue }).eq("id", cId);
           }
 
           fetchData();

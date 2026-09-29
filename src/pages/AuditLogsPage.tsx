@@ -124,7 +124,27 @@ export default function AuditLogsPage() {
                         {log.action.replace("_", " ")}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm">{log.description}</TableCell>
+                    <TableCell className="text-sm">
+                      <div className="flex flex-col gap-1">
+                        <span>{log.description}</span>
+                        {log.metadata?.previous_value !== undefined && log.metadata?.new_value !== undefined && (
+                          <div className="flex items-center gap-2 text-xs mt-0.5">
+                            <span className="font-mono bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-0.5 rounded line-through">
+                              Prev: ₹{Number(log.metadata.previous_value).toLocaleString("en-IN")}
+                            </span>
+                            <span className="text-muted-foreground font-bold">→</span>
+                            <span className="font-mono bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-semibold px-2 py-0.5 rounded">
+                              New: ₹{Number(log.metadata.new_value).toLocaleString("en-IN")}
+                            </span>
+                            {log.metadata?.difference !== undefined && (
+                              <span className={`text-[11px] font-semibold ${Number(log.metadata.difference) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+                                ({Number(log.metadata.difference) >= 0 ? "+" : ""}₹{Number(log.metadata.difference).toLocaleString("en-IN")})
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

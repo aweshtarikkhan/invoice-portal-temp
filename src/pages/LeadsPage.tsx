@@ -12,6 +12,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +23,7 @@ import { hasModuleAccess, hasUnlimitedLeads, getLeadLimit, normalizePlanKey, FRE
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
@@ -185,7 +189,14 @@ export default function LeadsPage() {
     setOpen(true);
   };
 
-  const save = async () => {
+  const [duplicateAlert, setDuplicateAlert] = useState<{
+    isOpen: boolean;
+    existingName: string;
+    field: string;
+    value: string;
+  } | null>(null);
+
+  const save = async (bypassDuplicateCheck = false) => {
     const cleanEmail = form.email?.trim();
     if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
       toast({ title: "Invalid Email", description: "Please enter a valid email address.", variant: "destructive" });
@@ -197,6 +208,32 @@ export default function LeadsPage() {
       return;
     }
     if (!org?.id || !form.name.trim()) { toast({ title: "Name required", variant: "destructive" }); return; }
+
+    // Case 26: Duplicate Entry Check
+    if (!bypassDuplicateCheck) {
+      const emailLower = cleanEmail?.toLowerCase();
+      const dup = rows.find((r) => {
+        if (editId && r.id === editId) return false;
+        const rPhone = r.phone?.replace(/\D/g, "");
+        const rEmail = r.email?.trim().toLowerCase();
+        if (cleanPhone && rPhone && cleanPhone === rPhone) return true;
+        if (emailLower && rEmail && emailLower === rEmail) return true;
+        return false;
+      });
+
+      if (dup) {
+        const isPhoneMatch = cleanPhone && dup.phone?.replace(/\D/g, "") === cleanPhone;
+        const matchField = isPhoneMatch ? "Mobile Number" : "Email Address";
+        const matchVal = isPhoneMatch ? form.phone : form.email;
+        setDuplicateAlert({
+          isOpen: true,
+          existingName: dup.name || dup.company || "Existing Lead",
+          field: matchField,
+          value: matchVal || "",
+        });
+        return;
+      }
+    }
 
     // Enforce 50 leads cap for non-CRM / non-Suite plans
     if (!editId && !isUnlimited && rows.length >= 50) {
@@ -643,6 +680,41 @@ export default function LeadsPage() {
         currentPlanName={plan}
         forceOrgId={org?.id}
       />
+
+      {/* Duplicate entry warning popup (Case 26) */}
+      <AlertDialog open={!!duplicateAlert?.isOpen} onOpenChange={(open) => !open && setDuplicateAlert(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <AlertTriangle className="h-5 w-5 text-amber-600" />
+              Duplicate Entry Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 text-sm text-foreground/80 pt-2">
+              <p>
+                A lead with this <strong>{duplicateAlert?.field}</strong> (<span className="font-mono text-primary">{duplicateAlert?.value}</span>) already exists in your leads:
+              </p>
+              <div className="font-semibold text-foreground bg-muted p-2.5 rounded-md border border-border">
+                {duplicateAlert?.existingName}
+              </div>
+              <p className="text-muted-foreground text-xs">
+                Do you want to cancel and correct the details, or proceed and save this duplicate lead anyway?
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDuplicateAlert(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDuplicateAlert(null);
+                save(true);
+              }}
+              className="bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              Add Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

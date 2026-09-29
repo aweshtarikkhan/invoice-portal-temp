@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
 import { CommandPalette } from "@/components/shared/CommandPalette";
+import { NotificationBell } from "@/components/shared/NotificationBell";
 
 import { TrialBanner } from "@/components/shared/TrialBanner";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
@@ -641,6 +642,7 @@ export function AppLayout() {
             <div className="flex-1" />
             <div className="flex items-center gap-3">
               <CommandPalette />
+              <NotificationBell />
               
 
               {isPlatformAdmin && (

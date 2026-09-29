@@ -1,0 +1,432 @@
+﻿1. Transaction Duplication Tests
+These are very important for financial software.
+Case 1 — Double-click invoice
+Create an invoice and deliberately click Save/Submit twice quickly.
+Expected: Only one invoice and one accounting entry.
+Case 2 — Refresh after submission
+Create invoice → submit → immediately refresh browser.
+Expected: No duplicate invoice.
+Case 3 — Browser back button
+Create invoice → submit → press Back → Forward.
+Expected: No duplicate transaction.
+Case 4 — Network interruption
+Start submitting an invoice → disconnect internet → reconnect.
+Expected: System should not create duplicate or partially posted transactions.
+2. Date Accuracy Tests
+Use different transaction dates.
+Case 5 — Backdated transaction
+Today: 29 September
+Create transaction dated:
+15 September
+Check whether September reports correctly include it.
+Case 6 — Future transaction
+Create invoice dated:
+15 October
+Check whether it incorrectly appears in September revenue.
+Case 7 — Month-end transaction
+Create transactions on:
+30 September 11:59 PM1 October 12:01 AM
+Check correct month allocation.
+Case 8 — Financial year boundary
+Test:
+31 March → 1 April
+This is particularly important for accounting software.
+3. Decimal & Rounding Tests
+Use difficult numbers such as:
+₹99.99 
+₹1,234.567 
+7.5% discount 
+18% GST 
+2.5% TDS 
+Then compare calculations independently in Excel.
+Example
+Product:
+₹999.99Qty: 7Discount: 7.5%GST: 18%
+Check whether:
+Line value → discount → taxable value → GST → invoice total
+is mathematically consistent.
+Also test:
+₹0.01 difference
+because rounding errors can accumulate significantly across hundreds of invoices.
+4. Negative & Zero Value Tests
+Try:
+Quantity = 0 
+Price = 0 
+Discount = 100% 
+Discount > 100% 
+Negative quantity 
+Negative price 
+Negative expense 
+Negative payment 
+GST = 0% 
+The software should either correctly handle legitimate cases or clearly reject invalid ones.
+5. Stock Accuracy Trap Tests
+Case 9 — Sell more than available
+Stock = 10
+Try selling:
+11
+Check what happens.
+Case 10 — Simultaneous sales
+Stock = 10.
+Two users simultaneously sell:
+User A = 7User B = 7
+The system must prevent the inventory from becoming −4, unless negative inventory is deliberately permitted.
+Case 11 — Cancelled invoice
+Stock = 100
+Sell 10 → stock 90.
+Cancel invoice.
+Expected:
+Stock returns to 100.
+Case 12 — Edit invoice
+Sell 10 → edit invoice to 15.
+Expected stock:
+100 − 15 = 85
+not 90 or 75.
+6. Price Change Tests
+Product purchase price:
+₹500
+Sell 10 units.
+Then change product purchase price to:
+₹600
+Check whether the old invoice still shows the original cost/value where appropriate.
+Historical transactions should not unexpectedly change because a master record was edited later.
+This is a very important accounting test.
+7. Delete vs Cancel Tests
+Test every major transaction with:
+Edit → Cancel → Delete → Restore, wherever those actions are available.
+The system should distinguish between:
+deleting a draft 
+cancelling a posted transaction 
+reversing a financial transaction 
+A posted accounting transaction should generally not simply disappear from history.
+8. Customer Balance Accuracy
+Create:
+Opening receivable: ₹50,000
+Then:
+Sales = ₹30,000Receipt = ₹20,000Credit note = ₹5,000
+Expected:
+₹50,000 + ₹30,000 − ₹20,000 − ₹5,000 = ₹55,000
+Check the ₹55,000 across:
+Customer ledger 
+Aging 
+Dashboard 
+Receivables report 
+AI analysis 
+9. Aging Report Tests
+Create invoices:
+Invoice
+Amount
+Age
+A
+₹10,000
+5 days
+B
+₹20,000
+35 days
+C
+₹30,000
+75 days
+D
+₹40,000
+120 days
+Check whether they fall correctly into configured buckets such as:
+0–30 / 31–60 / 61–90 / 90+
+Then make a partial payment against Invoice C.
+Check whether the outstanding amount moves correctly.
+10. Partial Payment Tests
+Invoice = ₹50,000
+Customer pays:
+₹20,000
+Expected:
+Outstanding = ₹30,000
+Then customer pays:
+₹30,000
+Expected:
+Outstanding = ₹0
+Then try paying ₹1,000 more.
+Check how the system handles the excess payment.
+11. Multi-Branch Accuracy
+Create:
+Branch A
+Sales ₹5 lakh 
+Expenses ₹1 lakh 
+Branch B
+Sales ₹3 lakh 
+Expenses ₹2 lakh 
+Check:
+Branch A
+Sales = ₹5 lakh
+Branch B
+Sales = ₹3 lakh
+Consolidated
+Sales = ₹8 lakh
+Then transfer inventory between branches and verify that consolidated inventory doesn't double-count the transferred stock.
+12. User Permission “Attack” Tests
+Create:
+Owner 
+Admin 
+Accountant 
+HR 
+Salesperson 
+Employee 
+Now intentionally attempt:
+Salesperson → Payroll
+Employee → Other employee salary
+Branch A user → Branch B financial data
+HR → Bank reconciliation
+Employee → Delete attendance
+The system should consistently enforce permissions.
+13. Audit Trail Tests
+Change:
+Invoice ₹10,000 → ₹12,000
+Check whether the system records:
+Who changed it 
+When 
+Previous value 
+New value 
+Do the same for:
+Customer 
+Vendor 
+Product price 
+GST 
+Employee salary 
+Attendance 
+Bank transaction 
+This is extremely important for business software.
+14. HR Attendance Trap Cases
+Create:
+Employee A
+Check-in: 9:30 AMCheck-out: 6:00 PM
+Then try:
+Two check-ins 
+Two check-outs 
+Missing checkout 
+Checkout before check-in 
+Attendance on holiday 
+Attendance during approved leave 
+Attendance from outside permitted GEO area 
+Attendance with incorrect device time 
+Check how the system handles each.
+15. Payroll Cross-Check
+Create an employee with:
+Basic = ₹30,000Allowance = ₹10,000Deduction = ₹2,000
+Expected gross/deductions/net should be independently calculated.
+Then change:
+attendance 
+unpaid leave 
+overtime 
+salary revision 
+and check whether payroll changes correctly.
+16. Leave Balance Tests
+Employee has:
+12 annual leaves
+Take:
+3 days → balance 92 days → balance 7Cancel 2 days → balance 9
+Then test:
+Leave overlapping holiday 
+Half-day leave 
+Leave spanning two months 
+Leave during notice period, if supported 
+Leave without sufficient balance 
+17. CRM Duplicate Detection
+Create:
+Rajesh KumarMobile: 9999999999
+Then create again:
+Rajesh KumarSame mobile
+Then:
+Rajesh K.Same email
+Check whether AASSAY Biz:
+warns about duplicate 
+merges records 
+allows duplicate intentionally 
+Also check whether duplicate customers create incorrect sales/CRM reporting.
+18. CRM Pipeline Mathematics
+Create:
+10 leads × ₹1 lakh each.
+Pipeline = ₹10 lakh
+Move:
+3 → Won2 → Lost5 → Open
+Then verify:
+Pipeline value 
+Won value 
+Lost value 
+Open value 
+Conversion percentage 
+Make sure won/lost leads are not still counted as active pipeline.
+19. Marketing ROI Test
+Campaign cost:
+₹50,000
+Campaign-generated sales:
+₹2,00,000
+Check whether the system calculates campaign performance consistently.
+Then assign one customer to two campaigns and see whether revenue is double-counted.
+This is a very useful test for attribution logic.
+20. Feedback Accuracy Tests
+Create exactly:
+100 responses
+Ratings:
+5-star = 504-star = 203-star = 152-star = 101-star = 5
+Expected:
+Average rating:
+(50×5 + 20×4 + 15×3 + 10×2 + 5×1) / 100 = 3.9
+Check whether dashboard, report and AI analysis all show the same underlying result.
+21. Sentiment Analysis Ground-Truth Test
+Create a controlled dataset:
+Positive
+Excellent service and very helpful staff.
+Negative
+Very poor service. My issue is still unresolved.
+Neutral
+The product was delivered today.
+Mixed
+Product quality is good but delivery was very late.
+Don't only check whether sentiment exists.
+Check whether the system can distinguish:
+Positive / Negative / Neutral / Mixed
+and whether the original response remains linked to the AI result.
+22. AI Hallucination Test
+This should be a mandatory AASSAY Biz test.
+Give the AI a dataset containing:
+Sales = ₹10 lakh
+Then ask:
+“What was our sales last year?”
+If last year's data does not exist, the AI should say that the information is not available, rather than inventing a number.
+Similarly:
+“Which product generated the highest profit?”
+If product-level profit data isn't available, it should clearly state that it cannot determine this from the available data.
+This is critical for a product positioned around AI-powered business intelligence.
+23. AI Calculation Test
+Give the AI:
+Product A sales = ₹5 lakhProduct B sales = ₹3 lakhProduct C sales = ₹2 lakh
+Ask:
+“What percentage of total sales came from Product A?”
+Expected:
+50%
+Create 20–30 such mathematical questions.
+The AI should be tested against known answers, not just judged subjectively.
+24. AI Data Modification Test
+Start with:
+Sales = ₹10 lakh.
+Ask AI for analysis.
+Then add:
+Sales = ₹5 lakh.
+Ask again.
+Expected:
+AI analysis should change from the original analysis.
+This tests whether AI is actually using live business data rather than cached/static information.
+25. AI Permission Test
+This is extremely important.
+A salesperson should ask:
+“What is the company's total payroll?”
+If payroll information isn't available to that user, the AI must not bypass the application's permissions and reveal it.
+AI must respect the same authorization layer as the rest of the application.
+26. Report Consistency Test
+Take one controlled dataset and compare:
+Dashboard
+vs.
+Detailed Report
+vs.
+Excel Export
+vs.
+PDF
+vs.
+AI Analysis
+All should use the same underlying numbers.
+This could become your AASSAY Biz Data Consistency Test.
+27. Search Accuracy
+Test global/search functionality with:
+Exact customer name 
+Partial customer name 
+Mobile number 
+Invoice number 
+Product SKU 
+Vendor name 
+Employee name 
+Also test:
+lowercase 
+uppercase 
+extra spaces 
+spelling variations 
+Hindi/English where supported 
+28. Large Data Test
+Don't test only with 10 records.
+Create:
+10,000 customers10,000 invoices50,000 invoice lines5,000 CRM leads10,000 feedback responses
+Then test:
+Search 
+Reports 
+Dashboard 
+Export 
+AI analysis 
+Filtering 
+Measure response time.
+This will tell you whether AASSAY Biz works only as a demo application or is actually ready for real businesses.
+29. Concurrent User Test
+Have multiple users simultaneously:
+Create invoices 
+Update inventory 
+Receive payments 
+Update CRM 
+Record attendance 
+Generate reports 
+Look specifically for:
+lost updates, duplicate transactions, incorrect stock and database locking issues.
+30. Backup & Recovery Test
+Create 100 transactions.
+Take backup.
+Delete/change some records.
+Restore backup.
+Verify that:
+100 original transactions are recovered correctly.
+Also test what happens after a database/server failure during a transaction.
+31. Mobile vs Desktop Test
+Since AASSAY Biz may be used heavily by field teams, test the same transaction on:
+Desktop → Android → Mobile browser
+Check:
+Invoice 
+Attendance 
+GEO tagging 
+CRM 
+WhatsApp 
+Feedback 
+Dashboard 
+The same underlying data should remain consistent.
+32. Offline/Weak Internet Test
+Especially for GEO attendance and field usage:
+Start transaction with good internet. 
+Switch to poor/unstable network. 
+Submit. 
+Reconnect. 
+Check:
+Does data get lost? 
+Is it duplicated? 
+Is timestamp correct? 
+Is location retained? 
+Is user informed of sync status? 
+33. Notification Accuracy
+Create events that should trigger notifications:
+overdue invoice 
+new lead 
+new support ticket 
+negative feedback 
+leave approval 
+payment received 
+Check:
+Trigger → Notification → Correct recipient → Correct message → Correct timestamp → Notification log
+34. Integration Failure Test
+Don't only test successful WhatsApp/API/email integration.
+Deliberately create:
+invalid API key 
+expired token 
+wrong phone number 
+invalid email 
+API timeout 
+external service unavailable 
+The application should gracefully report the failure and should not mark the transaction as successfully delivered.
+35. Most Important: “One Number Across the System” Test
+I strongly recommend creating a Golden Dataset.
+For example:
+Golden Dataset
+Sales: ₹10,00,000Purchases: ₹6,00,000Expenses: ₹2,00,000Receipts: ₹8,00,000Payments: ₹5,00,000Closing stock: ₹4,00,000Receivables: ₹2,00,000Payables: ₹1,50,000
+Then test every module against this dataset.
+
