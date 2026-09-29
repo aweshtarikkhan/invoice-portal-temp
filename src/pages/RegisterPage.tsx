@@ -39,7 +39,44 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(() => sessionStorage.getItem("reg_otpSent") === "true");
   const [otp, setOtp] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || resending) return;
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: email.trim(),
+      });
+      if (error) {
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: { first_name: firstName, last_name: lastName, phone: mobile.replace(/\D/g, ""), mobile: mobile.replace(/\D/g, "") },
+            emailRedirectTo: window.location.origin,
+          },
+        });
+        if (signUpError) throw signUpError;
+      }
+      toast({ title: "OTP Resent", description: "A fresh 6-digit verification code has been sent to your email." });
+      setResendCooldown(30);
+    } catch (err: any) {
+      toast({ title: "Failed to resend OTP", description: err.message, variant: "destructive" });
+    } finally {
+      setResending(false);
+    }
+  };
 
   const [emailExistsDialog, setEmailExistsDialog] = useState(false);
   const [existingEmail, setExistingEmail] = useState("");
@@ -265,17 +302,41 @@ export default function RegisterPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="otp">Enter OTP</Label>
-                <Input id="otp" type="text" placeholder="6-digit code" value={otp} onChange={(e) => setOtp(e.target.value)} required maxLength={6} className="text-center text-lg tracking-widest" autoFocus />
-                <p className="text-xs text-center text-muted-foreground">We sent a verification code to {email}</p>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="6-digit code"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  required
+                  maxLength={6}
+                  className="text-center text-lg tracking-widest font-mono font-bold"
+                  autoFocus
+                />
+                <p className="text-xs text-center text-muted-foreground">
+                  We sent a verification code to <span className="font-semibold text-foreground">{email}</span>.
+                  <br />
+                  Code is valid for <strong className="text-foreground">5 minutes</strong>.
+                </p>
               </div>
             </CardContent>
             <CardFooter className="flex-col gap-3">
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Verifying..." : "Verify Account"}
               </Button>
-              <button type="button" onClick={handleBack} className="text-sm text-primary hover:underline">
-                Back to registration
-              </button>
+              <div className="flex items-center justify-between w-full text-xs pt-1 px-1">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || resending}
+                  className="text-primary hover:underline font-semibold disabled:opacity-50 disabled:no-underline"
+                >
+                  {resending ? "Sending..." : resendCooldown > 0 ? `Resend OTP (${resendCooldown}s)` : "Resend OTP"}
+                </button>
+                <button type="button" onClick={handleBack} className="text-muted-foreground hover:underline">
+                  Back to registration
+                </button>
+              </div>
             </CardFooter>
           </form>
         )}
