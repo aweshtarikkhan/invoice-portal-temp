@@ -88,6 +88,22 @@ function formatTime(timeStr: string | null | undefined): string {
   }
 }
 
+function calculateHours(clockIn?: string | null, clockOut?: string | null): string {
+  if (!clockIn || !clockOut) return "—";
+  try {
+    const d1 = new Date(clockIn);
+    const d2 = new Date(clockOut);
+    const diffMs = d2.getTime() - d1.getTime();
+    if (isNaN(diffMs) || diffMs <= 0) return "—";
+    const totalMinutes = Math.floor(diffMs / (1000 * 60));
+    const hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    return `${hours}h ${mins}m`;
+  } catch {
+    return "—";
+  }
+}
+
 function getStatusBadge(status: string, leaveType?: string) {
   const norm = (status || "").toLowerCase().replace("-", "_").trim();
 
@@ -240,13 +256,13 @@ export default function HRReportsPage() {
       const [clockinRes, hrAttRes, shiftsRes, empShiftsRes] = await Promise.all([
         (supabase as any)
           .from("attendances")
-          .select("*, employees(id, name, designation)")
+          .select("*")
           .eq("org_id", org.id)
           .order("date", { ascending: false })
           .limit(500),
         (supabase as any)
           .from("attendance")
-          .select("*, employees(id, name, designation)")
+          .select("*")
           .eq("org_id", org.id)
           .order("attendance_date", { ascending: false })
           .limit(500),
@@ -257,14 +273,19 @@ export default function HRReportsPage() {
           .order("is_default", { ascending: false }),
         (supabase as any)
           .from("employee_shifts")
-          .select("*, shifts(*)")
+          .select("*")
           .eq("org_id", org.id),
       ]);
 
       const orgDefaultShift = (shiftsRes?.data || []).find((s: any) => s.is_default) || shiftsRes?.data?.[0] || null;
+      const shiftById: Record<string, any> = {};
+      (shiftsRes?.data || []).forEach((s: any) => {
+        shiftById[s.id] = s;
+      });
+
       const shiftMap: Record<string, any> = {};
       (empShiftsRes?.data || []).forEach((es: any) => {
-        shiftMap[es.employee_id] = es.shifts;
+        shiftMap[es.employee_id] = shiftById[es.shift_id] || orgDefaultShift;
       });
 
       const empMap: Record<string, any> = {};
@@ -294,10 +315,11 @@ export default function HRReportsPage() {
 
       // 1. Process HR manual attendance records
       (hrAttRes?.data || []).forEach((r: any) => {
-        const dateStr = r.attendance_date;
-        if (!dateStr || !r.employee_id) return;
+        const rawDate = r.attendance_date;
+        if (!rawDate || !r.employee_id) return;
+        const dateStr = typeof rawDate === "string" ? rawDate.slice(0, 10) : format(new Date(rawDate), "yyyy-MM-dd");
         const key = `${r.employee_id}|${dateStr}`;
-        const emp = r.employees || empMap[r.employee_id];
+        const emp = empMap[r.employee_id];
         mergedMap[key] = {
           id: r.id,
           date: dateStr,
@@ -307,6 +329,7 @@ export default function HRReportsPage() {
           status: (r.override_status || r.status || "present").toLowerCase().replace("-", "_"),
           clock_in_time: r.clock_in_time || r.check_in_time || null,
           clock_out_time: r.clock_out_time || r.check_out_time || null,
+          is_auto_clock_out: !!r.is_auto_clock_out,
           created_at: r.created_at || dateStr,
           hr_note: r.hr_note || r.notes || null,
         };
@@ -314,10 +337,11 @@ export default function HRReportsPage() {
 
       // 2. Process clock-in / clock-out records
       (clockinRes?.data || []).forEach((r: any) => {
-        const dateStr = r.date;
-        if (!dateStr || !r.employee_id) return;
+        const rawDate = r.date;
+        if (!rawDate || !r.employee_id) return;
+        const dateStr = typeof rawDate === "string" ? rawDate.slice(0, 10) : format(new Date(rawDate), "yyyy-MM-dd");
         const key = `${r.employee_id}|${dateStr}`;
-        const emp = r.employees || empMap[r.employee_id];
+        const emp = empMap[r.employee_id];
         const shift = shiftMap[r.employee_id] || orgDefaultShift;
 
         let calculatedStatus = (r.status || "").toLowerCase().replace("-", "_");
@@ -328,10 +352,13 @@ export default function HRReportsPage() {
           }
         }
 
+        const isAutoOut = !!(r.is_auto_clock_out || r.clock_out_location?.auto || r.clock_out_location?.is_auto_clock_out);
+
         const existing = mergedMap[key];
         if (existing) {
           existing.clock_in_time = r.clock_in_time || existing.clock_in_time;
           existing.clock_out_time = r.clock_out_time || existing.clock_out_time;
+          if (isAutoOut) existing.is_auto_clock_out = true;
           if ((!existing.employeeName || existing.employeeName === "—") && emp?.name) {
             existing.employeeName = emp.name;
             existing.designation = emp.designation || "";
@@ -358,6 +385,7 @@ export default function HRReportsPage() {
             status: (calculatedStatus || r.status || "present").toLowerCase().replace("-", "_"),
             clock_in_time: r.clock_in_time || null,
             clock_out_time: r.clock_out_time || null,
+            is_auto_clock_out: isAutoOut,
             created_at: r.created_at || dateStr,
           };
         }
@@ -597,23 +625,27 @@ export default function HRReportsPage() {
 
       <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg text-gray-900">Recent Attendance</CardTitle>
+            <div>
+              <CardTitle className="text-lg text-gray-900">Recent Attendance & Punch Logs</CardTitle>
+              <p className="text-xs text-gray-500 mt-0.5">Live employee clock in, clock out, and total hours tracking</p>
+            </div>
             <div className="flex gap-2">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => {
                   if (!recentAttendance.length) return;
-                  const headers = ["Date", "Employee", "Designation", "Status", "Check In", "Check Out"];
+                  const headers = ["Date", "Employee", "Designation", "Status", "Clock In", "Clock Out", "Working Hours"];
                   const rows = recentAttendance.map(att => [
                     att.date || '',
                     att.employeeName || '',
                     att.designation || '',
                     (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
                     formatTime(att.clock_in_time),
-                    formatTime(att.clock_out_time),
+                    formatTime(att.clock_out_time) + (att.is_auto_clock_out ? ' (Auto Logout)' : ''),
+                    calculateHours(att.clock_in_time, att.clock_out_time),
                   ]);
-                  exportTableToCSV(headers, rows, "recent_attendance");
+                  exportTableToCSV(headers, rows, "attendance_report");
                 }}
               >
                 <Download className="w-4 h-4 mr-2" />
@@ -624,16 +656,17 @@ export default function HRReportsPage() {
                 size="sm" 
                 onClick={() => {
                   if (!recentAttendance.length) return;
-                  const headers = ["Date", "Employee", "Designation", "Status", "Check In", "Check Out"];
+                  const headers = ["Date", "Employee", "Designation", "Status", "Clock In", "Clock Out", "Working Hours"];
                   const rows = recentAttendance.map(att => [
                     att.date || '',
                     att.employeeName || '',
                     att.designation || '',
                     (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
                     formatTime(att.clock_in_time),
-                    formatTime(att.clock_out_time),
+                    formatTime(att.clock_out_time) + (att.is_auto_clock_out ? ' (Auto Logout)' : ''),
+                    calculateHours(att.clock_in_time, att.clock_out_time),
                   ]);
-                  exportTableToPDF("Recent Attendance", headers, rows, "recent_attendance");
+                  exportTableToPDF("Attendance Report", headers, rows, "attendance_report");
                 }}
               >
                 <FileText className="w-4 h-4 mr-2" />
@@ -649,8 +682,9 @@ export default function HRReportsPage() {
                   <TableHead className="text-gray-500">Date</TableHead>
                   <TableHead className="text-gray-500">Employee</TableHead>
                   <TableHead className="text-gray-500">Status</TableHead>
-                  <TableHead className="text-gray-500">Check In</TableHead>
-                  <TableHead className="text-gray-500">Check Out</TableHead>
+                  <TableHead className="text-gray-500">Clock In</TableHead>
+                  <TableHead className="text-gray-500">Clock Out</TableHead>
+                  <TableHead className="text-gray-500">Working Hours</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -659,9 +693,10 @@ export default function HRReportsPage() {
                     const dateVal = record.date || record.attendance_date;
                     const employeeName = record.employeeName || record.employees?.name || "-";
                     const designation = record.designation || record.employees?.designation;
-                    const checkIn = formatTime(record.clock_in_time || record.check_in || record.clock_in);
-                    const checkOut = formatTime(record.clock_out_time || record.check_out || record.clock_out);
+                    const clockIn = formatTime(record.clock_in_time || record.check_in || record.clock_in);
+                    const clockOut = formatTime(record.clock_out_time || record.check_out || record.clock_out);
                     const status = record.status || "present";
+                    const hoursWorked = calculateHours(record.clock_in_time, record.clock_out_time);
                     return (
                       <TableRow key={record.id || idx} className="border-gray-200 hover:bg-gray-50/50">
                         <TableCell className="text-gray-600 font-medium">
@@ -674,14 +709,26 @@ export default function HRReportsPage() {
                         <TableCell>
                           {getStatusBadge(status, record.leaveType)}
                         </TableCell>
-                        <TableCell className="text-gray-600 font-medium">{checkIn}</TableCell>
-                        <TableCell className="text-gray-600 font-medium">{checkOut}</TableCell>
+                        <TableCell className="text-gray-600 font-medium">{clockIn}</TableCell>
+                        <TableCell className="text-gray-600 font-medium">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{clockOut}</span>
+                            {record.is_auto_clock_out && clockOut !== "—" && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                Auto Logout
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-gray-600 font-medium text-xs">
+                          {hoursWorked}
+                        </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow className="border-gray-200">
-                    <TableCell colSpan={5} className="h-24 text-center text-gray-500">
+                    <TableCell colSpan={6} className="h-24 text-center text-gray-500">
                       No recent attendance records found.
                     </TableCell>
                   </TableRow>
