@@ -262,7 +262,11 @@ export default function CreditNoteBuilderPage() {
     const cnData = {
       org_id: org!.id, client_id: clientId, invoice_id: invoiceId || null,
       credit_note_number: creditNoteNumber, status, issue_date: issueDate,
-      currency_code: org!.currency_code, subtotal, total_tax: totalTax,
+      currency_code: org!.currency_code || "INR",
+      exchange_rate: 1,
+      discount: 0,
+      discount_type: "percentage" as const,
+      subtotal, total_tax: totalTax,
       total_discount: totalDiscount, total, notes: notes || null,
       terms_conditions: terms || null,
       restock_inventory: restockInventory,
@@ -277,10 +281,18 @@ export default function CreditNoteBuilderPage() {
 
     let cnId = id;
     if (isEdit) {
-      await supabase.from("credit_notes").update(cnData).eq("id", id!);
+      const { error: updateErr } = await supabase.from("credit_notes").update(cnData).eq("id", id!);
+      if (updateErr) {
+        toast({ title: "Error updating credit note", description: updateErr.message, variant: "destructive" });
+        return;
+      }
       await supabase.from("credit_note_lines").delete().eq("credit_note_id", id!);
     } else {
-      const { data } = await supabase.from("credit_notes").insert(cnData).select().single();
+      const { data, error: insertErr } = await supabase.from("credit_notes").insert(cnData).select().single();
+      if (insertErr || !data) {
+        toast({ title: "Error saving credit note", description: insertErr?.message || "Unknown error", variant: "destructive" });
+        return;
+      }
       cnId = data?.id;
       await supabase.from("organizations").update({
         credit_note_next_number: (org!.credit_note_next_number || 1) + 1,
@@ -290,12 +302,15 @@ export default function CreditNoteBuilderPage() {
     const validLines = lines.filter((l) => l.name.trim());
     if (cnId) {
       const lineInserts = validLines.map((l, i) => ({
-        credit_note_id: cnId!, item_id: l.item_id, name: l.name,
+        credit_note_id: cnId!, item_id: l.item_id || null, name: l.name,
         description: l.description || null, quantity: Number(l.quantity) || 1, rate: Number(l.rate) || 0,
-        discount: Number(l.discount) || 0, discount_type: l.discount_type, tax_id: l.tax_id,
+        discount: Number(l.discount) || 0, discount_type: l.discount_type || "percentage", tax_id: l.tax_id || null,
         tax_amount: l.tax_amount, amount: l.amount, sort_order: i,
       }));
-      await supabase.from("credit_note_lines").insert(lineInserts);
+      const { error: linesErr } = await supabase.from("credit_note_lines").insert(lineInserts);
+      if (linesErr) {
+        toast({ title: "Warning: Items may not have saved", description: linesErr.message, variant: "destructive" });
+      }
     }
 
     // Inventory restock: undo prev restock and apply new restock

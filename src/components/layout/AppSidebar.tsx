@@ -171,13 +171,16 @@ export function AppSidebar() {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const { t } = useLanguage();
   const [unreadHrChatCount, setUnreadHrChatCount] = useState(0);
+  const [pendingRegularizationsCount, setPendingRegularizationsCount] = useState(0);
+  const [pendingLeavesCount, setPendingLeavesCount] = useState(0);
 
   useEffect(() => {
     if (!org?.id) return;
 
     let isMounted = true;
-    const fetchUnread = async () => {
+    const fetchCounts = async () => {
       try {
+        // 1. HR Chat unread
         const { data: hrEmp } = await (supabase as any)
           .from("employees")
           .select("id")
@@ -194,37 +197,63 @@ export function AppSidebar() {
             .eq("status", "sent");
           if (isMounted) setUnreadHrChatCount(count || 0);
         }
+
+        // 2. Pending Regularizations
+        const { count: regCount } = await (supabase as any)
+          .from("attendance_regularizations")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .eq("status", "pending");
+        if (isMounted) setPendingRegularizationsCount(regCount || 0);
+
+        // 3. Pending Leaves
+        const { count: leaveCount } = await (supabase as any)
+          .from("leaves")
+          .select("id", { count: "exact", head: true })
+          .eq("org_id", org.id)
+          .eq("status", "pending");
+        if (isMounted) setPendingLeavesCount(leaveCount || 0);
       } catch (e) {
         // ignore
       }
     };
 
-    fetchUnread();
+    fetchCounts();
 
     const handleUnreadEvent = (e: any) => {
       if (isMounted) setUnreadHrChatCount(e.detail?.count ?? 0);
     };
+    const handleActionUpdate = () => {
+      fetchCounts();
+    };
     window.addEventListener("hr-chat-unread", handleUnreadEvent);
+    window.addEventListener("hr-action-updated", handleActionUpdate);
 
     const channel = supabase
-      .channel(`sidebar-hr-chat-${org.id}`)
+      .channel(`sidebar-hr-notifications-${org.id}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "chat_messages" },
-        () => { fetchUnread(); }
+        { event: "*", schema: "public", table: "chat_messages" },
+        () => { fetchCounts(); }
       )
       .on(
         "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "chat_messages" },
-        () => { fetchUnread(); }
+        { event: "*", schema: "public", table: "attendance_regularizations" },
+        () => { fetchCounts(); }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leaves" },
+        () => { fetchCounts(); }
       )
       .subscribe();
 
-    const interval = setInterval(fetchUnread, 5000);
+    const interval = setInterval(fetchCounts, 5000);
 
     return () => {
       isMounted = false;
       window.removeEventListener("hr-chat-unread", handleUnreadEvent);
+      window.removeEventListener("hr-action-updated", handleActionUpdate);
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
@@ -547,10 +576,10 @@ export function AppSidebar() {
                       {g.key === "people" && (
                         <div className="relative flex items-center justify-center shrink-0">
                           <UserCog className="h-5 w-5 opacity-70 group-hover/groupbtn:opacity-100 shrink-0" />
-                          {collapsed && unreadHrChatCount > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                          {collapsed && (unreadHrChatCount > 0 || pendingRegularizationsCount > 0 || pendingLeavesCount > 0) && (
+                            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
                             </span>
                           )}
                         </div>
@@ -566,10 +595,10 @@ export function AppSidebar() {
                         <div className="flex-1 flex items-center justify-between pr-2 ml-2 min-w-0">
                             <span className="font-medium text-slate-300 group-hover/groupbtn:text-white tracking-wide text-sm truncate flex items-center">
                               {t(g.label)}
-                              {g.key === "people" && !isOpen && unreadHrChatCount > 0 && (
-                                <span className="relative flex h-2 w-2 ml-1.5">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                              {g.key === "people" && (unreadHrChatCount > 0 || pendingRegularizationsCount > 0 || pendingLeavesCount > 0) && (
+                                <span className="relative flex h-2 w-2 ml-1.5" title="New action or message pending">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
                                 </span>
                               )}
                             </span>
@@ -614,11 +643,29 @@ export function AppSidebar() {
                               {isItemLocked(item.url) && (
                                 <Lock className="h-3 w-3 text-amber-500 ml-auto shrink-0" title="Locked - Upgrade Plan" />
                               )}
-                              {item.url === "/attendance" && unreadHrChatCount > 0 && (
-                                <span className="relative flex h-2.5 w-2.5 ml-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
-                                </span>
+                              {item.url === "/attendance" && (unreadHrChatCount > 0 || pendingRegularizationsCount > 0) && (
+                                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                  {pendingRegularizationsCount > 0 && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-amber-500 text-white rounded-full">
+                                      {pendingRegularizationsCount}
+                                    </span>
+                                  )}
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                  </span>
+                                </div>
+                              )}
+                              {item.url === "/leaves" && pendingLeavesCount > 0 && (
+                                <div className="flex items-center gap-1.5 ml-auto shrink-0">
+                                  <span className="px-1.5 py-0.2 text-[9px] font-bold bg-amber-500 text-white rounded-full">
+                                    {pendingLeavesCount}
+                                  </span>
+                                  <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                                  </span>
+                                </div>
                               )}
                             </span>
                           )}

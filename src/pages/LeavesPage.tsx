@@ -142,7 +142,32 @@ export default function LeavesPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, [org?.id]);
+  useEffect(() => { 
+    load(); 
+    if (!org?.id) return;
+
+    const channel = supabase
+      .channel(`leaves-realtime-${org.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leaves" },
+        () => {
+          load();
+          window.dispatchEvent(new CustomEvent('hr-action-updated'));
+        }
+      )
+      .subscribe();
+
+    const handleActionUpdated = () => {
+      load();
+    };
+    window.addEventListener("hr-action-updated", handleActionUpdated);
+
+    return () => {
+      supabase.removeChannel(channel);
+      window.removeEventListener("hr-action-updated", handleActionUpdated);
+    };
+  }, [org?.id]);
 
   const submit = async () => {
     if (!org?.id || !form.employee_id || !form.start_date || !form.end_date) {
@@ -154,7 +179,13 @@ export default function LeavesPage() {
       start_date: form.start_date, end_date: form.end_date, days, reason: form.reason, status: "pending",
     });
     if (error) toast({ title: "Save failed", description: error.message, variant: "destructive" });
-    else { setOpen(false); setForm({ employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "" }); load(); toast({ title: "Leave request created" }); }
+    else { 
+      setOpen(false); 
+      setForm({ employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "" }); 
+      load(); 
+      window.dispatchEvent(new CustomEvent('hr-action-updated'));
+      toast({ title: "Leave request created" }); 
+    }
   };
 
   const setStatus = async (id: string, status: "approved" | "rejected") => {
@@ -255,13 +286,17 @@ export default function LeavesPage() {
         }
     }
     load();
+    window.dispatchEvent(new CustomEvent('hr-action-updated'));
   };
 
   const remove = async (id: string) => {
     if (!confirm("Delete leave?")) return;
     const { error } = await (supabase as any).from("leaves").delete().eq("id", id);
     if (error) toast({ title: "Delete failed", description: error.message, variant: "destructive" });
-    else load();
+    else {
+      load();
+      window.dispatchEvent(new CustomEvent('hr-action-updated'));
+    }
   };
 
   const savePolicies = async () => {
@@ -290,12 +325,17 @@ export default function LeavesPage() {
 
   // Group balances per employee — keyed by emp.id for O(1) lookup
   const balancesByEmp: Record<string, Record<string, any>> = {};
-  employees.forEach((emp) => {
-    const empBals = balances.filter((b) => b.employee_id === emp.id);
+  (employees || []).forEach((emp) => {
+    const empBals = (balances || []).filter((b) => b.employee_id === emp.id);
     const byType: Record<string, any> = {};
     empBals.forEach((b) => { byType[b.leave_type] = b; });
     balancesByEmp[emp.id] = byType;
   });
+
+  const balancesList = (employees || []).map((emp) => ({
+    emp,
+    byType: balancesByEmp[emp.id] || {},
+  }));
 
   const getBalance = (byType: Record<string, any>, type: string) => {
     const pol = policies.find((p: any) => p.leave_type === type);
@@ -354,12 +394,18 @@ export default function LeavesPage() {
 
         <Tabs defaultValue="requests">
           <TabsList>
-            <TabsTrigger value="requests" className="flex items-center gap-1.5">
+            <TabsTrigger value="requests" className="relative flex items-center gap-1.5">
               <ClipboardList className="h-4 w-4" />
               Leave Requests
-              {rows.filter(r => r.status === 'pending').length > 0 && (
-                <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                  {rows.filter(r => r.status === 'pending').length}
+              {(rows || []).filter(r => r?.status === 'pending').length > 0 && (
+                <span className="flex items-center gap-1 ml-1">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                  </span>
+                  <span className="flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
+                    {(rows || []).filter(r => r?.status === 'pending').length}
+                  </span>
                 </span>
               )}
             </TabsTrigger>
@@ -373,7 +419,7 @@ export default function LeavesPage() {
           <Card>
             <CardContent className="p-0">
               {loading ? <div className="p-8 text-center text-muted-foreground">Loading…</div>
-              : rows.length === 0 ? <div className="p-8 text-center text-muted-foreground">No leave requests yet.</div>
+              : (!rows || rows.length === 0) ? <div className="p-8 text-center text-muted-foreground">No leave requests yet.</div>
               : (
                 <Table>
                   <TableHeader><TableRow>
@@ -382,7 +428,7 @@ export default function LeavesPage() {
                     <TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {rows.map((r) => {
+                    {(rows || []).map((r) => {
                       const meta = typeMeta(r.leave_type);
                       return (
                         <TableRow key={r.id}>
@@ -457,7 +503,7 @@ export default function LeavesPage() {
                       <TableHead className="text-right">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {balancesByEmp.map(({ emp, byType }) => (
+                    {balancesList.map(({ emp, byType }) => (
                       <TableRow key={emp.id}>
                         <TableCell className="font-medium">{emp.name}</TableCell>
                         {["casual", "sick", "el_pl", "comp_off"].map((type) => {
@@ -561,7 +607,7 @@ export default function LeavesPage() {
               <CardTitle className="text-base">Leave Balance Adjustments History</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {transactions.length === 0 ? <div className="p-8 text-center text-muted-foreground">No manual adjustments yet. Use the "Adjust" button in Employee Balances to credit or deduct leaves.</div>
+              {(!transactions || transactions.length === 0) ? <div className="p-8 text-center text-muted-foreground">No manual adjustments yet. Use the "Adjust" button in Employee Balances to credit or deduct leaves.</div>
               : (
                 <Table>
                   <TableHeader><TableRow>
@@ -574,7 +620,7 @@ export default function LeavesPage() {
                     <TableHead>Reason</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
-                    {transactions.map((tx: any) => {
+                    {(transactions || []).map((tx: any) => {
                       const meta = typeMeta(tx.leave_type);
                       const isExpired = tx.expiry_date && new Date(tx.expiry_date) < new Date();
                       return (
@@ -631,7 +677,7 @@ export default function LeavesPage() {
               <Label>Employee *</Label>
               <Select value={form.employee_id} onValueChange={(v) => setForm({ ...form, employee_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Select employee" /></SelectTrigger>
-                <SelectContent>{employees.map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
+                <SelectContent>{(employees || []).map((e) => <SelectItem key={e.id} value={e.id}>{e.name}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

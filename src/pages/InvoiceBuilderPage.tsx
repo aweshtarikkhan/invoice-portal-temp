@@ -132,7 +132,7 @@ function SortableLineItem({
   currency: string;
   org: any;
 }) {
-  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+  const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: line.id });
   const [itemDropdownOpen, setItemDropdownOpen] = useState(false);
 
@@ -173,7 +173,7 @@ function SortableLineItem({
     }
     onChange(index, "description", item.description ? (extraDesc ? `${item.description}\n${extraDesc}` : item.description) : extraDesc);
     let __rate = Number(item.unit_price) || 0;
-    const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+    const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
     const __priceType = window.location.pathname.includes("bill") || window.location.pathname.includes("purchase") || window.location.pathname.includes("grn") ? (item.purchase_price_type || "without_tax") : (item.sales_price_type || "without_tax");
     if (hasGst && __priceType === "with_tax" && item.tax_id) {
       const __tax = taxRates.find((t: any) => t.id === item.tax_id);
@@ -434,7 +434,7 @@ export default function InvoiceBuilderPage() {
   const duplicateId = searchParams.get("duplicate");
   const org = useAppStore((s) => s.organization);
   const userRole = useAppStore((s) => s.userRole);
-  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+  const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
   const { toast } = useToast();
   const { user, profile } = useAuth();
   const { subscriptionPlan } = useSubscription();
@@ -560,7 +560,26 @@ export default function InvoiceBuilderPage() {
           .eq("id", org.id)
           .single();
         const prefix = freshOrg?.invoice_prefix || org.invoice_prefix || "INV";
-        const num = freshOrg?.invoice_next_number || org.invoice_next_number || 1;
+        let num = freshOrg?.invoice_next_number || org.invoice_next_number || 1;
+
+        // Check recent invoices in DB to ensure no duplicate number is assigned
+        const { data: recentInvs } = await supabase
+          .from("invoices")
+          .select("invoice_number")
+          .eq("org_id", org.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        let maxExisting = 0;
+        recentInvs?.forEach((inv: any) => {
+          const m = (inv.invoice_number || "").match(/(\d+)$/);
+          if (m) {
+            const val = parseInt(m[1], 10);
+            if (val > maxExisting) maxExisting = val;
+          }
+        });
+        if (maxExisting >= num) {
+          num = maxExisting + 1;
+        }
         setInvoiceNumber(formatSequenceNumber(prefix, num, "INV"));
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");
@@ -787,7 +806,7 @@ export default function InvoiceBuilderPage() {
     
     let tax_amount = 0;
     let computedAmount = afterDiscount;
-    const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+    const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
 
     if (hasGst && line.tax_id) {
       const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
@@ -806,7 +825,7 @@ export default function InvoiceBuilderPage() {
       hsn_code: hasGst ? (line.hsn_code || "") : "",
       amount: computedAmount 
     };
-  }, [taxRates, org?.gst_number, (org as any)?.gst_enabled]);
+  }, [taxRates, org?.gst_number, (org as any)?.tax_number, (org as any)?.gst_enabled]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
     setLines((prev) => {
@@ -1122,7 +1141,7 @@ export default function InvoiceBuilderPage() {
         template_accent_color: org?.template_accent_color,
         template_font: org?.template_font,
         template_paper_size: org?.template_paper_size,
-        has_gst: Boolean(org?.gst_number?.trim() && org?.gst_enabled !== false),
+        has_gst: hasGst,
         shipping_same_as_billing: shippingSameAsBilling,
         auto_round_off: autoRoundOff,
         show_bank_details: showBankDetails,
@@ -1181,13 +1200,28 @@ export default function InvoiceBuilderPage() {
         let retryCount = 0;
         let insertData = null;
         
-        while (retryCount < 3) {
+        while (retryCount < 5) {
           const { data, error } = await supabase.from("invoices").insert(currentPayload).select().single();
           if (error) {
-            if (error.code === "23505" && error.message.includes("invoices_org_id_invoice_number_key")) {
-              // Fetch fresh invoice number and retry
+            if (error.code === "23505" && (error.message.includes("invoices_org_id_invoice_number_key") || error.message.includes("invoice_number"))) {
+              // Fetch latest invoices to find the real max number
+              const { data: existingInvs } = await supabase
+                .from("invoices")
+                .select("invoice_number")
+                .eq("org_id", org!.id)
+                .order("created_at", { ascending: false })
+                .limit(100);
+              let maxNum = 0;
+              existingInvs?.forEach((inv: any) => {
+                const m = (inv.invoice_number || "").match(/(\d+)$/);
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (n > maxNum) maxNum = n;
+                }
+              });
               const { data: currentOrg } = await supabase.from("organizations").select("invoice_next_number, invoice_prefix").eq("id", org!.id).single();
-              currentNum = currentOrg?.invoice_next_number || 1;
+              const baseNum = Math.max(currentOrg?.invoice_next_number || 1, maxNum + 1);
+              currentNum = baseNum + retryCount;
               const newNum = formatSequenceNumber(currentOrg?.invoice_prefix || "INV", currentNum, "INV");
               currentPayload.invoice_number = newNum;
               setInvoiceNumber(newNum); // Update UI state
@@ -1201,19 +1235,18 @@ export default function InvoiceBuilderPage() {
         }
         
         if (!insertData) {
-           throw new Error("Failed to generate a unique invoice number. Please try again.");
+          throw new Error("Failed to generate a unique invoice number. Please try again.");
         }
         
         invoiceId = insertData.id;
         
-        // If we didn't fetch currentNum during retry, fetch it now to increment
-        if (currentNum === -1) {
-           const { data: currentOrg } = await supabase.from("organizations").select("invoice_next_number").eq("id", org!.id).single();
-           currentNum = currentOrg?.invoice_next_number || 1;
-        }
-        
+        // Ensure organizations table sequence is incremented past the inserted invoice
+        const insertedNumMatch = (currentPayload.invoice_number || "").match(/(\d+)$/);
+        const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : (currentNum !== -1 ? currentNum : 1);
+        const { data: latestOrg } = await supabase.from("organizations").select("invoice_next_number").eq("id", org!.id).single();
+        const nextTarget = Math.max(latestOrg?.invoice_next_number || 1, savedSeq + 1);
         await supabase.from("organizations").update({
-          invoice_next_number: currentNum + 1,
+          invoice_next_number: nextTarget,
         }).eq("id", org!.id);
       }
 

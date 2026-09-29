@@ -114,7 +114,24 @@ export default function PurchaseOrderBuilderPage() {
 
       if (!id) {
         const prefix = o.data?.po_prefix || "PO-";
-        const next = o.data?.po_next_number || 1;
+        let next = o.data?.po_next_number || 1;
+        const { data: recentPos } = await (supabase as any)
+          .from("purchase_orders")
+          .select("po_number")
+          .eq("org_id", org.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        let maxExisting = 0;
+        recentPos?.forEach((p: any) => {
+          const m = (p.po_number || "").match(/(\d+)$/);
+          if (m) {
+            const val = parseInt(m[1], 10);
+            if (val > maxExisting) maxExisting = val;
+          }
+        });
+        if (maxExisting >= next) {
+          next = maxExisting + 1;
+        }
         setPoNumber(formatSequenceNumber(prefix, next));
       } else {
         loadPo();
@@ -151,8 +168,8 @@ export default function PurchaseOrderBuilderPage() {
     let sub = 0, cgst = 0, sgst = 0, igst = 0;
     const breakdown: Record<number, number> = {};
     lines.forEach(l => {
-      const q = Number(l.quantity) || 0, r = Number(l.rate) || 0;
-      const t = vendorHasGst ? (Number(l.tax_rate) || 0) : 0; // No GST if vendor has no GSTIN
+      const orgHasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
+      const t = (vendorHasGst || orgHasGst) ? (Number(l.tax_rate) || 0) : 0;
       const amt = q * r;
       sub += amt;
       const taxAmt = amt * (t / 100);
@@ -283,17 +300,58 @@ export default function PurchaseOrderBuilderPage() {
         if (error) throw error;
         await (supabase as any).from("purchase_order_lines").delete().eq("po_id", id);
       } else {
-        const { data, error } = await (supabase as any).from("purchase_orders").insert(payload).select().single();
-        if (error) throw error;
-        poId = data.id;
-        const { data: o } = await (supabase as any).from("organizations").select("po_next_number").eq("id", org.id).maybeSingle();
-        await (supabase as any).from("organizations").update({ po_next_number: (o?.po_next_number || 1) + 1 }).eq("id", org.id);
+        let currentPayload = { ...payload };
+        let insertData = null;
+        let retryCount = 0;
+        while (retryCount < 5) {
+          const { data, error } = await (supabase as any).from("purchase_orders").insert(currentPayload).select().single();
+          if (error) {
+            if (error.code === "23505" && (error.message.includes("po_number") || error.message.includes("purchase_orders_org_id_po_number_key"))) {
+              const { data: recentPos } = await (supabase as any)
+                .from("purchase_orders")
+                .select("po_number")
+                .eq("org_id", org.id)
+                .order("created_at", { ascending: false })
+                .limit(100);
+              let maxNum = 0;
+              recentPos?.forEach((p: any) => {
+                const m = (p.po_number || "").match(/(\d+)$/);
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (n > maxNum) maxNum = n;
+                }
+              });
+              const { data: currentOrg } = await (supabase as any).from("organizations").select("po_next_number, po_prefix").eq("id", org.id).single();
+              const baseNum = Math.max(currentOrg?.po_next_number || 1, maxNum + 1);
+              const nextNum = baseNum + retryCount;
+              const formattedPo = formatSequenceNumber(currentOrg?.po_prefix || "PO-", nextNum);
+              currentPayload.po_number = formattedPo;
+              setPoNumber(formattedPo);
+              retryCount++;
+              continue;
+            }
+            throw error;
+          }
+          insertData = data;
+          break;
+        }
+        if (!insertData) {
+          throw new Error("Failed to generate a unique purchase order number. Please try again.");
+        }
+        poId = insertData.id;
+        const insertedNumMatch = (currentPayload.po_number || "").match(/(\d+)$/);
+        const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
+        const { data: latestOrg } = await (supabase as any).from("organizations").select("po_next_number").eq("id", org.id).single();
+        const nextTarget = Math.max(latestOrg?.po_next_number || 1, savedSeq + 1);
+        await (supabase as any).from("organizations").update({ po_next_number: nextTarget }).eq("id", org.id);
       }
+      const orgHasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
+      const canApplyTax = vendorHasGst || orgHasGst;
       const linePayloads = lines.map((l, idx) => {
         const q = Number(l.quantity) || 0;
         const r = Number(l.rate) || 0;
-        const tRate = vendorHasGst ? (Number(l.tax_rate) || 0) : 0;
-        const tAmount = vendorHasGst ? (q * r * (tRate / 100)) : 0;
+        const tRate = canApplyTax ? (Number(l.tax_rate) || 0) : 0;
+        const tAmount = canApplyTax ? (q * r * (tRate / 100)) : 0;
         return {
           org_id: org.id, po_id: poId, item_id: l.item_id || null, description: l.description,
           hsn: l.hsn || null, quantity: q, rate: r, tax_rate: tRate,

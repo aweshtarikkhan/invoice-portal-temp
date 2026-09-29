@@ -14,36 +14,56 @@ import { format } from "date-fns";
 
 function computeShiftStatus(clockInTime: string, shift: any): string {
   if (!clockInTime) return "absent";
+  let clockInMins = NaN;
   try {
     const d = new Date(clockInTime);
-    if (isNaN(d.getTime())) return "present";
-    const clockInMins = d.getHours() * 60 + d.getMinutes();
+    if (!isNaN(d.getTime())) {
+      const istTimeStr = d.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false, hour: "2-digit", minute: "2-digit" });
+      const [ih, im] = istTimeStr.split(":").map(Number);
+      if (!isNaN(ih) && !isNaN(im)) {
+        clockInMins = ih * 60 + im;
+      } else {
+        clockInMins = d.getHours() * 60 + d.getMinutes();
+      }
+    }
+  } catch {}
 
-    const effectiveShift = shift || {
-      start_time: "09:00",
-      grace_minutes: 15,
-      late_end: "10:30",
-      half_day_end: "14:00",
-    };
-
-    const toMins = (t: string) => {
-      if (!t) return 0;
-      const [h, m] = t.slice(0, 5).split(":").map(Number);
-      return h * 60 + m;
-    };
-    const startTimeMins = toMins(effectiveShift.start_time || "09:00");
-    const graceMins = effectiveShift.grace_minutes ?? 15;
-    const graceEnd = startTimeMins + graceMins;
-    const lateEnd = toMins(effectiveShift.late_end || "10:30");
-    const halfEnd = toMins(effectiveShift.half_day_end || "14:00");
-
-    if (clockInMins <= graceEnd) return "present";
-    if (clockInMins <= lateEnd) return "late";
-    if (clockInMins <= halfEnd) return "half_day";
-    return "half_day";
-  } catch {
-    return "present";
+  if (isNaN(clockInMins)) {
+    const match = String(clockInTime).match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (match) {
+      let h = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      const ampm = match[3]?.toUpperCase();
+      if (ampm === "PM" && h < 12) h += 12;
+      if (ampm === "AM" && h === 12) h = 0;
+      clockInMins = h * 60 + m;
+    }
   }
+
+  if (isNaN(clockInMins)) return "present";
+
+  const effectiveShift = shift || {
+    start_time: "09:00",
+    grace_minutes: 15,
+    late_end: "10:30",
+    half_day_end: "14:00",
+  };
+
+  const toMins = (t: string) => {
+    if (!t) return 0;
+    const [h, m] = t.slice(0, 5).split(":").map(Number);
+    return h * 60 + m;
+  };
+  const startTimeMins = toMins(effectiveShift.start_time || "09:00");
+  const graceMins = effectiveShift.grace_minutes ?? 15;
+  const graceEnd = startTimeMins + graceMins;
+  const lateEnd = toMins(effectiveShift.late_end || "10:30");
+  const halfEnd = toMins(effectiveShift.half_day_end || "14:00");
+
+  if (clockInMins <= graceEnd) return "present";
+  if (clockInMins <= lateEnd) return "late";
+  if (clockInMins <= halfEnd) return "half_day";
+  return "half_day";
 }
 
 function formatTime(timeStr: string | null | undefined): string {
@@ -60,7 +80,7 @@ function formatTime(timeStr: string | null | undefined): string {
     }
     const d = new Date(trimmed);
     if (!isNaN(d.getTime())) {
-      return format(d, "hh:mm a");
+      return d.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: true, hour: "2-digit", minute: "2-digit" });
     }
     return trimmed;
   } catch {
@@ -87,7 +107,7 @@ function getStatusBadge(status: string, leaveType?: string) {
   }
   if (norm === "half_day") {
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 border border-orange-200">
         Half Day
       </span>
     );
@@ -139,7 +159,7 @@ export default function HRReportsPage() {
   const [payrollData, setPayrollData] = useState<any[]>([]);
   const [leaveData, setLeaveData] = useState<any[]>([]);
   const [recentAttendance, setRecentAttendance] = useState<any[]>([]);
-  const [todayStats, setTodayStats] = useState({ total: 0, present: 0, absent: 0, late: 0, onLeave: 0 });
+  const [todayStats, setTodayStats] = useState({ total: 0, present: 0, absent: 0, late: 0, halfDay: 0, onLeave: 0 });
 
   useEffect(() => {
     if (!org?.id) return;
@@ -223,13 +243,13 @@ export default function HRReportsPage() {
           .select("*, employees(id, name, designation)")
           .eq("org_id", org.id)
           .order("date", { ascending: false })
-          .limit(60),
+          .limit(500),
         (supabase as any)
           .from("attendance")
           .select("*, employees(id, name, designation)")
           .eq("org_id", org.id)
           .order("attendance_date", { ascending: false })
-          .limit(60),
+          .limit(500),
         (supabase as any)
           .from("shifts")
           .select("*")
@@ -284,10 +304,11 @@ export default function HRReportsPage() {
           employee_id: r.employee_id,
           employeeName: emp?.name || "—",
           designation: emp?.designation || "",
-          status: r.override_status || r.status || "present",
+          status: (r.override_status || r.status || "present").toLowerCase().replace("-", "_"),
           clock_in_time: r.clock_in_time || r.check_in_time || null,
           clock_out_time: r.clock_out_time || r.check_out_time || null,
           created_at: r.created_at || dateStr,
+          hr_note: r.hr_note || r.notes || null,
         };
       });
 
@@ -299,9 +320,12 @@ export default function HRReportsPage() {
         const emp = r.employees || empMap[r.employee_id];
         const shift = shiftMap[r.employee_id] || orgDefaultShift;
 
-        let calculatedStatus = r.status;
-        if (r.clock_in_time && (!calculatedStatus || calculatedStatus === "present")) {
-          calculatedStatus = computeShiftStatus(r.clock_in_time, shift);
+        let calculatedStatus = (r.status || "").toLowerCase().replace("-", "_");
+        if (r.clock_in_time) {
+          const shiftComputed = computeShiftStatus(r.clock_in_time, shift);
+          if (shiftComputed === "late" || shiftComputed === "half_day" || !calculatedStatus || calculatedStatus === "present") {
+            calculatedStatus = shiftComputed;
+          }
         }
 
         const existing = mergedMap[key];
@@ -312,11 +336,17 @@ export default function HRReportsPage() {
             existing.employeeName = emp.name;
             existing.designation = emp.designation || "";
           }
-          if ((!existing.status || existing.status === "absent" || existing.status === "present") && r.clock_in_time) {
-            existing.status = calculatedStatus || "present";
-          }
-          if (existing.status === "present" && (calculatedStatus === "late" || calculatedStatus === "half_day" || calculatedStatus === "half-day")) {
-            existing.status = calculatedStatus;
+
+          const isExplicitHrOverride = existing.hr_note === "hr_override";
+          if (!isExplicitHrOverride) {
+            // Prioritize punch status: if employee came late or half day, reflect it accurately
+            if (calculatedStatus === "late" || calculatedStatus === "half_day") {
+              existing.status = calculatedStatus;
+            } else if (r.status === "late" || r.status === "half_day" || r.status === "half-day") {
+              existing.status = r.status.toLowerCase().replace("-", "_");
+            } else if (r.clock_in_time && (!existing.status || existing.status === "absent")) {
+              existing.status = calculatedStatus || "present";
+            }
           }
         } else {
           mergedMap[key] = {
@@ -325,7 +355,7 @@ export default function HRReportsPage() {
             employee_id: r.employee_id,
             employeeName: emp?.name || "—",
             designation: emp?.designation || "",
-            status: calculatedStatus || "present",
+            status: (calculatedStatus || r.status || "present").toLowerCase().replace("-", "_"),
             clock_in_time: r.clock_in_time || null,
             clock_out_time: r.clock_out_time || null,
             created_at: r.created_at || dateStr,
@@ -338,9 +368,11 @@ export default function HRReportsPage() {
         const [empId, dateStr] = key.split("|");
         const leaveInfo = leaveMap[key];
         const emp = empMap[empId];
+        const isHalfDayLeave = leaveInfo.type === "half_day";
+
         if (mergedMap[key]) {
           if (!mergedMap[key].clock_in_time) {
-            mergedMap[key].status = "leave";
+            mergedMap[key].status = isHalfDayLeave ? "half_day" : "leave";
             mergedMap[key].leaveType = leaveInfo.type;
           }
         } else {
@@ -350,7 +382,7 @@ export default function HRReportsPage() {
             employee_id: empId,
             employeeName: leaveInfo.employeeName || emp?.name || "—",
             designation: leaveInfo.designation || emp?.designation || "",
-            status: "leave",
+            status: isHalfDayLeave ? "half_day" : "leave",
             leaveType: leaveInfo.type,
             clock_in_time: null,
             clock_out_time: null,
@@ -374,13 +406,13 @@ export default function HRReportsPage() {
         return (b.clock_in_time || b.created_at || "").localeCompare(a.clock_in_time || a.created_at || "");
       });
 
-      setRecentAttendance(sorted.slice(0, 30));
+      setRecentAttendance(sorted.slice(0, 50));
 
       // 6. Calculate Today's Stats
       const todayStr = format(new Date(), "yyyy-MM-dd");
-      let present = 0, absent = 0, late = 0, onLeave = 0;
+      let present = 0, absent = 0, late = 0, halfDay = 0, onLeave = 0;
       
-      const activeEmps = (employees || []).filter((e: any) => e.status !== 'inactive');
+      const activeEmps = (employees || []).filter((e: any) => e.status !== 'inactive' && e.is_active !== false);
       const total = activeEmps.length;
 
       activeEmps.forEach((emp: any) => {
@@ -389,16 +421,17 @@ export default function HRReportsPage() {
         if (!record) {
           absent++;
         } else {
-          const s = (record.status || "").toLowerCase();
-          if (s === "present" || s === "half_day" || s === "half-day") present++;
-          else if (s === "absent") absent++;
+          const s = (record.status || "").toLowerCase().replace("-", "_");
+          if (s === "half_day") halfDay++;
           else if (s === "late") late++;
+          else if (s === "present") present++;
+          else if (s === "absent") absent++;
           else if (s === "leave" || s === "paid_leave" || s === "approved_leave" || s.includes("leave")) onLeave++;
           else present++; // fallback
         }
       });
       
-      setTodayStats({ total, present, absent, late, onLeave });
+      setTodayStats({ total, present, absent, late, halfDay, onLeave });
     };
     
     fetchData();
@@ -425,7 +458,7 @@ export default function HRReportsPage() {
           <CardTitle className="text-lg font-bold text-gray-900">Today's Attendance</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
             <div>
               <div className="text-3xl font-bold text-gray-900">{todayStats.total}</div>
               <div className="text-sm font-medium text-gray-500 mt-1">Total Employees</div>
@@ -441,6 +474,10 @@ export default function HRReportsPage() {
             <div>
               <div className="text-3xl font-bold text-amber-500">{todayStats.late}</div>
               <div className="text-sm font-medium text-gray-500 mt-1">Late</div>
+            </div>
+            <div>
+              <div className="text-3xl font-bold text-orange-600">{todayStats.halfDay}</div>
+              <div className="text-sm font-medium text-gray-500 mt-1">Half Day</div>
             </div>
             <div>
               <div className="text-3xl font-bold text-blue-600">{todayStats.onLeave}</div>
@@ -567,14 +604,14 @@ export default function HRReportsPage() {
                 size="sm" 
                 onClick={() => {
                   if (!recentAttendance.length) return;
-                  const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
+                  const headers = ["Date", "Employee", "Designation", "Status", "Check In", "Check Out"];
                   const rows = recentAttendance.map(att => [
                     att.date || '',
-                    `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
-                    att.status || '',
-                    att.check_in || '',
-                    att.check_out || '',
-                    att.work_hours || ''
+                    att.employeeName || '',
+                    att.designation || '',
+                    (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
+                    formatTime(att.clock_in_time),
+                    formatTime(att.clock_out_time),
                   ]);
                   exportTableToCSV(headers, rows, "recent_attendance");
                 }}
@@ -587,14 +624,14 @@ export default function HRReportsPage() {
                 size="sm" 
                 onClick={() => {
                   if (!recentAttendance.length) return;
-                  const headers = ["Date", "Employee", "Status", "Check In", "Check Out", "Work Hours"];
+                  const headers = ["Date", "Employee", "Designation", "Status", "Check In", "Check Out"];
                   const rows = recentAttendance.map(att => [
                     att.date || '',
-                    `${att.employees?.first_name || ''} ${att.employees?.last_name || ''}`.trim(),
-                    att.status || '',
-                    att.check_in || '',
-                    att.check_out || '',
-                    att.work_hours || ''
+                    att.employeeName || '',
+                    att.designation || '',
+                    (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
+                    formatTime(att.clock_in_time),
+                    formatTime(att.clock_out_time),
                   ]);
                   exportTableToPDF("Recent Attendance", headers, rows, "recent_attendance");
                 }}

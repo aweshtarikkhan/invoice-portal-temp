@@ -515,7 +515,24 @@ export default function BillBuilderPage() {
       if (!id) {
         const { data: freshOrg } = await supabase.from("organizations").select("next_bill_number, bill_prefix, payment_terms, default_notes, default_terms").eq("id", org.id).single();
         const prefix = freshOrg?.bill_prefix || (org as any)?.bill_prefix || "BILL";
-        const num = freshOrg?.next_bill_number || (org as any)?.next_bill_number || 1;
+        let num = freshOrg?.next_bill_number || (org as any)?.next_bill_number || 1;
+        const { data: recentBills } = await supabase
+          .from("bills")
+          .select("bill_number")
+          .eq("org_id", org.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        let maxExisting = 0;
+        recentBills?.forEach((b: any) => {
+          const m = (b.bill_number || "").match(/(\d+)$/);
+          if (m) {
+            const val = parseInt(m[1], 10);
+            if (val > maxExisting) maxExisting = val;
+          }
+        });
+        if (maxExisting >= num) {
+          num = maxExisting + 1;
+        }
         setBillNumber(formatSequenceNumber(prefix, num, "BILL"));
         setPaymentTerms(freshOrg?.payment_terms || org.payment_terms || 30);
         setNotes(freshOrg?.default_notes || org.default_notes || "");
@@ -953,15 +970,50 @@ export default function BillBuilderPage() {
         // Delete old lines and re-insert
         await supabase.from("bill_lines").delete().eq("bill_id", id);
       } else {
-        const { data, error } = await supabase.from("bills").insert(billPayload).select().single();
-        if (error) throw error;
-        billId = data.id;
-        // Increment org next number using fresh DB value
-        const { data: currentOrg } = await supabase.from("organizations").select("bill_next_number").eq("id", org!.id).single();
-        const currentNum = currentOrg?.bill_next_number || 1;
-        await supabase.from("organizations").update({
-          bill_next_number: currentNum + 1,
-        }).eq("id", org!.id);
+        let currentPayload = { ...billPayload };
+        let insertData = null;
+        let retryCount = 0;
+        while (retryCount < 5) {
+          const { data, error } = await supabase.from("bills").insert(currentPayload).select().single();
+          if (error) {
+            if (error.code === "23505" && (error.message.includes("bill_number") || error.message.includes("bills_org_id_bill_number_key"))) {
+              const { data: recentBills } = await supabase
+                .from("bills")
+                .select("bill_number")
+                .eq("org_id", org!.id)
+                .order("created_at", { ascending: false })
+                .limit(100);
+              let maxNum = 0;
+              recentBills?.forEach((b: any) => {
+                const m = (b.bill_number || "").match(/(\d+)$/);
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (n > maxNum) maxNum = n;
+                }
+              });
+              const { data: currentOrg } = await supabase.from("organizations").select("next_bill_number, bill_prefix").eq("id", org!.id).single();
+              const baseNum = Math.max(currentOrg?.next_bill_number || 1, maxNum + 1);
+              const nextNum = baseNum + retryCount;
+              const formattedBill = formatSequenceNumber(currentOrg?.bill_prefix || "BILL", nextNum, "BILL");
+              currentPayload.bill_number = formattedBill;
+              setBillNumber(formattedBill);
+              retryCount++;
+              continue;
+            }
+            throw error;
+          }
+          insertData = data;
+          break;
+        }
+        if (!insertData) {
+          throw new Error("Failed to generate a unique bill number. Please try again.");
+        }
+        billId = insertData.id;
+        const insertedNumMatch = (currentPayload.bill_number || "").match(/(\d+)$/);
+        const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
+        const { data: latestOrg } = await supabase.from("organizations").select("next_bill_number").eq("id", org!.id).single();
+        const nextTarget = Math.max(latestOrg?.next_bill_number || 1, savedSeq + 1);
+        await supabase.from("organizations").update({ next_bill_number: nextTarget }).eq("id", org!.id);
       }
 
       // Insert lines

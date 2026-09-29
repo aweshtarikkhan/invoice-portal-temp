@@ -22,36 +22,56 @@ import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 
 function computeShiftStatus(clockInTime: string, shift: any): string {
   if (!clockInTime) return "absent";
+  let clockInMins = NaN;
   try {
     const d = new Date(clockInTime);
-    if (isNaN(d.getTime())) return "present";
-    const clockInMins = d.getHours() * 60 + d.getMinutes();
+    if (!isNaN(d.getTime())) {
+      const istTimeStr = d.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false, hour: "2-digit", minute: "2-digit" });
+      const [ih, im] = istTimeStr.split(":").map(Number);
+      if (!isNaN(ih) && !isNaN(im)) {
+        clockInMins = ih * 60 + im;
+      } else {
+        clockInMins = d.getHours() * 60 + d.getMinutes();
+      }
+    }
+  } catch {}
 
-    const effectiveShift = shift || {
-      start_time: "09:00",
-      grace_minutes: 15,
-      late_end: "10:30",
-      half_day_end: "14:00",
-    };
-
-    const toMins = (t: string) => {
-      if (!t) return 0;
-      const [h, m] = t.slice(0, 5).split(":").map(Number);
-      return h * 60 + m;
-    };
-    const startTimeMins = toMins(effectiveShift.start_time || "09:00");
-    const graceMins = effectiveShift.grace_minutes ?? 15;
-    const graceEnd = startTimeMins + graceMins;
-    const lateEnd = toMins(effectiveShift.late_end || "10:30");
-    const halfEnd = toMins(effectiveShift.half_day_end || "14:00");
-
-    if (clockInMins <= graceEnd) return "present";
-    if (clockInMins <= lateEnd) return "late";
-    if (clockInMins <= halfEnd) return "half_day";
-    return "half_day";
-  } catch {
-    return "present";
+  if (isNaN(clockInMins)) {
+    const match = String(clockInTime).match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (match) {
+      let h = parseInt(match[1], 10);
+      const m = parseInt(match[2], 10);
+      const ampm = match[3]?.toUpperCase();
+      if (ampm === "PM" && h < 12) h += 12;
+      if (ampm === "AM" && h === 12) h = 0;
+      clockInMins = h * 60 + m;
+    }
   }
+
+  if (isNaN(clockInMins)) return "present";
+
+  const effectiveShift = shift || {
+    start_time: "09:00",
+    grace_minutes: 15,
+    late_end: "10:30",
+    half_day_end: "14:00",
+  };
+
+  const toMins = (t: string) => {
+    if (!t) return 0;
+    const [h, m] = t.slice(0, 5).split(":").map(Number);
+    return h * 60 + m;
+  };
+  const startTimeMins = toMins(effectiveShift.start_time || "09:00");
+  const graceMins = effectiveShift.grace_minutes ?? 15;
+  const graceEnd = startTimeMins + graceMins;
+  const lateEnd = toMins(effectiveShift.late_end || "10:30");
+  const halfEnd = toMins(effectiveShift.half_day_end || "14:00");
+
+  if (clockInMins <= graceEnd) return "present";
+  if (clockInMins <= lateEnd) return "late";
+  if (clockInMins <= halfEnd) return "half_day";
+  return "half_day";
 }
 
 export default function DashboardPage() {

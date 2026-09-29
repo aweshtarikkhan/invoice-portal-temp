@@ -231,8 +231,10 @@ export default function SettingsPage() {
           ...dbOrgForm 
         } = orgForm as any;
 
+        const isGstPresent = Boolean(orgForm.gst_number && orgForm.gst_number.trim().length > 0);
         const updatedOrgData = {
           ...dbOrgForm,
+          gst_enabled: isGstPresent ? true : Boolean(orgForm.gst_enabled),
           name: orgForm.name.trim(),
           phone: contactPhone,
           email: orgForm.email.trim() || user?.email || "",
@@ -248,6 +250,19 @@ export default function SettingsPage() {
         const { error: orgError } = await supabase.from("organizations").update(updatedOrgData).eq("id", org.id);
         if (orgError) throw orgError;
         setOrganization({ ...org, ...updatedOrgData } as any);
+
+        if (isGstPresent) {
+          const { count } = await supabase.from("tax_rates").select("id", { count: "exact", head: true }).eq("org_id", org.id);
+          if (!count || count === 0) {
+            await supabase.from("tax_rates").insert([
+              { org_id: org.id, name: "GST 0%", rate: 0 },
+              { org_id: org.id, name: "GST 5%", rate: 5 },
+              { org_id: org.id, name: "GST 12%", rate: 12 },
+              { org_id: org.id, name: "GST 18%", rate: 18 },
+              { org_id: org.id, name: "GST 28%", rate: 28 },
+            ]);
+          }
+        }
       }
 
       toast({ 
@@ -278,11 +293,15 @@ export default function SettingsPage() {
       ...dbOrgForm 
     } = orgForm as any;
 
+    if (dbOrgForm.gst_number && dbOrgForm.gst_number.trim()) {
+      dbOrgForm.gst_enabled = true;
+    }
+
     const { error } = await supabase.from("organizations").update(dbOrgForm).eq("id", org.id);
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
-      setOrganization({ ...org, ...orgForm } as any);
+      setOrganization({ ...org, ...orgForm, gst_enabled: dbOrgForm.gst_enabled || orgForm.gst_enabled } as any);
       toast({ title: "Settings saved!" });
     }
   };
@@ -305,6 +324,7 @@ export default function SettingsPage() {
       setOrgForm(prev => ({
         ...prev,
         name: businessName,
+        gst_enabled: true,
         address: {
           ...prev.address,
           street: newStreet,
@@ -572,6 +592,7 @@ export default function SettingsPage() {
                       setOrgForm(prev => ({ 
                         ...prev, 
                         gst_number: val, 
+                        gst_enabled: val.trim().length > 0 ? true : prev.gst_enabled,
                         address: { ...prev.address, state: st || prev.address.state } 
                       }));
                       if (st) setProfileForm(prev => ({ ...prev, state: st }));

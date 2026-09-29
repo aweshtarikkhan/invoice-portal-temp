@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Check, Loader2, Minus, Plus, Users, Sparkles, Download, CheckCircle2, AlertCircle, Mail, FileText } from "lucide-react";
+import { Check, Loader2, Minus, Plus, Users, Sparkles, Download, CheckCircle2, AlertCircle, Mail, FileText, Gift, Calculator, Target, Megaphone, Crown, MessageSquare, BarChart3, Bell, ArrowRight, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useFeatureStore } from "@/store/feature-store";
@@ -167,7 +167,7 @@ export function PlanSelectorModal({
       // Determine standard base limit for the active plan (NEVER SUMMED)
       let planBaseLimit = 3;
       if (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) {
-        planBaseLimit = 5;
+        planBaseLimit = 25;
       } else {
         planBaseLimit = 3;
       }
@@ -177,11 +177,11 @@ export function PlanSelectorModal({
       // Only respect genuine purchased extra employees (employee_count in subscriptions table)
       // Never use subData.employee_limit as it sums multiple plans in old accounts
       const purchasedCount = subData?.employee_count || 0;
-      if ((fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) && purchasedCount > 5) {
+      if ((fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr")) && purchasedCount > 25) {
         empLimit = purchasedCount;
       }
 
-      // Direct query to subscriptions table to check if there is a purchased employee_count > 5
+      // Direct query to subscriptions table to check if there is a purchased employee_count > 25
       if (orgId && (fetchedActivePlans.includes("suite") || fetchedActivePlans.includes("hr"))) {
         const { data: directSub } = await supabase
           .from("subscriptions")
@@ -198,7 +198,7 @@ export function PlanSelectorModal({
       setActivePlanNames(fetchedActivePlans);
       setActiveEmployeeLimit(empLimit);
       setExtraEmployeesToAdd(0);
-      setNewHrEmployeeCount(Math.max(empLimit, 5));
+      setNewHrEmployeeCount(Math.max(empLimit, 25));
       setSelectedPlanIds([]);
 
     } catch (error) {
@@ -241,14 +241,34 @@ export function PlanSelectorModal({
     }
   };
 
+  const getPlanDisplayName = (plan: Plan): string => {
+    const key = normalizePlanKey(plan.name);
+    switch (key) {
+      case "free":
+        return "Free Plan";
+      case "accounting":
+        return "Business Accounting";
+      case "hr":
+        return "Business HR";
+      case "crm":
+        return "Business CRM";
+      case "promotion":
+        return "Business Promotion";
+      case "suite":
+        return "Business Suite";
+      default:
+        return plan.display_name || plan.name;
+    }
+  };
+
   const getDisplayFeatures = (plan: Plan): string[] => {
     const key = normalizePlanKey(plan.name);
     switch (key) {
       case "free":
         return [
           "100 Invoices Free",
-          "Festive Posts",
           "3 Employee Attendance",
+          "Festive Posts",
           "Up to 50 Leads"
         ];
       case "accounting":
@@ -264,7 +284,7 @@ export function PlanSelectorModal({
       case "hr":
         return [
           "Everything in Free Plan",
-          "5 Employee Attendance",
+          "25 Employee Attendance",
           "Attendance & Payroll",
           "Shifts & Leaves",
           "500 WhatsApp messages",
@@ -367,7 +387,7 @@ export function PlanSelectorModal({
       if (plan.name === "hr") {
         toast({
           title: "HR is Already Active",
-          description: "Use the counter inside the HR card below to add extra employees at ₹29 each.",
+          description: "Business HR and Business Suite include 25 employees by default. Use the counter inside the HR card below to add extra employees at ₹29 each.",
         });
       } else {
         toast({
@@ -505,7 +525,7 @@ export function PlanSelectorModal({
 
       // Determine base limit for the TARGET plan being checked out
       const isSuiteOrHrTarget = targetPlanNames.includes("suite") || targetPlanNames.includes("hr");
-      const targetBaseLimit = isSuiteOrHrTarget ? 5 : 3;
+      const targetBaseLimit = isSuiteOrHrTarget ? 25 : 3;
 
       let totalEmployeesToSend = targetBaseLimit;
 
@@ -533,9 +553,9 @@ export function PlanSelectorModal({
         // Purchasing / upgrading to a new plan
         if (extraEmployeesToAdd > 0) {
           totalEmployeesToSend = targetBaseLimit + extraEmployeesToAdd;
-        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 5) {
+        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 25) {
           totalEmployeesToSend = newHrEmployeeCount;
-        } else if (isSuiteOrHrTarget && activeEmployeeLimit > 5) {
+        } else if (isSuiteOrHrTarget && activeEmployeeLimit > 25) {
           // If already on Suite/HR and had purchased extra capacity, preserve it
           totalEmployeesToSend = activeEmployeeLimit;
         } else {
@@ -1018,266 +1038,912 @@ export function PlanSelectorModal({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {plans.map((plan) => {
-                  const rawPrice = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
-                  const price = normalizePriceToRupees(rawPrice, billingCycle === "yearly");
-                  
+              {/* 1. TOP BANNER: Free Plan */}
+              {(() => {
+                const freePlan = plans.find(p => normalizePlanKey(p.name) === "free");
+                if (!freePlan) return null;
+                const active = isPlanActive(freePlan.name);
+                const isSelected = finalSelectedPlanIds.has(freePlan.id);
+                return (
+                  <div
+                    onClick={() => togglePlan(freePlan.id)}
+                    className={`mb-6 rounded-2xl border p-5 sm:p-6 transition-all duration-200 cursor-pointer shadow-xs relative ${
+                      active
+                        ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
+                        : isSelected
+                        ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md bg-white"
+                        : "border-orange-200/90 hover:border-orange-300 bg-white"
+                    }`}
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      {/* Left: Icon & Description */}
+                      <div className="flex items-start gap-4 lg:w-[34%]">
+                        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-[#e77817] flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/25">
+                          <Gift className="w-7 h-7" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">Free Plan</h3>
+                            <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                              Free for 6 Months
+                            </span>
+                            {active ? (
+                              <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Current Plan</span>
+                            ) : isSelected ? (
+                              <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1 leading-snug">
+                            Basic invoicing & business features — 100% Free for 6 Months
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Middle: 2 Columns of Features */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>100 Invoices Free</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>Festive Posts</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>3 Employee Attendance</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-medium">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>Up to 50 Leads</span>
+                        </div>
+                      </div>
+
+                      {/* Right: Checkbox */}
+                      <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
+                        <div className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${
+                          active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                        }`}>
+                          {(active || isSelected) && <Check className="h-4 w-4 stroke-[3]" />}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 2. MIDDLE 6 CARDS (3x2 GRID) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+                {/* Card 1: Business Accounting */}
+                {(() => {
+                  const plan = plans.find(p => normalizePlanKey(p.name) === "accounting");
+                  if (!plan) return null;
                   const active = isPlanActive(plan.name);
                   const isIncludedInSuiteActive = isSuiteActive && plan.name !== "suite" && plan.name !== "free";
                   const isIncludedInNewlySelectedSuite = hasNewlySelectedSuite && plan.name !== "suite" && plan.name !== "free";
-                  
                   const isSelected = isIncludedInNewlySelectedSuite || finalSelectedPlanIds.has(plan.id);
+                  const isYearly = billingCycle === "yearly";
 
                   return (
-                    <div 
-                      key={plan.id} 
+                    <div
+                      key={plan.id}
                       onClick={() => !isIncludedInNewlySelectedSuite && togglePlan(plan.id)}
-                      className={`border rounded-xl p-6 flex flex-col transition-all relative select-none ${
-                        active 
-                          ? "border-orange-500 bg-orange-50/25 ring-1 ring-orange-500/30" 
+                      className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                        active
+                          ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
                           : isIncludedInNewlySelectedSuite
-                            ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
-                            : isSelected 
-                              ? "border-primary bg-primary/5 ring-1 ring-primary/30 shadow-md cursor-pointer" 
-                              : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-sm cursor-pointer"
+                          ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
+                          : isSelected
+                          ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                          : "border-slate-200 hover:border-slate-300"
                       }`}
                     >
-                      {/* Active / Included Badges */}
-                      {isIncludedInSuiteActive ? (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
-                          <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
-                            <Check className="h-3 w-3" /> Active (Included in Suite)
-                          </Badge>
-                        </div>
-                      ) : active ? (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
-                          <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
-                            <Check className="h-3 w-3" /> {plan.name === "free" ? "Current Plan" : "Active Plan"}
-                          </Badge>
-                        </div>
-                      ) : isIncludedInNewlySelectedSuite ? (
-                        <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
-                          <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">
-                            Included in Business Suite
-                          </Badge>
-                        </div>
-                      ) : null}
-
-                      {/* Header & Checkbox */}
-                      <div className="flex items-start justify-between mt-2">
-                        <div>
-                          <h4 className="text-lg font-bold text-slate-900">{plan.display_name}</h4>
-                          {getPlanDescription(plan.name) && (
-                            <p className="text-xs text-slate-500 mt-0.5 leading-snug">{getPlanDescription(plan.name)}</p>
-                          )}
-                        </div>
-                        <div className={`h-5 w-5 rounded border flex items-center justify-center transition-colors shrink-0 ml-2 ${
-                          active
-                            ? "bg-[#e77817] border-[#e77817] text-white"
-                            : isSelected
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "border-slate-300 bg-white"
-                        }`}>
-                          {(active || isSelected) && <Check className="h-3.5 w-3.5" />}
-                        </div>
-                      </div>
-                      
-                      {/* Pricing Section */}
-                      <div className="mt-3 mb-4">
-                        {active && plan.name !== "free" ? (
-                          <div className="flex flex-col gap-1">
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-300 font-semibold text-xs px-2 py-0.5">
-                                Active Subscription
-                              </Badge>
-                            </div>
-                            <span className="text-xs text-slate-500 mt-1">
-                              {plan.name === "hr" 
-                                ? `${activeEmployeeLimit || 5} Employees Active` 
-                                : plan.name === "suite"
-                                ? `Active for Business (${activeEmployeeLimit || 5} Employees Quota)`
-                                : plan.name === "accounting"
-                                ? `Active for Business (${activeEmployeeLimit || 3} Employees Quota)`
-                                : "Active for Business"}
-                            </span>
+                      <div>
+                        {/* Header Badges */}
+                        {isIncludedInSuiteActive ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active (Included in Suite)
+                            </Badge>
+                          </div>
+                        ) : active ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active Subscription
+                            </Badge>
                           </div>
                         ) : isIncludedInNewlySelectedSuite ? (
-                          <span className="text-xl font-bold text-orange-600">Included in Suite</span>
-                        ) : plan.name === "free" ? (
-                          <div className="flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900">₹0</span>
-                            <span className="text-sm text-slate-500">/6 months free</span>
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">
+                              Included in Business Suite
+                            </Badge>
                           </div>
-                        ) : (
-                          <div>
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-2xl font-bold text-slate-900">
-                                ₹{billingCycle === "yearly" ? Math.floor(price / 12).toLocaleString('en-IN') : price.toLocaleString('en-IN')}
-                              </span>
-                              <span className="text-sm text-slate-500">/mo</span>
-                            </div>
-                            {billingCycle === "yearly" && (
-                              <div className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                Billed ₹{price.toLocaleString('en-IN')}/yr upfront
-                              </div>
-                            )}
+                        ) : null}
+
+                        {/* Top-left Checkbox */}
+                        <div className="flex items-start justify-between mb-4 mt-1">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                          }`}>
+                            {(active || isSelected) && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                           </div>
-                        )}
-                      </div>
-
-                      {/*  HR AND SUITE: EMPLOYEE INCREASE SECTION  */}
-                      {(plan.name === "hr" || plan.name === "suite") && (
-                        <div className="mt-2 mb-4">
-                          {isHrActive ? (
-                            /* State 1: HR is ALREADY ACTIVE -> Add Extra Employees at ₹29 each */
-                            <div 
-                              className="bg-orange-50/70 p-3.5 rounded-xl border border-orange-200 text-slate-800"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-xs font-bold text-orange-950 uppercase tracking-wider flex items-center gap-1.5">
-                                  <Users className="h-3.5 w-3.5 text-orange-500" /> Add Extra Employees
-                                </span>
-                                <Badge variant="secondary" className="bg-orange-100 text-orange-800 text-[11px] font-semibold border-0">
-                                  ₹29/emp/mo
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-slate-600 mb-2.5">
-                                Current limit: {activeEmployeeLimit || 5} employees active. Add extra slots at ₹29 each:
-                              </p>
-                              
-                              <div className="flex items-center justify-between bg-white p-1.5 rounded-lg border border-orange-300/80 shadow-sm">
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100" 
-                                  disabled={extraEmployeesToAdd <= 0}
-                                  onClick={() => setExtraEmployeesToAdd(Math.max(0, extraEmployeesToAdd - 1))}
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </Button>
-                                
-                                <div className="text-center px-2">
-                                  <span className="text-sm font-bold text-slate-900">
-                                    +{extraEmployeesToAdd} Extra
-                                  </span>
-                                  <div className="text-[10px] text-slate-500 font-medium">
-                                    Total: {(activeEmployeeLimit || 5) + extraEmployeesToAdd} Employees
-                                  </div>
-                                </div>
-                                
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-8 w-8 rounded-md border-slate-300 hover:bg-slate-100" 
-                                  onClick={() => setExtraEmployeesToAdd(extraEmployeesToAdd + 1)}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-
-                              {/* Quick increment buttons */}
-                              <div className="flex items-center gap-1.5 mt-2 justify-center">
-                                {[5, 10, 20, 50].map((num) => (
-                                  <button
-                                    key={num}
-                                    type="button"
-                                    onClick={() => setExtraEmployeesToAdd(num)}
-                                    className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-                                      extraEmployeesToAdd === num 
-                                        ? "bg-[#e77817] text-white border-[#e77817] font-bold" 
-                                        : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
-                                    }`}
-                                  >
-                                    +{num}
-                                  </button>
-                                ))}
-                                {extraEmployeesToAdd > 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setExtraEmployeesToAdd(0)}
-                                    className="text-[10px] px-1.5 py-0.5 text-slate-500 hover:text-slate-800 underline"
-                                  >
-                                    Reset
-                                  </button>
-                                )}
-                              </div>
-
-                              {extraEmployeesToAdd > 0 && (
-                                <div className="mt-2.5 pt-2 border-t border-orange-200 flex items-center justify-between text-xs font-semibold text-orange-950">
-                                  <span>Addon Cost:</span>
-                                  <span className="text-sm font-bold text-orange-700">
-                                    ₹{getExtraEmployeeCost(extraEmployeesToAdd).toLocaleString('en-IN')} / {billingCycle === "yearly" ? "yr" : "mo"}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          ) : isSelected ? (
-                            /* State 2: HR is NOT ACTIVE yet, but user selected it to purchase -> choose employee count */
-                            <div 
-                              className="bg-slate-50 p-3 rounded-lg border border-slate-200"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <label className="text-xs font-semibold text-slate-600 uppercase tracking-wider block mb-1">
-                                Total Employees Desired
-                              </label>
-                              <div className="flex items-center justify-between bg-white p-1 rounded-md border border-slate-200">
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-8 w-8 border-slate-300" 
-                                  disabled={newHrEmployeeCount <= 5}
-                                  onClick={() => setNewHrEmployeeCount(Math.max(5, newHrEmployeeCount - 1))}
-                                >
-                                  <Minus className="h-3.5 w-3.5" />
-                                </Button>
-                                <div className="text-center">
-                                  <span className="font-bold text-sm text-slate-900">{newHrEmployeeCount}</span>
-                                  <span className="text-[10px] text-slate-500 block">Employees</span>
-                                </div>
-                                <Button 
-                                  size="icon" 
-                                  variant="outline" 
-                                  className="h-8 w-8 border-slate-300" 
-                                  onClick={() => setNewHrEmployeeCount(newHrEmployeeCount + 1)}
-                                >
-                                  <Plus className="h-3.5 w-3.5" />
-                                </Button>
-                              </div>
-                              {newHrEmployeeCount > 5 && (
-                                <div className="text-xs text-amber-600 mt-2 font-medium">
-                                  +{newHrEmployeeCount - 5} extra employees (+₹29 each)
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
                         </div>
-                      )}
 
-                      {/* Features List */}
-                      <div className="flex-1 space-y-2 mt-auto pt-4 border-t border-slate-100">
-                        {getDisplayFeatures(plan).map((featureText, idx) => {
-                          const isEverythingInFree = featureText.toLowerCase().includes("everything in free");
-                          return (
-                            <div 
-                              key={idx} 
-                              className={`flex items-center gap-2 text-xs ${
-                                isEverythingInFree ? "font-semibold text-[#28166f]" : "text-slate-600"
-                              }`}
-                            >
-                              <Check className={`h-3.5 w-3.5 shrink-0 ${
-                                isEverythingInFree ? "text-[#e77817] stroke-[2.5]" : "text-primary"
-                              }`} />
-                              <span>{featureText.replace(/-/g, " ")}</span>
+                        {/* Header */}
+                        <div className="flex items-start gap-3.5 mb-5">
+                          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-[#28166f] shadow-2xs">
+                            <Calculator className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-black text-slate-900 leading-snug">Business Accounting</h4>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                              Full billing, sales, purchases & inventory management
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mb-5">
+                          {active ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-2xl font-black text-slate-900">₹{isYearly ? 499 : 599}</span>
+                              <span className="text-xs text-slate-500 font-medium">Active for Business</span>
                             </div>
-                          );
-                        })}
+                          ) : isIncludedInNewlySelectedSuite ? (
+                            <span className="text-xl font-bold text-orange-600">Included in Suite</span>
+                          ) : (
+                            <>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-slate-900">{isYearly ? "₹499" : "₹599"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              </div>
+                              {isYearly ? (
+                                <div className="mt-1 flex flex-col gap-1">
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    Billed annually at ₹5,999/year upfront
+                                  </span>
+                                  <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save 17% (Pay upfront)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 17% yearly
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                          <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                            <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                            <span>Everything in Free Plan</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Unlimited Invoices</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Unlimited Quotation & POS</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Inventory Management</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>500 WhatsApp messages</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>GST Ready Output</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                            <span>Platform access up to 3 employees</span>
+                          </div>
+
+                          {/* Additional Platform Access Counter */}
+                          <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                              <span className="text-slate-700 font-semibold text-xs">+ Additional Platform Access (₹99/mo)</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(Math.max(0, extraPlatformEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                              <span className="font-bold text-xs w-4 text-center text-slate-800">{extraPlatformEmployeesToAdd}</span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(extraPlatformEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
-                })}
+                })()}
+
+                {/* Card 2: Business HR */}
+                {(() => {
+                  const plan = plans.find(p => normalizePlanKey(p.name) === "hr");
+                  if (!plan) return null;
+                  const active = isPlanActive(plan.name);
+                  const isIncludedInSuiteActive = isSuiteActive && plan.name !== "suite" && plan.name !== "free";
+                  const isIncludedInNewlySelectedSuite = hasNewlySelectedSuite && plan.name !== "suite" && plan.name !== "free";
+                  const isSelected = isIncludedInNewlySelectedSuite || finalSelectedPlanIds.has(plan.id);
+                  const isYearly = billingCycle === "yearly";
+
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => !isIncludedInNewlySelectedSuite && togglePlan(plan.id)}
+                      className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                        active
+                          ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
+                          : isIncludedInNewlySelectedSuite
+                          ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
+                          : isSelected
+                          ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div>
+                        {/* Header Badges */}
+                        {isIncludedInSuiteActive ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active (Included in Suite)
+                            </Badge>
+                          </div>
+                        ) : active ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active Subscription
+                            </Badge>
+                          </div>
+                        ) : isIncludedInNewlySelectedSuite ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">
+                              Included in Business Suite
+                            </Badge>
+                          </div>
+                        ) : null}
+
+                        {/* Top-left Checkbox */}
+                        <div className="flex items-start justify-between mb-4 mt-1">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                          }`}>
+                            {(active || isSelected) && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
+
+                        {/* Header */}
+                        <div className="flex items-start gap-3.5 mb-5">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center shrink-0 text-[#e77817] shadow-2xs">
+                            <Users className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-black text-slate-900 leading-snug">Business HR</h4>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                              Complete HR solution — attendance, payroll, leaves & shifts
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mb-5">
+                          {active ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-2xl font-black text-slate-900">₹{isYearly ? 499 : 599}</span>
+                              <span className="text-xs text-slate-500 font-medium">{activeEmployeeLimit || 5} Employees Active</span>
+                            </div>
+                          ) : isIncludedInNewlySelectedSuite ? (
+                            <span className="text-xl font-bold text-orange-600">Included in Suite</span>
+                          ) : (
+                            <>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-slate-900">{isYearly ? "₹499" : "₹599"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              </div>
+                              {isYearly ? (
+                                <div className="mt-1 flex flex-col gap-1">
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    Billed annually at ₹5,999/year upfront
+                                  </span>
+                                  <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save 17% (Pay upfront)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 17% yearly
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                          <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                            <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                            <span>Everything in Free Plan</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>25 Employee Attendance</span>
+                          </div>
+
+                          {/* Extra Employee Counter Box */}
+                          <div className="w-full bg-emerald-50/60 p-2.5 rounded-xl border border-emerald-200/70 mt-1" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <Users className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <span className="text-slate-800 font-bold text-xs">+ Extra Employee (₹29/mo)</span>
+                              </div>
+                              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                                <button type="button" onClick={(e) => { e.stopPropagation(); setExtraEmployeesToAdd(Math.max(0, extraEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                                <span className="font-bold text-xs w-5 text-center text-slate-800">+{extraEmployeesToAdd}</span>
+                                <button type="button" onClick={(e) => { e.stopPropagation(); setExtraEmployeesToAdd(extraEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 justify-center mt-1">
+                              {[5, 10, 20, 50].map((num) => (
+                                <button
+                                  key={num}
+                                  type="button"
+                                  onClick={() => setExtraEmployeesToAdd(num)}
+                                  className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                                    extraEmployeesToAdd === num
+                                      ? "bg-[#e77817] text-white border-[#e77817] font-bold"
+                                      : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                                  }`}
+                                >
+                                  +{num}
+                                </button>
+                              ))}
+                              {extraEmployeesToAdd > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => setExtraEmployeesToAdd(0)}
+                                  className="text-[10px] px-1.5 py-0.5 text-slate-500 hover:text-slate-800 underline"
+                                >
+                                  Reset
+                                </button>
+                              )}
+                            </div>
+                            {extraEmployeesToAdd > 0 && (
+                              <div className="mt-1.5 pt-1.5 border-t border-emerald-200/50 flex items-center justify-between text-[11px] font-semibold text-emerald-900">
+                                <span>Addon Cost:</span>
+                                <span className="font-bold text-orange-700">
+                                  ₹{getExtraEmployeeCost(extraEmployeesToAdd).toLocaleString('en-IN')} / {isYearly ? "yr" : "mo"}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Attendance & Payroll</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Shifts & Leaves</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>500 WhatsApp messages</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                            <span>Platform access up to 3 employees</span>
+                          </div>
+
+                          {/* Additional Platform Access Counter */}
+                          <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                              <span className="text-slate-700 font-semibold text-xs">+ Additional Platform Access (₹99/mo)</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(Math.max(0, extraPlatformEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                              <span className="font-bold text-xs w-4 text-center text-slate-800">{extraPlatformEmployeesToAdd}</span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(extraPlatformEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Card 3: Business CRM */}
+                {(() => {
+                  const plan = plans.find(p => normalizePlanKey(p.name) === "crm");
+                  if (!plan) return null;
+                  const active = isPlanActive(plan.name);
+                  const isIncludedInSuiteActive = isSuiteActive && plan.name !== "suite" && plan.name !== "free";
+                  const isIncludedInNewlySelectedSuite = hasNewlySelectedSuite && plan.name !== "suite" && plan.name !== "free";
+                  const isSelected = isIncludedInNewlySelectedSuite || finalSelectedPlanIds.has(plan.id);
+                  const isYearly = billingCycle === "yearly";
+
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => !isIncludedInNewlySelectedSuite && togglePlan(plan.id)}
+                      className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                        active
+                          ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
+                          : isIncludedInNewlySelectedSuite
+                          ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
+                          : isSelected
+                          ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div>
+                        {/* Header Badges */}
+                        {isIncludedInSuiteActive ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active (Included in Suite)
+                            </Badge>
+                          </div>
+                        ) : active ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active Subscription
+                            </Badge>
+                          </div>
+                        ) : isIncludedInNewlySelectedSuite ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">
+                              Included in Business Suite
+                            </Badge>
+                          </div>
+                        ) : null}
+
+                        {/* Top-left Checkbox */}
+                        <div className="flex items-start justify-between mb-4 mt-1">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                          }`}>
+                            {(active || isSelected) && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
+
+                        {/* Header */}
+                        <div className="flex items-start gap-3.5 mb-5">
+                          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center shrink-0 text-rose-500 shadow-2xs">
+                            <Target className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-black text-slate-900 leading-snug">Business CRM</h4>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                              Manage leads, deals, sales pipeline and customer relationships
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mb-5">
+                          {active ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-2xl font-black text-slate-900">₹{isYearly ? 291 : 349}</span>
+                              <span className="text-xs text-slate-500 font-medium">Active for Business</span>
+                            </div>
+                          ) : isIncludedInNewlySelectedSuite ? (
+                            <span className="text-xl font-bold text-orange-600">Included in Suite</span>
+                          ) : (
+                            <>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-slate-900">{isYearly ? "₹291" : "₹349"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              </div>
+                              {isYearly ? (
+                                <div className="mt-1 flex flex-col gap-1">
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    Billed annually at ₹3,499/year upfront
+                                  </span>
+                                  <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save 16% (Pay upfront)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 16% yearly
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                          <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                            <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                            <span>Everything in Free Plan</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Unlimited Leads</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>API Integrations</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Sales Pipeline</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>500 WhatsApp messages</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                            <span>Platform access up to 3 employees</span>
+                          </div>
+
+                          {/* Additional Platform Access Counter */}
+                          <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                              <span className="text-slate-700 font-semibold text-xs">+ Additional Platform Access (₹99/mo)</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(Math.max(0, extraPlatformEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                              <span className="font-bold text-xs w-4 text-center text-slate-800">{extraPlatformEmployeesToAdd}</span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(extraPlatformEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Card 4: Business Promotion */}
+                {(() => {
+                  const plan = plans.find(p => normalizePlanKey(p.name) === "promotion");
+                  if (!plan) return null;
+                  const active = isPlanActive(plan.name);
+                  const isIncludedInSuiteActive = isSuiteActive && plan.name !== "suite" && plan.name !== "free";
+                  const isIncludedInNewlySelectedSuite = hasNewlySelectedSuite && plan.name !== "suite" && plan.name !== "free";
+                  const isSelected = isIncludedInNewlySelectedSuite || finalSelectedPlanIds.has(plan.id);
+                  const isYearly = billingCycle === "yearly";
+
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => !isIncludedInNewlySelectedSuite && togglePlan(plan.id)}
+                      className={`rounded-2xl border bg-white p-6 shadow-xs transition-all duration-200 cursor-pointer flex flex-col justify-between relative ${
+                        active
+                          ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
+                          : isIncludedInNewlySelectedSuite
+                          ? "opacity-80 border-primary/50 bg-primary/5 cursor-default"
+                          : isSelected
+                          ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                          : "border-slate-200 hover:border-slate-300"
+                      }`}
+                    >
+                      <div>
+                        {/* Header Badges */}
+                        {isIncludedInSuiteActive ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active (Included in Suite)
+                            </Badge>
+                          </div>
+                        ) : active ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                              <Check className="h-3 w-3" /> Active Subscription
+                            </Badge>
+                          </div>
+                        ) : isIncludedInNewlySelectedSuite ? (
+                          <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                            <Badge className="bg-primary text-primary-foreground border-0 text-xs truncate">
+                              Included in Business Suite
+                            </Badge>
+                          </div>
+                        ) : null}
+
+                        {/* Top-left Checkbox */}
+                        <div className="flex items-start justify-between mb-4 mt-1">
+                          <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${
+                            active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                          }`}>
+                            {(active || isSelected) && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+                        </div>
+
+                        {/* Header */}
+                        <div className="flex items-start gap-3.5 mb-5">
+                          <div className="w-12 h-12 rounded-2xl bg-pink-50 border border-pink-100 flex items-center justify-center shrink-0 text-pink-500 shadow-2xs">
+                            <Megaphone className="w-6 h-6" />
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-black text-slate-900 leading-snug">Business Promotion</h4>
+                            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                              Festival posters, WhatsApp & broadcast marketing campaigns
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Price */}
+                        <div className="mb-5">
+                          {active ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-2xl font-black text-slate-900">₹{isYearly ? 291 : 349}</span>
+                              <span className="text-xs text-slate-500 font-medium">Active for Business</span>
+                            </div>
+                          ) : isIncludedInNewlySelectedSuite ? (
+                            <span className="text-xl font-bold text-orange-600">Included in Suite</span>
+                          ) : (
+                            <>
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-3xl font-black text-slate-900">{isYearly ? "₹291" : "₹349"}</span>
+                                <span className="text-xs text-slate-500 font-semibold">/month</span>
+                              </div>
+                              {isYearly ? (
+                                <div className="mt-1 flex flex-col gap-1">
+                                  <span className="text-xs font-semibold text-slate-500">
+                                    Billed annually at ₹3,499/year upfront
+                                  </span>
+                                  <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save 16% (Pay upfront)
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                  Save 16% yearly
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Features */}
+                        <div className="space-y-2.5 mb-6 text-xs sm:text-[13px] text-slate-600 font-medium">
+                          <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                            <Check className="w-4 h-4 text-[#e77817] shrink-0 stroke-[2.5]" />
+                            <span>Everything in Free Plan</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>All Poster Categories</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>Email & WhatsApp Campaign</span>
+                          </div>
+                          <div className="flex items-center gap-2.5">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0 stroke-[2.5]" />
+                            <span>500 WhatsApp messages</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 text-slate-700 font-semibold pt-1">
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                            <span>Platform access up to 3 employees</span>
+                          </div>
+
+                          {/* Additional Platform Access Counter */}
+                          <div className="flex items-center justify-between w-full bg-orange-50/50 p-2 rounded-lg border border-orange-100/50 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                              <span className="text-slate-700 font-semibold text-xs">+ Additional Platform Access (₹99/mo)</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(Math.max(0, extraPlatformEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                              <span className="font-bold text-xs w-4 text-center text-slate-800">{extraPlatformEmployeesToAdd}</span>
+                              <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(extraPlatformEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Card 5: Feedback Management (Coming Soon) */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between relative opacity-85">
+                  <div>
+                    <div className="flex items-start justify-between mb-4 mt-1">
+                      <div className="w-5 h-5 rounded border border-slate-200 bg-slate-50" />
+                    </div>
+                    <div className="flex items-start gap-3.5 mb-5">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0 text-[#28166f] shadow-2xs">
+                        <MessageSquare className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-slate-900 leading-snug">Feedback Management</h4>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                          Collect, manage and analyze customer feedback easily
+                        </p>
+                      </div>
+                    </div>
+                    <div className="py-8 text-center flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                        <Clock className="w-6 h-6" />
+                      </div>
+                      <span className="font-black text-slate-900 text-base">Coming Soon</span>
+                      <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+                        Be the first to know when this feature is available!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-auto pt-2 flex justify-center">
+                    <Button variant="outline" size="sm" disabled className="w-full text-xs text-slate-500">
+                      <Bell className="w-3.5 h-3.5 mr-1.5" /> Notify Me
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Card 6: Business Analysis (Coming Soon) */}
+                <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-xs flex flex-col justify-between relative opacity-85">
+                  <div>
+                    <div className="flex items-start justify-between mb-4 mt-1">
+                      <div className="w-5 h-5 rounded border border-slate-200 bg-slate-50" />
+                    </div>
+                    <div className="flex items-start gap-3.5 mb-5">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0 text-purple-600 shadow-2xs">
+                        <BarChart3 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="text-lg font-black text-slate-900 leading-snug">Business Analysis</h4>
+                        <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                          Get actionable insights to grow your business
+                        </p>
+                      </div>
+                    </div>
+                    <div className="py-8 text-center flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
+                        <BarChart3 className="w-6 h-6" />
+                      </div>
+                      <span className="font-black text-slate-900 text-base">Coming Soon</span>
+                      <p className="text-xs text-slate-400 mt-1 max-w-[200px]">
+                        Be the first to know when this feature is available!
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-auto pt-2 flex justify-center">
+                    <Button variant="outline" size="sm" disabled className="w-full text-xs text-slate-500">
+                      <Bell className="w-3.5 h-3.5 mr-1.5" /> Notify Me
+                    </Button>
+                  </div>
+                </div>
               </div>
+
+              {/* 3. BOTTOM BANNER: Business Suite */}
+              {(() => {
+                const plan = plans.find(p => normalizePlanKey(p.name) === "suite");
+                if (!plan) return null;
+                const active = isPlanActive(plan.name);
+                const isSelected = finalSelectedPlanIds.has(plan.id);
+                const isYearly = billingCycle === "yearly";
+
+                return (
+                  <div
+                    onClick={() => togglePlan(plan.id)}
+                    className={`rounded-2xl border bg-white p-5 sm:p-6 transition-all duration-200 cursor-pointer shadow-xs relative ${
+                      active
+                        ? "border-orange-500 bg-orange-50/20 ring-1 ring-orange-500/30"
+                        : isSelected
+                        ? "border-[#e77817] ring-2 ring-[#e77817]/20 shadow-md"
+                        : "border-slate-200/90 hover:border-slate-300"
+                    }`}
+                  >
+                    {active && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-max max-w-[92%]">
+                        <Badge className="bg-[#e77817] text-white hover:bg-[#ff8a24] border-0 text-xs font-semibold px-2.5 py-0.5 shadow-sm flex items-center gap-1">
+                          <Check className="h-3 w-3" /> Active Subscription
+                        </Badge>
+                      </div>
+                    )}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                      {/* Left: Checkbox + Icon + Details */}
+                      <div className="flex items-start gap-4 lg:w-[36%]">
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0 mt-1 ${
+                          active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                        }`}>
+                          {(active || isSelected) && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-400 to-[#e77817] flex items-center justify-center text-white shrink-0 shadow-md shadow-orange-500/25">
+                          <Crown className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="text-xl font-black text-slate-900 tracking-tight">Business Suite</h3>
+                            {active ? (
+                              <span className="text-[10px] font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Active Plan</span>
+                            ) : isSelected ? (
+                              <span className="text-[10px] font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-slate-500 mt-0.5 leading-snug">
+                            Complete all-in-one business suite with full system access!
+                          </p>
+                          <div className="flex items-center gap-2.5 mt-2 flex-wrap">
+                            {active ? (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-2xl font-black text-[#e77817]">₹{isYearly ? "1,249" : "1,499"}/month</span>
+                                <span className="text-xs text-slate-500 font-medium">Active for Business ({activeEmployeeLimit || 5} Employees Quota)</span>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹1,249" : "₹1,499"}</span>
+                                  <span className="text-xs text-slate-500 font-semibold">/month</span>
+                                </div>
+                                {isYearly ? (
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs font-semibold text-slate-500">
+                                      (Billed ₹14,999/year upfront)
+                                    </span>
+                                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                      Save ₹2,989 (17% OFF)
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
+                                    Save 17% yearly
+                                  </span>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Middle: Feature Points */}
+                      <div className="flex flex-col justify-center gap-2.5 lg:border-l lg:border-slate-200 lg:pl-8 text-xs sm:text-[13px] flex-1">
+                        <div className="flex items-center gap-2.5 font-semibold text-[#28166f]">
+                          <div className="w-4 h-4 rounded-full bg-[#e77817] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>Everything in Free Plan + Business Accounting + Business HR + Business CRM + Business Promotion</span>
+                        </div>
+                        <div className="flex items-center gap-2.5 text-slate-700 font-semibold">
+                          <div className="w-4 h-4 rounded-full bg-[#28166f] text-white flex items-center justify-center shrink-0">
+                            <Check className="w-2.5 h-2.5 stroke-[3]" />
+                          </div>
+                          <span>Platform Access up to 5 employees</span>
+                        </div>
+                        <div className="flex items-center justify-between max-w-md bg-orange-50/50 p-2 rounded-lg border border-orange-100/50" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-[#e77817] shrink-0" />
+                            <span className="text-slate-700 font-semibold text-xs">+ Additional Platform Access (₹99/mo)</span>
+                          </div>
+                          <div className="flex items-center gap-2.5 bg-white border border-slate-200 rounded-md px-1.5 py-0.5 shadow-xs">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(Math.max(0, extraPlatformEmployeesToAdd - 1)); }} className="text-slate-400 hover:text-slate-700"><Minus className="w-3.5 h-3.5" /></button>
+                            <span className="font-bold text-xs w-5 text-center text-slate-800">{extraPlatformEmployeesToAdd}</span>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); setExtraPlatformEmployeesToAdd(extraPlatformEmployeesToAdd + 1); }} className="text-slate-400 hover:text-slate-700"><Plus className="w-3.5 h-3.5" /></button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right: Checkbox */}
+                      <div className="flex items-center justify-end lg:border-l lg:border-slate-200 lg:pl-8">
+                        <div className={`h-6 w-6 rounded border flex items-center justify-center transition-colors ${
+                          active || isSelected ? "bg-[#e77817] border-[#e77817] text-white" : "border-slate-300 bg-white"
+                        }`}>
+                          {(active || isSelected) && <Check className="h-4 w-4 stroke-[3]" />}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
 
             

@@ -256,11 +256,34 @@ export default function EstimateBuilderPage() {
       setCatalogItems(i.data || []);
       setTaxRates(t.data || []);
       if (!id) {
-        const prefix = org.estimate_prefix || "EST";
-        const num = (org as any).estimate_next_number || 1;
+        const { data: freshOrg } = await supabase
+          .from("organizations")
+          .select("estimate_prefix, estimate_next_number, default_notes, default_terms")
+          .eq("id", org.id)
+          .single();
+        const prefix = freshOrg?.estimate_prefix || org.estimate_prefix || "EST";
+        let num = freshOrg?.estimate_next_number || (org as any).estimate_next_number || 1;
+
+        const { data: recentEsts } = await supabase
+          .from("estimates")
+          .select("estimate_number")
+          .eq("org_id", org.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        let maxExisting = 0;
+        recentEsts?.forEach((est: any) => {
+          const m = (est.estimate_number || "").match(/(\d+)$/);
+          if (m) {
+            const val = parseInt(m[1], 10);
+            if (val > maxExisting) maxExisting = val;
+          }
+        });
+        if (maxExisting >= num) {
+          num = maxExisting + 1;
+        }
         setEstimateNumber(formatSequenceNumber(prefix, num, "EST"));
-        setNotes(org.default_notes || "");
-        setTerms(org.default_terms || "");
+        setNotes(freshOrg?.default_notes || org.default_notes || "");
+        setTerms(freshOrg?.default_terms || org.default_terms || "");
       }
     };
     fetchData();
@@ -426,19 +449,92 @@ export default function EstimateBuilderPage() {
         if (error) throw error;
         await supabase.from("estimate_lines").delete().eq("estimate_id", id);
       } else {
-        const { data, error } = await supabase.from("estimates").insert(payload).select().single();
-        if (error) throw error;
-        estimateId = data.id;
+        let currentPayload = { ...payload };
+        let insertData = null;
+        let retryCount = 0;
+        while (retryCount < 5) {
+          const { data, error } = await supabase.from("estimates").insert(currentPayload).select().single();
+          if (error) {
+            if (error.code === "23505" && (error.message.includes("estimate_number") || error.message.includes("estimates_org_id_estimate_number_key"))) {
+              const { data: recentEsts } = await supabase
+                .from("estimates")
+                .select("estimate_number")
+                .eq("org_id", org!.id)
+                .order("created_at", { ascending: false })
+                .limit(100);
+              let maxNum = 0;
+              recentEsts?.forEach((est: any) => {
+                const m = (est.estimate_number || "").match(/(\d+)$/);
+                if (m) {
+                  const n = parseInt(m[1], 10);
+                  if (n > maxNum) maxNum = n;
+                }
+              });
+              const { data: currentOrg } = await supabase.from("organizations").select("estimate_next_number, estimate_prefix").eq("id", org!.id).single();
+              const baseNum = Math.max(currentOrg?.estimate_next_number || 1, maxNum + 1);
+              const nextNum = baseNum + retryCount;
+              const formattedEst = formatSequenceNumber(currentOrg?.estimate_prefix || "EST", nextNum, "EST");
+              currentPayload.estimate_number = formattedEst;
+              setEstimateNumber(formattedEst);
+              retryCount++;
+              continue;
+            }
+            throw error;
+          }
+          insertData = data;
+          break;
+        }
+        if (!insertData) {
+          throw new Error("Failed to generate a unique quotation number. Please try again.");
+        }
+        estimateId = insertData.id;
+        const insertedNumMatch = (currentPayload.estimate_number || "").match(/(\d+)$/);
+        const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
+        const { data: latestOrg } = await supabase.from("organizations").select("estimate_next_number").eq("id", org!.id).single();
+        const nextTarget = Math.max(latestOrg?.estimate_next_number || 1, savedSeq + 1);
         await supabase.from("organizations").update({
-          estimate_next_number: ((org as any).estimate_next_number || 1) + 1,
+          estimate_next_number: nextTarget,
         }).eq("id", org!.id);
       }
 
-      const linePayloads = lines.filter((l) => l.name.trim()).map((l, i) => ({
-        estimate_id: estimateId!, item_id: l.item_id, name: l.name, description: l.description,
-        quantity: Number(l.quantity) || 1, rate: Number(l.rate) || 0, discount: Number(l.discount) || 0, discount_type: l.discount_type,
-        tax_id: l.tax_id, tax_amount: l.tax_amount, amount: l.amount, sort_order: i,
-      }));
+      // Ensure tax rate records exist in DB for any slab selected
+      const slabMap: Record<string, string> = {};
+      for (const l of lines) {
+        if (l.tax_id && INDIAN_GST_SLABS.some(s => s.id === l.tax_id)) {
+          const slab = INDIAN_GST_SLABS.find(s => s.id === l.tax_id)!;
+          if (slab.rate === 0) {
+            slabMap[slab.id] = "";
+          } else if (!slabMap[slab.id]) {
+            const existing = taxRates.find(t => Number(t.rate) === slab.rate);
+            if (existing) {
+              slabMap[slab.id] = existing.id;
+            } else {
+              const { data: newTax } = await supabase.from('tax_rates').insert({
+                org_id: org!.id,
+                name: slab.name,
+                rate: slab.rate,
+              }).select().single();
+              if (newTax) {
+                slabMap[slab.id] = newTax.id;
+                setTaxRates(prev => [...prev, newTax]);
+              }
+            }
+          }
+        }
+      }
+
+      const linePayloads = lines.filter((l) => l.name.trim()).map((l, i) => {
+        let resolvedTaxId = l.tax_id;
+        if (resolvedTaxId && slabMap[resolvedTaxId] !== undefined) {
+          resolvedTaxId = slabMap[resolvedTaxId] || null;
+        }
+        return {
+          estimate_id: estimateId!, item_id: l.item_id, name: l.name, description: l.description,
+          quantity: Number(l.quantity) || 1, rate: Number(l.rate) || 0, discount: Number(l.discount) || 0, discount_type: l.discount_type,
+          tax_id: resolvedTaxId, tax_amount: l.tax_amount, amount: l.amount, sort_order: i,
+          hsn_code: l.hsn_code || null,
+        };
+      });
 
       const { error: lineError } = await supabase.from("estimate_lines").insert(linePayloads);
       if (lineError) throw lineError;

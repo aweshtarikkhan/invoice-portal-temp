@@ -391,7 +391,7 @@ export default function InvoiceDetailPage() {
       const snapshot = (invoice?.metadata as any) || {};
       const hasGst = snapshot.has_gst !== undefined
         ? Boolean(snapshot.has_gst)
-        : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() && activeOrg?.gst_enabled !== false);
+        : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() || activeOrg?.gst_enabled);
 
       const docTitle = hasGst ? "Tax Invoice" : "Invoice";
       const subject = `${docTitle} #${invoice.invoice_number} from ${activeOrg.name || "Aassay Biz"}`;
@@ -477,7 +477,7 @@ export default function InvoiceDetailPage() {
   const snapshot = (invoice.metadata as any) || {};
   const hasGst = snapshot.has_gst !== undefined
     ? Boolean(snapshot.has_gst)
-    : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() && activeOrg?.gst_enabled !== false);
+    : Boolean((activeOrg?.gst_number || activeOrg?.tax_number)?.trim() || activeOrg?.gst_enabled);
 
   const effectiveOrg = {
     ...activeOrg,

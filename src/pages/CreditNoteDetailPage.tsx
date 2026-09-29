@@ -127,18 +127,26 @@ export default function CreditNoteDetailPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {lines.map((line) => (
-                <TableRow key={line.id}>
-                  <TableCell>
-                    <div className="font-medium">{line.name}</div>
-                    {line.description && <div className="text-xs text-muted-foreground">{line.description}</div>}
+              {lines.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center text-muted-foreground py-6">
+                    No line items found. Please edit this credit note to re-add items.
                   </TableCell>
-                  <TableCell className="text-right">{line.quantity}</TableCell>
-                  <TableCell className="text-right">{fmt(Number(line.rate))}</TableCell>
-                  <TableCell className="text-right">{fmt(Number(line.tax_amount))}</TableCell>
-                  <TableCell className="text-right">{fmt(Number(line.amount))}</TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                lines.map((line) => (
+                  <TableRow key={line.id}>
+                    <TableCell>
+                      <div className="font-medium">{line.name}</div>
+                      {line.description && <div className="text-xs text-muted-foreground">{line.description}</div>}
+                    </TableCell>
+                    <TableCell className="text-right">{line.quantity}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(line.rate))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(line.tax_amount))}</TableCell>
+                    <TableCell className="text-right">{fmt(Number(line.amount))}</TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
 

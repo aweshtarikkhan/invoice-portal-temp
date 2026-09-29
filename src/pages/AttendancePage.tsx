@@ -129,6 +129,11 @@ export default function AttendancePage() {
   const fetchDailyLogs = async (dateStr: string) => {
     if (!org?.id) return;
     setLoadingDaily(true);
+    try {
+      await (supabase as any).rpc('auto_clock_out_expired_punches', { p_org_id: org.id });
+    } catch (e) {
+      console.warn("RPC auto_clock_out_expired_punches failed:", e);
+    }
     const { data } = await (supabase as any)
       .from("attendances")
       .select("*")
@@ -234,6 +239,11 @@ export default function AttendancePage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
+    try {
+      await (supabase as any).rpc('auto_clock_out_expired_punches', { p_org_id: org.id });
+    } catch (e) {
+      console.warn("RPC auto_clock_out_expired_punches failed:", e);
+    }
     const [emps, atts, leavesData, holsRes, clockins, empShiftsRes, regRes, allShiftsRes] = await Promise.all([
       (supabase as any).from("employees").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
       (supabase as any).from("attendance").select("*").eq("org_id", org.id)
@@ -252,14 +262,51 @@ export default function AttendancePage() {
 
     const empList: any[] = emps.data || [];
     setEmployees(empList);
-    setRegularizations(regRes?.data || []);
+
+    let rawRegs: any[] = regRes?.data || [];
+    if (!rawRegs || rawRegs.length === 0) {
+      // Direct query fallback without relational join
+      const { data: directRegs } = await (supabase as any)
+        .from("attendance_regularizations")
+        .select("*")
+        .eq("org_id", org.id)
+        .order("created_at", { ascending: false });
+      if (directRegs && directRegs.length > 0) {
+        rawRegs = directRegs;
+      }
+    }
+    const resolvedRegs = (rawRegs || []).map((r: any) => ({
+      ...r,
+      employees: r.employees || empList.find((e: any) => e.id === r.employee_id) || null
+    }));
+    setRegularizations(resolvedRegs);
 
     const orgShiftsList = allShiftsRes?.data || [];
     const orgDefaultShift = orgShiftsList.find((s: any) => s.is_default) || orgShiftsList[0] || null;
 
     // HR manually set records
     const map: Record<string, Status> = {};
-    (atts.data || []).forEach((r: any) => { map[`${r.employee_id}|${r.attendance_date}`] = r.override_status || r.status; });
+    const hrOverriddenKeys = new Set<string>();
+    (atts.data || []).forEach((r: any) => { 
+      const key = `${r.employee_id}|${r.attendance_date}`;
+      const statusVal = r.override_status || r.status;
+      map[key] = statusVal;
+      // If HR explicitly marked or saved an override, track it
+      if (
+        r.hr_note === "hr_override" || 
+        r.notes === "hr_override" ||
+        statusVal === "present" ||
+        statusVal === "late" ||
+        statusVal === "half_day" ||
+        statusVal === "wfh" ||
+        statusVal === "od" ||
+        statusVal === "absent"
+      ) {
+        if (r.hr_note === "hr_override" || r.notes === "hr_override" || !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(statusVal)) {
+          hrOverriddenKeys.add(key);
+        }
+      }
+    });
     
     const clkMap: Record<string, any> = {};
     (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
@@ -297,7 +344,12 @@ export default function AttendancePage() {
         const ds = format(d, "yyyy-MM-dd");
         const key = `${emp.id}|${ds}`;
 
-        // 1. Approved Leave: Highest authority for scheduled leaves
+        // 1. HR Manual Override is supreme: If HR explicitly marked attendance for this day, keep it!
+        if (hrOverriddenKeys.has(key)) {
+          return;
+        }
+
+        // 2. Approved Leave: If not manually overridden by HR, apply approved leave
         const approvedLeaveType = alvMap[key];
         if (approvedLeaveType) {
           let lvStatus: Status = "approved_leave";
@@ -309,8 +361,8 @@ export default function AttendancePage() {
           return;
         }
 
-        // 2. If HR already manually set an explicit non-default status, keep it
-        if (map[key] && map[key] !== "present") return;
+        // 3. If HR already manually set an explicit status in map, keep it
+        if (map[key]) return;
 
         // 3. Weekly offs and holidays
         const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
@@ -647,6 +699,34 @@ export default function AttendancePage() {
     };
   }, [hrEmployee?.id, employees]);
 
+  // Realtime subscription for attendance regularizations & leaves updates
+  useEffect(() => {
+    if (!org?.id) return;
+    const channel = supabase
+      .channel(`attendance-regs-realtime-${org.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance_regularizations" },
+        () => {
+          load();
+          window.dispatchEvent(new CustomEvent('hr-action-updated'));
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leaves" },
+        () => {
+          load();
+          window.dispatchEvent(new CustomEvent('hr-action-updated'));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [org?.id]);
+
   // --- HR Chat: send message with 0ms optimistic update ---
   const sendChatMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -784,10 +864,10 @@ export default function AttendancePage() {
         let finalStatus = "—";
         let isAuto = false;
         
-        if (approvedLeave && !clk?.clock_in_time) {
-          finalStatus = "approved_leave";
-        } else if (hrStatus) {
+        if (hrStatus) {
           finalStatus = hrStatus;
+        } else if (approvedLeave && !clk?.clock_in_time) {
+          finalStatus = "approved_leave";
         } else if (isHoliday || isOff) {
           finalStatus = "holiday";
         } else if (clk?.clock_in_time) {
@@ -808,6 +888,7 @@ export default function AttendancePage() {
           clockOut: clk?.clock_out_time,
           locationIn: clk?.clock_in_location,
           locationOut: clk?.clock_out_location,
+          isAutoClockOut: !!(clk?.is_auto_clock_out || clk?.clock_out_location?.auto || clk?.clock_out_location?.is_auto_clock_out),
           approvedLeave
         };
       });
@@ -829,6 +910,8 @@ export default function AttendancePage() {
         attendance_date: dateStr,
         status: opt.baseStatus,
         override_status: opt.value,
+        hr_note: "hr_override",
+        notes: "hr_override",
       }, { onConflict: "employee_id,attendance_date" });
 
       await (supabase as any).from("attendances").upsert({
@@ -883,7 +966,15 @@ export default function AttendancePage() {
       if (attendance_date > todayStr) return;
       if (employees.find((e) => e.id === employee_id)) {
         const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; 
-        rows.push({ org_id: org.id, employee_id, attendance_date, status: opt.baseStatus, override_status: opt.value });
+        rows.push({ 
+          org_id: org.id, 
+          employee_id, 
+          attendance_date, 
+          status: opt.baseStatus, 
+          override_status: opt.value,
+          hr_note: "hr_override",
+          notes: "hr_override"
+        });
         clkRows.push({ org_id: org.id, employee_id, date: attendance_date, status: opt.value });
       }
     });
@@ -1088,6 +1179,7 @@ export default function AttendancePage() {
     }
 
     toast({ title: "Updated", description: `Leave request ${newStatus}.` });
+    window.dispatchEvent(new CustomEvent('hr-action-updated'));
     load();
   };
 
@@ -1138,6 +1230,7 @@ export default function AttendancePage() {
         title: `Regularization ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`, 
         description: `Attendance for ${reg.employees?.name || 'employee'} on ${reg.date} has been updated.` 
       });
+      window.dispatchEvent(new CustomEvent('hr-action-updated'));
       load();
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
@@ -1277,6 +1370,19 @@ export default function AttendancePage() {
 
   const renderLocation = (loc: any) => {
     if (!loc) return <span className="text-xs text-muted-foreground">-</span>;
+    if (loc?.auto || loc?.is_auto_clock_out) {
+      return (
+        <div className="flex flex-col text-xs space-y-0.5">
+          <span className="font-semibold text-amber-700 flex items-center gap-1">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+            Auto Logout (System)
+          </span>
+          <span className="text-[11px] text-muted-foreground">
+            {loc.reason || "Shift timed out at 08:59 AM"}
+          </span>
+        </div>
+      );
+    }
     const addressText = loc.address || loc.name || (loc.lat && loc.lng ? `${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}` : null);
     const mapUrl = loc.lat && loc.lng ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : null;
     
@@ -1335,11 +1441,23 @@ export default function AttendancePage() {
                 </div>
                 
                 <div className="space-y-2 p-3 bg-slate-50 rounded border">
-                  <p className="text-sm font-semibold flex items-center gap-1"><Clock className="w-4 h-4 text-orange-600"/> Clock Out</p>
+                  <p className="text-sm font-semibold flex items-center justify-between">
+                    <span className="flex items-center gap-1"><Clock className="w-4 h-4 text-orange-600"/> Clock Out</span>
+                    {(selectedClockInfo.is_auto_clock_out || selectedClockInfo.clock_out_location?.auto || selectedClockInfo.clock_out_location?.is_auto_clock_out) && (
+                      <Badge variant="outline" className="text-[10px] bg-amber-50 text-amber-700 border-amber-300 font-bold">
+                        Auto Logout
+                      </Badge>
+                    )}
+                  </p>
                   {selectedClockInfo.clock_out_time ? (
                     <>
-                      <p className="text-sm">{formatTime(selectedClockInfo.clock_out_time)}</p>
-                      {selectedClockInfo.clock_out_location && (
+                      <p className="text-sm font-medium">{formatTime(selectedClockInfo.clock_out_time)}</p>
+                      {(selectedClockInfo.is_auto_clock_out || selectedClockInfo.clock_out_location?.auto || selectedClockInfo.clock_out_location?.is_auto_clock_out) && (
+                        <p className="text-xs text-amber-700 bg-amber-50/80 p-1.5 rounded border border-amber-200">
+                          ⚠️ Employee did not clock out manually. Automatically clocked out by system before next shift start.
+                        </p>
+                      )}
+                      {selectedClockInfo.clock_out_location && !selectedClockInfo.clock_out_location?.auto && (
                         <a href={`https://maps.google.com/?q=${selectedClockInfo.clock_out_location.lat},${selectedClockInfo.clock_out_location.lng}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 flex items-center hover:underline mt-1">
                           <MapPin className="w-3 h-3 mr-1" /> View on Map
                         </a>
@@ -1461,11 +1579,17 @@ export default function AttendancePage() {
           <TabsTrigger value="roster">Roster Planner</TabsTrigger>
           <TabsTrigger value="daily">Daily Clock Logs</TabsTrigger>
 
-          <TabsTrigger value="regularizations" className="flex items-center gap-1.5">
+          <TabsTrigger value="regularizations" className="flex items-center gap-1.5 relative">
             Regularizations
             {regularizations.filter(r => r.status === 'pending').length > 0 && (
-              <span className="ml-1 flex h-5 w-5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white">
-                {regularizations.filter(r => r.status === 'pending').length}
+              <span className="flex items-center gap-1 ml-1">
+                <span className="flex h-5 min-w-5 px-1.5 items-center justify-center rounded-full bg-amber-500 text-[10px] font-bold text-white shadow-xs">
+                  {regularizations.filter(r => r.status === 'pending').length}
+                </span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
               </span>
             )}
           </TabsTrigger>
@@ -1522,16 +1646,16 @@ export default function AttendancePage() {
 
                       const todayStr = format(new Date(), "yyyy-MM-dd");
 
-                      // Determine display status — unrecorded days on or before today automatically show as Absent
+                      // Determine display status — HR manual/recorded status in att takes supreme priority!
                       let displayStatus: Status | null = null;
-                      if (approvedLeaveType) {
+                      if (recordedStatus) {
+                        displayStatus = recordedStatus as Status;
+                      } else if (approvedLeaveType) {
                         if (approvedLeaveType === "half_day") displayStatus = "half_day";
                         else if (approvedLeaveType === "wfh") displayStatus = "wfh";
                         else if (approvedLeaveType === "lwp" || approvedLeaveType === "unpaid") displayStatus = "lwp";
                         else if (STATUS_OPTIONS.some(o => o.value === approvedLeaveType)) displayStatus = approvedLeaveType as Status;
                         else displayStatus = "approved_leave";
-                      } else if (recordedStatus) {
-                        displayStatus = recordedStatus as Status;
                       } else if (isHoliday || isOff) {
                         displayStatus = "holiday";
                       } else if (ds <= todayStr) {
@@ -1552,7 +1676,13 @@ export default function AttendancePage() {
                           ) : (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button title={approvedLeaveType ? `Approved ${approvedLeaveType} leave` : ds}>
+                                <button title={
+                                  approvedLeaveType 
+                                    ? (recordedStatus && recordedStatus !== approvedLeaveType && recordedStatus !== "approved_leave"
+                                        ? `HR Override: ${STATUS_OPTIONS.find(o => o.value === displayStatus)?.label || displayStatus} (Approved Leave: ${approvedLeaveType})`
+                                        : `Approved ${approvedLeaveType} leave`)
+                                    : ds
+                                }>
                                   {displayStatus ? (
                                     statusBadge(displayStatus as Status, autoAttKeys.has(`${emp.id}|${ds}`))
                                   ) : (
@@ -1820,6 +1950,11 @@ export default function AttendancePage() {
                         const computeStatus = (): { label: string; cls: string } => {
                           const isHolidayDay = holidays.some((h) => h.date === dailyDate);
                           if (isHolidayDay) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
+                          const hrDailyStatus = att[`${emp.id}|${dailyDate}`];
+                          if (hrDailyStatus && !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(hrDailyStatus)) {
+                            const opt = STATUS_OPTIONS.find(o => o.value === hrDailyStatus);
+                            if (opt) return { label: opt.label, cls: opt.cls };
+                          }
                           const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
                           if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
                           if (!hasClockIn) return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
@@ -1892,6 +2027,11 @@ export default function AttendancePage() {
                                 <div className="flex items-center gap-1.5 text-sm font-medium text-amber-700">
                                   <Clock className="w-3.5 h-3.5 text-amber-600" />
                                   {formatTime(log.clock_out_time)}
+                                  {(log.is_auto_clock_out || log.clock_out_location?.auto || log.clock_out_location?.is_auto_clock_out) && (
+                                    <Badge variant="outline" className="ml-1 text-[10px] bg-amber-50 text-amber-700 border-amber-300 font-bold">
+                                      Auto Logout
+                                    </Badge>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-xs text-muted-foreground">-</span>
@@ -2165,12 +2305,14 @@ export default function AttendancePage() {
                     <TableCell colSpan={7} className="text-center text-muted-foreground py-8">No regularization requests found.</TableCell>
                   </TableRow>
                 ) : (
-                  regularizations.map((reg) => (
+                  regularizations.map((reg) => {
+                    const emp = reg.employees || employees.find((e) => e.id === reg.employee_id);
+                    return (
                     <TableRow key={reg.id}>
                       <TableCell className="font-medium">
-                        <div>{reg.employees?.name || 'Unknown'}</div>
-                        {reg.employees?.designation && (
-                          <div className="text-xs text-muted-foreground">{reg.employees.designation}</div>
+                        <div className="font-semibold text-slate-900">{emp?.name || 'Employee'}</div>
+                        {emp?.designation && (
+                          <div className="text-xs text-muted-foreground">{emp.designation}</div>
                         )}
                       </TableCell>
                       <TableCell className="font-medium whitespace-nowrap">
@@ -2213,7 +2355,8 @@ export default function AttendancePage() {
                         )}
                       </TableCell>
                     </TableRow>
-                  ))
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
@@ -2639,8 +2782,13 @@ export default function AttendancePage() {
                       <TableCell>{renderLocation(r.locationIn)}</TableCell>
                       <TableCell>
                         {r.clockOut ? (
-                          <div className="flex items-center gap-1 text-amber-700 text-sm">
+                          <div className="flex items-center gap-1.5 text-amber-700 text-sm font-medium">
                             <Clock className="w-3 h-3" /> {safeFormatTime(r.clockOut)}
+                            {r.isAutoClockOut && (
+                              <Badge variant="outline" className="text-[9px] bg-amber-50 text-amber-700 border-amber-300 font-bold px-1 py-0">
+                                Auto Logout
+                              </Badge>
+                            )}
                           </div>
                         ) : "-"}
                       </TableCell>

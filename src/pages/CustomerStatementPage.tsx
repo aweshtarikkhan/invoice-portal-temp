@@ -249,8 +249,8 @@ export default function CustomerStatementPage() {
               <p className="text-base font-bold text-foreground">{org?.name}</p>
               {org?.email && <p className="text-sm text-muted-foreground mt-1">{org.email}</p>}
               {org?.phone && <p className="text-sm text-muted-foreground">{org.phone}</p>}
-              {org?.gst_enabled && org?.gst_number && (
-                <p className="text-sm text-muted-foreground">GST: {org.gst_number}</p>
+              {(org?.gst_enabled || org?.gst_number || (org as any)?.tax_number) && (
+                <p className="text-sm text-muted-foreground">GST: {org?.gst_number || (org as any)?.tax_number}</p>
               )}
             </div>
             <div className="text-center">

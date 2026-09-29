@@ -15,30 +15,67 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Plans & Signup: New users automatically get the Free Plan for 6 Months (180 days) upon signing up, without any forced upgrade popups. After 6 months, the plan expires. Users can upgrade anytime by clicking the "Upgrade Plan" button.
 - Account Registration & Email OTP: During account registration at '/register', a 6-digit verification code is dispatched to the user's email address. The OTP code is valid for 5 minutes. If needed, users can click "Resend OTP" directly on the verification step to request a fresh code without re-entering their details.
 - Plans & Limits Matrix:
-  * Free Plan (₹0 for 6 months - "Business Starter"):
-    - Invoices: Limit of 100 invoices.
-    - Quotations (Estimates): Limit of 100 quotations.
-    - Purchase Invoices (PI / Bills): Limit of 100 purchase invoices.
-    - Purchase Orders (PO): Limit of 100 purchase orders.
-    - Employees / Staff Attendance: Limit of 3 employees.
-    - Leads: Limit of 50 leads.
+  * Free Plan (₹0 for 6 months - Free for 6 Months):
+    - 100 Invoices Free (also 100 Quotations, 100 Purchase Invoices, 100 Purchase Orders).
+    - 3 Employee Attendance.
+    - Festive Posts.
+    - Up to 50 Leads.
     - Platform Access: 0 platform users (Admin Panel is locked; cannot invite staff or share platform).
-    - Business Integration (Outreach) & Business Promotion (Marketing): Locked on Free Plan.
+    - Business Integration (Outreach) & Business Promotion (Marketing campaigns/journeys): Locked on Free Plan.
     - Settings: WhatsApp and Email configuration tabs are locked (🔒).
     - Direct Sending: "Send to Email" and "Share to WhatsApp" actions on Invoices, Quotations, Purchase Invoices, and Purchase Orders are locked on Free Plan (🔒) with an upgrade prompt.
     - Adding New Business: Users can continue with the Free Plan directly by clicking "Continue with Free Plan (₹0)" in the plan selection modal.
-  * Business Suite (₹1,499/mo or ₹14,990/yr - Flagship):
-    - Invoices: Unlimited.
-    - Quotations, Purchase Invoices (PI), and Purchase Orders (PO): Unlimited.
-    - Leads: Unlimited.
-    - Employee / Staff base capacity: 5 employees (additional slots via add-on at ₹29/emp/mo).
-    - Platform Access: 5 platform users (additional slots at ₹99/user/month).
-    - All features, Business Integration, Promotion Studio, Settings (WhatsApp/Email), and direct document sending are fully unlocked.
-  * Modular Add-ons:
-    - Business Accounting (₹599/mo or ₹5,990/yr): Unlimited sales invoices, estimates, bills, inventory.
-    - Business HR (₹599/mo or ₹5,990/yr): 5 employee attendance capacity base.
-    - Business CRM (₹349/mo or ₹3,490/yr): Unlimited leads and deals pipeline.
-    - Business Promotion (₹349/mo or ₹3,490/yr): Marketing campaigns, journeys, and poster studio.
+  * Business Accounting (₹599/mo or ₹499/mo billed yearly - Save 17%):
+    - Everything in Free Plan.
+    - Unlimited Invoices, Quotations & Bills.
+    - Inventory & Stock Management.
+    - GST Reports & GSTR-1 / GSTR-3B Ready.
+    - Purchase Orders & Vendor Management.
+    - Multi-Payment Modes (UPI, Cash, Bank).
+    - Financial Statements & Profit/Loss.
+    - Add-on: Additional Platform Access available at ₹99/user/month.
+  * Business HR (₹599/mo or ₹499/mo billed yearly - Save 17%):
+    - Everything in Free Plan.
+    - 25 Employee Attendance (base capacity).
+    - Extra Employee Add-on: ₹29/employee/month beyond 25 employees (scalable with quick selectors +5, +10, +20, +50 or custom counter).
+    - Attendance & Payroll Management.
+    - Shift Planning & Leave Management.
+    - 500 WhatsApp Messages per month.
+    - Add-on: Additional Platform Access available at ₹99/user/month.
+  * Business CRM (₹349/mo or ₹291/mo billed yearly - Save 16%):
+    - Everything in Free Plan.
+    - Unlimited Leads & Contacts.
+    - Sales Pipeline & Deal Stages.
+    - Lead Scoring & Status Tracking.
+    - Follow-up Reminders & Activity Notes.
+    - WhatsApp & Email Outreach Integration.
+    - CRM Analytics & Conversion Reports.
+    - Add-on: Additional Platform Access available at ₹99/user/month.
+  * Business Promotion (₹349/mo or ₹291/mo billed yearly - Save 16%):
+    - Everything in Free Plan.
+    - 5,000+ Festival & Event Posters.
+    - Custom Brand Posters with Logo.
+    - Social Media Ready Designs (IG, FB, WA).
+    - One-Click Download & Instant Share.
+    - Multiple Business Category Templates.
+    - Add-on: Additional Platform Access available at ₹99/user/month.
+  * Feedback Management (Coming Soon):
+    - Customer Feedback Collection & Review Requests via WhatsApp & Email.
+    - Google & Justdial Review Boost.
+    - Analytics & Sentiment Tracking, NPS & CSAT Dashboard.
+  * Business Analysis (Coming Soon):
+    - Revenue & Profitability Insights, Sales & Expenses Forecasting.
+    - Product & Customer Performance, Cash Flow Analytics, Custom Reports & Export.
+  * Business Suite (₹1,499/mo or ₹1,249/mo billed yearly - Save 17% - Flagship):
+    - All-in-one suite combining Business Accounting, Business HR, Business CRM, and Business Promotion.
+    - Platform access up to 5 employees included.
+    - Unlimited Invoices, Quotations, Purchase Invoices, Purchase Orders, and Leads.
+    - Base 25 Employee Attendance capacity (+ ₹29/employee/mo for extra employees beyond 25).
+    - Base 5 Platform Users (+ ₹99/user/mo for additional platform access).
+    - Full access to Business Integration, Marketing campaigns, and Settings.
+  * Add-ons:
+    - Extra Employee: ₹29/mo (₹290/yr) per additional employee attendance slot beyond 25 under Business HR or Suite.
+    - Additional Platform Access: ₹99/mo (₹990/yr) per additional admin/platform seat to collaborate on the business portal.
 - Business Integration Locking: "Business Integration" (Outreach - Official WhatsApp Chats, Business Email, and CRM API Integrations like IndiaMART/Justdial) is strictly locked on the Free Plan. It requires Business Suite or an add-on module. Free plan users see a lock icon (🔒) on Business Integration in the sidebar and are restricted from accessing '/emails', '/chats', or '/crm/integrations'.
 - Admin Panel Locking: The Admin Panel ('/admin' under System & Settings) is locked on the Free Plan with an amber lock icon (🔒). Platform access requires Business Suite (5 users base) or paid plans. Upgrading to Business Suite or assigning paid plans via Platform Admin immediately unlocks it for the business.
 - Team Member Invitations & Management: Owners and managers can manage platform users from Admin Panel -> Organization Users. Invitations are reliably dispatched via AWS SES. Existing users and employees who already have attendance portal access or an Aassay Biz account receive an immediate "Workspace Access Granted" notification with a direct workspace access link. New users receive an invitation link with client-side token verification (token_hash). Admins can click "Resend Invite" on any pending employee to trigger a fresh invitation email instantly, click "Edit" to modify their role (Staff, Manager, Accountant, Sales Executive, Admin, CA/CS) and customize granular feature permissions with Select All / Clear All controls, or click "Delete" to safely revoke platform access.
@@ -56,11 +93,13 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Invoice Builder: 
   - Checks that user profile (Address & PIN Code) is completed before allowing invoice creation or saving.
   - Allows adding Customer Details, Items, Taxes (GST), and Discounts.
+  - Automatic GST Enablement: Any business with a registered GSTIN/GST Number in Settings automatically has GST unlocked. Items can be added with GST tax rates (0%, 5%, 12%, 18%, 28%) and HSN codes, and invoices display full GST breakdowns (CGST, SGST, IGST).
+  - Sequence Auto-Healing: Invoices, Quotations, Bills, and Purchase Orders automatically detect existing numbers in the database and advance sequence counters to prevent "Failed to generate unique number" errors. If an insert encounters a sequence collision, it auto-increments and resolves dynamically.
   - You can add Bank Account Details (either type them or select from saved accounts via a dropdown).
-  - Can be used for offline billing without GST setup.
+  - Can also be used for non-GST billing if no GST number is configured.
 - Purchase Invoices / Bills: Go to Purchases -> Purchase Invoices to track bills. When a purchase bill is created from a Goods Receipt (GRN), stock addition is automatically locked with an informative banner to prevent duplicate stock inflation since stock was already received in the GRN.
 - Debit Notes (Purchase Returns): Go to Purchases -> Debit Notes ('/debit-notes'). Record goods returned to vendors, specify returned quantities and rates, and optionally link to a purchase bill. When saved, returned items are automatically deducted from inventory stock, and outstanding vendor bill payables are reduced.
-- Estimates: You can create estimates/quotations similar to invoices.
+- Quotations & Proforma Invoices (Estimates): Create quotes and proforma invoices with full GST support, tax slab mapping, and automated sequence numbering.
 - Templates: Go to Templates section to see invoice designs (Standard GST, Professional Navy, Corporate Blue, Classic Tabular, Modern Navy Yellow, Modern Teal, Modern Crimson).
 
 3.1 INVENTORY & INTER-BRANCH TRANSFERS
@@ -69,13 +108,21 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 
 4. PEOPLE & HR (Business HR)
 - Employees: Go to People & HR -> Employees. Click "Add Employee" button to add a new staff member. (Requires HR plan). You can grant employee Attendance Portal access using ANY email, even if that email is already registered on the Invoice Portal (e.g. as an owner or staff). Attendance Portal authentication is completely decoupled and namespaced from the Invoice Portal, so attendance credentials never conflict with or overwrite invoice portal accounts. Employees with attendance access can independently register on the Invoice Portal to start their own business or join shared businesses.
-- Attendance: Go to People & HR -> Attendance. Here you can mark attendance for employees, manage monthly calendars, approve/reject leave requests, and review attendance regularization requests submitted by employees. (Free plan allows attendance for up to 3 employees).
+- Attendance: Go to People & HR -> Attendance. Here you can mark attendance for employees, manage monthly calendars, approve/reject leave requests, and review attendance regularization requests submitted by employees. (Free plan allows attendance for up to 3 employees). HR has absolute override authority: even if an employee has an approved leave (e.g. Casual Leave, Sick Leave) on a given day, HR can click that day's cell and override their status to Present (or any status like Absent, Half-Day, WFH). HR's manual override takes immediate effect in the grid, monthly summaries, and payroll calculations, and persists reliably across page reloads.
+- Automated Next-Day Shift Clock Out (Auto Logout at 08:59 AM): If an employee clocks in and forgets to clock out at the end of their day, the system automatically clocks them out at 08:59 AM (1 minute before the next shift start time, default 9:00 AM) the following morning. Starting at 09:00 AM (shift start time), the Employee Attendance Portal automatically resets the punch card and displays the active "Clock In" button for the new day. Both the Employee Attendance Portal (Dashboard, Monthly History, and Mobile card view) and the HR Portal (Daily Clock Logs table, Clock Out modal, and Employee Details history) display clear "Auto Logout" badges, indicating that the punch was closed automatically by the system.
 - HR Chat & Support: Business owners/managers can chat with employees directly from People & HR -> Attendance (HR Chat tab) using their account identity without creating duplicate employee records. In the Employee Attendance Portal, the organization owner/manager appears under "HR & Management" with the "HR & Admin" badge so staff can communicate with management seamlessly.
 - Leaves Management: Go to People & HR -> Leaves to view, approve, or reject employee leave requests. Leave balance counts (Annual, Used, Remaining) are correctly shown per employee per leave type. Approving a leave deducts the exact number of days from the balance (no double-deduction if approved from multiple screens). Date calculations are timezone-safe (no off-by-one in IST).
 - Leave Types: Casual Leave (CL), Sick Leave (SL), Earned/Privilege Leave (EL/PL), Comp Off, Work From Home (WFH), Half Day, LWP/Unpaid, Maternity, Paternity.
-- Attendance Regularization: Employees submit regularization requests via the Employee Attendance Portal (https://attendance.aassaybiz.com/). These requests appear in the HR Admin portal under People & HR -> Attendance -> Regularizations tab where the HR admin can approve or reject them.
+- Attendance Regularization: Employees submit regularization requests via the Employee Attendance Portal (https://attendance.aassaybiz.com/). These requests appear in the HR Admin portal under People & HR -> Attendance -> Regularizations tab where the HR admin can approve or reject them. Foreign keys and resilient fallbacks ensure requests always link reliably to employee details and update attendance history upon approval.
+- Real-time HR Action Notification Dots & Badges: To ensure HR and managers never miss pending employee requests:
+  * "Business HR" sidebar group header displays an animated amber pinging dot whenever there are pending regularization requests, pending leave requests, or unread HR chat messages.
+  * "Attendance" sidebar item displays an animated pinging dot and count badge when pending regularization requests exist.
+  * "Leaves" sidebar item displays an animated pinging dot and count badge when pending leave requests exist.
+  * In the Attendance page, the "Regularizations" tab header displays an animated pinging dot and count badge.
+  * In the Leaves page, the "Leave Requests" tab header displays an animated pinging dot and count badge.
+  * Realtime sync: Incoming regularization requests or leave requests submitted by staff in the employee attendance portal trigger instant updates across these dots and badges via Supabase realtime channels without requiring page reload.
 - Shifts: Go to People & HR -> Shifts to create and manage work shifts (e.g. Morning, Evening, Night). Each shift has start/end time, working days, grace period, late-start cutoff, and half-day cutoff. In the Employee Assignments tab, you can assign any shift to any employee using the dropdown. Assignments persist correctly across page refreshes (stored in the employee_shifts table with a unique constraint per employee).
-- Employee Documents Management: In the Employee Attendance Portal (https://attendance.aassaybiz.com/), employees can navigate to "My Documents" to securely upload, view, open, download, and delete official documents (e.g., Aadhaar, PAN, Offer Letter, Salary Slip, Bank Proof, Resume). Clicking "Delete" confirms the action and permanently removes both the file from cloud storage and the record from the database.
+- HR Reports (/hr-reports): Real-time analytics and HR KPI dashboards. Displays a 6-metric Today's Attendance overview: Total Employees, Present, Absent, Late (arrived after grace period), Half Day (arrived after late cutoff or half-day leave), and On Leave (approved leaves). Automatically resolves attendance statuses against assigned shift rules and Indian Standard Time (IST), with Recent Attendance table and CSV/PDF export.
 
 5. BUSINESS CRM
 - Leads: Go to Business CRM -> Leads. Click "Add Lead" button to add a new customer inquiry or lead. (Requires CRM plan).
@@ -95,14 +142,19 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Marketing Collateral: The portal provides ready-made Pamphlets and Brochures that can be printed or shared.
 - Social Media Launch Posts: Ready-to-use launch creatives and multi-platform captions (Instagram, Facebook, LinkedIn, WhatsApp, YouTube).
 
-7. SETTINGS
+7. BUSINESS INTEGRATION (Emails & Communication)
+- Email Overview (/emails): Go to Business Integration -> Emails. Here you can compose custom business emails, send invoices/quotes with branded layouts, and monitor email delivery stats (Sent, Drafts, Failed/Bounced, and Inbox/Received). Real-time subscriptions ensure incoming and outgoing email states update instantly.
+- Outbound Dispatch & Automatic Reply-To: All outbound emails sent via AWS SES or custom SMTP embed the business's legal organization email in the "Reply-To" header. When recipients click "Reply" in their email client, their message is directed to the business owner's verified email, preventing lost or dropped replies.
+- Inbound Email Receiving (AWS SES Subdomain Routing): Inbound email processing is routed through AWS SES on "inbox.aassaybiz.com" with S3 storage and edge webhook processing, ensuring the primary company domain's existing Zoho Mail MX records remain unaffected and safe. Client replies appear directly in the portal's Inbox tab with full HTML body preview and attachment support.
+
+8. SETTINGS
 - Location: Bottom of the sidebar.
 - Profile & Organization: Unified single section containing Account ID (#1XXXXX), GST number lookup & auto-fill, Business Logo, Organization Details (Legal Name, Business Email, Website), Personal Details (First/Last Name, Primary Phone), and Registered Street Address, City, State, PIN Code, and Country. Saving updates both user profile and organization in one click.
 - Preferences: General portal settings under Invoices.
 - Defaults & Numbering: Set default invoice prefixes, numbering, and terms under Invoices.
 - Bank Accounts: Go to Settings -> Invoices -> Bank Accounts tab. Here you can add, edit, or delete saved bank accounts (Bank Name, Account Holder Name, Account Number, IFSC, Branch, UPI).
 
-8. PLATFORM ADMIN (Super Admin Only)
+9. PLATFORM ADMIN (Super Admin Only)
 - Location: Go to /platform-admin or click "Platform Admin" in the top header or "Platform Admin Panel" in the user profile menu. Platform Admins can seamlessly switch between the App Dashboard (invoicing & business software) and the Platform Admin panel with a single login ID without logging out. From the Platform Admin navbar, clicking "App Dashboard" instantly returns to invoicing.
 - All Users: Shows all registered users with their Account ID (#1XXXXX). Admins can search by Account ID to view users and all businesses associated with that account. You can click "Change Plan" to quickly upgrade/downgrade a user's subscription, or click "Manage" for a detailed dialog to change their roles and module access.
 - Businesses: Admins can search businesses by Account ID (#1XXXXX), business name, or owner email to find all businesses owned under a specific account.
@@ -110,6 +162,14 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Contact Inquiries: Admins can see form submissions from the Contact Us page in the "Submitted Form Data" tab -> "Contact Inquiries".
 - Tickets, Ads, Reviews, Partners: Other tabs for managing platform operations.
 - Account Deletion & Revocation Lifecycle: When an employee's business access is revoked or deleted from a company, the user's organization link is completely severed. If they log in and belong to no active business, they are presented with a dedicated "You don't have any business" screen with an option to permanently delete their account. Deleting the account cleans up all auth records and profile entries from the database, freeing up the email so that the user or employer can re-register or issue a fresh invitation with the exact same email address.
+
+10. CREDIT NOTES
+- Location: Go to Sales -> Credit Notes in the sidebar.
+- Creating a Credit Note: Click "New Credit Note". Select a client, add line items (name, quantity, rate, HSN code, tax). Credit notes support GST tax rates just like invoices.
+- Viewing a Credit Note: Click any credit note in the list to open the detail view. It shows all header info (number, date, client) and all line items (item name, quantity, rate, tax, amount).
+- Editing a Credit Note: Open a credit note and click "Edit" to go back to the builder and modify items.
+- If a credit note shows no line items (blank items table), this means it was created with an older version of the app. Edit the credit note and re-add the items, then save again to fix it.
+- Status: Credit notes can be in Draft or Sent status. Status updates automatically on save.
 
 --- END OF KNOWLEDGE BASE ---
 `;

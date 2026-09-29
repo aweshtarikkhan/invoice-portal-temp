@@ -134,7 +134,7 @@ export function useAutoEmailPDF({ entityType, entityData, lines, isDataReady = t
           const snapshot = (entityData?.metadata as any) || {};
           const hasGst = snapshot.has_gst !== undefined
             ? Boolean(snapshot.has_gst)
-            : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
+            : Boolean((org?.gst_number || org?.tax_number)?.trim() || org?.gst_enabled);
 
           if (!hasGst && entityType === "invoice") {
             compiledSubject = compiledSubject.replace(/Tax Invoice/gi, "Invoice");

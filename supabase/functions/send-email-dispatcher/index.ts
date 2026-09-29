@@ -76,9 +76,17 @@ serve(async (req) => {
       .eq("org_id", orgId)
       .maybeSingle();
 
+    // Fetch org details for business email & name fallback
+    const { data: orgData } = await supabase
+      .from("organizations")
+      .select("email, name")
+      .eq("id", orgId)
+      .maybeSingle();
+
     const providerType = settings?.provider_type || "default";
-    const fromName = settings?.from_name || "Aassay Biz";
+    const fromName = settings?.from_name || orgData?.name || "Aassay Biz";
     const fromEmail = settings?.from_email || "no-reply@aassaybiz.com";
+    const replyToEmail = settings?.reply_to || orgData?.email || (providerType === "smtp" ? settings?.smtp_user : undefined);
 
     let sendSuccess = false;
     let senderAddress = `${fromName} <${fromEmail}>`;
@@ -105,6 +113,7 @@ serve(async (req) => {
       const mailOptions: any = {
         from: senderAddress,
         to: toArray.join(", "),
+        ...(replyToEmail ? { replyTo: replyToEmail } : {}),
         subject: finalSubject,
         html: finalHtml,
         text: finalText,
@@ -159,6 +168,7 @@ serve(async (req) => {
       const mailOptions: any = {
         from: senderAddress,
         to: toArray.join(", "),
+        ...(replyToEmail ? { replyTo: replyToEmail } : {}),
         subject: finalSubject,
         html: finalHtml,
         text: finalText,
@@ -207,6 +217,7 @@ serve(async (req) => {
       const mailOptions: any = {
         from: senderAddress,
         to: toArray.join(", "),
+        ...(replyToEmail ? { replyTo: replyToEmail } : {}),
         subject: finalSubject,
         html: finalHtml,
         text: finalText,

@@ -42,7 +42,7 @@ export function ItemFormDialog({ open, onOpenChange, editItem, onItemSaved, cate
   const [customFieldDefs, setCustomFieldDefs] = useState<any[]>([]);
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, any>>({});
   
-  const hasGst = Boolean(org?.gst_number && (org as any)?.gst_enabled !== false);
+  const hasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
 
   const defaultForm = {
     name: "", description: "", sku: "", type: defaultType,
