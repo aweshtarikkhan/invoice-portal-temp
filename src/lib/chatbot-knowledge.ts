@@ -187,5 +187,12 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Location: Go to Accounting -> Chart of Accounts (/chart-of-accounts).
 - Direct Account Names: The system displays clean, descriptive Account Names directly without cluttered numerical codes. The "Code" column and input field are removed from the interface, and codes are managed automatically behind the scenes.
 
+14. PURCHASE & ACCOUNTING REPORTS
+- Location: Go to Reports -> Purchases Reports (/purchase-accounting-reports).
+- Metrics & KPIs: Shows Total Purchases (sum of purchase invoice totals), Total Paid to vendors, Outstanding Payables (balance due), and Total Business Expenses.
+- Visual Charts: Monthly Purchases vs Expenses comparison bar chart and Expenses by Category pie chart.
+- Top Vendors: Top 5 vendors ranked by purchase volume with bill count.
+- Purchase Documents Breakdown: Interactive tabs to view Recent Purchase Invoices and Recent Purchase Orders with invoice numbers, vendor names, dates, statuses, total amounts, balance due, and direct 1-click links to view each document.
+
 --- END OF KNOWLEDGE BASE ---
 `;
