@@ -38,7 +38,7 @@ interface Line {
   unit: string;
   expiry_warning?: string;
 }
-const emptyLine = (): Line => ({ item_id: "", description: "", hsn: "", quantity: 1, rate: "", tax_rate: "", unit: "" });
+const emptyLine = (): Line => ({ item_id: "", description: "", hsn: "", quantity: "1", rate: "", tax_rate: "", unit: "" });
 
 export default function PurchaseOrderBuilderPage() {
   const org = useAppStore((s) => s.organization);
@@ -168,6 +168,8 @@ export default function PurchaseOrderBuilderPage() {
     let sub = 0, cgst = 0, sgst = 0, igst = 0;
     const breakdown: Record<number, number> = {};
     lines.forEach(l => {
+      const q = Number(l.quantity) || 0;
+      const r = Number(l.rate) || 0;
       const orgHasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
       const t = (vendorHasGst || orgHasGst) ? (Number(l.tax_rate) || 0) : 0;
       const amt = q * r;
@@ -935,7 +937,7 @@ export default function PurchaseOrderBuilderPage() {
                 const toAdd = Array.from(bulkSelected).map(id => items.find(i => i.id === id)).filter(Boolean);
                 const newLines = toAdd.map(it => ({
                   item_id: it.id, description: it.name, hsn: it.hsn || "",
-                  quantity: 1, unit: it.unit || "", rate: String(it.unit_price || 0), tax_rate: String(it.tax_rate || 0)
+                  quantity: "1", unit: it.unit || "", rate: String(it.unit_price || 0), tax_rate: String(it.tax_rate || 0)
                 }));
                 setLines(lines.length === 1 && !lines[0].item_id && !lines[0].description ? newLines : [...lines, ...newLines]);
                 setBulkAddOpen(false);
