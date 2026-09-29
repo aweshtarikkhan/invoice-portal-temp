@@ -13,6 +13,7 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Profile Completion Requirement: Before creating any invoice, users MUST complete their profile with their Street Address and 6-digit PIN Code in Settings > Profile & Organization. If these fields are missing, an alert prompt will guide the user to complete their profile first.
 - Sidebar: The main navigation is on the left sidebar. Any modules, groups, or pages that are not included in the business's active subscription plan (or when on the Free Plan) display an amber Lock icon (🔒). Clicking any locked feature triggers the Upgrade Plan modal or navigates to the locked screen with an instant Upgrade button.
 - Plans & Signup: New users automatically get the Free Plan for 6 Months (180 days) upon signing up, without any forced upgrade popups. After 6 months, the plan expires. Users can upgrade anytime by clicking the "Upgrade Plan" button.
+- Account Registration & Email OTP: During account registration at '/register', a 6-digit verification code is dispatched to the user's email address. The OTP code is valid for 5 minutes. If needed, users can click "Resend OTP" directly on the verification step to request a fresh code without re-entering their details.
 - Plans & Limits Matrix:
   * Free Plan (₹0 for 6 months - "Business Starter"):
     - Invoices: Limit of 100 invoices.
