@@ -74,6 +74,7 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Leave Types: Casual Leave (CL), Sick Leave (SL), Earned/Privilege Leave (EL/PL), Comp Off, Work From Home (WFH), Half Day, LWP/Unpaid, Maternity, Paternity.
 - Attendance Regularization: Employees submit regularization requests via the Employee Attendance Portal (https://attendance.aassaybiz.com/). These requests appear in the HR Admin portal under People & HR -> Attendance -> Regularizations tab where the HR admin can approve or reject them.
 - Shifts: Go to People & HR -> Shifts to create and manage work shifts (e.g. Morning, Evening, Night). Each shift has start/end time, working days, grace period, late-start cutoff, and half-day cutoff. In the Employee Assignments tab, you can assign any shift to any employee using the dropdown. Assignments persist correctly across page refreshes (stored in the employee_shifts table with a unique constraint per employee).
+- Employee Documents Management: In the Employee Attendance Portal (https://attendance.aassaybiz.com/), employees can navigate to "My Documents" to securely upload, view, open, download, and delete official documents (e.g., Aadhaar, PAN, Offer Letter, Salary Slip, Bank Proof, Resume). Clicking "Delete" confirms the action and permanently removes both the file from cloud storage and the record from the database.
 
 5. BUSINESS CRM
 - Leads: Go to Business CRM -> Leads. Click "Add Lead" button to add a new customer inquiry or lead. (Requires CRM plan).
