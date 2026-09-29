@@ -102,6 +102,22 @@ export default function RegisterPage() {
     }
     setLoading(true);
 
+    try {
+      // Clean up any stale unconfirmed registration attempt so user can re-register without error
+      const { data: prepStatus } = await (supabase as any).rpc("prepare_email_for_signup", {
+        p_email: cleanEmail,
+      });
+
+      if (prepStatus === "already_confirmed") {
+        setLoading(false);
+        setExistingEmail(cleanEmail);
+        setEmailExistsDialog(true);
+        return;
+      }
+    } catch (e) {
+      console.warn("prepare_email_for_signup warning:", e);
+    }
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
