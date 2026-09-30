@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { format, subDays, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -135,6 +136,7 @@ function computeFeaturesForPlans(plans: string[]): string[] {
 }
 
 export default function PlatformAdminPage() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
   
@@ -1225,6 +1227,30 @@ export default function PlatformAdminPage() {
                 <p className="text-xs font-semibold text-slate-700">Admin</p>
                 <p className="text-[10px] text-slate-400">Platform Admin</p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs h-8 gap-1.5"
+                onClick={() => navigate("/dashboard")}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-indigo-600" />
+                App Dashboard
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-rose-600 text-xs h-8 gap-1.5"
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  window.location.href = "/login";
+                }}
+              >
+                <LogOut className="w-3.5 h-3.5 text-rose-500" />
+                Logout
+              </Button>
             </div>
           </div>
         </div>
