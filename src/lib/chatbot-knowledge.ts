@@ -212,5 +212,10 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Excess Payment as Customer Advance: When a customer pays more than the invoice balance due, the excess amount is automatically credited as Customer Advance Payment for future bills.
 - Inter-Branch Stock Transfers: Easily transfer stock between branches under Catalog -> Inventory ("Transfer Stock") with automatic stock deduction from origin branch and addition to destination branch.
 
+18. PLATFORM ADMIN PORTAL & HELP & SUPPORT
+- Official Branding & Clean Logo: Platform Admin features the official AssayBiz logo branding cleanly without redundant text strings next to the logo.
+- Platform Admin Notifications (Bell Icon): Top header includes an interactive notification popover displaying pending Help & Support requests with counts, timestamps, and 1-click navigation.
+- Platform Help & Support Management: Under "Support Tickets" (/platform-admin), platform administrators manage platform-level Help & Support queries submitted by businesses and users across the platform (internal CRM client tickets are excluded). Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click, and change ticket statuses (Open, In Progress, Resolved, Closed).
+
 --- END OF KNOWLEDGE BASE ---
 `;

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ShieldAlert, ArrowLeft, LogOut, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { AassayBizBrand } from "@/components/shared/AassayBizBrand";
+import logoImg from "@/assets/logo.png";
 
 export function PlatformAdminLayout() {
   const { profile, user, loading: authLoading, signOut } = useAuth();
@@ -88,13 +88,12 @@ export function PlatformAdminLayout() {
       {/* Top Navbar - Light Mode, same style as main app */}
       <header className="h-16 border-b border-slate-200 bg-white shadow-sm px-6 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-sm">S</span>
-          </div>
-          <div>
-            <h1 className="leading-tight"><AassayBizBrand className="text-base" /></h1>
-            <p className="text-[10px] text-indigo-500 font-medium uppercase tracking-wider leading-tight">Platform Admin</p>
-          </div>
+          <img
+            src={logoImg}
+            alt="AssayBiz"
+            className="h-8 w-auto object-contain cursor-pointer"
+            onClick={() => navigate("/platform-admin")}
+          />
         </div>
 
         <div className="flex items-center gap-3">

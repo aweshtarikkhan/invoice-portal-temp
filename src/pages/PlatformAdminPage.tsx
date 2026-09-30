@@ -170,9 +170,7 @@ export default function PlatformAdminPage() {
   const [ticketFilter, setTicketFilter] = useState("all");
   const [ticketSearch, setTicketSearch] = useState("");
   const [selectedPlatformTicket, setSelectedPlatformTicket] = useState<any | null>(null);
-  const [platformTicketMessages, setPlatformTicketMessages] = useState<any[]>([]);
-  const [platformTicketReply, setPlatformTicketReply] = useState("");
-  const [sendingPlatformReply, setSendingPlatformReply] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
 
   // Partner Management States
   const [partners, setPartners] = useState<any[]>([]);
@@ -257,18 +255,57 @@ export default function PlatformAdminPage() {
   };
 
   const fetchTickets = async () => {
-
     setTicketLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("tickets")
-        .select("*, organizations(id, name, email), clients(id, display_name, email, phone), leads(id, name, email, phone, company)")
+      let rawData: any[] = [];
+      const { data: directData, error: directErr } = await supabase
+        .from("feature_requests")
+        .select("*")
+        .or("request_type.eq.support_request,feature_name.ilike.%Support%")
         .order("created_at", { ascending: false });
-      if (!error && data) {
-        setTickets(data);
+
+      if (directData && !directErr) {
+        rawData = directData;
+      } else {
+        const { data: rpcData } = await supabase.rpc("get_all_feature_requests");
+        if (rpcData && Array.isArray(rpcData)) {
+          rawData = rpcData.filter((r: any) =>
+            r.request_type === "support_request" ||
+            (r.feature_name && r.feature_name.toLowerCase().includes("support"))
+          );
+        }
       }
+
+      // Map raw feature_requests to structured tickets
+      const mapped = (rawData || []).map((r: any) => {
+        let parsed: any = {};
+        try {
+          parsed = typeof r.message === "string" && (r.message.startsWith("{") || r.message.startsWith("["))
+            ? JSON.parse(r.message)
+            : { message: r.message };
+        } catch {
+          parsed = { message: r.message };
+        }
+
+        return {
+          id: r.id,
+          subject: parsed.subject || r.feature_name || "Help & Support Query",
+          message: parsed.message || (typeof r.message === "string" ? r.message : "No description provided"),
+          category: parsed.category || "General",
+          name: parsed.name || (r.user_email ? r.user_email.split("@")[0] : "Business User"),
+          email: parsed.email || r.user_email || "N/A",
+          phone: parsed.phone || parsed.mobile || "N/A",
+          business: parsed.business || "Platform Business",
+          priority: parsed.priority || "normal",
+          status: r.status || "open", // 'pending'/'open'/'in_progress'/'resolved'/'closed'
+          created_at: r.created_at || new Date().toISOString(),
+          raw_data: r,
+        };
+      });
+
+      setTickets(mapped);
     } catch (err) {
-      console.error("Error fetching tickets:", err);
+      console.error("Error fetching support tickets:", err);
     } finally {
       setTicketLoading(false);
     }
@@ -277,8 +314,8 @@ export default function PlatformAdminPage() {
   const handleUpdateTicketStatus = async (ticketId: string, status: string) => {
     try {
       const { error } = await supabase
-        .from("tickets")
-        .update({ status, updated_at: new Date().toISOString() })
+        .from("feature_requests")
+        .update({ status })
         .eq("id", ticketId);
       if (error) throw error;
       toast({ title: "Status Updated", description: `Ticket status set to ${status.toUpperCase()}` });
@@ -291,46 +328,23 @@ export default function PlatformAdminPage() {
     }
   };
 
-  const fetchPlatformTicketMessages = async (ticketId: string) => {
+  const handleDeleteTicket = async (ticketId: string) => {
+    if (!confirm("Are you sure you want to delete this support request?")) return;
     try {
-      const { data, error } = await supabase
-        .from("ticket_messages")
-        .select("*")
-        .eq("ticket_id", ticketId)
-        .order("created_at", { ascending: true });
-      if (!error && data) {
-        setPlatformTicketMessages(data);
+      const { error } = await supabase.from("feature_requests").delete().eq("id", ticketId);
+      if (error) throw error;
+      toast({ title: "Ticket Deleted", description: "Support request has been removed." });
+      setTickets(prev => prev.filter(t => t.id !== ticketId));
+      if (selectedPlatformTicket && selectedPlatformTicket.id === ticketId) {
+        setSelectedPlatformTicket(null);
       }
-    } catch (err) {
-      console.error("Error fetching messages:", err);
+    } catch (err: any) {
+      toast({ title: "Delete Failed", description: err.message, variant: "destructive" });
     }
   };
 
   const handleOpenPlatformTicket = (ticket: any) => {
     setSelectedPlatformTicket(ticket);
-    fetchPlatformTicketMessages(ticket.id);
-  };
-
-  const handleSendPlatformReply = async () => {
-    if (!selectedPlatformTicket || !platformTicketReply.trim()) return;
-    setSendingPlatformReply(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.from("ticket_messages").insert({
-        ticket_id: selectedPlatformTicket.id,
-        sender_id: user?.id,
-        sender_type: "platform_admin",
-        message: platformTicketReply.trim()
-      });
-      if (error) throw error;
-      setPlatformTicketReply("");
-      fetchPlatformTicketMessages(selectedPlatformTicket.id);
-      toast({ title: "Reply Sent", description: "Your message has been posted to this ticket." });
-    } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
-    } finally {
-      setSendingPlatformReply(false);
-    }
   };
 
   const fetchAdsData = async () => {
@@ -1065,14 +1079,8 @@ export default function PlatformAdminPage() {
       {/* ── Sidebar ── */}
       <aside className="w-[240px] bg-white border-r border-slate-200 flex flex-col shrink-0 h-screen">
         {/* Logo */}
-        <div className="p-5 border-b border-slate-100">
-          <div className="flex items-center gap-2.5">
-            <img src={logoImg} alt="Aassay Biz" className="w-9 h-9 rounded-xl object-contain" />
-            <div>
-              <p className="font-bold text-slate-800 text-sm leading-tight">Aassay Biz</p>
-              <p className="text-[10px] text-slate-400 font-medium tracking-wider uppercase">Platform Admin</p>
-            </div>
-          </div>
+        <div className="p-4 border-b border-slate-100 flex items-center justify-center">
+          <img src={logoImg} alt="AssayBiz" className="h-8 w-auto max-w-[170px] object-contain" />
         </div>
 
         {/* Nav Items */}
@@ -1120,14 +1128,97 @@ export default function PlatformAdminPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors">
-              <Bell className="w-5 h-5 text-slate-500" />
-              {tickets.filter(t => t.status === 'open').length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center">
-                  {tickets.filter(t => t.status === 'open').length}
-                </span>
-              )}
-            </button>
+            <Popover open={notifOpen} onOpenChange={setNotifOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  className="relative p-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                  title="Support Notifications"
+                >
+                  <Bell className="w-5 h-5 text-slate-500" />
+                  {tickets.filter(t => t.status === 'open' || t.status === 'pending').length > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">
+                      {tickets.filter(t => t.status === 'open' || t.status === 'pending').length}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-80 sm:w-96 p-0 shadow-2xl border border-slate-200 z-[9999] bg-white">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 bg-slate-50/80">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-orange-600" />
+                    <span className="font-semibold text-xs text-slate-800">Platform Support Requests</span>
+                    {tickets.filter(t => t.status === 'open' || t.status === 'pending').length > 0 && (
+                      <Badge variant="secondary" className="text-[10px] h-4 px-1.5 font-bold bg-orange-100 text-orange-700">
+                        {tickets.filter(t => t.status === 'open' || t.status === 'pending').length} open
+                      </Badge>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setActiveTab("tickets");
+                      setNotifOpen(false);
+                    }}
+                    className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium cursor-pointer"
+                  >
+                    View All
+                  </button>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                  {tickets.filter(t => t.status === 'open' || t.status === 'pending').length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 space-y-1">
+                      <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-500 opacity-80" />
+                      <p className="text-xs font-medium text-slate-600">All caught up!</p>
+                      <p className="text-[11px]">No pending support requests.</p>
+                    </div>
+                  ) : (
+                    tickets
+                      .filter((t) => t.status === "open" || t.status === "pending")
+                      .map((t) => (
+                        <div
+                          key={t.id}
+                          onClick={() => {
+                            setActiveTab("tickets");
+                            handleOpenPlatformTicket(t);
+                            setNotifOpen(false);
+                          }}
+                          className="p-3 hover:bg-slate-50 cursor-pointer transition-colors space-y-1 group"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <span className="font-semibold text-xs text-slate-800 group-hover:text-indigo-600 transition-colors line-clamp-1">
+                              {t.subject}
+                            </span>
+                            <Badge variant="outline" className="text-[9px] capitalize text-amber-700 border-amber-200 bg-amber-50">
+                              {t.status}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-slate-500 line-clamp-2">
+                            {t.message}
+                          </p>
+                          <div className="flex items-center justify-between pt-0.5 text-[10px] text-slate-400">
+                            <span className="truncate max-w-[170px] font-medium text-slate-600">{t.business} • {t.name}</span>
+                            <span className="shrink-0">{t.created_at ? formatDistanceToNow(new Date(t.created_at), { addSuffix: true }) : ""}</span>
+                          </div>
+                        </div>
+                      ))
+                  )}
+                </div>
+
+                <div className="p-2.5 border-t border-slate-100 bg-slate-50/50 text-center">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setActiveTab("tickets");
+                      setNotifOpen(false);
+                    }}
+                    className="w-full text-xs font-semibold text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 justify-center"
+                  >
+                    Open Support Hub <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
             <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center text-white font-semibold text-xs">S</div>
               <div>
@@ -2826,12 +2917,12 @@ export default function PlatformAdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-slate-50 border-b border-slate-200">
-                    <TableHead className="text-xs font-semibold text-slate-700">Ticket Details</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-700">Business Org</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-700">Customer</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-700">Priority</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Subject & Category</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Business / User</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Contact Details</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Message Preview</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700">Status</TableHead>
-                    <TableHead className="text-xs font-semibold text-slate-700">Created</TableHead>
+                    <TableHead className="text-xs font-semibold text-slate-700">Submitted</TableHead>
                     <TableHead className="text-xs font-semibold text-slate-700 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -2851,21 +2942,20 @@ export default function PlatformAdminPage() {
                       if (!ticketSearch.trim()) return true;
                       const q = ticketSearch.toLowerCase();
                       const subj = (t.subject || '').toLowerCase();
-                      const orgN = (t.organizations?.name || '').toLowerCase();
-                      const orgE = (t.organizations?.email || '').toLowerCase();
-                      const cliN = (t.clients?.display_name || '').toLowerCase();
-                      const cliE = (t.clients?.email || '').toLowerCase();
-                      const leadN = (t.leads?.name || '').toLowerCase();
-                      const leadE = (t.leads?.email || '').toLowerCase();
-                      const leadC = (t.leads?.company || '').toLowerCase();
-                      return subj.includes(q) || orgN.includes(q) || orgE.includes(q) || cliN.includes(q) || cliE.includes(q) || leadN.includes(q) || leadE.includes(q) || leadC.includes(q);
+                      const msg = (t.message || '').toLowerCase();
+                      const biz = (t.business || '').toLowerCase();
+                      const name = (t.name || '').toLowerCase();
+                      const email = (t.email || '').toLowerCase();
+                      const phone = (t.phone || '').toLowerCase();
+                      const cat = (t.category || '').toLowerCase();
+                      return subj.includes(q) || msg.includes(q) || biz.includes(q) || name.includes(q) || email.includes(q) || phone.includes(q) || cat.includes(q);
                     });
 
                     if (filtered.length === 0) {
                       return (
                         <TableRow>
                           <TableCell colSpan={7} className="h-32 text-center text-slate-400">
-                            No tickets found matching current filter.
+                            No support tickets found matching current filter.
                           </TableCell>
                         </TableRow>
                       );
@@ -2873,48 +2963,59 @@ export default function PlatformAdminPage() {
 
                     return filtered.map(t => (
                       <TableRow key={t.id} className="hover:bg-slate-50/70 border-b border-slate-100 transition-colors">
-                        {/* Ticket Subject */}
+                        {/* Subject & Category */}
                         <TableCell className="font-medium">
                           <button 
                             onClick={() => handleOpenPlatformTicket(t)} 
-                            className="text-left font-semibold text-indigo-600 hover:text-indigo-800 hover:underline block truncate max-w-[220px]"
+                            className="text-left font-semibold text-indigo-600 hover:text-indigo-800 hover:underline block truncate max-w-[200px]"
                             title={t.subject}
                           >
                             {t.subject}
                           </button>
-                          <span className="text-[10px] text-slate-400 font-mono">ID: {t.id.slice(0, 8)}</span>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <Badge variant="outline" className="text-[10px] capitalize bg-indigo-50/80 text-indigo-700 border-indigo-200">
+                              {t.category}
+                            </Badge>
+                            <span className="text-[10px] text-slate-400 font-mono">#{t.id.slice(0, 8)}</span>
+                          </div>
                         </TableCell>
 
-                        {/* Business Org */}
+                        {/* Business / User */}
                         <TableCell>
-                          <span className="text-xs font-semibold text-slate-800 block truncate max-w-[160px]">
-                            {t.organizations?.name || "Unknown Org"}
+                          <span className="text-xs font-semibold text-slate-800 block truncate max-w-[150px]">
+                            {t.business}
                           </span>
-                          <span className="text-[10px] text-slate-400 block truncate max-w-[160px]">
-                            {t.organizations?.email || "No email"}
-                          </span>
-                        </TableCell>
-
-                        {/* Customer / Lead */}
-                        <TableCell>
-                          <span className="text-xs font-semibold text-slate-800 block truncate max-w-[140px]">
-                            {t.clients?.display_name || t.leads?.name || "—"}
-                          </span>
-                          <span className="text-[10px] text-slate-400 block truncate max-w-[140px]">
-                            {t.clients ? "Customer" : t.leads ? `Lead ${t.leads.company ? `(${t.leads.company})` : ""}` : "—"}
+                          <span className="text-[11px] text-slate-500 block truncate max-w-[150px]">
+                            {t.name}
                           </span>
                         </TableCell>
 
-                        {/* Priority */}
+                        {/* Contact Details */}
                         <TableCell>
-                          <Badge variant="outline" className={`text-[10px] font-semibold uppercase ${
-                            t.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
-                            t.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
-                            t.priority === 'medium' ? 'border-amber-200 text-amber-700 bg-amber-50' :
-                            'border-slate-200 text-slate-600 bg-slate-50'
-                          }`}>
-                            {t.priority}
-                          </Badge>
+                          <a href={`mailto:${t.email}`} className="text-xs text-indigo-600 hover:underline block truncate max-w-[160px]">
+                            {t.email}
+                          </a>
+                          {t.phone && t.phone !== "N/A" && (
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <span className="text-[11px] font-mono text-slate-600">{t.phone}</span>
+                              <a
+                                href={`https://wa.me/91${t.phone.replace(/\D/g, '')}?text=${encodeURIComponent(`Hello ${t.name}, regarding your AssayBiz support request: "${t.subject}"`)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-emerald-600 hover:text-emerald-700"
+                                title="Chat on WhatsApp"
+                              >
+                                <Share2 className="w-3 h-3 inline ml-0.5" />
+                              </a>
+                            </div>
+                          )}
+                        </TableCell>
+
+                        {/* Message Preview */}
+                        <TableCell>
+                          <p className="text-xs text-slate-600 line-clamp-2 max-w-[220px]" title={t.message}>
+                            {t.message}
+                          </p>
                         </TableCell>
 
                         {/* Status Select Dropdown (Platform Admin quick change) */}
@@ -2924,8 +3025,8 @@ export default function PlatformAdminPage() {
                             onValueChange={(val) => handleUpdateTicketStatus(t.id, val)}
                           >
                             <SelectTrigger className={`h-7 w-[120px] text-[11px] font-semibold rounded-lg text-white border-0 shadow-xs ${
-                              t.status === 'open' ? 'bg-amber-500 hover:bg-amber-600' :
-                              t.status === 'in_progress' || t.status === 'pending' ? 'bg-blue-600 hover:bg-blue-700' :
+                              t.status === 'open' || t.status === 'pending' ? 'bg-amber-500 hover:bg-amber-600' :
+                              t.status === 'in_progress' ? 'bg-blue-600 hover:bg-blue-700' :
                               t.status === 'resolved' ? 'bg-emerald-600 hover:bg-emerald-700' :
                               'bg-slate-600 hover:bg-slate-700'
                             }`}>
@@ -2975,6 +3076,16 @@ export default function PlatformAdminPage() {
                             >
                               <MessageSquare className="w-3 h-3" />
                               View
+                            </Button>
+
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteTicket(t.id)}
+                              className="h-7 w-7 p-0 text-slate-400 hover:text-rose-600"
+                              title="Delete Request"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </div>
                         </TableCell>
@@ -3174,38 +3285,39 @@ export default function PlatformAdminPage() {
         </div>
       </main>
 
-      {/* ── Platform Admin Ticket Conversation & Status Modal ── */}
+      {/* ── Platform Admin Help & Support Query Modal ── */}
       {selectedPlatformTicket && (
         <Dialog open={!!selectedPlatformTicket} onOpenChange={(open) => { if (!open) setSelectedPlatformTicket(null); }}>
           <DialogContent className="max-w-2xl bg-white border-slate-200 text-slate-800 shadow-2xl p-6 z-[9999] max-h-[90vh] flex flex-col">
             <DialogHeader className="border-b border-slate-100 pb-3">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <DialogTitle className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                    <Ticket className="w-5 h-5 text-indigo-600" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs font-semibold bg-indigo-50 text-indigo-700 border-indigo-200 capitalize">
+                      {selectedPlatformTicket.category || "Help & Support"}
+                    </Badge>
+                    <span className="text-[11px] text-slate-400 font-mono">#{selectedPlatformTicket.id.slice(0, 8)}</span>
+                  </div>
+                  <DialogTitle className="text-lg font-bold text-slate-900 leading-snug">
                     {selectedPlatformTicket.subject}
                   </DialogTitle>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Org: <span className="font-semibold text-slate-800">{selectedPlatformTicket.organizations?.name || "Unknown"}</span>
-                    {" • "}
-                    Contact: <span className="font-semibold text-slate-800">{selectedPlatformTicket.clients?.display_name || selectedPlatformTicket.leads?.name || "—"}</span>
-                    {selectedPlatformTicket.leads && !selectedPlatformTicket.clients && " (Lead)"}
-                    {selectedPlatformTicket.created_at && (
-                      <> • Created {format(new Date(selectedPlatformTicket.created_at), "dd MMM yyyy, hh:mm a")}</>
-                    )}
+                  <p className="text-xs text-slate-500">
+                    Submitted on {selectedPlatformTicket.created_at ? format(new Date(selectedPlatformTicket.created_at), "dd MMM yyyy, hh:mm a") : "—"}
                   </p>
                 </div>
+
                 <Badge variant="outline" className={`uppercase text-[11px] font-semibold ${
-                  selectedPlatformTicket.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
-                  selectedPlatformTicket.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
-                  'border-slate-200 text-slate-700'
+                  selectedPlatformTicket.status === 'open' ? 'border-amber-200 text-amber-700 bg-amber-50' :
+                  selectedPlatformTicket.status === 'in_progress' ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                  selectedPlatformTicket.status === 'resolved' ? 'border-emerald-200 text-emerald-700 bg-emerald-50' :
+                  'border-slate-200 text-slate-600 bg-slate-50'
                 }`}>
-                  {selectedPlatformTicket.priority}
+                  {selectedPlatformTicket.status}
                 </Badge>
               </div>
 
-              {/* Status Change Control Bar */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl">
+              {/* Status Change & Actions Bar */}
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-semibold text-slate-700">Change Status:</span>
                   <Select
@@ -3214,7 +3326,7 @@ export default function PlatformAdminPage() {
                   >
                     <SelectTrigger className={`h-8 px-3 text-xs font-semibold rounded-lg text-white border-0 ${
                       selectedPlatformTicket.status === 'open' ? 'bg-amber-500' :
-                      selectedPlatformTicket.status === 'in_progress' || selectedPlatformTicket.status === 'pending' ? 'bg-blue-600' :
+                      selectedPlatformTicket.status === 'in_progress' ? 'bg-blue-600' :
                       selectedPlatformTicket.status === 'resolved' ? 'bg-emerald-600' :
                       'bg-slate-600'
                     }`}>
@@ -3249,63 +3361,98 @@ export default function PlatformAdminPage() {
                       Reopen Ticket
                     </Button>
                   )}
+
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDeleteTicket(selectedPlatformTicket.id)}
+                    className="h-8 text-xs font-semibold text-slate-600 border-slate-200 hover:text-rose-600 hover:bg-rose-50"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
+                    Delete
+                  </Button>
                 </div>
               </div>
             </DialogHeader>
 
-            {/* Conversation Messages */}
-            <div className="flex-1 overflow-y-auto space-y-3 py-4 max-h-[360px] pr-1">
-              {platformTicketMessages.length === 0 ? (
-                <div className="text-center py-8 text-xs text-slate-400">
-                  No messages yet on this ticket thread.
-                </div>
-              ) : (
-                platformTicketMessages.map((msg: any) => (
-                  <div
-                    key={msg.id}
-                    className={`p-3 rounded-xl text-xs space-y-1 ${
-                      msg.sender_type === 'platform_admin'
-                        ? 'bg-purple-50 border border-purple-100 text-purple-950 ml-6'
-                        : msg.sender_type === 'agent'
-                        ? 'bg-indigo-50 border border-indigo-100 text-indigo-950 ml-6'
-                        : 'bg-slate-100 text-slate-800 mr-6'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500">
-                      <span>
-                        {msg.sender_type === 'platform_admin' ? '🛡️ Platform Admin Support' :
-                         msg.sender_type === 'agent' ? 'Business Support Agent' : 'Customer'}
-                      </span>
-                      <span>{msg.created_at && format(new Date(msg.created_at), "dd MMM, hh:mm a")}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-xs text-slate-800">{msg.message}</p>
+            <div className="flex-1 overflow-y-auto space-y-4 py-3 pr-1">
+              {/* User & Business Information Card */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Business & Sender</span>
+                  <div className="flex items-center gap-1.5 font-semibold text-slate-900 text-sm">
+                    <Building2 className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>{selectedPlatformTicket.business || "Platform Business"}</span>
                   </div>
-                ))
-              )}
-            </div>
+                  <div className="text-slate-600 pl-5">
+                    Contact: <span className="font-medium text-slate-800">{selectedPlatformTicket.name || "—"}</span>
+                  </div>
+                </div>
 
-            {/* Reply Box */}
-            <div className="pt-3 border-t border-slate-100 space-y-2">
-              <textarea
-                className="w-full min-h-[70px] max-h-[110px] p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
-                placeholder="Post reply as Platform Support..."
-                value={platformTicketReply}
-                onChange={(e) => setPlatformTicketReply(e.target.value)}
-              />
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] text-slate-400">
-                  Replies are visible to both the business owner and client.
-                </span>
-                <Button
-                  size="sm"
-                  onClick={handleSendPlatformReply}
-                  disabled={sendingPlatformReply || !platformTicketReply.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs px-3 gap-1.5"
-                >
-                  {sendingPlatformReply ? "Posting…" : "Post Reply"}
-                </Button>
+                <div className="space-y-1 sm:border-l sm:border-slate-200 sm:pl-3">
+                  <span className="text-[10px] font-bold uppercase text-slate-400">Direct Contact</span>
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <a href={`mailto:${selectedPlatformTicket.email}`} className="text-indigo-600 hover:underline truncate">
+                      {selectedPlatformTicket.email || "No email"}
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-mono text-slate-700">{selectedPlatformTicket.phone || "No phone"}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Communication Actions Bar */}
+              <div className="flex flex-wrap items-center gap-2">
+                {selectedPlatformTicket.phone && selectedPlatformTicket.phone !== "N/A" && (
+                  <a
+                    href={`https://wa.me/91${selectedPlatformTicket.phone.replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Hello ${selectedPlatformTicket.name}, this is AssayBiz Platform Support regarding your ticket: "${selectedPlatformTicket.subject}". How can we assist you today?`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition"
+                  >
+                    <Share2 className="w-3.5 h-3.5" />
+                    Chat on WhatsApp
+                  </a>
+                )}
+                {selectedPlatformTicket.email && selectedPlatformTicket.email !== "—" && (
+                  <a
+                    href={`mailto:${selectedPlatformTicket.email}?subject=${encodeURIComponent(
+                      `AssayBiz Support: ${selectedPlatformTicket.subject}`
+                    )}&body=${encodeURIComponent(
+                      `Hello ${selectedPlatformTicket.name},\n\nWe received your support request: "${selectedPlatformTicket.message}"\n\n`
+                    )}`}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition"
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    Send Email Reply
+                  </a>
+                )}
+              </div>
+
+              {/* Message Body */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Query / Problem Details:</span>
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs sm:text-sm whitespace-pre-wrap leading-relaxed min-h-[100px]">
+                  {selectedPlatformTicket.message}
+                </div>
               </div>
             </div>
+
+            <DialogFooter className="border-t border-slate-100 pt-3 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedPlatformTicket(null)}
+                className="text-xs border-slate-200 text-slate-700"
+              >
+                Close Window
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       )}
