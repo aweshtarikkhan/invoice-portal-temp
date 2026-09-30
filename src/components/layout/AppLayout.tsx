@@ -2,6 +2,8 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
+import { getAppPageTitle } from "@/lib/page-titles";
 import { AppSidebar } from "./AppSidebar";
 import { useAuth } from "@/lib/auth";
 import { useEffect, useState } from "react";
@@ -152,8 +154,15 @@ export function AppLayout() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [isEmployeeBlocked, setIsEmployeeBlocked] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const { subscriptionPlan, isOnTrial } = useSubscription();
+
+  const dynamicPageTitle = getAppPageTitle(location.pathname, org?.name);
+
+  useEffect(() => {
+    document.title = dynamicPageTitle;
+  }, [dynamicPageTitle]);
 
   useEffect(() => {
     const handleOpenPlanModal = () => setShowPlanModal(true);
@@ -634,6 +643,9 @@ export function AppLayout() {
 
   return (
     <SidebarProvider>
+      <Helmet>
+        <title>{dynamicPageTitle}</title>
+      </Helmet>
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">

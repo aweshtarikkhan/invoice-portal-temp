@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { format, subDays, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -139,6 +140,26 @@ export default function PlatformAdminPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("overview");
+
+  const tabTitles: Record<string, string> = {
+    overview: "Platform Overview",
+    orgs: "Businesses Directory",
+    users: "Registered Users",
+    pricing: "Plans & Pricing",
+    reviews: "Landing Reviews",
+    ads: "Portal Ads",
+    social: "Social Media",
+    tickets: "Platform Support Tickets",
+    data: "Form Submissions",
+    requests: "Feature Requests",
+    partners: "Partner Network",
+    admins: "Platform Settings",
+  };
+  const adminPageTitle = `${tabTitles[activeTab] || "Platform Admin"} • AssayBiz Admin Hub`;
+
+  useEffect(() => {
+    document.title = adminPageTitle;
+  }, [adminPageTitle]);
   
   // User Management & Plan Override States
   const [userSearchQuery, setUserSearchQuery] = useState("");
@@ -1078,6 +1099,9 @@ export default function PlatformAdminPage() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      <Helmet>
+        <title>{adminPageTitle}</title>
+      </Helmet>
       {/* ── Sidebar ── */}
       <aside className="w-[240px] bg-white border-r border-slate-200 flex flex-col shrink-0 h-screen">
         {/* Logo */}

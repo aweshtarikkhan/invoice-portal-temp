@@ -217,5 +217,8 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Platform Admin Notifications (Bell Icon): Top header includes an interactive notification popover displaying pending Help & Support requests with counts, timestamps, and 1-click navigation.
 - Platform Help & Support Management: Under "Support Tickets" (/platform-admin), platform administrators manage platform-level Help & Support queries submitted by businesses and users across the platform (internal CRM client tickets are excluded). Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click, and change ticket statuses (Open, In Progress, Resolved, Closed).
 
+19. DYNAMIC BROWSER TAB TITLES
+- Smart Route-Based Tab Titles: Once signed in, the browser tab title dynamically updates across all pages (e.g. "Customer Support Tickets • [Business Name] | AssayBiz", "Invoices & Sales • [Business Name] | AssayBiz", "Dashboard & Overview • [Business Name] | AssayBiz"). It never remains stuck on "Sign In", ensuring clear multi-tab visibility and professional branding.
+
 --- END OF KNOWLEDGE BASE ---
 `;

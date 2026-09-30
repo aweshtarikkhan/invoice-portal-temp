@@ -89,8 +89,10 @@ export default function LoginPage() {
       }
 
       if (isPlatformAdmin) {
+        document.title = "Platform Super Admin • AssayBiz Admin Hub";
         navigate("/platform-admin", { replace: true });
       } else {
+        document.title = "Dashboard & Overview • AssayBiz";
         navigate("/dashboard", { replace: true });
       }
     }
