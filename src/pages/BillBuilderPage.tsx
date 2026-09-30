@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSequenceNumber } from "@/lib/utils";
@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft, Lock } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -486,6 +486,7 @@ export default function BillBuilderPage() {
   const [ewayTransportMode, setEwayTransportMode] = useState("road");
   const [ewayDistanceKm, setEwayDistanceKm] = useState("");
   const [saving, setSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [vendorBills, setVendorBills] = useState<any[]>([]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -876,30 +877,34 @@ export default function BillBuilderPage() {
   };
 
   const handleSave = async (status: "draft" | "received" = "received", postAction?: "email") => {
-    if (!org) return;
-    if (!vendorId) {
-      toast({ title: "Please select a vendor", variant: "destructive" });
-      return;
-    }
-    if (!id) {
-      const isUnlimited = hasUnlimitedBills(plan, activeOrgPlans);
-      if (!isUnlimited) {
-        const { count } = await supabase
-          .from("bills")
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", org.id);
-        if ((count || 0) >= 100) {
-          toast({
-            title: "Purchase Invoice Limit Reached (100)",
-            description: "Free plan allows up to 100 Purchase Invoices. Please upgrade to Business Suite for unlimited purchase invoices!",
-            variant: "destructive"
-          });
-          setShowUpgradeModal(true);
-          setSaving(false);
-          return;
+    if (isSavingRef.current || saving) return;
+    isSavingRef.current = true;
+    setSaving(true);
+
+    try {
+      if (!org) return;
+      if (!vendorId) {
+        toast({ title: "Please select a vendor", variant: "destructive" });
+        return;
+      }
+      if (!id) {
+        const isUnlimited = hasUnlimitedBills(plan, activeOrgPlans);
+        if (!isUnlimited) {
+          const { count } = await supabase
+            .from("bills")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", org.id);
+          if ((count || 0) >= 100) {
+            toast({
+              title: "Purchase Invoice Limit Reached (100)",
+              description: "Free plan allows up to 100 Purchase Invoices. Please upgrade to Business Suite for unlimited purchase invoices!",
+              variant: "destructive"
+            });
+            setShowUpgradeModal(true);
+            return;
+          }
         }
       }
-    }
     // Auto-remove empty/blank lines before saving
     const validLines = lines.filter((l) => l.name.trim() || l.rate > 0 || l.quantity > 0);
     if (!validLines.length) {
@@ -930,7 +935,6 @@ export default function BillBuilderPage() {
       }
     }
 
-    setSaving(true);
       const billPayload = {
         org_id: org!.id,
         vendor_id: vendorId,
@@ -956,7 +960,6 @@ export default function BillBuilderPage() {
         grn_id: linkedGrnId || null,
       };
 
-    try {
       let billId = id;
       // Capture previous lines for stock restoration on edit
       let prevLines: any[] = [];
@@ -1007,6 +1010,8 @@ export default function BillBuilderPage() {
           throw new Error("Failed to generate a unique bill number. Please try again.");
         }
         billId = insertData.id;
+        // Instantly update browser URL so if the user refreshes, they never see blank entries on /bills/new
+        window.history.replaceState(null, "", `/bills/${billId}`);
         const insertedNumMatch = (currentPayload.bill_number || "").match(/(\d+)$/);
         const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
         const { data: latestOrg } = await supabase.from("organizations").select("next_bill_number").eq("id", org!.id).single();
@@ -1101,11 +1106,13 @@ export default function BillBuilderPage() {
         toast({ title: status === "received" ? "Purchase invoice saved!" : "Purchase invoice saved as draft!" });
       }
 
-      navigate(`/bills/${billId}`);
+      navigate(`/bills/${billId}`, { replace: true });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      isSavingRef.current = false;
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   // Keyboard shortcuts
@@ -1158,7 +1165,8 @@ export default function BillBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("received")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Purchase Invoice
+              {saving ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+              {saving ? "Saving..." : "Save Purchase Invoice"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

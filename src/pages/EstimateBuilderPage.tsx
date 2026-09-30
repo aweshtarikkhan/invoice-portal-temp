@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { formatSequenceNumber } from "@/lib/utils";
@@ -15,7 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft, Lock } from "lucide-react";
+import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft, Lock, RefreshCw } from "lucide-react";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
@@ -222,6 +222,7 @@ export default function EstimateBuilderPage() {
   const [adjustmentName, setAdjustmentName] = useState("Adjustment");
   const [lines, setLines] = useState<LineItem[]>([createEmptyLine()]);
   const [saving, setSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [contactPromptOpen, setContactPromptOpen] = useState(false);
   const [contactPromptMissing, setContactPromptMissing] = useState<"email" | "phone">("email");
   const [pendingAction, setPendingAction] = useState<"email" | null>(null);
@@ -459,40 +460,42 @@ export default function EstimateBuilderPage() {
   };
 
   const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email") => {
-    if (!clientId) { toast({ title: "Select a client", variant: "destructive" }); return; }
-    if (!lines.some((l) => l.name.trim())) { toast({ title: "Add at least one line item", variant: "destructive" }); return; }
+    if (isSavingRef.current || saving) return;
+    isSavingRef.current = true;
     setSaving(true);
 
-    if (!id) {
-      const isUnlimited = hasUnlimitedEstimates(plan, activeOrgPlans);
-      if (!isUnlimited) {
-        const { count } = await supabase
-          .from("estimates")
-          .select("id", { count: "exact", head: true })
-          .eq("org_id", org!.id);
-        if ((count || 0) >= 100) {
-          toast({
-            title: "Quotation Limit Reached (100/100)",
-            description: "In this plan you can only create up to 100 quotations. Upgrade to Business Accounting or Business Suite for unlimited quotations.",
-            variant: "destructive",
-          });
-          setShowUpgradeModal(true);
-          setSaving(false);
-          return;
+    try {
+      if (!clientId) { toast({ title: "Select a client", variant: "destructive" }); return; }
+      if (!lines.some((l) => l.name.trim())) { toast({ title: "Add at least one line item", variant: "destructive" }); return; }
+
+      if (!id) {
+        const isUnlimited = hasUnlimitedEstimates(plan, activeOrgPlans);
+        if (!isUnlimited) {
+          const { count } = await supabase
+            .from("estimates")
+            .select("id", { count: "exact", head: true })
+            .eq("org_id", org!.id);
+          if ((count || 0) >= 100) {
+            toast({
+              title: "Quotation Limit Reached (100/100)",
+              description: "In this plan you can only create up to 100 quotations. Upgrade to Business Accounting or Business Suite for unlimited quotations.",
+              variant: "destructive",
+            });
+            setShowUpgradeModal(true);
+            return;
+          }
         }
       }
-    }
 
-    const payload = {
-      org_id: org!.id, client_id: clientId, estimate_number: estimateNumber, status,
-      issue_date: issueDate, expiry_date: expiryDate, currency_code: currency,
-      discount, discount_type: discountType, shipping_charge: shippingCharge,
-      adjustment, adjustment_name: adjustmentName, subtotal, total_tax: totalTax,
-      total_discount: totalDiscount, total, notes, terms_conditions: terms,
-      ...(status === "sent" ? { sent_at: new Date().toISOString() } : {}),
-    };
+      const payload = {
+        org_id: org!.id, client_id: clientId, estimate_number: estimateNumber, status,
+        issue_date: issueDate, expiry_date: expiryDate, currency_code: currency,
+        discount, discount_type: discountType, shipping_charge: shippingCharge,
+        adjustment, adjustment_name: adjustmentName, subtotal, total_tax: totalTax,
+        total_discount: totalDiscount, total, notes, terms_conditions: terms,
+        ...(status === "sent" ? { sent_at: new Date().toISOString() } : {}),
+      };
 
-    try {
       let estimateId = id;
       if (id) {
         const { error } = await supabase.from("estimates").update(payload).eq("id", id);
@@ -538,6 +541,8 @@ export default function EstimateBuilderPage() {
           throw new Error("Failed to generate a unique quotation number. Please try again.");
         }
         estimateId = insertData.id;
+        // Instantly update browser URL so if the user refreshes, they never see blank entries on /quotations/new
+        window.history.replaceState(null, "", `/quotations/${estimateId}`);
         const insertedNumMatch = (currentPayload.estimate_number || "").match(/(\d+)$/);
         const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
         const { data: latestOrg } = await supabase.from("organizations").select("estimate_next_number").eq("id", org!.id).single();
@@ -601,11 +606,13 @@ export default function EstimateBuilderPage() {
         toast({ title: status === "sent" ? "Quotation saved!" : "Quotation saved as draft!" });
       }
 
-      navigate("/quotations");
+      navigate(`/quotations/${estimateId}`, { replace: true });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      isSavingRef.current = false;
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
@@ -637,7 +644,8 @@ export default function EstimateBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Quotation
+              {saving ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+              {saving ? "Saving..." : "Save Quotation"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

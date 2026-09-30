@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { postInvoiceJournal } from "@/lib/accounting";
@@ -25,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft, Lock } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
 
@@ -517,6 +517,7 @@ export default function InvoiceBuilderPage() {
   const [ewayTransportMode, setEwayTransportMode] = useState("road");
   const [ewayDistanceKm, setEwayDistanceKm] = useState("");
   const [saving, setSaving] = useState(false);
+  const isSavingRef = useRef(false);
   const [clientInvoices, setClientInvoices] = useState<any[]>([]);
   const [bulkAddOpen, setBulkAddOpen] = useState(false);
 
@@ -1032,7 +1033,14 @@ export default function InvoiceBuilderPage() {
   };
 
   const handleSave = async (status: "draft" | "sent" = "draft", postAction?: "email" | "whatsapp") => {
-    const isOrgOwner = (org as any)?.owner_id === (user?.id || profile?.user_id) || userRole === "owner";
+    if (isSavingRef.current || saving) {
+      return;
+    }
+    isSavingRef.current = true;
+    setSaving(true);
+
+    try {
+      const isOrgOwner = (org as any)?.owner_id === (user?.id || profile?.user_id) || userRole === "owner";
     const hasOrgAddress = Boolean(profile?.address_line || (org?.address as any)?.street || (org?.address as any)?.address_line);
     const hasOrgPincode = Boolean(profile?.pincode || (org?.address as any)?.postal_code || (org?.address as any)?.pincode);
 
@@ -1102,8 +1110,6 @@ export default function InvoiceBuilderPage() {
         });
       }
     }
-
-    setSaving(true);
 
     const bankDetailsPayload = includeBankDetails && (bankName.trim() || bankAccountNumber.trim() || bankIfsc.trim()) ? {
       enabled: true,
@@ -1180,8 +1186,7 @@ export default function InvoiceBuilderPage() {
       ...(status === "sent" ? { sent_at: new Date().toISOString() } : {}),
     };
 
-    try {
-      let invoiceId = id;
+    let invoiceId = id;
       // Capture previous lines and values for stock restoration and audit diff on edit
       let prevLines: any[] = [];
       let previousTotal = 0;
@@ -1243,6 +1248,8 @@ export default function InvoiceBuilderPage() {
         }
         
         invoiceId = insertData.id;
+        // Instantly update browser URL so if the user refreshes, they never see blank entries on /invoices/new
+        window.history.replaceState(null, "", `/invoices/${invoiceId}`);
         
         // Ensure organizations table sequence is incremented past the inserted invoice
         const insertedNumMatch = (currentPayload.invoice_number || "").match(/(\d+)$/);
@@ -1454,11 +1461,13 @@ export default function InvoiceBuilderPage() {
 
 
       toast({ title: status === "sent" ? "Invoice sent!" : "Invoice saved!" });
-      navigate(`/invoices`);
+      navigate(`/invoices/${invoiceId}`, { replace: true });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      isSavingRef.current = false;
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   // Keyboard shortcuts
@@ -1512,7 +1521,8 @@ export default function InvoiceBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Invoice
+              {saving ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+              {saving ? "Saving..." : "Save Invoice"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -2469,7 +2479,8 @@ export default function InvoiceBuilderPage() {
           </Button>
           <div className="flex">
             <Button className="rounded-r-none font-semibold shadow-sm" onClick={() => handleSave("sent")} disabled={saving}>
-              <Save className="mr-1.5 h-4 w-4" /> Save Invoice
+              {saving ? <RefreshCw className="mr-1.5 h-4 w-4 animate-spin" /> : <Save className="mr-1.5 h-4 w-4" />}
+              {saving ? "Saving..." : "Save Invoice"}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
