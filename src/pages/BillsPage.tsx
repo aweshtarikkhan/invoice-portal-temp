@@ -135,7 +135,7 @@ export default function BillsPage() {
               if (billLimitReached) {
                 setShowUpgradeModal(true);
               } else {
-                navigate("/bills/new");
+                navigate("/purchase-invoices/new");
               }
             }}
             className={billLimitReached ? "bg-amber-600 hover:bg-amber-700 text-white" : ""}
@@ -204,7 +204,7 @@ export default function BillsPage() {
               </TableHeader>
               <TableBody>
                 {fyBills.map(b => (
-                  <TableRow key={b.id} className="cursor-pointer" onClick={() => navigate(`/bills/${b.id}`)}>
+                  <TableRow key={b.id} className="cursor-pointer" onClick={() => navigate(`/purchase-invoices/${b.id}`)}>
                     <TableCell className="font-medium">{b.bill_number}</TableCell>
                     <TableCell>{b.vendors?.display_name || b.vendors?.name || "—"}</TableCell>
                     <TableCell>
@@ -225,7 +225,7 @@ export default function BillsPage() {
                     <TableCell className="text-right">{formatCurrency(Number(b.total), (org as any)?.currency || "INR")}</TableCell>
                     <TableCell className="text-right font-medium">{formatCurrency(Number(b.balance_due), (org as any)?.currency || "INR")}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button size="icon" variant="ghost" onClick={() => navigate(`/bills/${b.id}`)}><Eye className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => navigate(`/purchase-invoices/${b.id}`)}><Eye className="h-4 w-4" /></Button>
                       <Button size="icon" variant="ghost" onClick={() => remove(b.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                     </TableCell>
                   </TableRow>

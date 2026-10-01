@@ -262,6 +262,10 @@ const App = () => (
                 <Route path="/purchase-invoices/new" element={<BillBuilderPage />} />
                 <Route path="/purchase-invoices/:id" element={<BillDetailPage />} />
                 <Route path="/purchase-invoices/:id/edit" element={<BillBuilderPage />} />
+                <Route path="/bills" element={<BillsPage />} />
+                <Route path="/bills/new" element={<BillBuilderPage />} />
+                <Route path="/bills/:id" element={<BillDetailPage />} />
+                <Route path="/bills/:id/edit" element={<BillBuilderPage />} />
                 <Route path="/purchase-orders" element={<PurchaseOrdersPage />} />
                 <Route path="/purchase-orders/new" element={<PurchaseOrderBuilderPage />} />
                 <Route path="/purchase-orders/:id" element={<PurchaseOrderDetailPage />} />

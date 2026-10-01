@@ -1042,8 +1042,8 @@ export default function BillBuilderPage() {
           throw new Error("Failed to generate a unique bill number. Please try again.");
         }
         billId = insertData.id;
-        // Instantly update browser URL so if the user refreshes, they never see blank entries on /bills/new
-        window.history.replaceState(null, "", `/bills/${billId}`);
+        // Instantly update browser URL so if the user refreshes, they never see blank entries on /purchase-invoices/new
+        window.history.replaceState(null, "", `/purchase-invoices/${billId}`);
         const insertedNumMatch = (currentPayload.bill_number || "").match(/(\d+)$/);
         const savedSeq = insertedNumMatch ? parseInt(insertedNumMatch[1], 10) : 1;
         const { data: latestOrg } = await supabase.from("organizations").select("next_bill_number").eq("id", org!.id).single();
@@ -1129,7 +1129,7 @@ export default function BillBuilderPage() {
       if (postAction === "email") {
         const vendor = vendors.find(v => v.id === vendorId);
         if (vendor?.email) {
-          navigate(`/bills/${billId}?sendEmail=true`);
+          navigate(`/purchase-invoices/${billId}?sendEmail=true`);
           toast({ title: "Saving and generating PDF..." });
           setSaving(false);
           return;
@@ -1138,7 +1138,7 @@ export default function BillBuilderPage() {
         toast({ title: status === "received" ? "Purchase invoice saved!" : "Purchase invoice saved as draft!" });
       }
 
-      navigate(`/bills/${billId}`, { replace: true });
+      navigate(`/purchase-invoices/${billId}`, { replace: true });
     } catch (err: any) {
       toast({ title: "Error", description: err.message, variant: "destructive" });
     } finally {
@@ -1184,14 +1184,14 @@ export default function BillBuilderPage() {
       />
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/bills")} title="Back to Purchase Invoices">
+          <Button variant="outline" size="icon" className="h-9 w-9 shrink-0" onClick={() => navigate("/purchase-invoices")} title="Back to Purchase Invoices">
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold">{id ? "Edit Purchase Invoice" : "New Purchase Invoice"}</h1>
         </div>
         <div className="flex gap-2">
           <BillSettingsSheet />
-          <Button variant="outline" onClick={() => navigate("/bills")}>Cancel</Button>
+          <Button variant="outline" onClick={() => navigate("/purchase-invoices")}>Cancel</Button>
           <Button variant="outline" onClick={() => handleSave("draft")} disabled={saving}>
             <Save className="mr-1.5 h-4 w-4" /> Save as Draft
           </Button>

@@ -909,6 +909,47 @@ export default function PurchaseOrderBuilderPage() {
                     <span>{formatCurrency(totals.tcsAmount, currency)}</span>
                   </div>
                 )}
+
+                {/* TDS/TCS Configuration Section */}
+                <div className="space-y-2 border-y py-3 my-2">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium">TDS / TCS Applicable?</span>
+                    <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
+                  </label>
+                  {tdsTcsApplicable && (
+                    <div className="space-y-2 mt-2">
+                      <div className="flex items-center justify-between text-sm gap-2">
+                        <div className="flex items-center gap-4">
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
+                            <span className="text-xs font-medium">TDS (-)</span>
+                          </label>
+                          <label className="flex items-center gap-1 cursor-pointer">
+                            <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
+                            <span className="text-xs font-medium">TCS (+)</span>
+                          </label>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            step="any"
+                            className="h-7 w-16 text-xs text-right"
+                            value={tdsTcsRate === 0 && !tdsTcsApplicable ? "" : tdsTcsRate}
+                            onChange={(e) => setTdsTcsRate(e.target.value)}
+                            placeholder="Rate"
+                          />
+                          <span className="text-muted-foreground text-xs">%</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        {tdsTcsType === "tds" 
+                          ? "TDS is calculated on Taxable Amount before GST and deducted from total."
+                          : "TCS is calculated on Total Order Value (Basic Amount + GST) and added to total."}
+                      </p>
+                    </div>
+                  )}
+                </div>
                 
                 <div className="flex justify-between items-center font-bold text-base border-t border-slate-200 border-dashed pt-3 text-blue-700 mt-2">
                   <div className="flex items-center gap-2"><span>Total</span></div>

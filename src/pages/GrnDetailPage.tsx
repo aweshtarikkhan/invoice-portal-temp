@@ -57,7 +57,7 @@ export default function GrnDetailPage() {
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => navigate(`/grns/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" />Edit</Button>
-          <Button onClick={() => navigate(`/bills/new?grn=${id}`)}><FileText className="h-4 w-4 mr-1" />Create Bill</Button>
+          <Button onClick={() => navigate(`/purchase-invoices/new?grn=${id}`)}><FileText className="h-4 w-4 mr-1" />Create Bill</Button>
         </div>
       </div>
 

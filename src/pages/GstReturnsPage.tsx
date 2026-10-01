@@ -699,7 +699,7 @@ export default function GstReturnsPage() {
                         <TableRow key={b.id || i}>
                           <TableCell className="whitespace-nowrap">{b.bill_date}</TableCell>
                           <TableCell className="whitespace-nowrap font-medium">
-                            <Link to={`/bills/${b.id}`} className="text-blue-600 hover:underline">{b.vendor_bill_number || b.bill_number}</Link>
+                            <Link to={`/purchase-invoices/${b.id}`} className="text-blue-600 hover:underline">{b.vendor_bill_number || b.bill_number}</Link>
                           </TableCell>
                           <TableCell className="whitespace-nowrap">{b.vendors?.name || "—"}</TableCell>
                           <TableCell>{txType}</TableCell>

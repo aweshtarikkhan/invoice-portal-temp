@@ -388,7 +388,7 @@ export default function VendorDetailPage() {
         <Button variant="outline" size="sm" onClick={() => navigate(`/purchase-orders/new?vendor_id=${id}`)}>
           <ShoppingCart className="mr-1.5 h-4 w-4" /> + Purchase Order
         </Button>
-        <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-sm" onClick={() => navigate(`/bills/new?vendor_id=${id}`)}>
+        <Button size="sm" className="bg-primary hover:bg-primary/90 shadow-sm" onClick={() => navigate(`/purchase-invoices/new?vendor_id=${id}`)}>
           <Plus className="mr-1.5 h-4 w-4" /> + New Purchase Bill
         </Button>
       </PageHeader>
@@ -551,7 +551,7 @@ export default function VendorDetailPage() {
                     onChange={(e) => setBillSearch(e.target.value)}
                   />
                 </div>
-                <Button size="sm" onClick={() => navigate(`/bills/new?vendor_id=${id}`)}>
+                <Button size="sm" onClick={() => navigate(`/purchase-invoices/new?vendor_id=${id}`)}>
                   <Plus className="w-3.5 h-3.5 mr-1" /> New Bill
                 </Button>
               </div>
@@ -564,7 +564,7 @@ export default function VendorDetailPage() {
                     variant="outline"
                     size="sm"
                     className="mt-3"
-                    onClick={() => navigate(`/bills/new?vendor_id=${id}`)}
+                    onClick={() => navigate(`/purchase-invoices/new?vendor_id=${id}`)}
                   >
                     + Create First Purchase Bill
                   </Button>
@@ -609,7 +609,7 @@ export default function VendorDetailPage() {
                         <TableRow
                           key={b.id}
                           className="cursor-pointer hover:bg-muted/50"
-                          onClick={() => navigate(`/bills/${b.id}`)}
+                          onClick={() => navigate(`/purchase-invoices/${b.id}`)}
                         >
                           <TableCell className="font-semibold text-primary">{b.bill_number}</TableCell>
                           <TableCell className="text-muted-foreground">{b.vendor_bill_number || "—"}</TableCell>
@@ -638,7 +638,7 @@ export default function VendorDetailPage() {
                               variant="ghost"
                               size="sm"
                               className="h-8 px-2"
-                              onClick={() => navigate(`/bills/${b.id}`)}
+                              onClick={() => navigate(`/purchase-invoices/${b.id}`)}
                             >
                               <Eye className="w-3.5 h-3.5 mr-1" /> View
                             </Button>

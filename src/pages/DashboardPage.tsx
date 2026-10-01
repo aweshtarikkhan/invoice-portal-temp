@@ -432,7 +432,7 @@ export default function DashboardPage() {
               <Upload className="w-4 h-4 mr-2 text-blue-500" />
               Tally Master Sync
             </DropdownMenuItem>
-            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/bills/new')}>
+            <DropdownMenuItem className="cursor-pointer" onClick={() => navigate('/purchase-invoices/new')}>
               <FileSpreadsheet className="w-4 h-4 mr-2 text-slate-500" />
               <span>Purchase Invoice</span>
             </DropdownMenuItem>
@@ -595,7 +595,7 @@ export default function DashboardPage() {
                     text={`${unpaidBillsCount} vendor ${unpaidBillsCount === 1 ? 'payment' : 'payments'} pending`}
                     subtext={fmtCurrency(unpaidBillsAmount)}
                     btnText="Review Payments"
-                    onClick={() => navigate('/bills')}
+                    onClick={() => navigate('/purchase-invoices')}
                   />
                 )}
                 {attendanceIssuesCount > 0 && (

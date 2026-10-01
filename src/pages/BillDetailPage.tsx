@@ -118,7 +118,7 @@ export default function BillDetailPage() {
 
   const load = async () => {
     const { data: b } = await (supabase as any).from("bills").select("*").eq("id", id).maybeSingle();
-    if (!b) { toast({ title: "Error", description: "Bill not found", variant: "destructive" }); navigate("/bills"); return; }
+    if (!b) { toast({ title: "Error", description: "Bill not found", variant: "destructive" }); navigate("/purchase-invoices"); return; }
     setBill(b);
     setPayAmt(String(b.balance_due));
     const [{ data: l }, { data: v }, { data: p }] = await Promise.all([
@@ -466,7 +466,7 @@ export default function BillDetailPage() {
   return (
     <div className="space-y-4 max-w-5xl mx-auto">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <Button variant="ghost" size="sm" onClick={() => navigate("/bills")}><ArrowLeft className="h-4 w-4 mr-1" /> Purchase Invoices</Button>
+        <Button variant="ghost" size="sm" onClick={() => navigate("/purchase-invoices")}><ArrowLeft className="h-4 w-4 mr-1" /> Purchase Invoices</Button>
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" onClick={handleSendEmail} disabled={isSendingEmail} className="text-blue-600 hover:text-blue-700">
             {isSendingEmail ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Mail className="h-4 w-4 mr-1" />}
@@ -523,7 +523,7 @@ export default function BillDetailPage() {
             {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
-          <Button variant="outline" onClick={() => navigate(`/bills/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
+          <Button variant="outline" onClick={() => navigate(`/purchase-invoices/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}
         </div>
       </div>
@@ -624,7 +624,7 @@ export default function BillDetailPage() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDuplicateDialogOpen(false)}>Cancel</Button>
-            <Button onClick={() => { setDuplicateDialogOpen(false); navigate(`/bills/new?duplicate=${id}`); }}>Create Duplicate</Button>
+            <Button onClick={() => { setDuplicateDialogOpen(false); navigate(`/purchase-invoices/new?duplicate=${id}`); }}>Create Duplicate</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

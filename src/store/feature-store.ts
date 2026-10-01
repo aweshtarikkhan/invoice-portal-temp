@@ -67,7 +67,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "vendors", title: "Vendor", description: "Manage vendors & suppliers", icon: "Truck", url: "/vendors" },
       { key: "purchase-orders", title: "Purchase Orders", description: "Create purchase orders", icon: "ClipboardList", url: "/purchase-orders" },
       { key: "grns", title: "Goods Receipt (GRN)", description: "Track received goods", icon: "PackageCheck", url: "/grns" },
-      { key: "bills", title: "Purchase Invoice", description: "Manage purchase invoices", icon: "Receipt", url: "/bills" },
+      { key: "bills", title: "Purchase Invoice", description: "Manage purchase invoices", icon: "Receipt", url: "/purchase-invoices" },
       { key: "expenses", title: "Expenses", description: "Track business expenses", icon: "Coins", url: "/expenses" },
     ],
   },

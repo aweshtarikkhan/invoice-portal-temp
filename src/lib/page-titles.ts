@@ -24,6 +24,8 @@ export const ROUTE_TITLE_MAP: Record<string, string> = {
   "/grns/new": "Create Goods Receipt",
   "/bills": "Purchase Invoices & Bills",
   "/bills/new": "Record Purchase Bill",
+  "/purchase-invoices": "Purchase Invoices & Bills",
+  "/purchase-invoices/new": "Record Purchase Bill",
   "/debit-notes": "Debit Notes & Vendor Returns",
   "/debit-notes/new": "Create Debit Note",
   "/expenses": "Business Expenses Ledger",
@@ -81,7 +83,7 @@ export function getAppPageTitle(pathname: string, orgName?: string | null): stri
     if (pathname.startsWith("/invoices/")) pageTitle = "Invoice Details";
     else if (pathname.startsWith("/quotations/")) pageTitle = "Quotation Details";
     else if (pathname.startsWith("/clients/")) pageTitle = "Client Details";
-    else if (pathname.startsWith("/bills/")) pageTitle = "Purchase Bill Details";
+    else if (pathname.startsWith("/bills/") || pathname.startsWith("/purchase-invoices/")) pageTitle = "Purchase Bill Details";
     else if (pathname.startsWith("/vendors/")) pageTitle = "Vendor Details";
     else if (pathname.startsWith("/purchase-orders/")) pageTitle = "Purchase Order Details";
     else if (pathname.startsWith("/grns/")) pageTitle = "Goods Receipt Details";

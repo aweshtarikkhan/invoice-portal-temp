@@ -191,7 +191,7 @@ export default function PurchaseAccountingReportsPage() {
           <p className="text-muted-foreground">Overview of your purchases, payables, and business expenses.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate("/bills/new")}>
+          <Button variant="outline" size="sm" onClick={() => navigate("/purchase-invoices/new")}>
             + New Purchase Invoice
           </Button>
           <Button variant="outline" size="sm" onClick={() => navigate("/reports")}>
@@ -410,7 +410,7 @@ export default function PurchaseAccountingReportsPage() {
                               size="sm" 
                               variant="ghost" 
                               className="h-8 px-2 text-blue-600 hover:text-blue-800"
-                              onClick={() => navigate(`/bills/${b.id}`)}
+                              onClick={() => navigate(`/purchase-invoices/${b.id}`)}
                             >
                               <Eye className="h-4 w-4 mr-1" /> View
                             </Button>

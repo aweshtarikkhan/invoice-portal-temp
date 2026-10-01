@@ -274,7 +274,7 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Free Plan Quota Reset by Financial Year: The 100 free sales invoices and 100 purchase bills limit on the Free Plan is calculated strictly across the active Indian Financial Year (01 Apr to 31 Mar), ensuring compliance with accounting and tax cycles.
 - Financial Year Dropdown & Toolbar Filters:
   * Invoices Page (/invoices): Includes a dedicated Financial Year filter selector. Users can filter invoices by Current FY, Previous FY, or any past FY, and the metric ribbons (Total Invoiced, Paid, Balance Due) automatically recalculate for that chosen FY.
-  * Bills / Purchases Page (/bills): Includes the Financial Year selector. Purchase invoice counts, total purchases, and outstanding dues adapt dynamically to the selected Financial Year.
+  * Purchase Invoices / Bills Page (/purchase-invoices, alias /bills): Includes the Financial Year selector. Purchase invoice counts, total purchases, and outstanding dues adapt dynamically to the selected Financial Year. Features full TDS/TCS configuration toggle with deduction before GST or TCS addition after GST.
   * Payments Received Page (/payments): Features a Financial Year selector in the top action bar and table filters. Filter payments, receipts, customer summaries, and monthly collection trends by FY, or export FY payment registers to CSV.
   * Reports & Analytics (/reports): Monthly revenue and sales charts generate in chronological fiscal order from April to March (12 fiscal months).
   * Profit & Loss Page (/reports/profit-loss): Defaults to Current FY with 12 months running from April to March, accurately computing Total Invoiced Sales, Discounts, Input Costs, Tax Liabilities, and Net Profit.
