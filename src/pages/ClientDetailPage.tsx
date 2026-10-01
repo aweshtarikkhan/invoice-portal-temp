@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
   ArrowLeft, IndianRupee, FileText, CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Clock, FileSpreadsheet,
-  Search, ArrowUp, ArrowDown
+  Search, ArrowUp, ArrowDown, Wallet
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
@@ -90,6 +90,30 @@ export default function ClientDetailPage() {
   }, [invoices]);
   const invoiceCount = invoices.filter(i => i.status !== "void" && i.status !== "draft").length;
   const paidCount = invoices.filter(i => i.status === "paid").length;
+
+  const advanceUsageMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    payments.forEach((p) => {
+      if (p.payment_mode === "advance_credit" && p.reference_number) {
+        const ref = p.reference_number.trim();
+        map[ref] = (map[ref] || 0) + Number(p.amount);
+      }
+    });
+    return map;
+  }, [payments]);
+
+  const availableAdvanceCredit = useMemo(() => {
+    let total = 0;
+    payments.forEach((p) => {
+      if (!p.invoice_id) {
+        const ref = (p.payment_number || "").trim();
+        const used = advanceUsageMap[ref] || 0;
+        const rem = Math.max(0, Number(p.amount) - used);
+        total += rem;
+      }
+    });
+    return total;
+  }, [payments, advanceUsageMap]);
 
   // Monthly revenue chart
   const monthlyData = useMemo(() => {
@@ -266,6 +290,37 @@ export default function ClientDetailPage() {
         </Card>
       </div>
 
+      {/* Available Advance Balance Card */}
+      {availableAdvanceCredit > 0.001 && (
+        <Card className="border-2 border-[#e77817]/40 dark:border-[#e77817]/50 bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-blue-50/70 dark:from-orange-950/20 dark:via-slate-900/40 dark:to-blue-950/30 shadow-sm">
+          <CardContent className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-full bg-orange-100 dark:bg-orange-950/60 text-[#e77817] dark:text-orange-400">
+                <Wallet className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-900 dark:text-slate-100 text-base">
+                    Available Advance Balance: {fmt(availableAdvanceCredit)}
+                  </span>
+                  <Badge className="bg-[#0d2346] text-white hover:bg-[#0d2346]/90 text-[11px]">Unallocated Credit</Badge>
+                </div>
+                <p className="text-xs text-slate-600 dark:text-slate-300 mt-0.5">
+                  This client has available advance credit in the system. You can apply it against any unpaid invoice or adjust it directly when recording payments.
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => navigate(`/payments/new?client_id=${id}`)}
+              className="bg-[#e77817] hover:bg-[#d66d13] text-white shrink-0 font-medium shadow-sm"
+            >
+              <CreditCard className="mr-1.5 h-4 w-4" /> Record / Adjust Payment
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Billed vs Paid */}
@@ -433,7 +488,21 @@ export default function ClientDetailPage() {
                       <TableRow key={p.id}>
                         <TableCell className="font-medium">{p.payment_number}</TableCell>
                         <TableCell>{p.payment_date}</TableCell>
-                        <TableCell className="capitalize">{(p.payment_mode || "").replace(/_/g, " ")}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {!p.invoice_id && (
+                              <Badge variant="outline" className="border-amber-500/70 text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/20 text-[10px] font-medium">
+                                Customer Advance
+                              </Badge>
+                            )}
+                            {p.payment_mode === "advance_credit" && (
+                              <Badge variant="outline" className="border-blue-500/70 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/20 text-[10px] font-medium">
+                                Advance Adjusted
+                              </Badge>
+                            )}
+                            <span className="capitalize text-sm">{(p.payment_mode || "").replace(/_/g, " ")}</span>
+                          </div>
+                        </TableCell>
                         <TableCell>{p.reference_number || "—"}</TableCell>
                         <TableCell className="text-right text-emerald-600 dark:text-emerald-400 font-semibold">{fmt(Number(p.amount))}</TableCell>
                       </TableRow>

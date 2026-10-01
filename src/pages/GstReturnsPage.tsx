@@ -31,6 +31,14 @@ import {
   type TaxRateForGst,
 } from "@/lib/gst";
 import { format, addDays, startOfMonth, endOfMonth, subMonths, startOfQuarter, endOfQuarter, subQuarters } from "date-fns";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearByKey,
+  getFinancialYearsList,
+  getFinancialYearQuarters,
+  getFinancialYearMonths,
+  FinancialYear,
+} from "@/lib/financial-year";
 
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -38,8 +46,12 @@ export default function GstReturnsPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
   const now = new Date();
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const fyList = useMemo(() => getFinancialYearsList(4, 1), []);
   
   const [filterType, setFilterType] = useState("this_month");
+  const [selectedFYKey, setSelectedFYKey] = useState<string>(currentFY.key);
+  const [fySubPeriod, setFySubPeriod] = useState<string>("full"); // "full" | "Q1" | "Q2" | "Q3" | "Q4" | month key
   const [startDate, setStartDate] = useState(() => format(startOfMonth(now), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(() => format(endOfMonth(now), "yyyy-MM-dd"));
 
@@ -85,6 +97,15 @@ export default function GstReturnsPage() {
 
   const orgGstin = (org as any)?.gst_number || (org as any)?.tax_number || "";
 
+  const isFyMode = filterType === "this_fy" || filterType === "last_fy" || filterType === "financial_year";
+  const filePeriodSuffix = useMemo(() => {
+    if (isFyMode) {
+      return `FY${selectedFYKey}${fySubPeriod !== "full" ? `_${fySubPeriod}` : ""}`;
+    }
+    const eDate = new Date(`${endDate}T23:59:59`);
+    return gstrPeriod(eDate.getFullYear(), eDate.getMonth() + 1);
+  }, [isFyMode, selectedFYKey, fySubPeriod, endDate]);
+
   const gstInput = useMemo(() => {
     const sDate = new Date(`${startDate}T00:00:00`);
     const eDate = new Date(`${endDate}T23:59:59`);
@@ -104,12 +125,13 @@ export default function GstReturnsPage() {
     return {
       orgGstin,
       period: { year: repYear, month: repMonth },
+      customFp: filePeriodSuffix,
       invoices: periodInvoices,
       lines: periodLines,
       clients: clients as ClientForGst[],
       taxRates: taxRates as TaxRateForGst[],
     };
-  }, [invoices, lines, clients, taxRates, startDate, endDate, orgGstin]);
+  }, [invoices, lines, clients, taxRates, startDate, endDate, orgGstin, filePeriodSuffix]);
 
   const { filteredBills, itcSummary } = useMemo(() => {
     const sDate = new Date(`${startDate}T00:00:00`);
@@ -138,10 +160,11 @@ export default function GstReturnsPage() {
     return {
       orgGstin,
       period: { year: repYear, month: repMonth },
+      customFp: filePeriodSuffix,
       bills: filteredBills,
       billLines: billLines.filter(bl => filteredBills.some(b => b.id === bl.bill_id)),
     };
-  }, [filteredBills, billLines, orgGstin, startDate, endDate]);
+  }, [filteredBills, billLines, orgGstin, startDate, endDate, filePeriodSuffix]);
 
   const { gstr2, gstr2Error } = useMemo(() => {
     try {
@@ -208,11 +231,47 @@ export default function GstReturnsPage() {
     return rows.sort((a, b) => a.date.localeCompare(b.date));
   }, [gstInput]);
 
-  const periodLabel = filterType === "custom" 
-    ? `${format(new Date(startDate), "dd MMM")} to ${format(new Date(endDate), "dd MMM yyyy")}` 
-    : filterType.replace("_", " ").toUpperCase();
+  const periodLabel = useMemo(() => {
+    if (filterType === "custom") {
+      return `${format(new Date(startDate), "dd MMM")} to ${format(new Date(endDate), "dd MMM yyyy")}`;
+    }
+    if (isFyMode) {
+      if (fySubPeriod === "full") {
+        return `FY ${selectedFYKey} (Full Year)`;
+      }
+      if (fySubPeriod.startsWith("Q")) {
+        const q = getFinancialYearQuarters(selectedFYKey).find((item) => item.key === fySubPeriod);
+        return `FY ${selectedFYKey} ${q?.label || fySubPeriod}`;
+      }
+      const m = getFinancialYearMonths(selectedFYKey).find((item) => item.key === fySubPeriod);
+      return `FY ${selectedFYKey} (${m?.label || fySubPeriod})`;
+    }
+    return filterType.replace("_", " ").toUpperCase();
+  }, [filterType, isFyMode, startDate, endDate, selectedFYKey, fySubPeriod]);
     
   const fmt = (n: number) => `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const applyFYRange = (fyKey: string, sub: string) => {
+    setSelectedFYKey(fyKey);
+    setFySubPeriod(sub);
+    const fy = getFinancialYearByKey(fyKey);
+    if (sub === "full") {
+      setStartDate(fy.startDate);
+      setEndDate(fy.endDate);
+    } else if (sub.startsWith("Q")) {
+      const q = getFinancialYearQuarters(fyKey).find((item) => item.key === sub);
+      if (q) {
+        setStartDate(q.startDate);
+        setEndDate(q.endDate);
+      }
+    } else {
+      const m = getFinancialYearMonths(fyKey).find((item) => item.key === sub);
+      if (m) {
+        setStartDate(m.startDate);
+        setEndDate(m.endDate);
+      }
+    }
+  };
 
   const handleFilterChange = (val: string) => {
     setFilterType(val);
@@ -229,6 +288,13 @@ export default function GstReturnsPage() {
     } else if (val === "last_quarter") {
       setStartDate(format(startOfQuarter(subQuarters(t, 1)), "yyyy-MM-dd"));
       setEndDate(format(endOfQuarter(subQuarters(t, 1)), "yyyy-MM-dd"));
+    } else if (val === "this_fy") {
+      applyFYRange(currentFY.key, "full");
+    } else if (val === "last_fy") {
+      const prevFY = getFinancialYearByKey(currentFY.startYear - 1);
+      applyFYRange(prevFY.key, "full");
+    } else if (val === "financial_year") {
+      applyFYRange(selectedFYKey, fySubPeriod);
     }
   };
 
@@ -327,33 +393,119 @@ export default function GstReturnsPage() {
         </Card>
       )}
 
-      <div className="space-y-2">
-        <div className="text-[12px] text-muted-foreground">Date Range</div>
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-3 px-4 py-2 border rounded-xl bg-background shadow-sm h-11 w-72">
-            <CalendarDays className="h-5 w-5 text-muted-foreground" />
-            <span className="flex-1 text-sm font-medium">{format(new Date(startDate), "d MMM yyyy")} – {format(new Date(endDate), "d MMM yyyy")}</span>
+      <div className="space-y-3">
+        <div className="text-[12px] text-muted-foreground font-medium">Select Tax Filing Period</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2.5 px-3.5 py-2 border rounded-xl bg-background shadow-sm h-10 min-w-64">
+            <CalendarDays className="h-4 w-4 text-blue-600 shrink-0" />
+            <span className="text-xs font-semibold text-foreground">
+              {format(new Date(startDate), "d MMM yyyy")} – {format(new Date(endDate), "d MMM yyyy")}
+            </span>
           </div>
           
-          <div className="flex items-center p-1 border rounded-xl bg-background shadow-sm h-11">
-            {["this_month", "last_month", "this_quarter", "last_quarter", "custom"].map((val) => (
+          <div className="flex flex-wrap items-center p-1 border rounded-xl bg-background shadow-sm gap-1">
+            {[
+              { id: "this_month", label: "This Month" },
+              { id: "last_month", label: "Last Month" },
+              { id: "this_quarter", label: "This Quarter" },
+              { id: "last_quarter", label: "Last Quarter" },
+              { id: "this_fy", label: `This FY (${currentFY.shortLabel})` },
+              { id: "last_fy", label: "Last FY" },
+              { id: "financial_year", label: "Select FY / Quarter" },
+              { id: "custom", label: "Custom Range" },
+            ].map(({ id, label }) => (
               <button
-                key={val}
-                onClick={() => handleFilterChange(val)}
-                className={`px-5 py-1.5 text-sm rounded-lg transition-colors ${filterType === val ? "bg-blue-600 text-white font-medium shadow-sm" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"}`}
+                key={id}
+                onClick={() => handleFilterChange(id)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors font-medium ${
+                  filterType === id
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
               >
-                {val === "this_month" ? "This Month" : val === "last_month" ? "Last Month" : val === "this_quarter" ? "This Quarter" : val === "last_quarter" ? "Last Quarter" : "Custom Range"}
+                {label}
               </button>
             ))}
           </div>
 
           {filterType === "custom" && (
             <div className="flex items-center gap-2">
-              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-11 rounded-xl" />
-              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-11 rounded-xl" />
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-36 h-10 rounded-xl text-xs" />
+              <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-36 h-10 rounded-xl text-xs" />
             </div>
           )}
         </div>
+
+        {/* Financial Year Sub-Selector Bar (shown when an FY option is active) */}
+        {isFyMode && (
+          <div className="p-3 bg-blue-50/70 border border-blue-200/80 rounded-xl flex flex-wrap items-center gap-3 animate-in fade-in duration-200">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-blue-900 shrink-0">Financial Year:</span>
+              <Select value={selectedFYKey} onValueChange={(val) => applyFYRange(val, fySubPeriod)}>
+                <SelectTrigger className="h-8 text-xs font-semibold bg-white border-blue-200 w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {fyList.map((fy) => (
+                    <SelectItem key={fy.key} value={fy.key} className="text-xs">
+                      {fy.label} (01 Apr – 31 Mar)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="h-4 w-px bg-blue-200 hidden sm:block" />
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs font-bold text-blue-900 mr-1">Period Slice:</span>
+              <button
+                type="button"
+                onClick={() => applyFYRange(selectedFYKey, "full")}
+                className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all ${
+                  fySubPeriod === "full"
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "bg-white text-blue-900 border border-blue-200 hover:bg-blue-100/50"
+                }`}
+              >
+                Full FY (12 Months)
+              </button>
+              {getFinancialYearQuarters(selectedFYKey).map((q) => (
+                <button
+                  key={q.key}
+                  type="button"
+                  onClick={() => applyFYRange(selectedFYKey, q.key)}
+                  className={`px-2.5 py-1 text-xs rounded-md font-medium transition-all ${
+                    fySubPeriod === q.key
+                      ? "bg-blue-600 text-white shadow-sm"
+                      : "bg-white text-blue-900 border border-blue-200 hover:bg-blue-100/50"
+                  }`}
+                >
+                  {q.label}
+                </button>
+              ))}
+
+              <Select
+                value={fySubPeriod.startsWith("20") ? fySubPeriod : "select_month"}
+                onValueChange={(val) => {
+                  if (val !== "select_month") applyFYRange(selectedFYKey, val);
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs bg-white border-blue-200 w-36">
+                  <SelectValue placeholder="Specific Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="select_month" disabled className="text-xs">Select Month...</SelectItem>
+                  {getFinancialYearMonths(selectedFYKey).map((m) => (
+                    <SelectItem key={m.key} value={m.key} className="text-xs">
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       {totalsBanner}
@@ -377,7 +529,7 @@ export default function GstReturnsPage() {
                   <Button
                     variant="outline"
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    onClick={() => downloadJson(`GST_Govt_GSTR1_${gstrPeriod(gstInput.period.year, gstInput.period.month)}.json`, gstr1)}
+                    onClick={() => downloadJson(`GST_Govt_GSTR1_${filePeriodSuffix}.json`, gstr1)}
                     disabled={loading || gstInput.invoices.length === 0}
                   >
                     <Download className="mr-2 h-4 w-4" /> Download JSON
@@ -385,7 +537,7 @@ export default function GstReturnsPage() {
                   <Button
                     variant="outline"
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                    onClick={() => downloadCsv(`Tally_Output_Sales_${gstrPeriod(gstInput.period.year, gstInput.period.month)}.csv`, tallyRows)}
+                    onClick={() => downloadCsv(`Tally_Output_Sales_${filePeriodSuffix}.csv`, tallyRows)}
                     disabled={loading || tallyRows.length === 0}
                   >
                     <Download className="mr-2 h-4 w-4" /> Download CSV
@@ -470,7 +622,7 @@ export default function GstReturnsPage() {
                     variant="outline"
                     className="text-blue-600 border-blue-200 hover:bg-blue-50"
                     onClick={() => {
-                      if (gstr2) downloadJson(`GST_Govt_Purchase_Register_${periodLabel.replace(" ", "_")}.json`, gstr2);
+                      if (gstr2) downloadJson(`GST_Govt_Purchase_Register_${filePeriodSuffix}.json`, gstr2);
                     }}
                     disabled={filteredBills.length === 0 || !!gstr2Error}
                   >
@@ -489,7 +641,7 @@ export default function GstReturnsPage() {
                         "Tax Amount": Number(b.tax_total || 0).toFixed(2),
                         "Total Amount": Number(b.total || 0).toFixed(2),
                       }));
-                      downloadCsv(`Tally_Output_Purchases_${periodLabel.replace(" ", "_")}.csv`, data);
+                      downloadCsv(`Tally_Output_Purchases_${filePeriodSuffix}.csv`, data);
                     }}
                     disabled={filteredBills.length === 0}
                   >
@@ -585,7 +737,7 @@ export default function GstReturnsPage() {
                 <Button 
                   variant="outline" 
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  onClick={() => downloadCsv(`GST_Govt_GSTR3B_${gstrPeriod(gstInput.period.year, gstInput.period.month)}.csv`, [
+                  onClick={() => downloadCsv(`GST_Govt_GSTR3B_${filePeriodSuffix}.csv`, [
                     { particulars: "3.1(a) Outward taxable", amount: gstr3b["3.1(a)_outward_taxable"] },
                     { particulars: "3.1(c) Nil/Exempt", amount: gstr3b["3.1(c)_nil_exempt"] },
                     { particulars: "Total taxable value", amount: gstr3b.total_taxable_value },
@@ -634,7 +786,7 @@ export default function GstReturnsPage() {
                 <Button
                   variant="outline"
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  onClick={() => downloadCsv(`HSN_Summary_${gstrPeriod(gstInput.period.year, gstInput.period.month)}.csv`, hsn)}
+                  onClick={() => downloadCsv(`HSN_Summary_${filePeriodSuffix}.csv`, hsn)}
                   disabled={hsn.length === 0}
                 >
                   <Download className="mr-2 h-4 w-4" /> Export CSV
@@ -689,7 +841,7 @@ export default function GstReturnsPage() {
                 <Button
                   variant="outline"
                   className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                  onClick={() => downloadCsv(`Tally_Sales_${gstrPeriod(gstInput.period.year, gstInput.period.month)}.csv`, tallyRows)}
+                  onClick={() => downloadCsv(`Tally_Sales_${filePeriodSuffix}.csv`, tallyRows)}
                   disabled={tallyRows.length === 0}
                 >
                   <Download className="mr-2 h-4 w-4" /> Download CSV

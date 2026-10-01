@@ -24,6 +24,11 @@ import { Plus, Trash2, Pencil, Download, Database } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, endOfMonth, subMonths } from "date-fns";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearsList,
+  getFinancialYearByKey,
+} from "@/lib/financial-year";
 import { createExpenseJournalEntry, deleteExpenseJournalEntry, updateExpenseJournalEntry } from "@/lib/expense-journal-sync";
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
@@ -75,7 +80,9 @@ export default function BusinessExpensesPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [period, setPeriod] = useState("current");
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const fyList = useMemo(() => getFinancialYearsList(3, 0), []);
+  const [period, setPeriod] = useState("fy_current");
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
 
@@ -109,12 +116,26 @@ export default function BusinessExpensesPage() {
 
   const dateRange = useMemo(() => {
     const now = new Date();
+    if (period === "fy_current") {
+      return { from: new Date(`${currentFY.startDate}T00:00:00`), to: new Date(`${currentFY.endDate}T23:59:59`) };
+    }
+    if (period === "fy_previous") {
+      const prevFYStart = currentFY.startYear - 1;
+      const prevKey = `${prevFYStart}-${String(prevFYStart + 1).slice(-2)}`;
+      const prevFY = getFinancialYearByKey(prevKey);
+      return { from: new Date(`${prevFY.startDate}T00:00:00`), to: new Date(`${prevFY.endDate}T23:59:59`) };
+    }
+    if (period.startsWith("fy_")) {
+      const fyKey = period.replace("fy_", "");
+      const fy = getFinancialYearByKey(fyKey);
+      return { from: new Date(`${fy.startDate}T00:00:00`), to: new Date(`${fy.endDate}T23:59:59`) };
+    }
     if (period === "current") return { from: startOfMonth(now), to: endOfMonth(now) };
     if (period === "last") return { from: startOfMonth(subMonths(now, 1)), to: endOfMonth(subMonths(now, 1)) };
     if (period === "3months") return { from: startOfMonth(subMonths(now, 2)), to: endOfMonth(now) };
     if (period === "6months") return { from: startOfMonth(subMonths(now, 5)), to: endOfMonth(now) };
     return { from: startOfMonth(subMonths(now, 11)), to: endOfMonth(now) };
-  }, [period]);
+  }, [period, currentFY]);
 
   const fetchExpenses = async () => {
     if (!org?.id) return;
@@ -228,13 +249,18 @@ export default function BusinessExpensesPage() {
     <div className="space-y-6">
       <PageActionBar title="Business Expenses">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-[150px] h-9"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-[190px] h-9"><SelectValue /></SelectTrigger>
           <SelectContent>
+            <SelectItem value="fy_current">Current FY ({currentFY.key})</SelectItem>
+            <SelectItem value="fy_previous">Previous FY ({currentFY.startYear - 1}-{String(currentFY.startYear).slice(-2)})</SelectItem>
+            {fyList.map((fy) => (
+              <SelectItem key={fy.key} value={`fy_${fy.key}`}>{fy.label}</SelectItem>
+            ))}
             <SelectItem value="current">This Month</SelectItem>
             <SelectItem value="last">Last Month</SelectItem>
-            <SelectItem value="3months">3 Months</SelectItem>
-            <SelectItem value="6months">6 Months</SelectItem>
-            <SelectItem value="year">12 Months</SelectItem>
+            <SelectItem value="3months">Last 3 Months</SelectItem>
+            <SelectItem value="6months">Last 6 Months</SelectItem>
+            <SelectItem value="year">Last 12 Months</SelectItem>
           </SelectContent>
         </Select>
         <Button variant="outline" size="sm" onClick={() => {

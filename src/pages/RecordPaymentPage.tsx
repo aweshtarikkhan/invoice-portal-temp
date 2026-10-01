@@ -62,6 +62,15 @@ function allocateAmountAcrossInvoices(
   });
 }
 
+interface ClientAdvance {
+  id: string;
+  payment_number: string;
+  payment_date: string;
+  amount: number;
+  usedAmount: number;
+  availableAmount: number;
+}
+
 export default function RecordPaymentPage() {
   const org = useAppStore((s) => s.organization);
   const navigate = useNavigate();
@@ -82,6 +91,10 @@ export default function RecordPaymentPage() {
   const [notes, setNotes] = useState("");
   const [amountReceived, setAmountReceived] = useState(queryAmount || "");
   const [invoices, setInvoices] = useState<OutstandingInvoice[]>([]);
+  const [clientAdvances, setClientAdvances] = useState<ClientAdvance[]>([]);
+  const [totalAvailableAdvance, setTotalAvailableAdvance] = useState(0);
+  const [applyAdvanceCredit, setApplyAdvanceCredit] = useState(false);
+  const [advanceAmountToApply, setAdvanceAmountToApply] = useState(0);
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -163,19 +176,76 @@ export default function RecordPaymentPage() {
     }
   };
 
-  // Load outstanding invoices when client changes
+  // Load outstanding invoices and unallocated advance credits when client changes
   useEffect(() => {
-    if (!clientId) { setInvoices([]); return; }
+    if (!clientId || !org?.id) {
+      setInvoices([]);
+      setClientAdvances([]);
+      setTotalAvailableAdvance(0);
+      setApplyAdvanceCredit(false);
+      setAdvanceAmountToApply(0);
+      return;
+    }
+
     setLoadingInvoices(true);
-    supabase
-      .from("invoices")
-      .select("id, invoice_number, issue_date, due_date, total, balance_due, status")
-      .eq("client_id", clientId)
-      .gt("balance_due", 0)
-      .in("status", ["sent", "viewed", "partial", "overdue"])
-      .order("due_date", { ascending: true })
-      .then(({ data }) => {
-        const rawList = data || [];
+    (async () => {
+      try {
+        const [invRes, advRes, appliedRes] = await Promise.all([
+          supabase
+            .from("invoices")
+            .select("id, invoice_number, issue_date, due_date, total, balance_due, status")
+            .eq("org_id", org.id)
+            .eq("client_id", clientId)
+            .gt("balance_due", 0)
+            .in("status", ["sent", "viewed", "partial", "overdue"])
+            .order("due_date", { ascending: true }),
+          supabase
+            .from("payments")
+            .select("*")
+            .eq("org_id", org.id)
+            .eq("client_id", clientId)
+            .is("invoice_id", null)
+            .order("payment_date", { ascending: true }),
+          supabase
+            .from("payments")
+            .select("amount, reference_number")
+            .eq("org_id", org.id)
+            .eq("client_id", clientId)
+            .eq("payment_mode", "advance_credit"),
+        ]);
+
+        // Calculate usage per advance payment
+        const usedMap: Record<string, number> = {};
+        (appliedRes.data || []).forEach((p: any) => {
+          if (p.reference_number) {
+            const ref = p.reference_number.trim();
+            usedMap[ref] = (usedMap[ref] || 0) + Number(p.amount);
+          }
+        });
+
+        const advList: ClientAdvance[] = [];
+        let totalAdv = 0;
+        (advRes.data || []).forEach((adv: any) => {
+          const ref = (adv.payment_number || "").trim();
+          const used = usedMap[ref] || 0;
+          const remaining = Math.max(0, Number(adv.amount) - used);
+          if (remaining > 0.001) {
+            advList.push({
+              id: adv.id,
+              payment_number: adv.payment_number,
+              payment_date: adv.payment_date,
+              amount: Number(adv.amount),
+              usedAmount: used,
+              availableAmount: remaining,
+            });
+            totalAdv += remaining;
+          }
+        });
+
+        setClientAdvances(advList);
+        setTotalAvailableAdvance(totalAdv);
+
+        const rawList = invRes.data || [];
         const initialInvoices: OutstandingInvoice[] = rawList.map((inv) => ({
           id: inv.id,
           invoice_number: inv.invoice_number,
@@ -188,9 +258,19 @@ export default function RecordPaymentPage() {
           payment: 0,
         }));
 
-        const amt = parseFloat(amountReceived) || 0;
-        if (amt > 0) {
-          setInvoices(allocateAmountAcrossInvoices(initialInvoices, amt));
+        const totalOut = initialInvoices.reduce((s, i) => s + i.balance_due, 0);
+
+        // Auto-enable advance credit if available and invoices exist
+        const shouldApply = totalAdv > 0.001 && initialInvoices.length > 0;
+        const advToUse = shouldApply ? Math.min(totalAdv, totalOut) : 0;
+        setApplyAdvanceCredit(shouldApply);
+        setAdvanceAmountToApply(advToUse);
+
+        const freshAmt = parseFloat(amountReceived) || 0;
+        const initialPool = (shouldApply ? advToUse : 0) + freshAmt;
+
+        if (initialPool > 0) {
+          setInvoices(allocateAmountAcrossInvoices(initialInvoices, initialPool));
         } else if (queryInvoiceId) {
           const target = initialInvoices.find((i) => i.id === queryInvoiceId);
           if (target) {
@@ -202,26 +282,75 @@ export default function RecordPaymentPage() {
         } else {
           setInvoices(initialInvoices);
         }
+      } catch (err) {
+        console.error("Error loading client invoices/advances:", err);
+      } finally {
         setLoadingInvoices(false);
-      });
-  }, [clientId, queryInvoiceId]);
+      }
+    })();
+  }, [clientId, queryInvoiceId, org?.id]);
 
   const totalOutstanding = invoices.reduce((s, i) => s + i.balance_due, 0);
   const totalApplied = invoices.reduce((s, i) => s + (i.selected ? i.payment : 0), 0);
-  const amountNum = parseFloat(amountReceived) || 0;
-  const excessAmount = amountNum - totalApplied;
+  const freshAmountNum = parseFloat(amountReceived) || 0;
+
+  // Effective advance amount that is actually consumed by invoices
+  const effectiveAdvanceToUse = applyAdvanceCredit
+    ? Math.min(advanceAmountToApply, totalApplied)
+    : 0;
+
+  // Fresh cash that is consumed by invoices
+  const freshAmountApplied = Math.max(0, totalApplied - effectiveAdvanceToUse);
+
+  // Any excess fresh payment that is recorded as a new advance credit
+  const excessAmount = Math.max(0, freshAmountNum - freshAmountApplied);
+
+  // Remaining unused advance credit after this payment
+  const remainingAdvanceCredit = Math.max(0, totalAvailableAdvance - effectiveAdvanceToUse);
+
+  const recalculateAllocations = (
+    baseInvoices: OutstandingInvoice[],
+    freshStr: string,
+    useAdvance: boolean,
+    advAmt: number
+  ) => {
+    const fresh = parseFloat(freshStr) || 0;
+    const adv = useAdvance ? advAmt : 0;
+    const totalPool = fresh + adv;
+    return allocateAmountAcrossInvoices(baseInvoices, totalPool);
+  };
 
   // Auto-distribute amount across selected invoices
   const handleAmountChange = (value: string) => {
     setAmountReceived(value);
-    const amt = parseFloat(value) || 0;
-
     setInvoices((prev) => {
-      // If no invoices are selected, select all first
       const hasSelected = prev.some((i) => i.selected);
       const base = hasSelected ? prev : prev.map((i) => ({ ...i, selected: true }));
-      return allocateAmountAcrossInvoices(base, amt);
+      return recalculateAllocations(base, value, applyAdvanceCredit, advanceAmountToApply);
     });
+  };
+
+  const handleToggleApplyAdvance = (checked: boolean) => {
+    setApplyAdvanceCredit(checked);
+    const advAmt = checked ? Math.min(totalAvailableAdvance, totalOutstanding) : 0;
+    setAdvanceAmountToApply(advAmt);
+    setInvoices((prev) => {
+      const hasSelected = prev.some((i) => i.selected);
+      const base = hasSelected ? prev : prev.map((i) => ({ ...i, selected: true }));
+      return recalculateAllocations(base, amountReceived, checked, advAmt);
+    });
+  };
+
+  const handleAdvanceAmountChange = (val: number) => {
+    const clamped = Math.max(0, Math.min(val, totalAvailableAdvance));
+    setAdvanceAmountToApply(clamped);
+    if (applyAdvanceCredit) {
+      setInvoices((prev) => {
+        const hasSelected = prev.some((i) => i.selected);
+        const base = hasSelected ? prev : prev.map((i) => ({ ...i, selected: true }));
+        return recalculateAllocations(base, amountReceived, true, clamped);
+      });
+    }
   };
 
   const handleSelectInvoice = (id: string, checked: boolean) => {
@@ -229,16 +358,14 @@ export default function RecordPaymentPage() {
       const updated = prev.map((inv) =>
         inv.id === id ? { ...inv, selected: checked } : inv
       );
-      const amt = parseFloat(amountReceived) || 0;
-      return allocateAmountAcrossInvoices(updated, amt);
+      return recalculateAllocations(updated, amountReceived, applyAdvanceCredit, advanceAmountToApply);
     });
   };
 
   const handleSelectAll = (checked: boolean) => {
     setInvoices((prev) => {
       const updated = prev.map((inv) => ({ ...inv, selected: checked }));
-      const amt = parseFloat(amountReceived) || 0;
-      return allocateAmountAcrossInvoices(updated, amt);
+      return recalculateAllocations(updated, amountReceived, applyAdvanceCredit, advanceAmountToApply);
     });
   };
 
@@ -252,13 +379,17 @@ export default function RecordPaymentPage() {
         return inv;
       });
       const newTotal = updated.reduce((s, i) => s + (i.selected ? i.payment : 0), 0);
-      setAmountReceived(newTotal > 0 ? String(newTotal) : "");
+      const advUsed = applyAdvanceCredit ? Math.min(advanceAmountToApply, newTotal) : 0;
+      const freshNeeded = newTotal - advUsed;
+      setAmountReceived(freshNeeded > 0 ? String(freshNeeded) : "");
       return updated;
     });
   };
 
   const handleFillTotal = () => {
-    setAmountReceived(String(totalOutstanding));
+    const advUsed = applyAdvanceCredit ? Math.min(advanceAmountToApply, totalOutstanding) : 0;
+    const freshNeeded = Math.max(0, totalOutstanding - advUsed);
+    setAmountReceived(freshNeeded > 0 ? String(freshNeeded) : "");
     setInvoices((prev) =>
       allocateAmountAcrossInvoices(
         prev.map((i) => ({ ...i, selected: true })),
@@ -301,22 +432,115 @@ export default function RecordPaymentPage() {
     return arr;
   }, [invoices, invoiceSearch, sortKey, sortDir]);
 
-  const handleSave = async () => {
+  // Handle direct advance payment when client has no invoices or user wants to record unallocated advance
+  const handleSaveAdvanceOnly = async () => {
     if (!org || !clientId) return;
-    if (amountNum <= 0) {
-      toast({ title: "Enter amount", description: "Payment amount must be greater than zero.", variant: "destructive" });
+    if (freshAmountNum <= 0) {
+      toast({ title: "Enter amount", description: "Please enter an advance payment amount.", variant: "destructive" });
       return;
     }
+    setSaving(true);
+    try {
+      const prefix = org.payment_prefix || "PAY";
+      const { data: latestPayments } = await supabase
+        .from("payments")
+        .select("payment_number")
+        .eq("org_id", org.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      let maxSeq = 0;
+      for (const p of latestPayments || []) {
+        if (!p.payment_number) continue;
+        const matches = p.payment_number.match(/\d+/g);
+        if (matches && matches.length > 0) {
+          const n = parseInt(matches[matches.length - 1], 10);
+          if (!isNaN(n) && n > maxSeq) maxSeq = n;
+        }
+      }
+      maxSeq++;
+      const advancePayNum = formatSequenceNumber(prefix, maxSeq, "PAY");
+      const clientObj = clients.find((c) => c.id === clientId);
+
+      const { data: insertedAdvance, error } = await supabase.from("payments").insert({
+        org_id: org.id,
+        client_id: clientId,
+        invoice_id: null,
+        payment_number: advancePayNum,
+        amount: freshAmountNum,
+        payment_date: paymentDate,
+        payment_mode: paymentMode,
+        bank_account_id: selectedBankAccountId || null,
+        reference_number: referenceNumber || null,
+        notes: notes || "Customer Advance Payment (Pre-billing)",
+        currency_code: org.currency_code,
+      }).select().single();
+
+      if (error) throw error;
+
+      if (selectedBankAccountId && insertedAdvance) {
+        await recordPaymentBankingTransaction({
+          orgId: org.id,
+          bankAccountId: selectedBankAccountId,
+          amount: freshAmountNum,
+          paymentDate,
+          invoiceNumber: "Advance Credit",
+          clientName: clientObj?.display_name,
+          referenceNumber,
+          paymentId: insertedAdvance.id,
+          paymentNumber: advancePayNum,
+          notes: notes || "Customer Advance Payment (Pre-billing)",
+        });
+      }
+
+      await logAudit({
+        orgId: org.id,
+        userId: user?.id || "",
+        action: "payment_advance",
+        entityType: "payment",
+        description: `Customer advance of ${fmt(freshAmountNum)} recorded for ${clientObj?.display_name || clientId}`,
+      });
+
+      toast({
+        title: "Advance Payment Recorded!",
+        description: `Successfully recorded ${fmt(freshAmountNum)} as advance credit for ${clientObj?.display_name || "client"}.`,
+      });
+      navigate("/payments");
+    } catch (err: any) {
+      toast({ title: "Error saving advance", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!org || !clientId) return;
+
     const selectedInvoices = invoices.filter((i) => i.selected && i.payment > 0);
+    const totalFundsToApply = effectiveAdvanceToUse + freshAmountNum;
+
+    if (totalFundsToApply <= 0.001) {
+      toast({
+        title: "No payment amount",
+        description: "Please enter an amount received or apply advance credit.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (selectedInvoices.length === 0) {
-      toast({ title: "Select invoices", description: "Select at least one invoice to apply payment to.", variant: "destructive" });
+      toast({
+        title: "Select invoices",
+        description: "Select at least one invoice to apply payment to.",
+        variant: "destructive",
+      });
       return;
     }
 
     setSaving(true);
 
     try {
-      // Find the highest existing payment number to avoid unique constraint collisions
+      // Find the highest existing payment number
       const prefix = org.payment_prefix || "PAY";
       const { data: latestPayments } = await supabase
         .from("payments")
@@ -342,56 +566,119 @@ export default function RecordPaymentPage() {
         maxSeq = count || 0;
       }
 
-      // Insert payments for each selected invoice with unique sequential payment numbers
       let hasError = false;
       const errorMessages: string[] = [];
-      const recordedPaymentNumbers: string[] = [];
+
+      // FIFO advance credit queue from client's available advances
+      const advanceQueue: { paymentNumber: string; remaining: number }[] = clientAdvances
+        .filter((a) => a.availableAmount > 0.001)
+        .map((a) => ({ paymentNumber: a.payment_number, remaining: a.availableAmount }));
+
+      let remainingAdvancePoolForInvoices = effectiveAdvanceToUse;
 
       for (let i = 0; i < selectedInvoices.length; i++) {
         const inv = selectedInvoices[i];
-        const nextSeq = maxSeq + 1 + i;
-        const currentPayNum = formatSequenceNumber(prefix, nextSeq, "PAY");
-        recordedPaymentNumbers.push(currentPayNum);
+        const invAdvancePortion = Math.min(remainingAdvancePoolForInvoices, inv.payment);
+        remainingAdvancePoolForInvoices -= invAdvancePortion;
+        const invFreshPortion = Math.max(0, inv.payment - invAdvancePortion);
 
-        const { data: insertedPayment, error } = await supabase.from("payments").insert({
-          org_id: org.id,
-          client_id: clientId,
-          invoice_id: inv.id,
-          payment_number: currentPayNum,
-          amount: inv.payment,
-          payment_date: paymentDate,
-          payment_mode: paymentMode,
-          bank_account_id: selectedBankAccountId || null,
-          reference_number: referenceNumber || null,
-          notes: notes || null,
-          currency_code: org.currency_code,
-        }).select().single();
+        // 1. If this invoice gets advance credit, record advance_credit payment(s)
+        if (invAdvancePortion > 0.001) {
+          let portionLeft = invAdvancePortion;
+          while (portionLeft > 0.001 && advanceQueue.length > 0) {
+            const currentAdv = advanceQueue[0];
+            const take = Math.min(currentAdv.remaining, portionLeft);
+            currentAdv.remaining -= take;
+            portionLeft -= take;
+            if (currentAdv.remaining <= 0.001) {
+              advanceQueue.shift();
+            }
 
-        if (error) {
-          console.error(`Error recording payment for ${inv.invoice_number}:`, error);
-          errorMessages.push(`${inv.invoice_number}: ${error.message}`);
-          hasError = true;
-          continue;
+            maxSeq++;
+            const payNum = formatSequenceNumber(prefix, maxSeq, "PAY");
+            const { error: advPayErr } = await supabase.from("payments").insert({
+              org_id: org.id,
+              client_id: clientId,
+              invoice_id: inv.id,
+              payment_number: payNum,
+              amount: take,
+              payment_date: paymentDate,
+              payment_mode: "advance_credit",
+              bank_account_id: null,
+              reference_number: currentAdv.paymentNumber,
+              notes: `Adjusted from Advance Payment ${currentAdv.paymentNumber} for invoice ${inv.invoice_number}`,
+              currency_code: org.currency_code,
+            });
+
+            if (advPayErr) {
+              console.error(`Error recording advance adjustment for ${inv.invoice_number}:`, advPayErr);
+              errorMessages.push(`Advance credit for ${inv.invoice_number}: ${advPayErr.message}`);
+              hasError = true;
+            } else {
+              await logAudit({
+                orgId: org.id,
+                userId: user?.id || "",
+                action: "payment_advance_adjusted",
+                entityType: "payment",
+                entityId: inv.id,
+                description: `Adjusted ${fmt(take)} from Advance ${currentAdv.paymentNumber} against invoice ${inv.invoice_number}`,
+              });
+            }
+          }
         }
 
-        // Record banking transaction & update bank balance
-        if (selectedBankAccountId && insertedPayment) {
-          const clientObj = clients.find((c) => c.id === clientId);
-          await recordPaymentBankingTransaction({
-            orgId: org.id,
-            bankAccountId: selectedBankAccountId,
-            amount: inv.payment,
-            paymentDate,
-            invoiceNumber: inv.invoice_number,
-            clientName: clientObj?.display_name,
-            referenceNumber,
-            paymentId: insertedPayment.id,
-            paymentNumber: currentPayNum,
-            notes,
-          });
+        // 2. If this invoice gets fresh cash/bank payment, record regular payment & sync banking
+        if (invFreshPortion > 0.001) {
+          maxSeq++;
+          const payNum = formatSequenceNumber(prefix, maxSeq, "PAY");
+          const { data: insertedPayment, error: freshPayErr } = await supabase.from("payments").insert({
+            org_id: org.id,
+            client_id: clientId,
+            invoice_id: inv.id,
+            payment_number: payNum,
+            amount: invFreshPortion,
+            payment_date: paymentDate,
+            payment_mode: paymentMode,
+            bank_account_id: selectedBankAccountId || null,
+            reference_number: referenceNumber || null,
+            notes: notes || null,
+            currency_code: org.currency_code,
+          }).select().single();
+
+          if (freshPayErr) {
+            console.error(`Error recording fresh payment for ${inv.invoice_number}:`, freshPayErr);
+            errorMessages.push(`${inv.invoice_number}: ${freshPayErr.message}`);
+            hasError = true;
+          } else {
+            // Record banking transaction & update bank balance
+            if (selectedBankAccountId && insertedPayment) {
+              const clientObj = clients.find((c) => c.id === clientId);
+              await recordPaymentBankingTransaction({
+                orgId: org.id,
+                bankAccountId: selectedBankAccountId,
+                amount: invFreshPortion,
+                paymentDate,
+                invoiceNumber: inv.invoice_number,
+                clientName: clientObj?.display_name,
+                referenceNumber,
+                paymentId: insertedPayment.id,
+                paymentNumber: payNum,
+                notes,
+              });
+            }
+
+            await logAudit({
+              orgId: org.id,
+              userId: user?.id || "",
+              action: "payment_received",
+              entityType: "payment",
+              entityId: inv.id,
+              description: `Payment ${payNum} of ${fmt(invFreshPortion)} received for ${inv.invoice_number}`,
+            });
+          }
         }
 
-        // Update invoice balance
+        // 3. Update invoice balance and status
         const newBalance = Math.max(0, Number(inv.balance_due) - Number(inv.payment));
         const newPaid = Number(inv.total) - newBalance;
         const newStatus = newBalance <= 0.001 ? "paid" : "partial";
@@ -401,21 +688,12 @@ export default function RecordPaymentPage() {
           status: newStatus,
           ...(newBalance <= 0.001 ? { paid_at: new Date().toISOString() } : {}),
         }).eq("id", inv.id);
-
-        await logAudit({
-          orgId: org.id,
-          userId: user?.id || "",
-          action: "payment_received",
-          entityType: "payment",
-          entityId: inv.id,
-          description: `Payment ${currentPayNum} of ${fmt(inv.payment)} received for ${inv.invoice_number}`,
-        });
       }
 
-      // Record any excess payment as unallocated Customer Advance Credit
+      // 4. Record any excess payment from fresh cash as new unallocated advance credit
       if (excessAmount > 0.001) {
-        const nextSeq = maxSeq + 1 + selectedInvoices.length;
-        const advancePayNum = formatSequenceNumber(prefix, nextSeq, "PAY");
+        maxSeq++;
+        const advancePayNum = formatSequenceNumber(prefix, maxSeq, "PAY");
         const clientObj = clients.find((c) => c.id === clientId);
 
         const { data: insertedAdvance } = await supabase.from("payments").insert({
@@ -428,11 +706,10 @@ export default function RecordPaymentPage() {
           payment_mode: paymentMode,
           bank_account_id: selectedBankAccountId || null,
           reference_number: referenceNumber || null,
-          notes: `Customer Advance Credit / Excess payment over invoices (Total received: ${fmt(amountNum)}, Invoices applied: ${fmt(totalApplied)}, Advance credit: ${fmt(excessAmount)})`,
+          notes: `Customer Advance Credit / Excess payment over invoices (Total received: ${fmt(freshAmountNum)}, Invoices applied: ${fmt(freshAmountApplied)}, Advance credit: ${fmt(excessAmount)})`,
           currency_code: org.currency_code,
         }).select().single();
 
-        // Record banking transaction for the excess advance
         if (selectedBankAccountId && insertedAdvance) {
           await recordPaymentBankingTransaction({
             orgId: org.id,
@@ -465,17 +742,21 @@ export default function RecordPaymentPage() {
           variant: "destructive",
         });
       } else {
-        if (excessAmount > 0.001) {
-          toast({
-            title: "Payment & Advance Credit Recorded!",
-            description: `Applied ${fmt(totalApplied)} to ${selectedInvoices.length} invoice(s) and recorded ${fmt(excessAmount)} as customer advance credit.`,
-          });
-        } else {
-          toast({
-            title: "Payment recorded successfully!",
-            description: `Recorded ${fmt(totalApplied)} against ${selectedInvoices.length} invoice(s).`,
-          });
+        const msgs: string[] = [];
+        if (effectiveAdvanceToUse > 0.001) {
+          msgs.push(`Applied ${fmt(effectiveAdvanceToUse)} from client's advance credit`);
         }
+        if (freshAmountApplied > 0.001) {
+          msgs.push(`Recorded ${fmt(freshAmountApplied)} payment`);
+        }
+        if (excessAmount > 0.001) {
+          msgs.push(`Saved ${fmt(excessAmount)} as new advance credit`);
+        }
+
+        toast({
+          title: "Payment processed successfully!",
+          description: msgs.join(". ") || "Payment applied to invoices.",
+        });
         navigate("/payments");
       }
     } catch (err: any) {
@@ -532,7 +813,10 @@ export default function RecordPaymentPage() {
                   className="h-6 text-xs text-primary hover:text-primary px-1.5"
                   onClick={handleFillTotal}
                 >
-                  <Sparkles className="h-3 w-3 mr-1" /> Pay Full ({fmt(totalOutstanding)})
+                  <Sparkles className="h-3 w-3 mr-1" />
+                  {applyAdvanceCredit && advanceAmountToApply > 0
+                    ? `Pay Net (${fmt(Math.max(0, totalOutstanding - Math.min(advanceAmountToApply, totalOutstanding)))})`
+                    : `Pay Full (${fmt(totalOutstanding)})`}
                 </Button>
               )}
             </div>
@@ -542,12 +826,26 @@ export default function RecordPaymentPage() {
                 type="number"
                 step="0.01"
                 min="0"
-                placeholder="0.00"
+                placeholder={applyAdvanceCredit && advanceAmountToApply >= totalOutstanding ? "0.00 (Fully covered by advance)" : "0.00"}
                 className="pl-9"
                 value={amountReceived}
                 onChange={(e) => handleAmountChange(e.target.value)}
               />
             </div>
+            {applyAdvanceCredit && advanceAmountToApply > 0.001 && (
+              <p className="text-[11px] text-[#e77817] dark:text-orange-400 font-medium flex items-center gap-1">
+                <Wallet className="h-3 w-3 shrink-0" />
+                <span>
+                  Advance Applied: <strong>{fmt(effectiveAdvanceToUse)}</strong>
+                  {totalOutstanding > effectiveAdvanceToUse && (
+                    <> &bull; Fresh cash/bank needed: <strong>{fmt(Math.max(0, totalOutstanding - effectiveAdvanceToUse))}</strong></>
+                  )}
+                  {totalOutstanding <= effectiveAdvanceToUse && (
+                    <> &bull; Fully settled by advance credit (No fresh cash needed)</>
+                  )}
+                </span>
+              </p>
+            )}
           </div>
           <div className="space-y-2">
             <Label>Payment Date</Label>
@@ -604,6 +902,60 @@ export default function RecordPaymentPage() {
         </CardContent>
       </Card>
 
+      {/* Available Advance Credit Alert Banner */}
+      {clientId && totalAvailableAdvance > 0.001 && (
+        <Card className="border-2 border-[#e77817]/40 dark:border-[#e77817]/50 bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-blue-50/70 dark:from-orange-950/20 dark:via-slate-900/40 dark:to-blue-950/30 shadow-sm">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2.5 rounded-xl bg-[#e77817]/15 dark:bg-[#e77817]/25 text-[#e77817] border border-[#e77817]/30 mt-0.5">
+                  <Wallet className="h-5 w-5" />
+                </div>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-bold text-base text-slate-900 dark:text-slate-100">
+                      Available Advance Payment: <span className="text-[#e77817]">{fmt(totalAvailableAdvance)}</span>
+                    </span>
+                    <Badge className="bg-[#0d2346] text-white border border-[#e77817]/30 text-[11px] font-semibold">Unused Credit</Badge>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                    This client has unallocated advance balance available ({clientAdvances.map(a => `${a.payment_number}: ${fmt(a.availableAmount)}`).join(", ")}).
+                    You can apply this advance balance to settle the outstanding invoices below.
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="apply-advance-toggle"
+                    checked={applyAdvanceCredit}
+                    onCheckedChange={(c) => handleToggleApplyAdvance(!!c)}
+                    className="data-[state=checked]:bg-[#e77817] data-[state=checked]:border-[#e77817]"
+                  />
+                  <Label htmlFor="apply-advance-toggle" className="text-sm font-semibold cursor-pointer text-slate-900 dark:text-slate-100">
+                    Apply Advance Credit
+                  </Label>
+                </div>
+                {applyAdvanceCredit && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-muted-foreground whitespace-nowrap">Adjust:</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max={totalAvailableAdvance}
+                      className="w-28 h-8 text-sm bg-background font-medium border-[#e77817]/50 focus-visible:ring-[#e77817]"
+                      value={advanceAmountToApply || ""}
+                      onChange={(e) => handleAdvanceAmountChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Outstanding Invoices */}
       {clientId && (
         <Card>
@@ -623,9 +975,19 @@ export default function RecordPaymentPage() {
             {loadingInvoices ? (
               <div className="p-8 text-center text-muted-foreground">Loading invoices...</div>
             ) : invoices.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-2">
+              <div className="p-8 text-center text-muted-foreground flex flex-col items-center gap-3">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500" />
-                <p>No outstanding invoices for this client.</p>
+                <div>
+                  <p className="font-medium text-foreground">No outstanding invoices for this client.</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    If the client has made an advance payment, you can record it directly as advance credit.
+                  </p>
+                </div>
+                {freshAmountNum > 0 && (
+                  <Button onClick={handleSaveAdvanceOnly} disabled={saving} className="bg-[#e77817] hover:bg-[#d66d13] text-white mt-1 shadow-sm">
+                    {saving ? "Saving..." : `Record ${fmt(freshAmountNum)} as Customer Advance Payment`}
+                  </Button>
+                )}
               </div>
             ) : (
               <>
@@ -648,8 +1010,7 @@ export default function RecordPaymentPage() {
                           const checked = !!v;
                           setInvoices((prev) => {
                             const updated = prev.map((inv) => processedInvoices.some(pi => pi.id === inv.id) ? { ...inv, selected: checked } : inv);
-                            const amt = parseFloat(amountReceived) || 0;
-                            return allocateAmountAcrossInvoices(updated, amt);
+                            return recalculateAllocations(updated, amountReceived, applyAdvanceCredit, advanceAmountToApply);
                           });
                         }}
                       />
@@ -660,7 +1021,7 @@ export default function RecordPaymentPage() {
                     <TableHead onClick={() => toggleSort("status")} className="cursor-pointer select-none hover:text-foreground">Status<SortArrow k="status" /></TableHead>
                     <TableHead onClick={() => toggleSort("total")} className="cursor-pointer select-none hover:text-foreground text-right">Invoice Amount<SortArrow k="total" /></TableHead>
                     <TableHead onClick={() => toggleSort("balance_due")} className="cursor-pointer select-none hover:text-foreground text-right">Balance Due<SortArrow k="balance_due" /></TableHead>
-                    <TableHead onClick={() => toggleSort("payment")} className="cursor-pointer select-none hover:text-foreground text-right w-36">Payment<SortArrow k="payment" /></TableHead>
+                    <TableHead onClick={() => toggleSort("payment")} className="cursor-pointer select-none hover:text-foreground text-right w-44">Payment<SortArrow k="payment" /></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -685,7 +1046,7 @@ export default function RecordPaymentPage() {
                           step="0.01"
                           min="0"
                           max={inv.balance_due}
-                          className="w-28 ml-auto text-right h-8"
+                          className="w-32 ml-auto text-right h-8"
                           value={inv.payment || ""}
                           onChange={(e) => handlePaymentEdit(inv.id, parseFloat(e.target.value) || 0)}
                         />
@@ -702,32 +1063,65 @@ export default function RecordPaymentPage() {
       )}
 
       {/* Summary Footer */}
-      {clientId && invoices.length > 0 && amountNum > 0 && (
-        <Card>
+      {clientId && (totalApplied > 0 || freshAmountNum > 0) && (
+        <Card className="border-t-2 border-t-primary shadow-md">
           <CardContent className="py-4">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="space-y-1 text-sm">
-                <div className="flex gap-6">
-                  <span className="text-muted-foreground">Amount Received: <span className="font-semibold text-foreground">{fmt(amountNum)}</span></span>
-                  <span className="text-muted-foreground">Applied: <span className="font-semibold text-foreground">{fmt(totalApplied)}</span></span>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5 text-sm">
+                <div className="flex flex-wrap gap-x-5 gap-y-1.5 items-center">
+                  {applyAdvanceCredit && effectiveAdvanceToUse > 0.001 && (
+                    <span className="text-[#e77817] dark:text-orange-400 font-medium flex items-center gap-1">
+                      <Wallet className="h-3.5 w-3.5" />
+                      Advance Used: <span className="font-semibold">{fmt(effectiveAdvanceToUse)}</span>
+                    </span>
+                  )}
+                  {freshAmountNum > 0 && (
+                    <span className="text-muted-foreground">
+                      Fresh Payment: <span className="font-semibold text-foreground">{fmt(freshAmountNum)}</span>
+                    </span>
+                  )}
+                  <span className="text-muted-foreground">
+                    Total Applied: <span className="font-semibold text-primary">{fmt(totalApplied)}</span>
+                  </span>
                   {excessAmount > 0.01 && (
-                    <span className="text-warning flex items-center gap-1">
+                    <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
                       <AlertCircle className="h-3.5 w-3.5" />
-                      Excess: {fmt(excessAmount)}
+                      New Advance Credit: {fmt(excessAmount)}
+                    </span>
+                  )}
+                  {totalAvailableAdvance > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      (Remaining Advance: {fmt(remainingAdvanceCredit)})
                     </span>
                   )}
                 </div>
               </div>
-              <Button onClick={handleSave} disabled={saving || amountNum <= 0} size="lg">
-                {saving ? "Saving..." : "Record Payment"}
-              </Button>
+              <div className="flex items-center gap-2">
+                {invoices.length === 0 && freshAmountNum > 0 ? (
+                  <Button onClick={handleSaveAdvanceOnly} disabled={saving} size="lg" className="bg-[#e77817] hover:bg-[#d66d13] text-white shadow-sm">
+                    {saving ? "Saving..." : `Record Advance (${fmt(freshAmountNum)})`}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || (totalApplied <= 0 && freshAmountNum <= 0)}
+                    size="lg"
+                  >
+                    {saving ? "Saving..." : (
+                      applyAdvanceCredit && freshAmountNum <= 0.001
+                        ? `Apply Advance & Settle (${fmt(totalApplied)})`
+                        : "Record Payment"
+                    )}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
       {/* Simple cancel for no invoices */}
-      {clientId && invoices.length === 0 && !loadingInvoices && (
+      {clientId && invoices.length === 0 && !loadingInvoices && freshAmountNum <= 0 && (
         <div className="flex justify-end">
           <Button onClick={() => navigate("/payments")} variant="outline">Back to Payments</Button>
         </div>

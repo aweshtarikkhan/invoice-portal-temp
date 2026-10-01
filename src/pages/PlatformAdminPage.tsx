@@ -470,13 +470,12 @@ export default function PlatformAdminPage() {
       
       let finalDashData = data as unknown as DashboardData;
       try {
-        const { data: profilesData } = await supabase.from("profiles").select("id, email, account_id");
+        const { data: profilesData } = await supabase.from("profiles").select("id, user_id, account_id");
         if (profilesData && finalDashData) {
           const idMap = new Map<string, string>();
-          const emailMap = new Map<string, string>();
           profilesData.forEach((p: any) => {
             if (p.id && p.account_id) idMap.set(p.id, p.account_id);
-            if (p.email && p.account_id) emailMap.set(p.email.toLowerCase(), p.account_id);
+            if (p.user_id && p.account_id) idMap.set(p.user_id, p.account_id);
           });
 
           if (finalDashData.users) {
@@ -484,7 +483,7 @@ export default function PlatformAdminPage() {
               ...finalDashData,
               users: finalDashData.users.map(u => ({
                 ...u,
-                account_id: idMap.get(u.user_id) || (u.email ? emailMap.get(u.email.toLowerCase()) : null) || (u as any).account_id || null
+                account_id: idMap.get(u.user_id) || idMap.get(u.id) || (u as any).account_id || null
               }))
             };
           }
@@ -496,7 +495,7 @@ export default function PlatformAdminPage() {
                 ...o,
                 owner: o.owner ? {
                   ...o.owner,
-                  account_id: (o.owner.email ? emailMap.get(o.owner.email.toLowerCase()) : null) || o.owner.account_id || null
+                  account_id: (o.owner.id ? idMap.get(o.owner.id) : null) || o.owner.account_id || null
                 } : null
               }))
             };
@@ -568,12 +567,12 @@ export default function PlatformAdminPage() {
       const activities: { type: string; title: string; subtitle: string; time: string; icon: string }[] = [];
       
       // Recent users
-      const { data: recentUsers } = await supabase.from("profiles").select("first_name, last_name, email, created_at").order("created_at", { ascending: false }).limit(3);
+      const { data: recentUsers } = await supabase.from("profiles").select("first_name, last_name, created_at").order("created_at", { ascending: false }).limit(3);
       recentUsers?.forEach(u => {
         activities.push({
           type: "user",
           title: "New user registered",
-          subtitle: u.email || `${u.first_name || ""} ${u.last_name || ""}`.trim() || "Unknown",
+          subtitle: `${u.first_name || ""} ${u.last_name || ""}`.trim() || "New User",
           time: u.created_at,
           icon: "user"
         });
@@ -3157,7 +3156,7 @@ export default function PlatformAdminPage() {
                   <Tag className="w-5 h-5 text-indigo-600" /> Partner / Reseller Management
                 </CardTitle>
                 <CardDescription className="text-slate-500 text-xs mt-1">
-                  Partners ko manage karo — referral code, max users limit, aur status
+                  Manage partners — referral code, max users limit, and status
                 </CardDescription>
               </div>
               <Button
@@ -3178,7 +3177,7 @@ export default function PlatformAdminPage() {
               ) : partners.length === 0 ? (
                 <div className="text-center py-12 text-slate-400">
                   <Tag className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">Koi partner nahi mila. Pehle partner add karo.</p>
+                  <p className="text-sm">No partners found. Add a partner to get started.</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto rounded-lg border border-slate-200">

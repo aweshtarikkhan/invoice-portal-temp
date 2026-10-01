@@ -139,7 +139,7 @@ export default function PartnerDashboardPage() {
     if (!partner) return;
 
     if (!newCoupon.coupon_code || !newCoupon.discount_value || !newCoupon.max_uses) {
-      toast({ title: "Required", description: "Sab fields fill karo.", variant: "destructive" });
+      toast({ title: "Required", description: "Please fill in all fields.", variant: "destructive" });
       return;
     }
 
@@ -147,14 +147,14 @@ export default function PartnerDashboardPage() {
     const discountVal = parseFloat(newCoupon.discount_value);
 
     if (isNaN(maxUses) || maxUses < 1) {
-      toast({ title: "Invalid", description: "Max uses 1 ya zyada hona chahiye.", variant: "destructive" });
+      toast({ title: "Invalid", description: "Max uses must be 1 or greater.", variant: "destructive" });
       return;
     }
 
     if (coupons.length >= 10) {
       toast({
         title: "Limit Reached",
-        description: "Aap maximum 10 coupons bana sakte ho.",
+        description: "You can create a maximum of 10 coupons.",
         variant: "destructive",
       });
       return;
@@ -163,14 +163,14 @@ export default function PartnerDashboardPage() {
     if (totalAllocated + maxUses > partner.max_users) {
       toast({
         title: "Exceeds Limit",
-        description: `Sirf ${remainingSlots} aur slots available hain. Remaining: ${partner.max_users - totalAllocated}`,
+        description: `Only ${remainingSlots} slots available. Remaining: ${partner.max_users - totalAllocated}`,
         variant: "destructive",
       });
       return;
     }
 
     if (newCoupon.discount_type === "percent" && (discountVal <= 0 || discountVal > 100)) {
-      toast({ title: "Invalid Discount", description: "Percent 1-100 ke beech hona chahiye.", variant: "destructive" });
+      toast({ title: "Invalid Discount", description: "Percentage discount must be between 1 and 100.", variant: "destructive" });
       return;
     }
 
@@ -212,7 +212,7 @@ export default function PartnerDashboardPage() {
     if (coupon.used_count > 0) {
       toast({
         title: "Cannot Delete",
-        description: "Yeh coupon already use ho chuka hai. Sirf deactivate kar sakte ho.",
+        description: "This coupon has already been used. You can only deactivate it.",
         variant: "destructive",
       });
       return;
@@ -364,8 +364,8 @@ export default function PartnerDashboardPage() {
           {coupons.length === 0 ? (
             <div className="text-center py-12 text-indigo-400">
               <Tag className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm">Koi coupon nahi bana abhi tak.</p>
-              <p className="text-xs mt-1">New Coupon button se banao.</p>
+              <p className="text-sm">No coupons created yet.</p>
+              <p className="text-xs mt-1">Click the 'New Coupon' button to create one.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -452,7 +452,7 @@ export default function PartnerDashboardPage() {
       <Dialog open={showNewCoupon} onOpenChange={setShowNewCoupon}>
         <DialogContent className="bg-indigo-950 border border-white/20 text-white max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Naya Coupon Banao</DialogTitle>
+            <DialogTitle className="text-white">Create New Coupon</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateCoupon} className="space-y-4 py-2">
             <div className="space-y-1">
@@ -462,7 +462,7 @@ export default function PartnerDashboardPage() {
                 onChange={(e) =>
                   setNewCoupon((p) => ({ ...p, coupon_code: e.target.value.toUpperCase() }))
                 }
-                placeholder="Jaise: SAVE20"
+                placeholder="e.g. SAVE20"
                 className="bg-white/10 border-white/20 text-white placeholder:text-indigo-400 font-mono"
                 disabled={couponLoading}
               />
@@ -526,7 +526,7 @@ export default function PartnerDashboardPage() {
                 max={remainingSlots}
               />
               <p className="text-indigo-400 text-xs">
-                Sab coupons ka total max_uses ≤ {partner.max_users} hona chahiye
+                Total coupon usage limit across all coupons must not exceed {partner.max_users}
               </p>
             </div>
 

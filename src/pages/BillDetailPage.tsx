@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { postBillPaymentJournal } from "@/lib/accounting";
 import { getOrCreateCashAccount } from "@/lib/banking-sync";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
+import { resolveLineTaxRate } from "@/lib/invoiceCalculations";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
@@ -121,7 +122,7 @@ export default function BillDetailPage() {
     setBill(b);
     setPayAmt(String(b.balance_due));
     const [{ data: l }, { data: v }, { data: p }] = await Promise.all([
-      (supabase as any).from("bill_lines").select("*, items(name, sku, unit)").eq("bill_id", id).order("sort_order"),
+      (supabase as any).from("bill_lines").select("*, tax_rates(id, name, rate), items(name, sku, unit, hsn_code)").eq("bill_id", id).order("sort_order"),
       (supabase as any).from("vendors").select("*").eq("id", b.vendor_id).maybeSingle(),
       (supabase as any).from("bill_payments").select("*").eq("bill_id", id).order("payment_date", { ascending: false }),
     ]);
@@ -204,7 +205,13 @@ export default function BillDetailPage() {
       total_tax: bill.tax_total || 0,
       total_discount: bill.discount_total || 0,
       adjustment: Number(bill.adjustment || 0),
-      shipping_charge: 0,
+      adjustment_name: bill.adjustment_name || "Adjustment",
+      shipping_charge: Number(bill.shipping_charge || 0),
+      expenses: Number((bill as any).expenses || 0),
+      tds_tcs_applicable: Boolean((bill as any).tds_tcs_applicable),
+      tds_tcs_type: (bill as any).tds_tcs_type || "tds",
+      tds_tcs_rate: Number((bill as any).tds_tcs_rate || 0),
+      tds_tcs_amount: Number((bill as any).tds_tcs_amount || 0),
       clients: {
         display_name: vendorName,
         tax_number: vendor?.gstin || (bill as any)?.vendor_gstin,
@@ -232,18 +239,19 @@ export default function BillDetailPage() {
       const itemDesc = l.items?.name ? desc : (splitDesc.slice(1).join("\n") || "");
       const q = Number(l.quantity) || 0;
       const r = Number(l.rate) || 0;
-      const tr = Number(l.tax_rate) || 0;
+      const tr = resolveLineTaxRate(l);
       const tax_amount = Number(l.tax_amount) || (q * r * (tr / 100));
       const amount = Number(l.amount) || (q * r + tax_amount);
       return {
         ...l,
         name: itemName,
         description: itemDesc,
-        hsn_code: l.hsn || l.hsn_code || "",
+        hsn_code: l.hsn || l.hsn_code || l.items?.hsn_code || "",
         unit: l.unit || l.items?.unit || "pcs",
         quantity: q,
         rate: r,
         tax_rate: tr,
+        tax_rates: l.tax_rates || { rate: tr },
         tax_amount,
         amount,
       };

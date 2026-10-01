@@ -1,3 +1,5 @@
+import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { numberToWords } from "@/lib/number-to-words";
@@ -336,19 +338,12 @@ export function ProfessionalNavyInvoiceTemplate({
           </thead>
           <tbody>
             {lines.map((line, idx) => {
-              const qty = Number(line.quantity) || 0;
-              const rate = Number(line.rate) || 0;
-              const taxable = qty * rate;
-              let taxRate = 0;
-              if (hasGst) {
-                if (line.tax_rate !== undefined && line.tax_rate !== null) taxRate = typeof line.tax_rate === 'object' ? Number(line.tax_rate.rate) : Number(line.tax_rate);
-                else if (line.tax_rates && line.tax_rates.rate !== undefined && line.tax_rates.rate !== null) taxRate = Number(line.tax_rates.rate);
-                else if (line.items?.tax_rate !== undefined && line.items?.tax_rate !== null) taxRate = Number(line.items.tax_rate);
-                else if (line.tax_amount && taxable > 0) taxRate = Math.round((Number(line.tax_amount) / taxable) * 100);
-              }
-              const taxAmount = Number(line.tax_amount) || ((taxable * taxRate) / 100);
-              const totalAmount = taxable + taxAmount;
-              const itemName = line.items?.name || line.name;
+              const dRatio = invoice?.subtotal > 0 && invoice?.discount > 0 ? (Number(invoice.discount) / Number(invoice.subtotal)) : 0;
+              const { qty, rate, taxableAmt, taxRate, taxAmt, lineTotal } = computeLineFinancials(line, dRatio);
+              const itemName = line.name || line.items?.name || line.item?.name || line.item_name || (line.description ? String(line.description).split("\n")[0] : "") || "Item";
+              const itemDesc = (line.name || line.items?.name || line.item?.name || line.item_name)
+                ? (line.description && line.description !== itemName ? line.description : "")
+                : (line.description && String(line.description).includes("\n") ? String(line.description).split("\n").slice(1).join("\n") : "");
 
               return (
                 <tr key={idx}>
@@ -367,10 +362,10 @@ export function ProfessionalNavyInvoiceTemplate({
                   <td style={{ ...tdStyle }}>{qty}</td>
                   <td style={{ ...tdStyle }}>{line.unit || "Pcs"}</td>
                   <td style={{ ...tdStyle }}>{fmt(rate)}</td>
-                  <td style={{ ...tdStyle }}>{fmt(taxable)}</td>
-                  {hasGst && <td style={{ ...tdStyle }}>{taxRate ? `${taxRate}%` : "-"}</td>}
-                  {hasGst && <td style={{ ...tdStyle }}>{taxAmount ? fmt(taxAmount) : "-"}</td>}
-                  <td style={{ ...tdStyle, borderRight: "none" }}>{fmt(totalAmount)}</td>
+                  <td style={{ ...tdStyle }}>{fmt(taxableAmt)}</td>
+                  {hasGst && <td style={{ ...tdStyle }}>{taxRate > 0 ? `${taxRate}%` : "-"}</td>}
+                  {hasGst && <td style={{ ...tdStyle }}>{taxAmt > 0 ? fmt(taxAmt) : "-"}</td>}
+                  <td style={{ ...tdStyle, borderRight: "none" }}>{fmt(lineTotal)}</td>
                 </tr>
               );
             })}
@@ -381,46 +376,19 @@ export function ProfessionalNavyInvoiceTemplate({
       {/* Totals & Terms */}
       <div style={{ display: "flex", gap: 15, marginBottom: 15 }}>
         {/* Left: Totals */}
-        <div style={{ flex: 1, border: "1px solid " + grayBorder, borderRadius: 6, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11 }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>{hasGst ? "Total Taxable Value" : "Subtotal"}</td>
-                <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>
-                  ₹ {fmt(!hasGst && Number(invoice.total_tax || 0) === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0)
-                      ? Number(invoice.total)
-                      : Number(invoice.subtotal ?? invoice.total) + Number(invoice.total_discount || 0))}
-                </td>
-              </tr>
-              {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
-                taxBreakdown.map((t, i) => (
-                  <tr key={i}>
-                    <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>{t.name}</td>
-                    <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(t.amount)}</td>
-                  </tr>
-                ))
-              ) : hasGst ? (
-                <tr>
-                  <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Total GST Amount</td>
-                  <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.total_tax))}</td>
-                </tr>
-              ) : null}
-              {Number(invoice.total_discount) > 0 && (
-                <tr>
-                  <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder }}>Discount</td>
-                  <td style={{ padding: "6px 12px", borderBottom: "1px solid " + grayBorder, textAlign: "right" }}>₹ {fmt(Number(invoice.total_discount))}</td>
-                </tr>
-              )}
-              <tr style={{ backgroundColor: navy, color: "white", fontWeight: 700 }}>
-                <td style={{ padding: "8px 12px" }}>GRAND TOTAL</td>
-                <td style={{ padding: "8px 12px", textAlign: "right" }}>₹ {fmt(Number(invoice.total))}</td>
-              </tr>
-            </tbody>
-          </table>
-          <div style={{ padding: "6px 12px", fontSize: 10, borderTop: "1px solid " + grayBorder, backgroundColor: "#f9fafb" }}>
-            <span style={{ color: darkBlue, fontWeight: 700 }}>Amount in Words: </span>
-            {formatAmountInWords(Number(invoice.total))}
-          </div>
+        <div style={{ flex: 1 }}>
+          <InvoiceTotalsTable
+            invoice={invoice}
+            lines={lines}
+            taxBreakdown={taxBreakdown}
+            hasGst={hasGst}
+            fmt={fmt}
+            primaryColor={navy}
+            accentColor={blue}
+            variant="table"
+            type={type}
+             isInterstate={isInterstate}
+          />
         </div>
 
         {/* Right: Terms */}

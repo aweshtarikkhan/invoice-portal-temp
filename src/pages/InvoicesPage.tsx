@@ -38,6 +38,8 @@ import { toast } from "@/hooks/use-toast";
 import { BulkReminderDialog } from "@/components/shared/BulkReminderDialog";
 import { parseTallyExcel } from "@/lib/tally-parser";
 import { restoreInvoiceStock } from "@/lib/stock";
+import { getCurrentFinancialYear, isDateInFinancialYear } from "@/lib/financial-year";
+import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
 
 const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
@@ -90,6 +92,8 @@ export default function InvoicesPage() {
   const { profile } = useAuth();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const [selectedFY, setSelectedFY] = useState<string>("all");
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -138,16 +142,27 @@ export default function InvoicesPage() {
     return hasUnlimitedInvoices(plan, activeOrgPlans);
   }, [plan, activeOrgPlans]);
 
-  const currentYear = new Date().getFullYear();
-  const invoicesThisYear = invoices.filter(i => {
-    if (!i.issue_date && !i.invoice_date && !i.created_at) return false;
-    const d = i.issue_date || i.invoice_date || i.created_at;
-    return new Date(d).getFullYear() === currentYear;
-  });
+  // Count invoices within current Financial Year (01 Apr to 31 Mar)
+  const invoicesThisYear = useMemo(() => {
+    return invoices.filter(i => {
+      if (!i.issue_date && !i.invoice_date && !i.created_at) return false;
+      const d = i.issue_date || i.invoice_date || i.created_at;
+      return isDateInFinancialYear(d, currentFY.key);
+    });
+  }, [invoices, currentFY]);
 
   const invoiceCount = invoicesThisYear.length;
   const invoiceLimitReached = !isUnlimited && invoiceCount >= 100;
   const remainingInvoices = isUnlimited ? Infinity : Math.max(0, 100 - invoiceCount);
+
+  // Invoices filtered by selected Financial Year (if any selected)
+  const fyInvoices = useMemo(() => {
+    if (selectedFY === "all") return invoices;
+    return invoices.filter(i => {
+      const d = i.issue_date || i.invoice_date || i.created_at;
+      return isDateInFinancialYear(d, selectedFY);
+    });
+  }, [invoices, selectedFY]);
 
   const handleNewInvoiceClick = () => {
     const isOrgOwner = (org as any)?.owner_id === profile?.user_id || userRole === "owner";
@@ -171,17 +186,17 @@ export default function InvoicesPage() {
     const today = new Date();
     
     // Outstanding = ALL invoices with balance_due > 0 (except void)
-    const outstanding = invoices
+    const outstanding = fyInvoices
       .filter(i => i.status !== "void" && i.status !== "draft" && Number(i.balance_due || 0) > 0)
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Due today
-    const dueToday = invoices
+    const dueToday = fyInvoices
       .filter(i => i.status !== "void" && i.status !== "draft" && i.status !== "paid" && Number(i.balance_due || 0) > 0 && i.due_date && isToday(parseISO(i.due_date)))
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Due within 30 days (future, not overdue)
-    const dueIn30 = invoices
+    const dueIn30 = fyInvoices
       .filter(i => {
         if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
         const due = parseISO(i.due_date);
@@ -190,7 +205,7 @@ export default function InvoicesPage() {
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Overdue = balance_due > 0 AND due_date < today (dynamic check, not just status)
-    const overdue = invoices
+    const overdue = fyInvoices
       .filter(i => {
         if (i.status === "void" || i.status === "draft" || i.status === "paid" || Number(i.balance_due || 0) <= 0 || !i.due_date) return false;
         return isBefore(parseISO(i.due_date), today) && !isToday(parseISO(i.due_date));
@@ -198,19 +213,19 @@ export default function InvoicesPage() {
       .reduce((sum, i) => sum + Number(i.balance_due || 0), 0);
 
     // Average days to get paid
-    const paidInvoices = invoices.filter(i => i.status === "paid" && i.paid_at && i.issue_date);
+    const paidInvoices = fyInvoices.filter(i => i.status === "paid" && i.paid_at && i.issue_date);
     const avgDays = paidInvoices.length > 0
       ? Math.round(paidInvoices.reduce((sum, i) => sum + differenceInDays(parseISO(i.paid_at), parseISO(i.issue_date)), 0) / paidInvoices.length)
       : 0;
 
-    const paymentsReceived = invoices
+    const paymentsReceived = fyInvoices
       .filter(i => i.status !== "void" && i.status !== "draft")
       .reduce((sum, i) => sum + Number(i.amount_paid || 0), 0);
 
     return { outstanding, dueToday, dueIn30, overdue, avgDays, paymentsReceived };
-  }, [invoices]);
+  }, [fyInvoices]);
 
-  const filtered = invoices
+  const filtered = fyInvoices
     .filter((i) => {
       if (tab === "all") return true;
       if (tab === "outstanding") return i.status !== "void" && i.status !== "draft" && Number(i.balance_due || 0) > 0;
@@ -505,9 +520,18 @@ export default function InvoicesPage() {
             ))}
           </TabsList>
         </Tabs>
-        <div className="relative max-w-sm w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search invoices..." className="pl-9 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <FinancialYearSelect
+            value={selectedFY}
+            onValueChange={setSelectedFY}
+            includeAll={true}
+            allLabel="All Financial Years"
+            className="w-44"
+          />
+          <div className="relative max-w-sm w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search invoices..." className="pl-9 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
         </div>
       </div>
 

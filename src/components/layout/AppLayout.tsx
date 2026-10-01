@@ -43,12 +43,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-function OrgSetup({ onComplete }: { onComplete: () => void }) {
+function OrgSetup({ onComplete, onDeleteAccount }: { onComplete: () => void; onDeleteAccount?: () => void }) {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
-    const navigate = useNavigate();
+  const navigate = useNavigate();
   const location = useLocation();
 
   const handleCreate = async () => {
@@ -104,16 +104,19 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
   
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md shadow-lg border-border">
         <CardHeader className="text-center">
-          <CardTitle className="text-xl">Welcome! Set up your organization</CardTitle>
+          <div className="mx-auto w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-3">
+            <Building2 className="h-6 w-6" />
+          </div>
+          <CardTitle className="text-xl">Welcome! Set up your business</CardTitle>
           <CardDescription>Enter your business name to get started</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Organization Name *</Label>
+            <Label>Business / Organization Name *</Label>
             <Input
-              placeholder="e.g. Acme Inc."
+              placeholder="e.g. Acme Enterprises, Sharma Traders"
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -121,16 +124,22 @@ function OrgSetup({ onComplete }: { onComplete: () => void }) {
             />
           </div>
           <Button className="w-full" onClick={handleCreate} disabled={!name.trim() || saving}>
-            {saving ? "Creating..." : "Continue"}
+            {saving ? "Creating Business..." : "Continue"}
           </Button>
         </CardContent>
-        <CardFooter className="flex justify-between border-t pt-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/dashboard"><Home className="h-4 w-4 mr-2" /> Home</Link>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-rose-500 hover:text-rose-600">
+        <CardFooter className="flex items-center justify-between border-t pt-4">
+          <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground hover:text-foreground">
             <LogOut className="h-4 w-4 mr-2" /> Sign Out
           </Button>
+          {onDeleteAccount && (
+            <button
+              type="button"
+              onClick={onDeleteAccount}
+              className="text-xs text-rose-500 hover:text-rose-600 hover:underline font-medium"
+            >
+              Need to delete account?
+            </button>
+          )}
         </CardFooter>
       </Card>
     </div>
@@ -148,6 +157,7 @@ export function AppLayout() {
   const org = useAppStore((s) => s.organization);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [profileTimedOut, setProfileTimedOut] = useState(false);
   const [hasNoBusiness, setHasNoBusiness] = useState(false);
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
@@ -201,16 +211,17 @@ export function AppLayout() {
   }, [user?.id, profile?.user_id]);
 
   useEffect(() => {
-    // Safety fallback: Never keep user stuck on loading spinner for more than 2.5 seconds
+    // Safety fallback: Never keep user stuck on loading spinner for more than 3.5 seconds
     const fallbackTimer = setTimeout(() => {
       setChecking(false);
-    }, 2500);
+      setProfileTimedOut(true);
+    }, 3500);
     return () => clearTimeout(fallbackTimer);
   }, []);
 
   const loadOrg = async () => {
     if (!profile) {
-      setChecking(false);
+      setChecking(true);
       return;
     }
     
@@ -234,29 +245,33 @@ export function AppLayout() {
 
       // If user has NO organizations at all (neither as member nor owner)
       if (!hasMemberOrgs && !hasOwnedOrgs) {
+        const isExplicitAppNav = location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/invoices") || location.pathname.startsWith("/settings");
         const targetEmail = (user?.email || profile?.email || "").toLowerCase().trim();
-        if (targetEmail === "admin@aassaybiz.com" || targetEmail === "awesh.etpl@gmail.com") {
-          navigate("/platform-admin", { replace: true });
-          return;
-        }
 
-        const { data: isAdmin } = await supabase
-          .rpc("is_platform_admin", { check_user_id: profile.user_id });
+        if (!isExplicitAppNav) {
+          if (targetEmail === "admin@aassaybiz.com" || targetEmail === "awesh.etpl@gmail.com") {
+            navigate("/platform-admin", { replace: true });
+            return;
+          }
 
-        if (isAdmin === true) {
-          navigate("/platform-admin", { replace: true });
-          return;
-        }
+          const { data: isAdmin } = await supabase
+            .rpc("is_platform_admin", { check_user_id: profile.user_id });
 
-        const { data: directAdmin } = await supabase
-          .from("platform_admins")
-          .select("id")
-          .or(`id.eq.${profile.user_id},user_id.eq.${profile.user_id},email.eq.${targetEmail}`)
-          .maybeSingle();
+          if (isAdmin === true) {
+            navigate("/platform-admin", { replace: true });
+            return;
+          }
 
-        if (directAdmin) {
-          navigate("/platform-admin", { replace: true });
-          return;
+          const { data: directAdmin } = await supabase
+            .from("platform_admins")
+            .select("id")
+            .or(`id.eq.${profile.user_id},user_id.eq.${profile.user_id},email.eq.${targetEmail}`)
+            .maybeSingle();
+
+          if (directAdmin) {
+            navigate("/platform-admin", { replace: true });
+            return;
+          }
         }
 
         // Clean up stale profile.org_id in DB if it was still pointing to a revoked business
@@ -281,9 +296,9 @@ export function AppLayout() {
           return;
         }
 
-        // User has NO business - show dedicated screen with Account Deletion!
-        setHasNoBusiness(true);
-        setNeedsSetup(false);
+        // User has NO business - immediately show organization setup!
+        setNeedsSetup(true);
+        setHasNoBusiness(false);
         setChecking(false);
         return;
       }
@@ -447,10 +462,27 @@ export function AppLayout() {
     loadOrg();
   }, [profile, profile?.org_id]);
 
-  if (checking) {
+  if ((checking || !profile || (!org && !needsSetup && !hasNoBusiness && !isEmployeeBlocked)) && !profileTimedOut) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <p className="text-xs text-muted-foreground font-medium">Loading workspace...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (profileTimedOut && !profile) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <Card className="w-full max-w-sm text-center p-6 space-y-4">
+          <p className="text-sm font-medium text-muted-foreground">Unable to load profile session.</p>
+          <div className="flex gap-2 justify-center">
+            <Button size="sm" variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+            <Button size="sm" variant="destructive" onClick={async () => { await signOut(); navigate("/login"); }}>Sign In</Button>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -577,7 +609,42 @@ export function AppLayout() {
   }
 
   if (needsSetup) {
-    return <OrgSetup onComplete={() => window.location.reload()} />;
+    return (
+      <>
+        <OrgSetup
+          onComplete={() => window.location.reload()}
+          onDeleteAccount={() => setShowDeleteAccountModal(true)}
+        />
+        <AlertDialog open={showDeleteAccountModal} onOpenChange={setShowDeleteAccountModal}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-destructive flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5" />
+                Permanently Delete Account?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <span>
+                  This action is permanent and cannot be undone. All your profile and authentication records will be wiped from the system.
+                </span>
+                <span className="block font-medium text-foreground">
+                  After deletion, you will be able to sign up again with this email address.
+                </span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingAccount}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+              >
+                {deletingAccount ? "Deleting..." : "Yes, Delete My Account"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
   }
 
   const effectivePlan = subscriptionPlan || (org as any)?.subscription_plan || 'free';

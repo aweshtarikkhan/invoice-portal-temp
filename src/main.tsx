@@ -32,18 +32,19 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 
   componentDidCatch(error: any) {
-    const errorStr = error?.toString() || error?.message || "";
-    const isChunkError =
+    const errorStr = (error?.toString() || error?.message || "").toLowerCase();
+    const isChunkOrScriptError =
       errorStr.includes("dynamically imported module") ||
-      errorStr.includes("Failed to fetch dynamically imported module") ||
-      errorStr.includes("Loading chunk") ||
-      errorStr.includes("Importing a module script failed");
+      errorStr.includes("loading chunk") ||
+      errorStr.includes("importing a module script failed") ||
+      errorStr.includes("unexpected token '<'") ||
+      errorStr.includes("chunkloaderror");
 
-    if (isChunkError) {
+    if (isChunkOrScriptError) {
       const reloadKey = "chunk_error_reload";
-      const lastReload = sessionStorage.getItem(reloadKey);
+      const lastReload = parseInt(sessionStorage.getItem(reloadKey) || "0", 10);
       const now = Date.now();
-      if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+      if (!lastReload || now - lastReload > 8000) {
         sessionStorage.setItem(reloadKey, now.toString());
         window.location.reload();
       }
@@ -52,11 +53,41 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
   render() {
     if (this.state.hasError) {
-      const errorStr = this.state.error?.toString() || this.state.error?.message || "";
-      const isChunkError =
+      const errorStr = (this.state.error?.toString() || this.state.error?.message || "").toLowerCase();
+      const isChunkOrScriptError =
         errorStr.includes("dynamically imported module") ||
-        errorStr.includes("Failed to fetch dynamically imported module");
+        errorStr.includes("loading chunk") ||
+        errorStr.includes("importing a module script failed") ||
+        errorStr.includes("unexpected token '<'") ||
+        errorStr.includes("chunkloaderror");
 
+      // For any chunk/network/module loading hiccups, show ONLY a subtle loading spinner while silently reloading
+      if (isChunkOrScriptError) {
+        return (
+          <div style={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: '#f8fafc',
+            fontFamily: 'system-ui, -apple-system, sans-serif'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{
+                width: '32px',
+                height: '32px',
+                border: '3px solid #e2e8f0',
+                borderTopColor: '#2563eb',
+                borderRadius: '50%',
+                margin: '0 auto 12px'
+              }} />
+              <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Loading workspace...</p>
+            </div>
+          </div>
+        );
+      }
+
+      // For unexpected runtime component errors, show a clean generic error card (never "App Updated")
       return (
         <div style={{
           minHeight: '100vh',
@@ -83,23 +114,21 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
               width: '48px',
               height: '48px',
               borderRadius: '50%',
-              background: isChunkError ? '#eff6ff' : '#fef2f2',
-              color: isChunkError ? '#2563eb' : '#dc2626',
+              background: '#fef2f2',
+              color: '#dc2626',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               margin: '0 auto 16px',
               fontSize: '24px'
             }}>
-              {isChunkError ? '🔄' : '⚠️'}
+              ⚠️
             </div>
             <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px', color: '#0f172a' }}>
-              {isChunkError ? 'App Updated' : 'Something went wrong'}
+              Something went wrong
             </h2>
             <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.5 }}>
-              {isChunkError
-                ? 'A new version of the app has been published. Please reload the page to load the latest updates.'
-                : 'An unexpected error occurred while loading this page.'}
+              An unexpected error occurred while loading this page.
             </p>
             <button
               onClick={() => {
@@ -122,25 +151,8 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
               onMouseOver={(e) => (e.currentTarget.style.background = '#1d4ed8')}
               onMouseOut={(e) => (e.currentTarget.style.background = '#2563eb')}
             >
-              Reload Page
+              Refresh Page
             </button>
-            {!isChunkError && (
-              <pre style={{
-                marginTop: '20px',
-                padding: '12px',
-                background: '#fef2f2',
-                color: '#b91c1c',
-                borderRadius: '8px',
-                fontSize: '11px',
-                textAlign: 'left',
-                overflow: 'auto',
-                maxHeight: '160px',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all'
-              }}>
-                {this.state.error?.toString()}
-              </pre>
-            )}
           </div>
         </div>
       );

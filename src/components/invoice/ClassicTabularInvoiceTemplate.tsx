@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { numberToWords } from "@/lib/number-to-words";
 import { format, parseISO } from "date-fns";
+import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
+import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
 
 export interface InvoiceTemplateProps {
   org: any;
@@ -217,65 +219,47 @@ export function ClassicTabularInvoiceTemplate({
           </thead>
           <tbody>
             {lines.map((line, idx) => {
-              const lineQty = Number(line.quantity || 0);
-              const lineRate = Number(line.rate || 0);
-              const rawLineTotal = lineQty * lineRate;
-              const itemDisc = line.discount ? (line.discount_type === "percentage" ? rawLineTotal * (Number(line.discount) / 100) : Number(line.discount)) : 0;
-              const lineTaxableAmt = (lineRate > 0 && lineQty > 0)
-                ? Math.max(0, rawLineTotal - itemDisc)
-                : (Number(line.tax_amount || 0) > 0 && Number(line.amount || 0) > Number(line.tax_amount || 0)
-                    ? Number(line.amount) - Number(line.tax_amount)
-                    : Number(line.amount || 0));
-
-              const gstPct = line.tax_rate != null
-                ? (typeof line.tax_rate === 'object' ? (line.tax_rate.rate ?? 0) : Number(line.tax_rate))
-                : (lineTaxableAmt > 0 && Number(line.tax_amount || 0) > 0
-                    ? Math.round((Number(line.tax_amount) / lineTaxableAmt) * 100)
-                    : 0);
-
-              const lineTaxAmt = Number(line.tax_amount != null && Number(line.tax_amount) > 0
-                ? line.tax_amount
-                : (gstPct > 0 ? lineTaxableAmt * (gstPct / 100) : 0));
-
-              const lineRowSubtotal = hasGst ? (lineTaxableAmt + lineTaxAmt) : lineTaxableAmt;
+              const dRatio = invoice?.subtotal > 0 && invoice?.discount > 0 ? (Number(invoice.discount) / Number(invoice.subtotal)) : 0;
+              const { qty, rate, taxableAmt, taxRate, taxAmt, lineTotal } = computeLineFinancials(line, dRatio);
+              const itemName = line.name || line.items?.name || line.item?.name || line.item_name || (line.description ? String(line.description).split("\n")[0] : "") || "Item";
+              const itemDesc = (line.name || line.items?.name || line.item?.name || line.item_name)
+                ? (line.description && line.description !== itemName ? line.description : "")
+                : (line.description && String(line.description).includes("\n") ? String(line.description).split("\n").slice(1).join("\n") : "");
 
               return (
               <tr key={idx} className="border-b border-gray-200">
                 <td className="py-2 px-2 text-center border-r border-gray-200">{idx + 1}</td>
                 <td className="py-2 px-2 border-r border-gray-200">
-                  {line.name ? (
-                    <>
-                      <div className="font-semibold text-[11px]">{line.name}</div>
-                      {line.description && <div className="text-[9px] text-gray-500 mt-0.5 whitespace-pre-wrap opacity-75">{line.description}</div>}
-                    </>
-                  ) : (
-                    <div className="font-semibold text-[11px] whitespace-pre-wrap">{line.description}</div>
-                  )}
+                  <div className="font-semibold text-[11px]">{itemName}</div>
+                  {itemDesc ? (
+                    <div className="text-[9px] text-gray-500 mt-0.5 whitespace-pre-wrap opacity-75">{itemDesc}</div>
+                  ) : null}
                 </td>
-                {hasGst && <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || line.hsn_code || line.hsn || line.hsn_sac || ""}</td>}
-                <td className="py-2 px-2 text-center border-r border-gray-200">{line.quantity}</td>
-                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || "PCS"}</td>
-                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(line.rate).replace('₹', '')}</td>
-                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(lineTaxableAmt).replace('₹', '')}</td>}
+                {hasGst && <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || line.hsn_code || line.hsn || line.hsn_sac || line.items?.hsn_code || "-"}</td>}
+                <td className="py-2 px-2 text-center border-r border-gray-200">{qty}</td>
+                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || line.items?.unit || "PCS"}</td>
+                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(rate).replace('₹', '').trim()}</td>
+                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(taxableAmt).replace('₹', '').trim()}</td>}
                 {hasGst && (
                   <td className="py-2 px-2 text-center border-r border-gray-200">
-                    {gstPct > 0 ? `${gstPct}%` : "-"}
+                    {taxRate > 0 ? `${taxRate}%` : "-"}
                   </td>
                 )}
                 {hasGst && (
                   <td className="py-2 px-2 text-right border-r border-gray-200">
-                    {fmt(lineTaxAmt).replace('₹', '')}
+                    {fmt(taxAmt).replace('₹', '').trim()}
                   </td>
                 )}
                 <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
-                  {fmt(lineRowSubtotal).replace('₹', '')}
+                  {fmt(lineTotal).replace('₹', '').trim()}
                 </td>
               </tr>
             );})}
-            {/* Blank row for spacing */}
-            <tr className="border-b border-gray-200">
-               <td colSpan={hasGst ? 10 : 6} className="py-6 border-r border-gray-200"></td>
-            </tr>
+            {(!lines || lines.length === 0) && (
+              <tr className="border-b border-gray-200">
+                <td colSpan={hasGst ? 10 : 6} className="py-6 text-center text-gray-400 italic">No items added to this document</td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
@@ -285,31 +269,35 @@ export function ClassicTabularInvoiceTemplate({
         
         {/* LEFT COLUMN */}
         <div>
-           {/* BANK DETAILS */}
-           {type !== "po" && showBankDetails && <div className="border mb-4 border-gray-400">
-             <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BANK DETAILS</div>
-             <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
-               <div className="font-semibold">Bank Name :</div><div>{org?.bank_name || ""}</div>
-               <div className="font-semibold">A/C Holder Name :</div><div>{org?.bank_account_name || ""}</div>
-               <div className="font-semibold">Account Number :</div><div>{org?.bank_account_number || ""}</div>
-               <div className="font-semibold">IFSC Code :</div><div>{org?.bank_ifsc || ""}</div>
-               <div className="font-semibold">Branch :</div><div>{org?.bank_branch || ""}</div>
-             </div>
-           </div>}
-
-           {/* UPI DETAILS */}
-           {type !== "po" && upiId && (
+           {/* BANK & PAYMENT DETAILS (WITH SCAN & PAY QR NESTED) */}
+           {type !== "po" && (showBankDetails || upiId) && (
              <div className="border mb-4 border-gray-400">
-               <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>UPI DETAILS</div>
-               <div className="p-3 grid grid-cols-[130px_1fr] gap-1 text-[10px]">
-                 <div className="font-semibold">UPI ID :</div><div>{upiId}</div>
+               <div className="text-white font-bold px-3 py-1.5 text-xs flex justify-between items-center" style={{backgroundColor: primary}}>
+                 <span>BANK &amp; PAYMENT DETAILS</span>
+                 {upiId && <span className="text-[9px] opacity-90 font-normal">Instant UPI Payment</span>}
+               </div>
+               <div className="p-3 flex items-center justify-between gap-3">
+                 <div className="grid grid-cols-[105px_1fr] gap-x-2 gap-y-1 text-[10px] flex-1">
+                   {org?.bank_name && <><div className="font-semibold text-gray-600">Bank Name :</div><div className="font-medium text-gray-900">{org.bank_name}</div></>}
+                   {(org?.bank_account_name || org?.name) && <><div className="font-semibold text-gray-600">A/C Holder :</div><div className="font-medium text-gray-900">{org?.bank_account_name || org?.name}</div></>}
+                   {org?.bank_account_number && <><div className="font-semibold text-gray-600">Account No :</div><div className="font-mono font-bold text-gray-900 tracking-wider">{org.bank_account_number}</div></>}
+                   {org?.bank_ifsc && <><div className="font-semibold text-gray-600">IFSC Code :</div><div className="font-mono font-bold text-gray-900">{org.bank_ifsc}</div></>}
+                   {org?.bank_branch && <><div className="font-semibold text-gray-600">Branch :</div><div className="text-gray-900">{org.bank_branch}</div></>}
+                   {upiId && <><div className="font-semibold text-gray-600">UPI ID :</div><div className="font-mono font-semibold text-emerald-700">{upiId}</div></>}
+                 </div>
+                 {upiString && (
+                   <div className="flex flex-col items-center justify-center p-2 bg-gray-50 border border-gray-300 rounded shrink-0">
+                     <QRCodeSVG value={upiString} size={74} />
+                     <span className="text-[8.5px] font-bold text-gray-700 mt-1 tracking-tight">Scan &amp; Pay</span>
+                   </div>
+                 )}
                </div>
              </div>
            )}
 
            {/* TERMS */}
            {showTerms && <div className="border mb-4 border-gray-400">
-             <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>TERMS & CONDITIONS</div>
+             <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>TERMS &amp; CONDITIONS</div>
              <div className="p-3 text-[9px] whitespace-pre-wrap">
                {invoice?.terms_conditions || org?.default_terms || "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is delayed."}
              </div>
@@ -329,77 +317,36 @@ export function ClassicTabularInvoiceTemplate({
         {/* RIGHT COLUMN */}
         <div>
            {/* TOTALS */}
-           <div className="border mb-4 border-gray-400">
-             <table className="w-full text-[11px]">
-                <tbody>
-                  <tr className="border-b border-gray-200">
-                    <td className="p-2 font-bold w-1/2">Subtotal</td>
-                    <td className="p-2 text-right border-l border-gray-200">
-                      {fmt(!hasGst && Number(invoice?.total_tax || totalTax || 0) === 0 && Number(invoice?.subtotal || 0) < Number(invoice?.total || 0)
-                        ? Number(invoice?.total)
-                        : Number(invoice?.subtotal || invoice?.total || 0))}
-                    </td>
-                  </tr>
-                  
-                  {hasGst && (
-                    taxBreakdown && taxBreakdown.length > 0 ? (
-                      taxBreakdown.map((tax, i) => (
-                        <tr key={i} className="border-b border-gray-200">
-                          <td className="p-2 font-bold w-1/2">{tax.name}</td>
-                          <td className="p-2 text-right border-l border-gray-200">{fmt(tax.amount)}</td>
-                        </tr>
-                      ))
-                    ) : Number(totalTax) > 0 ? (
-                      <tr className="border-b border-gray-200">
-                        <td className="p-2 font-bold w-1/2">Total Tax</td>
-                        <td className="p-2 text-right border-l border-gray-200">{fmt(totalTax)}</td>
-                      </tr>
-                    ) : null
-                  )}
-                  
-                  {invoice?.discount > 0 && (
-                    <tr className="border-b border-gray-200">
-                      <td className="p-2 font-bold w-1/2">Discount</td>
-                      <td className="p-2 text-right border-l border-gray-200 text-red-600">- {fmt(invoice?.discount)}</td>
-                    </tr>
-                  )}
-                  
-                  <tr className="text-white text-sm" style={{backgroundColor: primary}}>
-                    <td className="p-3 font-bold uppercase tracking-wider">GRAND TOTAL</td>
-                    <td className="p-3 text-right font-bold text-lg" style={{backgroundColor: accent}}>{fmt(invoice?.total || 0)}</td>
-                  </tr>
-                </tbody>
-             </table>
-           </div>
+           <InvoiceTotalsTable
+             invoice={invoice}
+             lines={lines}
+             taxBreakdown={taxBreakdown}
+             hasGst={hasGst}
+             fmt={fmt}
+             primaryColor={primary}
+             accentColor={accent}
+             type={type}
+             isInterstate={isInterstate}
+           />
 
-           <div className="mb-4">
-             <div className="font-semibold text-gray-500 mb-1">Total In Words:</div>
-             <div className="font-bold italic text-[10px]">{formatAmountInWords(invoice?.total || 0)}</div>
-           </div>
-
-           <div className="flex justify-between items-end mt-12">
-              {type !== "po" && upiString ? (
-                <div className="border border-gray-300 p-2 rounded text-center flex flex-col items-center">
-                  <QRCodeSVG value={upiString} size={80} />
-                  <span className="text-[9px] font-bold mt-1">Scan & Pay</span>
-                </div>
-              ) : <div></div>}
-              
-              <div className="text-center">
-                 <div className="border-b border-gray-400 w-40 mb-2"></div>
-                 
-          {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 40, marginTop: -40, position: 'relative', zIndex: 10 }}>
-              {org.address.signature_type === 'image' && org.address.signature_image_url ? (
-                <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 60, mixBlendMode: 'multiply', objectFit: 'contain' }} />
-              ) : org.address.signature_type === 'font' && org.address.signature_name ? (
-                <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 32, lineHeight: 1, color: '#1e293b' }}>
-                  {org.address.signature_name}
-                </div>
-              ) : null}
-            </div>
-          )}
-                 <div className="font-bold text-[10px]">Authorized Signature</div>
+           <div className="flex justify-end items-end mt-8">
+              <div className="text-center min-w-[180px]">
+                 {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' ? (
+                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 44, marginBottom: 4 }}>
+                     {org.address.signature_type === 'image' && org.address.signature_image_url ? (
+                       <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 44, mixBlendMode: 'multiply', objectFit: 'contain' }} />
+                     ) : org.address.signature_type === 'font' && org.address.signature_name ? (
+                       <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 28, lineHeight: 1, color: '#1e293b' }}>
+                         {org.address.signature_name}
+                       </div>
+                     ) : null}
+                   </div>
+                 ) : (
+                   <div className="h-8"></div>
+                 )}
+                 <div className="border-b border-gray-400 w-full mb-1.5"></div>
+                 <div className="font-bold text-[10px] text-gray-800">Authorized Signatory</div>
+                 <div className="text-[9px] text-gray-500">{org?.name || ""}</div>
               </div>
            </div>
         </div>

@@ -79,8 +79,9 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Business Integration Locking: "Business Integration" (Outreach - Official WhatsApp Chats, Business Email, and CRM API Integrations like IndiaMART/Justdial) is strictly locked on the Free Plan. It requires Business Suite or an add-on module. Free plan users see a lock icon (🔒) on Business Integration in the sidebar and are restricted from accessing '/emails', '/chats', or '/crm/integrations'.
 - Admin Panel Locking: The Admin Panel ('/admin' under System & Settings) is locked on the Free Plan with an amber lock icon (🔒). Platform access requires Business Suite (5 users base) or paid plans. Upgrading to Business Suite or assigning paid plans via Platform Admin immediately unlocks it for the business.
 - Team Member Invitations & Management: Owners and managers can manage platform users from Admin Panel -> Organization Users. Invitations are reliably dispatched via AWS SES. Existing users and employees who already have attendance portal access or an Aassay Biz account receive an immediate "Workspace Access Granted" notification with a direct workspace access link. New users receive an invitation link with client-side token verification (token_hash). Admins can click "Resend Invite" on any pending employee to trigger a fresh invitation email instantly, click "Edit" to modify their role (Staff, Manager, Accountant, Sales Executive, Admin, CA/CS) and customize granular feature permissions with Select All / Clear All controls, or click "Delete" to safely revoke platform access.
-- Revoked Platform Access & Self Account Deletion: If an employee's platform access is revoked by the business administrator, the user will see a dedicated screen upon login stating "You don't have any business. Please delete this account". It provides a "Delete Account" button that safely and completely purges the user's records from the database (auth.users, profiles, organization_members, and user_roles) and unlinks employee records, freeing up the user's email address so that they or an employer can re-register or send fresh invitations anytime without conflict.
-- Top Navbar: Contains links to pages like Brochure, Pamphlet, Pricing, etc.
+- Onboarding & Business Setup: Right after OTP verification or account creation, new users are immediately presented with a clean, smooth "Welcome! Set up your business" screen asking for their business/organization name (e.g. Acme Enterprises). New users NEVER see a dashboard flash, app update modal, or "You don't have any business" screen. Once they submit their business name, they immediately enter their newly created workspace with a 6-month Free Plan trial. An optional "Need to delete account?" link is available at the bottom of the setup screen if the user ever needs to wipe their registration.
+- Revoked Platform Access & Self Account Deletion: If an employee's platform access is revoked by the business administrator, the user will see the business setup screen with an option to create their own business or use the "Need to delete account?" button. The delete account option safely and completely purges the user's records from the database (auth.users, profiles, organization_members, and user_roles) and unlinks employee records, freeing up the user's email address so that they or an employer can re-register or send fresh invitations anytime without conflict.
+- Top Navbar: Contains navigation links to Home, Features, Partner With Us, Sign in, and View Plans (the Brochure link has been removed from the top navigation bar and is available exclusively in the public footer).
 
 2. DASHBOARD
 - Location: The main landing page after login.
@@ -90,9 +91,27 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 
 3. INVOICE & BILLING (Sales & Purchases)
 - Sales Invoices: Go to Sales -> Invoices. Click "Create Invoice" to open the Invoice Builder. Note: Requires completed profile (Street Address and PIN Code).
-- Invoice Builder: 
+- Invoice Builder & Calculation Engine: 
   - Checks that user profile (Address & PIN Code) is completed before allowing invoice creation or saving.
   - Allows adding Customer Details, Items, Taxes (GST), and Discounts.
+  - Discount Calculation: Discounts can be applied as percentage (%) or flat amount (₹). In percentage mode, the discount amount is accurately calculated based on subtotal (e.g., 7.5% on ₹7,000 correctly evaluates to ₹524.99, not ₹7.50) and subtracted.
+  - Post-Discount GST: Under Indian GST law, GST is strictly calculated on the net taxable amount AFTER discount (e.g., if a product costs ₹5,000 and has an ₹800 discount, GST is calculated on the remaining ₹4,200 taxable value).
+  - TDS vs TCS Order & Logic:
+    * TDS (Tax Deducted at Source): Applied BEFORE GST directly on the Basic / Taxable Value (Subtotal - Discount + Fixed Cost/Expenses + Shipping). TDS is subtracted (-) from the payable total.
+    * TCS (Tax Collected at Source): Applied AFTER GST on the Total Invoice Value (Basic Taxable Value + GST). TCS is added (+) to the total.
+  - Invoice PDF & Print Layout:
+    * Line items table columns: "S.No. | Description of Goods / Services | HSN / SAC | Qty | Unit | Rate (₹) | GST % | Amount (₹)". Taxable amount and GST amount columns are omitted from individual line rows for a clean, professional look.
+    * Totals Summary Section: Neatly sequences the calculations:
+      1. Subtotal
+      2. Discount (subtracted, negative)
+      3. Fixed Cost / Expenses (added)
+      4. Shipping Charge (added)
+      5. Taxable Amount (net basic amount before GST)
+      6. TDS Deducted (if applicable, subtracted)
+      7. GST Breakdown (CGST/SGST or IGST, added)
+      8. TCS Collected (if applicable, added)
+      9. Adjustment / Round Off
+      10. Grand Total
   - Automatic GST Enablement: Any business with a registered GSTIN/GST Number in Settings automatically has GST unlocked. Items can be added with GST tax rates (0%, 5%, 12%, 18%, 28%) and HSN codes, and invoices display full GST breakdowns (CGST, SGST, IGST).
   - Sequence Auto-Healing: Invoices, Quotations, Bills, and Purchase Orders automatically detect existing numbers in the database and advance sequence counters to prevent "Failed to generate unique number" errors. If an insert encounters a sequence collision, it auto-increments and resolves dynamically.
   - Rapid Click & Duplicate Prevention: Rapid clicks on "Save Invoice", "Save Quotation", or "Save Purchase Invoice" are synchronously debounced and blocked using in-memory reference guards so multiple rapid clicks never create duplicate documents in the database. Buttons immediately show a loading spinner with "Saving...".
@@ -102,11 +121,21 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Purchase Invoices / Bills: Go to Purchases -> Purchase Invoices to track bills. When a purchase bill is created from a Goods Receipt (GRN), stock addition is automatically locked with an informative banner to prevent duplicate stock inflation since stock was already received in the GRN.
 - Debit Notes (Purchase Returns): Go to Purchases -> Debit Notes ('/debit-notes'). Record goods returned to vendors, specify returned quantities and rates, and optionally link to a purchase bill. When saved, returned items are automatically deducted from inventory stock, and outstanding vendor bill payables are reduced.
 - Quotations & Proforma Invoices (Estimates): Create quotes and proforma invoices with full GST support, tax slab mapping, and automated sequence numbering.
-- Templates: Go to Templates section to see invoice designs (Standard GST, Professional Navy, Corporate Blue, Classic Tabular, Modern Navy Yellow, Modern Teal, Modern Crimson).
+- Templates: Go to Templates section to see invoice designs (Standard GST, Professional Navy, Corporate Blue, Classic Tabular, Modern Navy Yellow, Modern Teal, Modern Crimson). All templates strictly adhere to the GST, TDS/TCS, and column layout standards.
 
 3.1 INVENTORY & INTER-BRANCH TRANSFERS
 - Inventory Management: Go to Catalog -> Inventory ('/inventory'). Tracks products and services with real-time stock levels, low-stock alerts, and valuation.
 - Inter-Branch Stock Transfer: In the Inventory page, click "Transfer Stock" to transfer product quantities between branches (e.g., Bhopal Branch to Indore Branch). Select the source branch, destination branch, product, and quantity. It automatically validates available stock, updates branch inventory balances, records transfer vouchers under the "Branch Transfers" tab, and logs complete audit movements.
+
+3.2 PAYMENTS & CUSTOMER ADVANCE CREDITS
+- Customer Advance Payments & Overpayments:
+  * Direct Customer Advance: Clients can make advance payments before any invoices are issued (recorded under Payments -> Record Payment with no invoice selected, or when no outstanding invoices exist). The payment is cleanly tagged as unallocated Customer Advance Credit.
+  * Automatic Excess Payment Handling: When a client pays more than an invoice's balance due (e.g., invoice is ₹10,000 and client pays ₹11,600), the system automatically settles the invoice with ₹10,000 and credits the excess ₹1,600 directly to the client's account as unallocated Customer Advance Credit (invoice_id is null).
+  * Automated Next Payment Deduction: Next time when recording a payment for this client, the system automatically detects their available advance balance and deducts it from the total due. The user can see "Available Advance Payment", the net fresh cash required, and can click "Pay Net" or "Record / Adjust Payment". All advance credit banners and badges across the portal are styled in official AassayBiz brand colors (Orange #e77817 and Navy Blue #0d2346) with clear, professional English descriptions.
+  * Invoice Details One-Click Settle: On any unpaid invoice ('/invoices/:id'), if the client has available advance credit, an eye-catching banner in brand orange and navy blue displays "Advance Balance Available" with an instant one-click "Apply Advance Credit" button. Inside the Record Payment dialog, if an overpayment is entered, an alert explains that the excess will be credited for future invoices.
+  * Invoice Builder Advance Visibility: In the Invoice Builder ('/invoices/new'), selecting a client immediately reveals their available advance credit in a brand orange and blue banner alongside their aging summary.
+  * Client List & Profile Badges: In Clients ('/clients'), clients with advance balances display an orange "Adv: ₹..." badge under their balance. In Client Details ('/clients/:id'), an "Available Advance Balance" card styled in brand orange & navy blue allows one-click payment adjustments.
+  * Payments Management ('/payments'): Displays "Advance Credits Available" total metric, brand orange "Advance Credit" badges in Client Receivables, and individual "Unused Amount" badges on all advance payments.
 
 4. PEOPLE & HR (Business HR)
 - Employees: Go to People & HR -> Employees. Click "Add Employee" button to add a new staff member. (Requires HR plan). You can grant employee Attendance Portal access using ANY email, even if that email is already registered on the Invoice Portal (e.g. as an owner or staff). Attendance Portal authentication is completely decoupled and namespaced from the Invoice Portal, so attendance credentials never conflict with or overwrite invoice portal accounts. Employees with attendance access can independently register on the Invoice Portal to start their own business or join shared businesses.
@@ -174,16 +203,30 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Status: Credit notes can be in Draft or Sent status. Status updates automatically on save.
 
 11. INVOICE, QUOTATION & BILL CALCULATIONS
-- Line Item Columns & Headers: In all invoice, quotation, and purchase bill templates, the line items table displays columns for S.No., Description, HSN/SAC, Qty, Unit, Rate (₹), Taxable (₹), GST %, GST (₹), and Subtotal (₹). The line total column is labeled "Subtotal (₹)" (or "Subtotal") so that "Total" / "Grand Total" is exclusively reserved for the bottom financial summary.
-- Taxable Amount Calculation: Taxable Amount for each line item is strictly calculated as (Quantity * Rate - Line Item Discount). Global invoice-level discounts do not reduce the line-item taxable value or line GST calculation.
-- GST Calculation: GST % (e.g. 18%, 12%, 5%) is applied directly on the line's Taxable Amount (Taxable * (GST% / 100)).
-- Bottom Summary Calculation: The bottom summary clearly details: Subtotal (sum of taxable values) + Total Taxes (CGST/SGST or IGST) - Overall Global Discount + Shipping & Adjustments = GRAND TOTAL.
+- Universal Calculation Engine: All document types (Sales Invoices, Quotations/Estimates, Purchase Orders, and Purchase Invoices/Bills) and all invoice templates use a single unified calculation standard library (src/lib/invoiceCalculations.ts and InvoiceTotalsTable.tsx). Any new template implemented in the future automatically follows the exact same logic.
+- Line Item Columns & Headers: In all templates, the line items table displays columns for S.No., Description, HSN/SAC, Qty, Unit, Rate (₹), Taxable (₹), GST %, GST (₹), and Subtotal (₹). The line total column is labeled "Subtotal (₹)" so that "Grand Total" is exclusively reserved for the bottom financial summary.
+- Taxable Amount Calculation: Taxable Amount for each line item is strictly calculated as (Quantity * Rate - Line Item Discount). Global invoice-level discounts do not skew the line-item taxable value or line GST calculation.
+- GST Calculation & Accurate Rate Display: GST % (e.g. 18%, 12%, 5%) is resolved directly from the linked tax slab (tax_rates.rate or items.tax_rate) and snapped to official GST slabs. The GST % display is never skewed or rounded down to 17% due to discounts or rounding.
+- Round Off Display in PDF & Print: Round Off / Adjustment is clearly displayed in two places:
+  1. As a dedicated row right above Grand Total in the totals table showing the signed amount, e.g. "Round Off: (+₹0.42)" or "(-₹0.38)".
+  2. Inside the Grand Total header itself in a smaller subtle font showing the exact adjustment, e.g. "(+₹0.42 round off)".
+  Auto Round Off is saved and persisted properly in the database and metadata without resetting to 0 when editing an invoice or bill.
+- TDS & TCS Persistence on Edit: When editing an existing invoice, purchase bill, or purchase order, configured TDS or TCS details (applicability, mode, rate, and amount) are fully preserved from database columns and metadata without resetting to 0. Rate inputs support precise decimal values (e.g. 0.1%, 2.5%) with smooth editing.
+- Bottom Summary Calculation: The bottom summary details: Subtotal (sum of taxable values) + Total Taxes (CGST/SGST or IGST) - Overall Global Discount + Fixed Cost Expenses + Shipping +/- Round Off / Adjustment = GRAND TOTAL. If partially paid, Amount Paid and Balance Due are also displayed.
 
 12. BANKING, CASH FLOW & PAYMENT RECEIVED
 - Location: Go to Banking in the sidebar (/banking) or Cash Flow in Reports (/reports/cash-flow).
 - Payment Received Destination Account: When recording a payment received from a customer (via Record Payment Received page or Invoice Detail "Record Payment" dialog), users can select the specific Bank Account or Cash in Hand account where the funds were deposited.
 - Bank Account Statements: Every recorded payment automatically creates a real-time credit transaction in the selected bank account. Opening that Bank Account's details in Banking immediately lists the transaction with date, amount, description, and running balance.
 - Cash Payments & Cash Flow: When receiving cash or spending cash, it routes to the "Cash in Hand" account. The Cash Flow page provides live visual charts and tables of all cash and bank inflows and outflows across the organization.
+
+12.1 CLIENT ADVANCE PAYMENTS & UNUSED CREDIT ADJUSTMENT
+- Advance Payments (Without Invoices): Users can record payments directly against a client without selecting an invoice (unallocated advance). These payments represent advance deposits or extra payments made by the customer.
+- Tracking Unused Advance Credits: In the Payments page (/payments), advance payments display an "Advance Payment" badge. The "UNUSED AMOUNT" column accurately computes the remaining unallocated balance (e.g. ₹1,600.00 highlighted in a prominent green badge) dynamically by subtracting any applied credits.
+- Client Receivables & Ribbon: The Payments page features an "Advance Credit" column in the Client Receivables breakdown table, and the top Summary Ribbon highlights "Advance Credits Available" across all clients.
+- Record Payment Page (/payments/record): When a client is selected, the system automatically detects if that client has available advance credits and displays an interactive "Available Advance Payment Credit" card (e.g., ₹1,600.00). Users can toggle "Apply Advance Credit" to adjust outstanding invoices using the client's advance balance (even with ₹0 fresh cash) or combine advance credits with fresh cash. Invoices are settled FIFO, creating linked payment records (with payment_mode: "advance_credit") without duplicating bank ledger transactions. Any extra fresh cash over the invoice total is automatically preserved as a new advance credit.
+- Direct Advance Collection: If a client has no outstanding invoices, users can record a direct advance payment using the "Save as Advance Payment" button.
+- Invoice Detail Page (/invoices/:id): When clicking "Record Payment", if the client has unallocated advance credits, an interactive banner displays "Available Advance Credit" with a 1-click "Use Advance" button to immediately apply advance funds towards the invoice balance.
 
 13. CHART OF ACCOUNTS (DIRECT ACCOUNT NAMES)
 - Location: Go to Accounting -> Chart of Accounts (/chart-of-accounts).
@@ -214,13 +257,89 @@ Below is the complete manual of the portal. Use this to answer user questions ac
 - Excess Payment as Customer Advance: When a customer pays more than the invoice balance due, the excess amount is automatically credited as Customer Advance Payment for future bills.
 - Inter-Branch Stock Transfers: Easily transfer stock between branches under Catalog -> Inventory ("Transfer Stock") with automatic stock deduction from origin branch and addition to destination branch.
 
-18. PLATFORM ADMIN PORTAL & HELP & SUPPORT
+18. PLATFORM ADMIN PORTAL & COLLATERAL MANAGEMENT
 - Official Branding & Clean Logo: Platform Admin features the official AssayBiz logo branding cleanly without redundant text strings next to the logo.
 - Platform Admin Notifications (Bell Icon): Top header includes an interactive notification popover displaying pending Help & Support requests with counts, timestamps, and 1-click navigation.
 - Platform Help & Support Management: Under "Support Tickets" (/platform-admin), platform administrators manage platform-level Help & Support queries submitted by businesses and users across the platform (internal CRM client tickets are excluded). Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click, and change ticket statuses (Open, In Progress, Resolved, Closed).
+- Plans & Subscription Pricing Management: In Platform Admin under "Plans & Pricing", administrators can inspect and configure monthly and yearly pricing for all subscription tiers (Business Starter, Business Accounting, Business Suite, Business HR, Business CRM, Business Promotion). Plan price updates sync directly to the database and RPC triggers with fallback safeguards and zero crashes.
+- Official Social Media Channels: Under "Social Media", admins configure official links for YouTube, Facebook, Instagram, LinkedIn, and Contact Helpline/Mobile. Updates immediately broadcast and synchronize in real-time across the public Landing Page, Footer, and Header navigation without page reload.
+- Custom Product Brochure & Pamphlet Uploads: Admins can directly upload custom-designed Product & Pricing Brochures (PDF or image) and Promotional Pamphlets/Flyers (PDF or image) from the Social Media collateral cards. When uploaded, visitors accessing /brochure, /pamphlet, or clicking "Product Brochure (PDF)" can immediately view, read, or download the uploaded custom official file directly, with an interactive toggle to switch back to the built-in dynamic web layout at any time.
 
 19. DYNAMIC BROWSER TAB TITLES
 - Smart Route-Based Tab Titles: Once signed in, the browser tab title dynamically updates across all pages (e.g. "Customer Support Tickets • [Business Name] | AssayBiz", "Invoices & Sales • [Business Name] | AssayBiz", "Dashboard & Overview • [Business Name] | AssayBiz"). It never remains stuck on "Sign In", ensuring clear multi-tab visibility and professional branding.
+
+20. FINANCIAL YEAR BOUNDARY & GST RETURNS EXPORTS (1 APRIL TO 31 MARCH)
+- Indian Financial Year Standard (1 April – 31 March): The entire AssayBiz platform strictly conforms to the Indian Financial Year standard running from 1 April of year T to 31 March of year T+1 (e.g., FY 2026-27 spans from 01 April 2026 to 31 March 2027).
+- Free Plan Quota Reset by Financial Year: The 100 free sales invoices and 100 purchase bills limit on the Free Plan is calculated strictly across the active Indian Financial Year (01 Apr to 31 Mar), ensuring compliance with accounting and tax cycles.
+- Financial Year Dropdown & Toolbar Filters:
+  * Invoices Page (/invoices): Includes a dedicated Financial Year filter selector. Users can filter invoices by Current FY, Previous FY, or any past FY, and the metric ribbons (Total Invoiced, Paid, Balance Due) automatically recalculate for that chosen FY.
+  * Bills / Purchases Page (/bills): Includes the Financial Year selector. Purchase invoice counts, total purchases, and outstanding dues adapt dynamically to the selected Financial Year.
+  * Payments Received Page (/payments): Features a Financial Year selector in the top action bar and table filters. Filter payments, receipts, customer summaries, and monthly collection trends by FY, or export FY payment registers to CSV.
+  * Reports & Analytics (/reports): Monthly revenue and sales charts generate in chronological fiscal order from April to March (12 fiscal months).
+  * Profit & Loss Page (/reports/profit-loss): Defaults to Current FY with 12 months running from April to March, accurately computing Total Invoiced Sales, Discounts, Input Costs, Tax Liabilities, and Net Profit.
+  * Accounting Reports (/reports/accounting): Date range pickers default to Indian FY (01 April to 31 March) with 1-click preset buttons for "Current FY" and "Previous FY".
+  * Cash Flow & Banking (/reports/cash-flow): Inflows, outflows, and net cash flow movements are tracked across the 12 fiscal months of the chosen Financial Year.
+  * Business Expenses (/expenses): Filter expenses by Current FY, Previous FY, or past FYs with updated category and monthly distributions.
+- GST Returns (GSTR-1, GSTR-2, GSTR-3B) with Financial Year Exports (/gst-returns):
+  * Quick Presets: Includes quick filter buttons for "This Month", "Last Month", "This Quarter", "Last Quarter", "This FY (2026-27)", "Last FY", and custom selectors.
+  * Sub-Period Granularity: When an FY is selected, users can toggle between:
+    - Entire 12-Month Financial Year (Full Year).
+    - Quarters: Q1 (Apr – Jun), Q2 (Jul – Sep), Q3 (Oct – Dec), and Q4 (Jan – Mar).
+    - Specific Month: Apr, May, Jun, Jul, Aug, Sep, Oct, Nov, Dec, Jan, Feb, Mar.
+  * Export Capabilities with FY Filename Tags:
+    - GSTR-1 JSON (Govt GST Portal format): Automatically tags return period and exports compliant JSON payload for the chosen FY/Quarter.
+    - GSTR-1 Tally Output CSV: Formatted for seamless 1-click import into Tally Prime / ERP 9.
+    - GSTR-2 Purchase Register JSON & Tally CSV: Consolidates all input tax credit (ITC) and purchase bills for the FY.
+    - GSTR-3B Summary CSV: Consolidates Outward Taxable Supplies and Eligible ITC for monthly or quarterly/annual filing.
+    - HSN Summary CSV: Consolidates product HSN/SAC codes, quantities, and GST slabs for the FY.
+    - Tally Sales CSV: Detailed sales vouchers ready for accounting reconciliation.
+
+21. LEGAL POLICIES & COMPLIANCE (PRIVACY POLICY, REFUND POLICY, TERMS & CONDITIONS)
+- Operating Entity: AASSAY Biz is operated by Emerging Thoughts Private Limited, incorporated under the laws of India.
+- Registered Address: T-4, 501 Sagar Lake View Enclave, Ayodhya Bypass, Bhopal – 462 022, Madhya Pradesh, India.
+- Official Support & Inquiries: Email: support@aassaybiz.com | Phone: (0755) 4932378 | Website: www.aassaybiz.com.
+- Legal Navigation (/privacy, /refund-policy, /terms): All 3 legal policies are accessible from the website footer, header links, and quick switch tabs (LegalNavTabs) on all public policy pages, complete with direct 1-click Word document (.docx) download buttons.
+- Privacy Policy (/privacy):
+  * Fully compliant with India's Digital Personal Data Protection Act, 2023 ("DPDP Act") and DPDP Rules, 2025.
+  * Role Clarification: For client business records, CRM contacts, and staff HR data uploaded by users, the business customer acts as the "Data Fiduciary", while AASSAY Biz acts as the "Data Processor".
+  * GPS Location for Attendance: Collected strictly at the moment an employee punches attendance via mobile app to verify attendance location, made available to the employer.
+  * Itemized Notice & Affirmative Consent: Plain-language mapping of data categories, purposes of processing, consent withdrawal rights, and breach notification mechanisms.
+  * Grievance Redressal Officer: Jitendra Kumar Verma, Director, Emerging Thoughts Private Limited. Email: admin@aassaybiz.com | Phone: (0755) 4932378. Escalation is available to the Data Protection Board of India.
+- Cancellation & Refund Policy (/refund-policy):
+  * Free Evaluation Tier: Users are provided a full-featured Free Version to thoroughly test invoicing, inventory, HR attendance, and CRM modules before paying.
+  * Non-Refundable Nature: All payments towards paid plans and subscriptions are non-refundable once purchased.
+  * Exceptions: Refunds or adjustments are considered solely in exceptional circumstances (e.g. duplicate payment caused by technical error, incorrect billing charge attributable to the company, or legal mandate).
+  * Auto-Renewal: Users can disable automatic renewal anytime prior to the renewal date via account settings or support without penalty; service remains active until the end of the paid billing cycle.
+- Terms & Conditions (/terms):
+  * 32 comprehensive clauses governing platform licensing, acceptable use, ownership (users retain 100% ownership of User Data), intellectual property, service availability, limitations of liability, and indemnification.
+  * Exclusive Jurisdiction: Any disputes arising under the Terms or Platform usage are subject to the exclusive jurisdiction of the competent courts at Bhopal, Madhya Pradesh, India.
+
+22. UNIVERSAL INVOICE CALCULATIONS, TDS/TCS RULES & PDF TEMPLATE LAYOUT
+- Unified Financial Engine (invoiceCalculations.ts):
+  * Applied consistently across all document types: Invoices, Quotations/Estimates, Purchase Orders (PO), and Purchase Invoices/Bills.
+  * TDS (Tax Deducted at Source) Accounting Rule:
+    - TDS is deducted from the base taxable amount BEFORE GST, reducing the taxable base so that GST is also charged on the reduced taxable amount.
+    - Example: Item ₹500, 10% discount = ₹450 base. TDS 2% = ₹9.00. Taxable Amount = ₹450 - ₹9 = ₹441.00. 18% GST (CGST 9% ₹39.69, SGST 9% ₹39.69 = ₹79.38) is charged on ₹441. Grand Total = ₹441 + ₹79.38 = ₹520.38.
+    - Display Hierarchy: The "TDS Deducted (-₹XX.XX)" row appears directly ABOVE the "Taxable Amount" in summary cards and PDF document totals.
+  * TCS (Tax Collected at Source) Accounting Rule:
+    - TCS is calculated AFTER GST on the total document value including GST (Taxable Amount + GST) and ADDED to the grand total.
+    - Example: Item ₹500, 10% discount = ₹450 base. 18% GST on ₹450 = ₹81.00 (CGST ₹40.50, SGST ₹40.50). Total with GST = ₹531.00. TCS 2% on ₹531 = ₹10.62. Grand Total = ₹531 + ₹10.62 = ₹541.62.
+    - Display Hierarchy: The "TCS Collected (+₹XX.XX)" row appears directly AFTER the GST breakdown.
+  * Explicit GST Breakdown:
+    - Instead of showing generic "Total Tax (GST)", all PDF templates and document views automatically show explicit CGST & SGST (50% each) for intrastate transactions or IGST for interstate transactions.
+  * Calculations: Subtotal = sum of line item taxable amounts; Document Discount applied proportionally; Item-level tax calculated per GST slab on post-TDS effective base; Grand Total = Taxable Amount + GST + TCS + Shipping + Expenses +/- Adjustment, then mathematically rounded to nearest whole rupee.
+- Round-off Transparency:
+  * In PDF documents and totals breakdown (InvoiceTotalsTable), whenever round-off is non-zero, a dedicated "Round Off" row is displayed directly above Grand Total showing the exact adjustment (+₹0.XX or -₹0.XX).
+  * In addition, the Grand Total row displays an inline helper badge (e.g. "+₹0.42 round off") so clients and accountants have 100% clarity on rounded cents.
+- PDF Line Item Display & Robust Fallbacks:
+  * Database queries for document lines cleanly select valid items columns 'items(id, name, hsn_code, unit)' ensuring line items are never blank.
+  * All 7 invoice templates (Modern Navy, Modern Crimson, Modern Teal, Classic Tabular, Corporate Blue, Professional Navy, Styled Invoice) use universal property resolution:
+    - Item Name fallback checks: line.name -> line.items.name -> line.item.name -> line.item_name -> first line of description -> "Item".
+    - Description fallback handles multi-line descriptions and prevents duplicate item names.
+    - Zero blank table lines or empty spacers; empty state message displayed if no lines are present.
+- Professional QR Code & Bank Details Layout:
+  * The UPI Scan & Pay QR code is integrated directly inside the "BANK & PAYMENT DETAILS" block on the left (Bank details on the left, instant Scan & Pay QR badge on the right).
+  * The Authorized Signatory section is positioned cleanly and exclusively on the bottom right with support for digital image signatures and dynamic signature font styling.
 
 --- END OF KNOWLEDGE BASE ---
 `;

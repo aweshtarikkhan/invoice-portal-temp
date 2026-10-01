@@ -14,6 +14,11 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from "recharts";
 import { Download, TrendingUp, Clock, IndianRupee, FileText, Wallet, BarChart3 } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearMonths,
+  getFinancialYearsList,
+} from "@/lib/financial-year";
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
@@ -24,8 +29,11 @@ export default function ReportsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [bizExpenses, setBizExpenses] = useState<any[]>([]);
-  const [period, setPeriod] = useState("12");
+  const [period, setPeriod] = useState("fy_current");
   const [loading, setLoading] = useState(true);
+
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const fyList = useMemo(() => getFinancialYearsList(3, 0), []);
 
   useEffect(() => {
     if (!org?.id) return;
@@ -50,12 +58,21 @@ export default function ReportsPage() {
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
   const months = useMemo(() => {
-    const count = parseInt(period);
+    if (period.startsWith("fy_")) {
+      const fyKey = period === "fy_current" ? currentFY.key : period.replace("fy_", "");
+      const fyMonths = getFinancialYearMonths(fyKey);
+      return fyMonths.map((m) => ({
+        start: new Date(`${m.startDate}T00:00:00`),
+        end: new Date(`${m.endDate}T23:59:59`),
+        label: `${m.shortMonth} '${String(m.year).slice(-2)}`,
+      }));
+    }
+    const count = parseInt(period) || 12;
     return Array.from({ length: count }, (_, i) => {
       const d = subMonths(new Date(), count - 1 - i);
       return { start: startOfMonth(d), end: endOfMonth(d), label: format(d, "MMM yy") };
     });
-  }, [period]);
+  }, [period, currentFY]);
 
   const revenueData = useMemo(() => {
     return months.map((m) => {
@@ -108,14 +125,26 @@ export default function ReportsPage() {
     return Object.values(map).sort((a, b) => b.total - a.total).slice(0, 10);
   }, [invoices, clients]);
 
+  const dateRange = useMemo(() => {
+    if (months.length === 0) return { start: new Date(), end: new Date() };
+    return { start: months[0].start, end: months[months.length - 1].end };
+  }, [months]);
+
   const taxSummary = useMemo(() => {
-    const totalTax = invoices.reduce((s, inv) => s + Number(inv.total_tax), 0);
-    const totalRevenue = invoices.reduce((s, inv) => s + Number(inv.total), 0);
-    const totalCollected = payments.reduce((s, p) => s + Number(p.amount), 0);
-    const totalOutstanding = invoices.filter((i) => !["paid", "void", "draft"].includes(i.status))
+    const periodInvoices = invoices.filter((inv) =>
+      isWithinInterval(new Date(inv.issue_date), { start: dateRange.start, end: dateRange.end })
+    );
+    const periodPayments = payments.filter((p) =>
+      isWithinInterval(new Date(p.payment_date), { start: dateRange.start, end: dateRange.end })
+    );
+
+    const totalTax = periodInvoices.reduce((s, inv) => s + Number(inv.total_tax), 0);
+    const totalRevenue = periodInvoices.reduce((s, inv) => s + Number(inv.total), 0);
+    const totalCollected = periodPayments.reduce((s, p) => s + Number(p.amount), 0);
+    const totalOutstanding = periodInvoices.filter((i) => !["paid", "void", "draft"].includes(i.status))
       .reduce((s, inv) => s + Number(inv.balance_due), 0);
     return { totalTax, totalRevenue, totalCollected, totalOutstanding };
-  }, [invoices, payments]);
+  }, [invoices, payments, dateRange]);
 
   // Expense analytics
   const expenseTotal = useMemo(() => bizExpenses.reduce((s, e) => s + Number(e.amount), 0), [bizExpenses]);
@@ -155,14 +184,19 @@ export default function ReportsPage() {
 
       <div className="flex items-center gap-3">
         <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-60 font-medium text-xs"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="3">Last 3 months</SelectItem>
-            <SelectItem value="6">Last 6 months</SelectItem>
-            <SelectItem value="12">Last 12 months</SelectItem>
+            {fyList.map((fy) => (
+              <SelectItem key={fy.key} value={fy.isCurrent ? "fy_current" : `fy_${fy.key}`} className="text-xs">
+                {fy.label} (01 Apr – 31 Mar)
+              </SelectItem>
+            ))}
+            <SelectItem value="3" className="text-xs">Last 3 months</SelectItem>
+            <SelectItem value="6" className="text-xs">Last 6 months</SelectItem>
+            <SelectItem value="12" className="text-xs">Last 12 months</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={() => navigate("/business-report")}>
+        <Button onClick={() => navigate("/business-report")} variant="outline" size="sm">
           <BarChart3 className="w-4 h-4 mr-2" />
           View Business Report
         </Button>

@@ -16,6 +16,16 @@ export default function BrochurePage() {
   const { socials } = usePlatformSocials();
   const brochureRef = useRef<HTMLDivElement>(null);
 
+  const [viewMode, setViewMode] = React.useState<"custom" | "interactive">(() => {
+    return socials.custom_brochure_url ? "custom" : "interactive";
+  });
+
+  React.useEffect(() => {
+    if (socials.custom_brochure_url) {
+      setViewMode("custom");
+    }
+  }, [socials.custom_brochure_url]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -24,11 +34,13 @@ export default function BrochurePage() {
   const facebookUrl = formatSocialUrl("facebook", socials.facebook);
   const instagramUrl = formatSocialUrl("instagram", socials.instagram);
 
+  const isPdf = socials.custom_brochure_url?.toLowerCase().endsWith(".pdf");
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16">
       {/* Top Floating Action Bar (Hidden during Print) */}
       <header className="print:hidden sticky top-0 z-50 backdrop-blur-xl bg-slate-900/80 border-b border-slate-800 px-6 py-4 shadow-lg">
-        <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
@@ -38,16 +50,58 @@ export default function BrochurePage() {
             >
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
             </Button>
-            <div className="h-5 w-px bg-slate-700 mx-2" />
-            <span className="font-semibold text-white text-sm flex items-center gap-1.5">Official <AassayBizBrand theme="dark" /> Brochure (A4 Edition)</span>
+            <div className="h-5 w-px bg-slate-700 mx-1 hidden sm:block" />
+            <span className="font-semibold text-white text-sm flex items-center gap-1.5">
+              Official <AassayBizBrand theme="dark" /> Brochure
+            </span>
           </div>
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={handlePrint}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30 text-xs font-semibold px-4 py-2"
-            >
-              <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
-            </Button>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            {socials.custom_brochure_url && (
+              <div className="flex bg-slate-800/90 rounded-lg p-1 border border-slate-700 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("custom")}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+                    viewMode === "custom"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Uploaded Document
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("interactive")}
+                  className={`px-3 py-1.5 rounded-md font-medium transition-all ${
+                    viewMode === "interactive"
+                      ? "bg-indigo-600 text-white shadow-sm"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  Interactive Web Edition
+                </button>
+              </div>
+            )}
+
+            {socials.custom_brochure_url && viewMode === "custom" ? (
+              <Button
+                asChild
+                className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/30 text-xs font-semibold px-4 py-2"
+              >
+                <a href={socials.custom_brochure_url} target="_blank" rel="noopener noreferrer" download>
+                  <Download className="w-4 h-4 mr-2" /> Download Uploaded File
+                </a>
+              </Button>
+            ) : (
+              <Button
+                onClick={handlePrint}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/30 text-xs font-semibold px-4 py-2"
+              >
+                <Printer className="w-4 h-4 mr-2" /> Print / Save as PDF
+              </Button>
+            )}
+
             <Button variant="outline" size="sm" asChild className="border-slate-700 text-slate-300 hover:bg-slate-800 text-xs">
               <Link to="/">Visit Website</Link>
             </Button>
@@ -80,8 +134,54 @@ export default function BrochurePage() {
         }\
       '}</style>
 
-      {/* Brochure Container */}
-      <div ref={brochureRef} className="max-w-[210mm] mx-auto mt-8 space-y-10 print:mt-0 print:space-y-0">
+      {/* Custom Uploaded Brochure View */}
+      {socials.custom_brochure_url && viewMode === "custom" ? (
+        <div className="max-w-5xl mx-auto mt-6 px-4 space-y-4">
+          <div className="p-4 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-indigo-600 text-white shadow-md">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-white text-sm">Official Custom Brochure</h4>
+                <p className="text-xs text-slate-400">Directly uploaded by management. View inline below or download.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="outline" asChild className="border-slate-700 text-slate-200 hover:bg-slate-800 text-xs">
+                <a href={socials.custom_brochure_url} target="_blank" rel="noopener noreferrer">
+                  Open in New Tab
+                </a>
+              </Button>
+              <Button size="sm" asChild className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold">
+                <a href={socials.custom_brochure_url} target="_blank" rel="noopener noreferrer" download>
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Download
+                </a>
+              </Button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-2 shadow-2xl overflow-hidden min-h-[75vh]">
+            {isPdf ? (
+              <iframe
+                src={socials.custom_brochure_url}
+                className="w-full h-[82vh] rounded-xl border-0 bg-white"
+                title="Official AassayBiz Brochure"
+              />
+            ) : (
+              <div className="flex justify-center p-4">
+                <img
+                  src={socials.custom_brochure_url}
+                  alt="Official AassayBiz Brochure"
+                  className="max-w-full max-h-[82vh] object-contain rounded-xl shadow-lg"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Interactive Brochure Container */
+        <div ref={brochureRef} className="max-w-[210mm] mx-auto mt-8 space-y-10 print:mt-0 print:space-y-0">
         
         {/* ============================================================== */}
         {/* PAGE 1: HERO, MODULES & CAPABILITIES */}
@@ -439,6 +539,7 @@ export default function BrochurePage() {
         </section>
 
       </div>
+      )}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { Pencil, ArrowLeft, PackageCheck, Printer, Download, Copy, MessageCircle
 import { format } from "date-fns";
 import { stateCodeFromGstin, calculateTaxBreakdown } from "@/lib/gst";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
+import { resolveLineTaxRate } from "@/lib/invoiceCalculations";
 import { getDocumentPreviewClass } from "@/lib/document-templates";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
@@ -66,7 +67,7 @@ export default function PurchaseOrderDetailPage() {
     return (lines || []).map((l) => {
       const q = Number(l.quantity) || 0;
       const r = Number(l.rate) || 0;
-      const tr = Number(l.tax_rate) || 0;
+      const tr = resolveLineTaxRate(l);
       const baseAmt = q * r;
       const taxAmt = l.tax_amount != null && !isNaN(Number(l.tax_amount)) && Number(l.tax_amount) > 0
         ? Number(l.tax_amount)
@@ -112,11 +113,16 @@ export default function PurchaseOrderDetailPage() {
       invoice_number: po.po_number,
       issue_date: po.po_date,
       total_tax: po.tax_total || po.tax_amount || 0,
-      total_discount: 0,
-      adjustment: 0,
-      shipping_charge: 0,
+      total_discount: Number(po.discount || po.total_discount || 0),
+      adjustment: Number(po.adjustment || 0),
+      adjustment_name: po.adjustment_name || "Adjustment",
+      shipping_charge: Number(po.shipping_charge || 0),
+      tds_tcs_applicable: Boolean(po.tds_tcs_applicable),
+      tds_tcs_type: po.tds_tcs_type || "tds",
+      tds_tcs_rate: Number(po.tds_tcs_rate || 0),
+      tds_tcs_amount: Number(po.tds_tcs_amount || 0),
       clients: {
-        display_name: vendor?.name || "",
+        display_name: vendor?.display_name || vendor?.name || "",
         tax_number: vendor?.gstin || "",
         billing_address: vendor?.billing_address || "",
         email: vendor?.email || "",

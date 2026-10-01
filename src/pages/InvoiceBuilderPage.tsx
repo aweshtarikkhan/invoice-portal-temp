@@ -25,7 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, CreditCard, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw, Wallet } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InvoiceSettingsSheet } from "@/components/shared/InvoiceSettingsSheet";
 
@@ -446,13 +446,19 @@ export default function InvoiceBuilderPage() {
 
   const [clients, setClients] = useState<any[]>([]);
   const [showSignature, setShowSignature] = useState(() => {
-    const org = useAppStore.getState().organization;
-    return !!(org?.address?.signature_type && org.address.signature_type !== 'none');
+    const orgState = useAppStore.getState().organization;
+    if (!orgState) return false;
+    let addr: any = orgState.address;
+    if (typeof addr === "string") {
+      try { addr = JSON.parse(addr); } catch { addr = null; }
+    }
+    return !!(addr?.signature_type && addr.signature_type !== 'none');
   });
   const [catalogItems, setCatalogItems] = useState<any[]>([]);
   const [taxRates, setTaxRates] = useState<any[]>([]);
 
   const [clientId, setClientId] = useState("");
+  const [clientAdvanceCredit, setClientAdvanceCredit] = useState(0);
   const [clientSearch, setClientSearch] = useState("");
   const [clientDropdownOpen, setClientDropdownOpen] = useState(false);
   const [addClientOpen, setAddClientOpen] = useState(false);
@@ -476,7 +482,7 @@ export default function InvoiceBuilderPage() {
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
   const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
-  const [tdsTcsRate, setTdsTcsRate] = useState(0);
+  const [tdsTcsRate, setTdsTcsRate] = useState<number | string>(0);
   const [shippingCharge, setShippingCharge] = useState(0);
   const [expenses, setExpenses] = useState(0);
   const [adjustment, setAdjustment] = useState(0);
@@ -631,14 +637,14 @@ export default function InvoiceBuilderPage() {
     const loadInvoice = async () => {
       const { data: inv } = await supabase
         .from("invoices")
-        .select("*")
+        .select("*, clients(display_name)")
         .eq("id", sourceId)
         .single();
       if (!inv) return;
 
       setClientId(inv.client_id);
-      const matchedClient = clients.find((c) => c.id === inv.client_id);
-      if (matchedClient) setClientSearch(matchedClient.display_name);
+      const matchedClient = (inv as any)?.clients?.display_name || clients.find((c) => c.id === inv.client_id)?.display_name;
+      if (matchedClient) setClientSearch(matchedClient);
       
       if (inv.metadata && (inv.metadata as any).shipping_same_as_billing !== undefined) {
         setShippingSameAsBilling((inv.metadata as any).shipping_same_as_billing);
@@ -682,8 +688,21 @@ export default function InvoiceBuilderPage() {
           if ((inv.metadata as any).show_terms !== undefined) setShowTerms((inv.metadata as any).show_terms);
           if ((inv.metadata as any).show_notes !== undefined) setShowNotes((inv.metadata as any).show_notes);
         }
-      setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
-      setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
+      const isTdsTcsOn = Boolean(
+        (inv as any).tds_tcs_applicable ||
+        (inv.metadata as any)?.tds_tcs_applicable ||
+        Number((inv as any).tds_tcs_rate || 0) > 0 ||
+        Number((inv as any).tds_tcs_amount || 0) > 0 ||
+        Number((inv.metadata as any)?.tds_tcs_rate || 0) > 0 ||
+        Number((inv.metadata as any)?.tds_tcs_amount || 0) > 0
+      );
+      const loadedRate = (inv as any).tds_tcs_rate != null && (inv as any).tds_tcs_rate !== ""
+        ? Number((inv as any).tds_tcs_rate)
+        : (Number((inv.metadata as any)?.tds_tcs_rate) || 0);
+      const loadedType = (inv as any).tds_tcs_type || (inv.metadata as any)?.tds_tcs_type || "tds";
+      setTdsTcsApplicable(isTdsTcsOn);
+      setTdsTcsType(loadedType === "tcs" ? "tcs" : "tds");
+      setTdsTcsRate(loadedRate);
       setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
       setPrevDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
       setAmountPaid(duplicateId ? 0 : Number(inv.amount_paid || 0));
@@ -751,20 +770,55 @@ export default function InvoiceBuilderPage() {
       }
     };
     loadInvoice();
-  }, [id, duplicateId, org?.id, clients]);
+  }, [id, duplicateId, org?.id]);
 
   // Fetch client pending invoices when client changes
   useEffect(() => {
-    if (!clientId || !org?.id) { setClientInvoices([]); return; }
+    if (!clientId || !org?.id) {
+      setClientInvoices([]);
+      setClientAdvanceCredit(0);
+      return;
+    }
     const fetchClientInvoices = async () => {
-      const { data } = await supabase
-        .from("invoices")
-        .select("total, balance_due, due_date, status")
-        .eq("client_id", clientId)
-        .eq("org_id", org.id)
-        .neq("status", "void")
-        .neq("status", "draft");
-      setClientInvoices(data || []);
+      const [invRes, advRes, appliedRes] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select("total, balance_due, due_date, status")
+          .eq("client_id", clientId)
+          .eq("org_id", org.id)
+          .neq("status", "void")
+          .neq("status", "draft"),
+        supabase
+          .from("payments")
+          .select("amount, payment_number")
+          .eq("org_id", org.id)
+          .eq("client_id", clientId)
+          .is("invoice_id", null),
+        supabase
+          .from("payments")
+          .select("amount, reference_number")
+          .eq("org_id", org.id)
+          .eq("client_id", clientId)
+          .eq("payment_mode", "advance_credit"),
+      ]);
+
+      setClientInvoices(invRes.data || []);
+
+      const usedMap: Record<string, number> = {};
+      (appliedRes.data || []).forEach((p: any) => {
+        if (p.reference_number) {
+          const ref = p.reference_number.trim();
+          usedMap[ref] = (usedMap[ref] || 0) + Number(p.amount || 0);
+        }
+      });
+      let totalAdv = 0;
+      (advRes.data || []).forEach((a: any) => {
+        const ref = (a.payment_number || "").trim();
+        const used = usedMap[ref] || 0;
+        const rem = Math.max(0, Number(a.amount || 0) - used);
+        totalAdv += rem;
+      });
+      setClientAdvanceCredit(totalAdv);
     };
     fetchClientInvoices();
   }, [clientId, org?.id]);
@@ -792,15 +846,33 @@ export default function InvoiceBuilderPage() {
   }, [clientInvoices]);
 
 
-  const calculateLine = useCallback((line: LineItem): LineItem => {
+  // Totals & Discount Pre-computation
+  const rawSubtotal = lines.reduce((s, l) => s + ((Number(l.quantity) || 0) * (Number(l.rate) || 0)), 0);
+  const itemLevelDiscountTotal = lines.reduce((s, l) => {
+    const lineAmt = (Number(l.quantity) || 0) * (Number(l.rate) || 0);
+    const d = Math.max(0, Number(l.discount) || 0);
+    return s + (l.discount_type === "percentage" ? lineAmt * (d / 100) : d);
+  }, 0);
+  const subtotal = Math.max(0, rawSubtotal - itemLevelDiscountTotal);
+  const cleanDiscount = Math.max(0, Number(discount) || 0);
+  const totalDiscount = Math.min(
+    subtotal,
+    discountType === "percentage" ? (subtotal * cleanDiscount) / 100 : cleanDiscount
+  );
+  const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
+  const discountRatio = subtotal > 0 ? discountedSubtotal / subtotal : 1;
+
+  const calculateLine = useCallback((line: LineItem, ratio = discountRatio): LineItem => {
     const lineSubtotal = (Number(line.quantity) || 0) * (Number(line.rate) || 0);
     
     // Add item specific discount if applicable
     const itemDiscount = line.discount_type === "percentage"
-      ? lineSubtotal * ((Number(line.discount) || 0) / 100)
-      : (Number(line.discount) || 0);
+      ? lineSubtotal * ((Math.max(0, Number(line.discount) || 0)) / 100)
+      : Math.max(0, Number(line.discount) || 0);
       
     const lineTaxable = Math.max(0, lineSubtotal - itemDiscount);
+    // GST applies post-discount: on the effective taxable share of the line
+    const effectiveLineTaxable = lineTaxable * ratio;
     
     let tax_amount = 0;
     let computedAmount = lineTaxable;
@@ -810,7 +882,7 @@ export default function InvoiceBuilderPage() {
       const slab = INDIAN_GST_SLABS.find(s => s.id === line.tax_id);
       const taxRateObj = taxRates.find((t: any) => t.id === line.tax_id);
       const rate = slab ? slab.rate : (taxRateObj ? Number(taxRateObj.rate) : 0);
-      const computedTax = lineTaxable * (rate / 100);
+      const computedTax = effectiveLineTaxable * (rate / 100);
       
       tax_amount = computedTax;
       computedAmount += tax_amount;
@@ -823,7 +895,7 @@ export default function InvoiceBuilderPage() {
       hsn_code: hasGst ? (line.hsn_code || "") : "",
       amount: computedAmount 
     };
-  }, [taxRates, org?.gst_number, (org as any)?.tax_number, (org as any)?.gst_enabled]);
+  }, [taxRates, org?.gst_number, (org as any)?.tax_number, (org as any)?.gst_enabled, discountRatio]);
 
   const handleLineChange = (index: number, field: string, value: any) => {
     setLines((prev) => {
@@ -862,20 +934,13 @@ export default function InvoiceBuilderPage() {
 
   const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
 
-  // Totals
-  const rawSubtotal = lines.reduce((s, l) => s + ((Number(l.quantity) || 0) * (Number(l.rate) || 0)), 0);
-  // Item-level discounts total (for subtotal display)
-  const itemLevelDiscountTotal = lines.reduce((s, l) => {
-    const lineAmt = (Number(l.quantity) || 0) * (Number(l.rate) || 0);
-    return s + (l.discount_type === "percentage" ? lineAmt * (l.discount / 100) : l.discount);
-  }, 0);
-  const totalDiscount = discountType === "percentage" ? rawSubtotal * (discount / 100) : discount;
-  
+  const cleanTdsTcsRate = Math.max(0, parseFloat(String(tdsTcsRate)) || 0);
+  const isTds = Boolean(tdsTcsApplicable && tdsTcsType === "tds" && cleanTdsTcsRate > 0);
+  const tdsFactor = isTds ? (1 - cleanTdsTcsRate / 100) : 1;
+  const effectiveLineRatio = discountRatio * tdsFactor;
+
   // Calculate item-wise totals
-  const calculatedLines = lines.map(line => calculateLine(line));
-  // subtotal after item-level discounts (before global discount)
-  const subtotal = rawSubtotal - itemLevelDiscountTotal;
-  const discountedSubtotal = Math.max(0, subtotal - totalDiscount);
+  const calculatedLines = lines.map(line => calculateLine(line, effectiveLineRatio));
   
   // Aggregate Taxes
   const taxBreakdownMap: Record<string, { id: string, name: string, rate: number, amount: number }> = {};
@@ -903,8 +968,12 @@ export default function InvoiceBuilderPage() {
     }
   });
 
-  if (maxTaxRate > 0 && (shippingCharge > 0 || expenses > 0)) {
-    const extraTaxBase = shippingCharge + expenses; 
+  const cleanExpenses = Math.max(0, Number(expenses) || 0);
+  const cleanShipping = Math.max(0, Number(shippingCharge) || 0);
+  const baseAmountBeforeTds = discountedSubtotal + cleanExpenses + cleanShipping;
+
+  if (maxTaxRate > 0 && (cleanShipping > 0 || cleanExpenses > 0)) {
+    const extraTaxBase = (cleanShipping + cleanExpenses) * tdsFactor; 
     const extraTaxAmount = extraTaxBase * (maxTaxRate / 100);
     if (extraTaxAmount > 0) {
       if (isInterstate) {
@@ -925,35 +994,33 @@ export default function InvoiceBuilderPage() {
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.reduce((s, t) => s + t.amount, 0);
 
-  // Gross total before TDS/TCS (Fixed cost expenses & shipping are added, not subtracted)
-  const baseTotalBeforeTdsTcs = discountedSubtotal + totalTax + shippingCharge + expenses + (autoRoundOff ? 0 : adjustment);
+  // TDS (Tax Deducted at Source): calculated BEFORE GST on Base Value and DEDUCTED (-)
+  const tdsAmount = isTds ? (baseAmountBeforeTds * cleanTdsTcsRate) / 100 : 0;
 
-  // TDS is calculated BEFORE GST on Subtotal (taxable value: subtotal + expenses) and DEDUCTED (-)
-  // TCS is calculated AFTER GST on Total Value (subtotal + tax + shipping + expenses + adjustment) and ADDED (+)
-  const taxableSubtotal = Math.max(0, subtotal + expenses);
-  const tdsTcsAmount = tdsTcsApplicable
-    ? tdsTcsType === "tds"
-      ? (taxableSubtotal * Math.max(0, tdsTcsRate)) / 100
-      : (baseTotalBeforeTdsTcs * Math.max(0, tdsTcsRate)) / 100
+  // Taxable Amount (Net Basic Value after Discount and TDS)
+  const taxableAmount = Math.max(0, baseAmountBeforeTds - tdsAmount);
+
+  // Total with GST (Net Taxable Amount + GST)
+  const totalWithGst = taxableAmount + (hasGst ? totalTax : 0);
+
+  // TCS (Tax Collected at Source): calculated AFTER GST on Total Value with GST (Net Taxable Amount + GST) and ADDED (+)
+  const tcsAmount = (tdsTcsApplicable && tdsTcsType === "tcs")
+    ? (totalWithGst * cleanTdsTcsRate) / 100
     : 0;
-  
-  let total = baseTotalBeforeTdsTcs;
-    if (tdsTcsApplicable) {
-      if (tdsTcsType === "tds") {
-        total -= tdsTcsAmount;
-      } else {
-        total += tdsTcsAmount;
-      }
-    }
 
-    let finalAdjustment = autoRoundOff ? 0 : adjustment;
-    let finalAdjustmentName = autoRoundOff ? "Round Off" : adjustmentName;
+  const tdsTcsAmount = tdsTcsType === "tds" ? tdsAmount : tcsAmount;
 
-    if (autoRoundOff) {
-      const roundedTotal = Math.round(total);
-      finalAdjustment = Number((roundedTotal - total).toFixed(2));
-      total = roundedTotal;
-    }
+  // Since TDS was already deducted to arrive at taxableAmount, totalWithGst already includes the TDS deduction
+  const baseTotalBeforeRoundOff = totalWithGst + tcsAmount + (autoRoundOff ? 0 : adjustment);
+  let total = baseTotalBeforeRoundOff;
+  let finalAdjustment = autoRoundOff ? 0 : adjustment;
+  let finalAdjustmentName = autoRoundOff ? "Round Off" : adjustmentName;
+
+  if (autoRoundOff) {
+    const roundedTotal = Math.round(baseTotalBeforeRoundOff);
+    finalAdjustment = Number((roundedTotal - (totalWithGst + tcsAmount)).toFixed(2));
+    total = roundedTotal;
+  }
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -1147,9 +1214,14 @@ export default function InvoiceBuilderPage() {
         has_gst: hasGst,
         shipping_same_as_billing: shippingSameAsBilling,
         auto_round_off: autoRoundOff,
+        round_off: finalAdjustment,
         show_bank_details: showBankDetails,
         show_terms: showTerms,
         show_notes: showNotes,
+        tds_tcs_applicable: tdsTcsApplicable,
+        tds_tcs_type: tdsTcsType,
+        tds_tcs_rate: cleanTdsTcsRate,
+        tds_tcs_amount: tdsTcsAmount,
       },
       invoice_number: invoiceNumber,
       issue_date: issueDate,
@@ -1159,8 +1231,8 @@ export default function InvoiceBuilderPage() {
       discount_type: discountType,
       shipping_charge: shippingCharge,
       expenses,
-      adjustment,
-      adjustment_name: adjustmentName,
+      adjustment: finalAdjustment,
+      adjustment_name: finalAdjustmentName,
       deduct_stock: deductStock,
       bank_details: bankDetailsPayload,
       irn: generateIrn && irn.trim() ? irn.trim() : null,
@@ -1176,7 +1248,7 @@ export default function InvoiceBuilderPage() {
       total_discount: totalDiscount,
       tds_tcs_applicable: tdsTcsApplicable,
       tds_tcs_type: tdsTcsType,
-      tds_tcs_rate: tdsTcsRate,
+      tds_tcs_rate: cleanTdsTcsRate,
       tds_tcs_amount: tdsTcsAmount,
       total,
       balance_due: total - amountPaid,
@@ -1821,6 +1893,24 @@ export default function InvoiceBuilderPage() {
                     </div>
                   </div>
                 )}
+
+                {clientId && clientAdvanceCredit > 0.001 && (
+                  <div className="mt-3 rounded-xl border-2 border-[#e77817]/40 dark:border-[#e77817]/50 bg-gradient-to-r from-orange-50/80 via-amber-50/40 to-blue-50/70 dark:from-orange-950/20 dark:via-slate-900/40 dark:to-blue-950/30 p-3.5 flex items-center justify-between gap-3 text-xs shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-[#e77817]/15 dark:bg-[#e77817]/25 text-[#e77817] border border-[#e77817]/30 shrink-0">
+                        <Wallet className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-slate-900 dark:text-slate-100 text-sm block">
+                          Available Advance Credit: <span className="text-[#e77817]">{formatCurrency(clientAdvanceCredit, org?.currency_code || "INR")}</span>
+                        </span>
+                        <span className="text-xs text-slate-600 dark:text-slate-300">
+                          This client has advance credit available. It can be applied and adjusted against this invoice upon recording payment.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* State Override if Client State is missing */}
                 {clientId && !clientState && (
@@ -2093,7 +2183,7 @@ export default function InvoiceBuilderPage() {
 
             {includeBankDetails && (
               <div className="space-y-4 pt-2">
-                <Select value={selectedBankAccountId || ""} onValueChange={handleBankAccountSelect}>
+                <Select value={selectedBankAccountId || undefined} onValueChange={handleBankAccountSelect}>
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Select bank account" />
                   </SelectTrigger>
@@ -2286,7 +2376,7 @@ export default function InvoiceBuilderPage() {
           <CardContent className="pt-6 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
-              <span>{fmt(subtotal)}</span>
+              <span className="font-medium">{fmt(subtotal)}</span>
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
               <span className="text-muted-foreground">Discount</span>
@@ -2316,24 +2406,11 @@ export default function InvoiceBuilderPage() {
                     <SelectItem value="fixed">₹</SelectItem>
                   </SelectContent>
                 </Select>
-                {totalDiscount > 0 && <span className="text-destructive">-{fmt(totalDiscount)}</span>}
+                {totalDiscount > 0 && <span className="text-destructive font-medium">-{fmt(totalDiscount)}</span>}
               </div>
             </div>
             <div className="flex items-center justify-between text-sm gap-2">
-              <span className="text-muted-foreground">Shipping</span>
-              <Input
-                type="number"
-                min={0}
-                className="h-7 w-24 text-xs text-right"
-                value={shippingCharge}
-                onKeyDown={(e) => {
-                  if (e.key === "-" || e.key === "e") e.preventDefault();
-                }}
-                onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
-              />
-            </div>
-            <div className="flex items-center justify-between text-sm gap-2">
-              <span className="text-muted-foreground">Expenses (Fixed Cost)</span>
+              <span className="text-muted-foreground">Fixed Cost (Expenses)</span>
               <div className="flex items-center gap-1">
                 <Input
                   type="number"
@@ -2345,57 +2422,92 @@ export default function InvoiceBuilderPage() {
                   }}
                   onChange={(e) => setExpenses(Math.max(0, parseFloat(e.target.value) || 0))}
                 />
-                {expenses > 0 && <span className="text-foreground font-medium">+{fmt(expenses)}</span>}
+                {cleanExpenses > 0 && <span className="text-foreground font-medium">+{fmt(cleanExpenses)}</span>}
               </div>
+            </div>
+            <div className="flex items-center justify-between text-sm gap-2">
+              <span className="text-muted-foreground">Shipping</span>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  min={0}
+                  className="h-7 w-24 text-xs text-right"
+                  value={shippingCharge}
+                  onKeyDown={(e) => {
+                    if (e.key === "-" || e.key === "e") e.preventDefault();
+                  }}
+                  onChange={(e) => setShippingCharge(Math.max(0, parseFloat(e.target.value) || 0))}
+                />
+                {cleanShipping > 0 && <span className="text-foreground font-medium">+{fmt(cleanShipping)}</span>}
+              </div>
+            </div>
+            {tdsTcsApplicable && tdsTcsType === "tds" && tdsAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-destructive font-medium px-2">
+                <span>TDS Deducted ({cleanTdsTcsRate}%)</span>
+                <span>-{fmt(tdsAmount)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between text-sm font-semibold bg-muted/50 px-2 py-1.5 rounded">
+              <span>Taxable Amount</span>
+              <span>{fmt(taxableAmount)}</span>
             </div>
             {hasGst && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-sm gap-2">
-                  <span className="text-muted-foreground">Tax</span>
+                  <span className="text-muted-foreground">GST Breakdown</span>
                 </div>
-                {taxBreakdown.length === 0 && <span className="text-xs text-muted-foreground">No taxes applied</span>}
+                {taxBreakdown.length === 0 && <span className="text-xs text-muted-foreground pl-2">No taxes applied</span>}
                 {taxBreakdown.map((tb) => (
                   <div key={tb.id} className="flex items-center justify-between text-xs pl-4 text-muted-foreground">
                     <span>{tb.name} ({tb.rate}%)</span>
-                    <span>+{fmt(tb.amount)}</span>
+                    <span className="font-medium text-foreground">+{fmt(tb.amount)}</span>
                   </div>
                 ))}
               </div>
             )}
-            {/* TDS/TCS Section */}
+            {tdsTcsApplicable && tdsTcsType === "tcs" && tcsAmount > 0 && (
+              <div className="flex items-center justify-between text-xs text-emerald-600 font-medium px-2">
+                <span>TCS Collected ({cleanTdsTcsRate}%)</span>
+                <span>+{fmt(tcsAmount)}</span>
+              </div>
+            )}
+            {/* TDS/TCS Configuration Section */}
             <div className="space-y-2 border-y py-3 my-2">
               <label className="flex items-center justify-between cursor-pointer">
                 <span className="text-sm font-medium">TDS / TCS Applicable?</span>
                 <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
               </label>
               {tdsTcsApplicable && (
-                <div className="flex items-center justify-between text-sm gap-2 mt-2">
-                  <div className="flex items-center gap-4">
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
-                      <span>TDS (-)</span>
-                    </label>
-                    <label className="flex items-center gap-1 cursor-pointer">
-                      <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
-                      <span>TCS</span>
-                    </label>
+                <div className="space-y-2 mt-2">
+                  <div className="flex items-center justify-between text-sm gap-2">
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
+                        <span className="text-xs font-medium">TDS (-)</span>
+                      </label>
+                      <label className="flex items-center gap-1 cursor-pointer">
+                        <input type="radio" name="tdsTcsType" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
+                        <span className="text-xs font-medium">TCS (+)</span>
+                      </label>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        type="number"
+                        min={0}
+                        step="any"
+                        className="h-7 w-16 text-xs text-right"
+                        value={tdsTcsRate === 0 && !tdsTcsApplicable ? "" : tdsTcsRate}
+                        onChange={(e) => setTdsTcsRate(e.target.value)}
+                        placeholder="Rate"
+                      />
+                      <span className="text-muted-foreground text-xs">%</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Input
-                      type="number"
-                      min={0}
-                      className="h-7 w-16 text-xs text-right"
-                      value={tdsTcsRate}
-                      onChange={(e) => setTdsTcsRate(Math.abs(Number(e.target.value)))}
-                      placeholder="Rate"
-                    />
-                    <span className="text-muted-foreground">%</span>
-                    {tdsTcsAmount > 0 && (
-                      <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
-                        {tdsTcsType === "tds" ? "-" : ""}{fmt(tdsTcsAmount)}
-                      </span>
-                    )}
-                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {tdsTcsType === "tds" 
+                      ? "TDS is calculated on Taxable Amount before GST and deducted from total."
+                      : "TCS is calculated on Total Invoice Value (Basic Amount + GST) and added to total."}
+                  </p>
                 </div>
               )}
             </div>

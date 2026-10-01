@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
-  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2, ArrowUp, ArrowDown, AlertTriangle
+  Plus, Users, Search, Upload, Trash2, Eye, Edit, Download, Loader2, ArrowUp, ArrowDown, AlertTriangle, Wallet
 } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { fetchGstDetails } from "@/lib/gst-service";
@@ -112,12 +112,31 @@ export default function ClientsPage() {
     const [{ data: clientData }, { data: invData }, { data: payData }] = await Promise.all([
       supabase.from("clients").select("*").eq("org_id", org.id).order("display_name"),
       supabase.from("invoices").select("client_id, total, balance_due, amount_paid, status, issue_date, updated_at").eq("org_id", org.id),
-      supabase.from("payments").select("client_id, payment_date").eq("org_id", org.id),
+      supabase.from("payments").select("client_id, payment_date, amount, payment_mode, reference_number, invoice_id, payment_number").eq("org_id", org.id),
     ]);
     setClients(clientData || []);
-    const agg: Record<string, { billed: number; received: number; due: number; lastActivity: string | null }> = {};
+
+    const advanceUsageMap: Record<string, number> = {};
+    (payData || []).forEach((p: any) => {
+      if (p.payment_mode === "advance_credit" && p.reference_number) {
+        const ref = p.reference_number.trim();
+        advanceUsageMap[ref] = (advanceUsageMap[ref] || 0) + Number(p.amount || 0);
+      }
+    });
+
+    const clientAdvanceMap: Record<string, number> = {};
+    (payData || []).forEach((p: any) => {
+      if (!p.invoice_id && p.client_id) {
+        const ref = (p.payment_number || "").trim();
+        const used = advanceUsageMap[ref] || 0;
+        const remaining = Math.max(0, Number(p.amount || 0) - used);
+        clientAdvanceMap[p.client_id] = (clientAdvanceMap[p.client_id] || 0) + remaining;
+      }
+    });
+
+    const agg: Record<string, { billed: number; received: number; due: number; advance: number; lastActivity: string | null }> = {};
     (invData || []).filter((i: any) => i.status !== "void" && i.status !== "draft").forEach((inv: any) => {
-      if (!agg[inv.client_id]) agg[inv.client_id] = { billed: 0, received: 0, due: 0, lastActivity: null };
+      if (!agg[inv.client_id]) agg[inv.client_id] = { billed: 0, received: 0, due: 0, advance: 0, lastActivity: null };
       agg[inv.client_id].billed += Number(inv.total || 0);
       agg[inv.client_id].received += Number(inv.amount_paid || 0);
       agg[inv.client_id].due += Number(inv.balance_due || 0);
@@ -125,8 +144,12 @@ export default function ClientsPage() {
       if (t && (!agg[inv.client_id].lastActivity || t > agg[inv.client_id].lastActivity!)) agg[inv.client_id].lastActivity = t;
     });
     (payData || []).forEach((p: any) => {
-      if (!agg[p.client_id]) agg[p.client_id] = { billed: 0, received: 0, due: 0, lastActivity: null };
+      if (!agg[p.client_id]) agg[p.client_id] = { billed: 0, received: 0, due: 0, advance: 0, lastActivity: null };
       if (p.payment_date && (!agg[p.client_id].lastActivity || p.payment_date > agg[p.client_id].lastActivity!)) agg[p.client_id].lastActivity = p.payment_date;
+    });
+    Object.keys(clientAdvanceMap).forEach((cId) => {
+      if (!agg[cId]) agg[cId] = { billed: 0, received: 0, due: 0, advance: 0, lastActivity: null };
+      agg[cId].advance = clientAdvanceMap[cId];
     });
     setInvoiceAgg(agg);
     setLoading(false);
@@ -469,8 +492,14 @@ export default function ClientsPage() {
                         {client.phone || client.email || "—"}
                       </TableCell>
                       <TableCell className="text-sm font-medium">{fmt(a.billed)}</TableCell>
-                      <TableCell className="text-sm font-medium">{fmt(a.received)}</TableCell>
-                      <TableCell className={`text-sm font-semibold ${dueColor}`}>{fmt(a.due)}</TableCell>
+                      <TableCell className={`text-sm font-semibold ${dueColor}`}>
+                        <div>{fmt(a.due)}</div>
+                        {a.advance > 0.001 && (
+                          <div className="text-[11px] font-semibold text-[#e77817] dark:text-orange-400 mt-0.5 flex items-center gap-1">
+                            <Wallet className="h-3 w-3 inline shrink-0" /> Adv: {fmt(a.advance)}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {a.lastActivity ? formatDistanceToNow(new Date(a.lastActivity), { addSuffix: true }) : "—"}
                       </TableCell>

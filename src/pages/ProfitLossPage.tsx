@@ -12,6 +12,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Download, TrendingUp, TrendingDown, IndianRupee, Minus, ArrowLeft } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
 import { downloadCSV } from "@/lib/export-csv";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearMonths,
+  getFinancialYearsList,
+} from "@/lib/financial-year";
 
 export default function ProfitLossPage() {
   const navigate = useNavigate();
@@ -19,8 +24,11 @@ export default function ProfitLossPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
-  const [period, setPeriod] = useState("12");
+  const [period, setPeriod] = useState("fy_current");
   const [loading, setLoading] = useState(true);
+
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const fyList = useMemo(() => getFinancialYearsList(3, 0), []);
 
   const currency = org?.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -43,12 +51,21 @@ export default function ProfitLossPage() {
   }, [org?.id]);
 
   const months = useMemo(() => {
-    const count = parseInt(period);
+    if (period.startsWith("fy_")) {
+      const fyKey = period === "fy_current" ? currentFY.key : period.replace("fy_", "");
+      const fyMonths = getFinancialYearMonths(fyKey);
+      return fyMonths.map((m) => ({
+        start: new Date(`${m.startDate}T00:00:00`),
+        end: new Date(`${m.endDate}T23:59:59`),
+        label: `${m.shortMonth} '${String(m.year).slice(-2)}`,
+      }));
+    }
+    const count = parseInt(period) || 12;
     return Array.from({ length: count }, (_, i) => {
       const d = subMonths(new Date(), count - 1 - i);
       return { start: startOfMonth(d), end: endOfMonth(d), label: format(d, "MMM yy") };
     });
-  }, [period]);
+  }, [period, currentFY]);
 
   const monthlyData = useMemo(() => {
     return months.map((m) => {
@@ -63,9 +80,16 @@ export default function ProfitLossPage() {
   const totals = useMemo(() => {
     const totalRevenue = monthlyData.reduce((s, m) => s + m.revenue, 0);
     const totalExpenses = monthlyData.reduce((s, m) => s + m.expense, 0);
-    const totalInvoiced = invoices.reduce((s, i) => s + Number(i.total), 0);
-    const totalTax = invoices.reduce((s, i) => s + Number(i.total_tax), 0);
-    const totalDiscount = invoices.reduce((s, i) => s + Number(i.total_discount), 0);
+
+    const firstMonthStart = months[0]?.start || subMonths(new Date(), 12);
+    const lastMonthEnd = months[months.length - 1]?.end || new Date();
+    const periodInvoices = invoices.filter(i =>
+      isWithinInterval(new Date(i.issue_date), { start: firstMonthStart, end: lastMonthEnd })
+    );
+
+    const totalInvoiced = periodInvoices.reduce((s, i) => s + Number(i.total), 0);
+    const totalTax = periodInvoices.reduce((s, i) => s + Number(i.total_tax), 0);
+    const totalDiscount = periodInvoices.reduce((s, i) => s + Number(i.total_discount), 0);
     return {
       revenue: totalRevenue,
       expenses: totalExpenses,
@@ -75,18 +99,20 @@ export default function ProfitLossPage() {
       discount: totalDiscount,
       margin: totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue * 100) : 0,
     };
-  }, [monthlyData, invoices]);
+  }, [monthlyData, invoices, months]);
 
   const expenseByCategory = useMemo(() => {
     const map: Record<string, number> = {};
+    const firstMonthStart = months[0]?.start || subMonths(new Date(), 12);
+    const lastMonthEnd = months[months.length - 1]?.end || new Date();
     expenses.forEach(e => {
-      const cutoff = subMonths(new Date(), parseInt(period));
-      if (new Date(e.expense_date) >= cutoff) {
+      const d = new Date(e.expense_date);
+      if (d >= firstMonthStart && d <= lastMonthEnd) {
         map[e.category] = (map[e.category] || 0) + Number(e.amount);
       }
     });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([category, amount]) => ({ category, amount }));
-  }, [expenses, period]);
+  }, [expenses, months]);
 
   if (loading) return <div className="p-6">Loading P&L report...</div>;
 
@@ -105,11 +131,16 @@ export default function ProfitLossPage() {
       </PageHeader>
 
       <Select value={period} onValueChange={setPeriod}>
-        <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+        <SelectTrigger className="w-60 font-medium text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="3">Last 3 months</SelectItem>
-          <SelectItem value="6">Last 6 months</SelectItem>
-          <SelectItem value="12">Last 12 months</SelectItem>
+          {fyList.map((fy) => (
+            <SelectItem key={fy.key} value={fy.isCurrent ? "fy_current" : `fy_${fy.key}`} className="text-xs">
+              {fy.label} (01 Apr – 31 Mar)
+            </SelectItem>
+          ))}
+          <SelectItem value="3" className="text-xs">Last 3 months</SelectItem>
+          <SelectItem value="6" className="text-xs">Last 6 months</SelectItem>
+          <SelectItem value="12" className="text-xs">Last 12 months</SelectItem>
         </SelectContent>
       </Select>
 

@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Wallet, Building2, TrendingUp, TrendingDown } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, startOfMonth, addMonths, isWithinInterval } from "date-fns";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearMonths,
+  getFinancialYearsList,
+} from "@/lib/financial-year";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function CashFlowPage() {
   const navigate = useNavigate();
@@ -19,6 +25,10 @@ export default function CashFlowPage() {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [bizExpenses, setBizExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const fyList = useMemo(() => getFinancialYearsList(3, 0), []);
+  const [period, setPeriod] = useState("fy_current");
 
   useEffect(() => {
     if (!org?.id) return;
@@ -98,18 +108,46 @@ export default function CashFlowPage() {
     })();
   }, [org?.id]);
 
-  // Monthly buckets for last 6 months
-  const monthly = useMemo(() => {
-    const buckets: { label: string; start: Date; end: Date; inflow: number; outflow: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const start = startOfMonth(addMonths(new Date(), -i));
-      const end = addMonths(start, 1);
-      buckets.push({ label: format(start, "MMM yyyy"), start, end, inflow: 0, outflow: 0 });
+  // Monthly buckets for selected period
+  const { buckets: monthly, periodLabel } = useMemo(() => {
+    let resolvedFYKey = currentFY.key;
+    let label = `FY ${currentFY.key}`;
+
+    if (period === "fy_current") {
+      resolvedFYKey = currentFY.key;
+      label = `FY ${currentFY.key}`;
+    } else if (period === "fy_previous") {
+      const prevFYStart = currentFY.startYear - 1;
+      resolvedFYKey = `${prevFYStart}-${String(prevFYStart + 1).slice(-2)}`;
+      label = `FY ${resolvedFYKey}`;
+    } else if (period.startsWith("fy_")) {
+      resolvedFYKey = period.replace("fy_", "");
+      label = `FY ${resolvedFYKey}`;
+    } else if (period === "6m") {
+      label = "Last 6 Months";
+    }
+
+    const bList: { label: string; start: Date; end: Date; inflow: number; outflow: number }[] = [];
+
+    if (period === "6m") {
+      for (let i = 5; i >= 0; i--) {
+        const start = startOfMonth(addMonths(new Date(), -i));
+        const end = addMonths(start, 1);
+        bList.push({ label: format(start, "MMM yyyy"), start, end, inflow: 0, outflow: 0 });
+      }
+    } else {
+      // 12 months of the Financial Year (Apr to Mar)
+      const fyMonths = getFinancialYearMonths(resolvedFYKey);
+      fyMonths.forEach((m) => {
+        const start = new Date(`${m.startDate}T00:00:00`);
+        const end = new Date(`${m.endDate}T23:59:59`);
+        bList.push({ label: m.label, start, end, inflow: 0, outflow: 0 });
+      });
     }
 
     txns.forEach((t) => {
       const d = new Date(t.txn_date);
-      const b = buckets.find((bucket) => isWithinInterval(d, { start: bucket.start, end: bucket.end }));
+      const b = bList.find((bucket) => isWithinInterval(d, { start: bucket.start, end: bucket.end }));
       if (!b) return;
       if (t.direction === "credit") b.inflow += Number(t.amount);
       else b.outflow += Number(t.amount);
@@ -118,17 +156,17 @@ export default function CashFlowPage() {
     // Add standalone business expenses as outflows
     bizExpenses.forEach((e) => {
       const d = new Date(e.expense_date);
-      const b = buckets.find((bucket) => isWithinInterval(d, { start: bucket.start, end: bucket.end }));
+      const b = bList.find((bucket) => isWithinInterval(d, { start: bucket.start, end: bucket.end }));
       if (b) b.outflow += Number(e.amount);
     });
 
-    return buckets;
-  }, [txns, bizExpenses]);
+    return { buckets: bList, periodLabel: label };
+  }, [txns, bizExpenses, period, currentFY]);
 
   const totalBalance = accounts.reduce((s, a) => s + Number(a.current_balance || 0), 0);
-  const totalInflow6m = monthly.reduce((s, m) => s + m.inflow, 0);
-  const totalOutflow6m = monthly.reduce((s, m) => s + m.outflow, 0);
-  const net6m = totalInflow6m - totalOutflow6m;
+  const totalInflow = monthly.reduce((s, m) => s + m.inflow, 0);
+  const totalOutflow = monthly.reduce((s, m) => s + m.outflow, 0);
+  const netFlow = totalInflow - totalOutflow;
   const maxBar = Math.max(1, ...monthly.flatMap((m) => [m.inflow, m.outflow]));
 
   return (
@@ -140,7 +178,20 @@ export default function CashFlowPage() {
             Real-time track of all cash and bank inflows, outflows, and account statements.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-[190px] h-9 text-xs">
+              <SelectValue placeholder="Select Period" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="fy_current">Current FY ({currentFY.key})</SelectItem>
+              <SelectItem value="fy_previous">Previous FY ({currentFY.startYear - 1}-{String(currentFY.startYear).slice(-2)})</SelectItem>
+              {fyList.map((fy) => (
+                <SelectItem key={fy.key} value={`fy_${fy.key}`}>{fy.label}</SelectItem>
+              ))}
+              <SelectItem value="6m">Last 6 Months (Rolling)</SelectItem>
+            </SelectContent>
+          </Select>
           <Button variant="outline" size="sm" onClick={() => navigate("/banking")}>
             <Building2 className="mr-1 h-4 w-4" /> Bank Accounts
           </Button>
@@ -161,24 +212,24 @@ export default function CashFlowPage() {
         <Card className="border-l-4 border-l-emerald-500">
           <CardContent className="pt-4">
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Inflow (Last 6 Months)
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600" /> Inflow ({periodLabel})
             </div>
-            <div className="text-2xl font-semibold text-emerald-600 mt-1">{formatCurrency(totalInflow6m, cur)}</div>
+            <div className="text-2xl font-semibold text-emerald-600 mt-1">{formatCurrency(totalInflow, cur)}</div>
           </CardContent>
         </Card>
         <Card className="border-l-4 border-l-red-500">
           <CardContent className="pt-4">
             <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <TrendingDown className="h-3.5 w-3.5 text-red-600" /> Outflow (Last 6 Months)
+              <TrendingDown className="h-3.5 w-3.5 text-red-600" /> Outflow ({periodLabel})
             </div>
-            <div className="text-2xl font-semibold text-red-600 mt-1">{formatCurrency(totalOutflow6m, cur)}</div>
+            <div className="text-2xl font-semibold text-red-600 mt-1">{formatCurrency(totalOutflow, cur)}</div>
           </CardContent>
         </Card>
-        <Card className={`border-l-4 ${net6m >= 0 ? "border-l-emerald-600" : "border-l-red-600"}`}>
+        <Card className={`border-l-4 ${netFlow >= 0 ? "border-l-emerald-600" : "border-l-red-600"}`}>
           <CardContent className="pt-4">
-            <div className="text-xs text-muted-foreground">Net Cash Flow (6m)</div>
-            <div className={`text-2xl font-semibold mt-1 ${net6m >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-              {formatCurrency(net6m, cur)}
+            <div className="text-xs text-muted-foreground">Net Cash Flow ({periodLabel})</div>
+            <div className={`text-2xl font-semibold mt-1 ${netFlow >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+              {formatCurrency(netFlow, cur)}
             </div>
           </CardContent>
         </Card>
@@ -186,7 +237,7 @@ export default function CashFlowPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Monthly Cash Flow Movement (last 6 months)</CardTitle>
+          <CardTitle className="text-base">Monthly Cash Flow Movement ({periodLabel})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">

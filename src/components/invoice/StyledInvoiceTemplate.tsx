@@ -1,3 +1,5 @@
+import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { QRCodeSVG } from "qrcode.react";
 import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";
 import { ProfessionalNavyInvoiceTemplate } from "./ProfessionalNavyInvoiceTemplate";
@@ -284,35 +286,27 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         </thead>
         <tbody>
           {lines.map((line, idx) => {
-            const lineQty = Number(line.quantity || 0);
-            const lineRate = Number(line.rate || 0);
-            const rawLineTotal = lineQty * lineRate;
-            const itemDisc = line.discount ? (line.discount_type === "percentage" ? rawLineTotal * (Number(line.discount) / 100) : Number(line.discount)) : 0;
-            const lineTaxableAmt = (lineRate > 0 && lineQty > 0)
-              ? Math.max(0, rawLineTotal - itemDisc)
-              : (Number(line.tax_amount || 0) > 0 && Number(line.amount || 0) > Number(line.tax_amount || 0)
-                  ? Number(line.amount) - Number(line.tax_amount)
-                  : Number(line.amount || 0));
+            const dRatio = invoice?.subtotal > 0 && invoice?.discount > 0 ? (Number(invoice.discount) / Number(invoice.subtotal)) : 0;
+            const { qty, rate, taxableAmt, taxRate, taxAmt, lineTotal } = computeLineFinancials(line, dRatio);
+            const itemName = line.name || line.items?.name || line.item?.name || line.item_name || (line.description ? String(line.description).split("\n")[0] : "") || "Item";
+            const itemDesc = (line.name || line.items?.name || line.item?.name || line.item_name)
+              ? (line.description && line.description !== itemName ? line.description : "")
+              : (line.description && String(line.description).includes("\n") ? String(line.description).split("\n").slice(1).join("\n") : "");
+            const isZeroTax = taxAmt === 0;
+            const halfTax = taxAmt / 2;
 
-            const taxRateVal = typeof line.tax_rate === 'object' ? (line.tax_rate?.rate ?? 0) : Number(line.tax_rate || 0);
-            const taxAmount = Number(line.tax_amount != null && Number(line.tax_amount) > 0
-              ? line.tax_amount
-              : (taxRateVal > 0 ? (lineTaxableAmt * (taxRateVal / 100)) : 0));
-            const isZeroTax = taxAmount === 0;
-            const halfTax = taxAmount / 2;
-            
             return (
               <tr key={line.id || idx}>
                 <td style={{ ...tdStyle, textAlign: "left" }}>{idx + 1}</td>
                 <td style={{ ...tdStyle, textAlign: "left" }}>
-                  <div style={{ fontWeight: 600 }}>{line.name}</div>
-                  {line.description && <div style={{ fontSize: 10, color: "#52525b", marginTop: 2, whiteSpace: "pre-wrap" }}>{line.description}</div>}
+                  <div style={{ fontWeight: 600 }}>{itemName}</div>
+                  {itemDesc && <div style={{ fontSize: 10, color: "#52525b", marginTop: 2, whiteSpace: "pre-wrap" }}>{itemDesc}</div>}
                 </td>
-                {hasGst && <td style={{ ...tdStyle, textAlign: "left", fontSize: 11 }}>{line.hsn_code || line.hsn || line.hsn_sac || line.item?.hsn_code || "-"}</td>}
+                {hasGst && <td style={{ ...tdStyle, textAlign: "left", fontSize: 11 }}>{line.hsn_code || line.hsn || line.hsn_sac || line.item?.hsn_code || line.items?.hsn_code || "-"}</td>}
                 <td style={{ ...tdStyle }}>
                   <div style={{ fontWeight: 600 }}>
-                    {line.quantity}
-                    {line.unit && <span style={{ fontSize: 10, color: "#71717a", marginLeft: 2 }}>{line.unit}</span>}
+                    {qty}
+                    {(line.unit || line.item?.unit) && <span style={{ fontSize: 10, color: "#71717a", marginLeft: 2 }}>{line.unit || line.item?.unit}</span>}
                   </div>
                   {invoice?.show_sub_units !== false && line.sub_unit && line.sub_unit_conversion_rate && Number(line.sub_unit_conversion_rate) > 1 && line.unit?.toLowerCase() !== line.sub_unit?.toLowerCase() && (
                     <div style={{ fontSize: 9, color: "#71717a", marginTop: 2 }}>
@@ -321,29 +315,24 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
                   )}
                 </td>
                 <td style={{ ...tdStyle }}>
-                  <div style={{ fontWeight: 600 }}>{hasGst ? Number(line.rate).toFixed(2) : (Number(line.amount || 0) / (Number(line.quantity) || 1)).toFixed(2)}</div>
+                  <div style={{ fontWeight: 600 }}>{fmt(rate).replace('₹', '').trim()}</div>
                   {Number(line.discount) > 0 && (
                     <div style={{ fontSize: 9, color: "#16a34a", fontWeight: 600, marginTop: 2 }}>
                       {line.discount}% disc.
                     </div>
                   )}
-                  {line.sub_unit && Number(line.sub_unit_conversion_rate) > 1 && line.unit?.toLowerCase() !== line.sub_unit?.toLowerCase() && (
-                    <div style={{ fontSize: 9, color: "#71717a", marginTop: 2 }}>
-                      1 {line.unit} = {line.sub_unit_conversion_rate} {line.sub_unit}
-                    </div>
-                  )}
                 </td>
                 {hasGst && !isInterstate && (
                   <>
-                    <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax)}</td>
-                    <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax)}</td>
+                    <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax).replace('₹', '').trim()}</td>
+                    <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(halfTax).replace('₹', '').trim()}</td>
                   </>
                 )}
                 {hasGst && isInterstate && (
-                  <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(taxAmount)}</td>
+                  <td style={{ ...tdStyle }}>{isZeroTax ? "-" : fmt(taxAmt).replace('₹', '').trim()}</td>
                 )}
                 <td style={{ ...tdStyle, fontWeight: 700 }}>
-                  {fmt(lineTaxableAmt)}
+                  {fmt(lineTotal).replace('₹', '').trim()}
                 </td>
               </tr>
             );
@@ -416,63 +405,21 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         </div>
 
         {/* Right Side: Totals */}
-        <div style={{ width: 320, background: "#fafafa", padding: 16, borderRadius: 8, border: "1px solid #e4e4e7" }}>
-          <Row 
-            label="Subtotal" 
-            value={fmt(
-              !hasGst && Number(invoice.total_tax || 0) === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0)
-                ? Number(invoice.total)
-                : Number(invoice.subtotal ?? invoice.total)
-            )} 
+        <div style={{ width: 280, fontSize: 12 }}>
+          <InvoiceTotalsTable
+            invoice={invoice}
+            lines={lines}
+            taxBreakdown={taxBreakdown}
+            hasGst={hasGst}
+            fmt={fmt}
+            primaryColor={accent}
+            accentColor={accent}
+            variant="corporate"
+            type={type}
           />
-          
-          {Number(invoice.total_discount) > 0 && (
-            <Row label="Discount" value={`-${fmt(Number(invoice.total_discount))}`} />
-          )}
-
-          {hasGst && taxBreakdown && taxBreakdown.length > 0 ? (
-            taxBreakdown.map((t, idx) => (
-              <Row key={idx} label={t.name} value={fmt(t.amount)} />
-            ))
-          ) : hasGst && Number(invoice.total_tax) > 0 ? (
-            <Row label="Tax" value={fmt(Number(invoice.total_tax))} />
-          ) : null}
-
-          {Number(invoice.shipping_charge) > 0 && (
-            <Row label="Shipping" value={fmt(Number(invoice.shipping_charge))} />
-          )}
-          {Number((invoice as any).expenses) > 0 && (
-            <Row label="Expenses (Fixed Cost)" value={fmt(Number((invoice as any).expenses))} />
-          )}
-          
-          {!isNaN(Number(invoice.adjustment)) && Number(invoice.adjustment) !== 0 && (
-            <Row label={invoice.adjustment_name || "Adjustment"} value={Number(invoice.adjustment).toFixed(2)} />
-          )}
-          
-          {invoice.tds_tcs_applicable && Number(invoice.tds_tcs_amount) > 0 && (
-            <Row 
-              label={`${invoice.tds_tcs_type?.toUpperCase() || "TDS"} (${invoice.tds_tcs_rate || 0}%)`} 
-              value={`${invoice.tds_tcs_type === "tds" ? "-" : "+"}${fmt(Number(invoice.tds_tcs_amount))}`} 
-            />
-          )}
-
-          <div style={{ display: "flex", justifyContent: "space-between", margin: "12px 0 8px", paddingTop: 12, borderTop: "2px solid #e4e4e7", fontSize: 16, fontWeight: 800 }}>
-            <span>Total</span>
-            <span style={{ color: accent }}>{fmt(Number(invoice.total))}</span>
-          </div>
-
-          {type === "invoice" && Number(invoice.amount_paid) > 0 && (
-            <div style={{ borderTop: "1px dashed #d4d4d8", paddingTop: 8, marginTop: 8 }}>
-              <Row label="Amount Paid" value={fmt(Number(invoice.amount_paid))} />
-              <div style={{ display: "flex", justifyContent: "space-between", paddingTop: 4, fontWeight: 700, fontSize: 13 }}>
-                <span>Balance Due</span>
-                <span>{fmt(balanceDue)}</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-      
+
       {/* Authorized Signature */}
       <div style={{ marginTop: 40, display: "flex", justifyContent: "flex-end" }}>
         <div style={{ textAlign: "center", width: 200 }}>

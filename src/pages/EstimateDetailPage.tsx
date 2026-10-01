@@ -67,7 +67,7 @@ export default function EstimateDetailPage() {
     if (!est) return;
     setEstimate(est);
     const [{ data: lineData }, { data: cl }] = await Promise.all([
-      supabase.from("estimate_lines").select("*").eq("estimate_id", id).order("sort_order"),
+      supabase.from("estimate_lines").select("*, tax_rates(id, name, rate), items(id, name, hsn_code, unit)").eq("estimate_id", id).order("sort_order"),
       supabase.from("clients").select("*").eq("id", est.client_id).single(),
     ]);
     setLines(lineData || []);

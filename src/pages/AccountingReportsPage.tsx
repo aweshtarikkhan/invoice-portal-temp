@@ -10,17 +10,31 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { format, startOfYear, endOfYear } from "date-fns";
+import { format } from "date-fns";
+import {
+  getCurrentFinancialYear,
+  getFinancialYearByKey,
+} from "@/lib/financial-year";
+import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
 
 interface AcctSum { id: string; code: string; name: string; type: string; debit: number; credit: number; balance: number; }
 
 export default function AccountingReportsPage() {
   const navigate = useNavigate();
   const org = useAppStore((s) => s.organization);
-  const [from, setFrom] = useState(format(startOfYear(new Date()), "yyyy-MM-dd"));
-  const [to, setTo] = useState(format(endOfYear(new Date()), "yyyy-MM-dd"));
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const [selectedFY, setSelectedFY] = useState(currentFY.key);
+  const [from, setFrom] = useState(currentFY.startDate);
+  const [to, setTo] = useState(currentFY.endDate);
   const [data, setData] = useState<AcctSum[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const handleFYChange = (fyKey: string) => {
+    setSelectedFY(fyKey);
+    const fy = getFinancialYearByKey(fyKey);
+    setFrom(fy.startDate);
+    setTo(fy.endDate);
+  };
 
   useEffect(() => {
     if (!org?.id) return;
@@ -83,9 +97,47 @@ export default function AccountingReportsPage() {
       </div>
 
       <Card>
-        <CardContent className="pt-5 flex items-end gap-3">
-          <div><Label>From</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} /></div>
-          <div><Label>To</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} /></div>
+        <CardContent className="pt-5 flex flex-wrap items-end gap-3">
+          <div>
+            <Label className="text-xs mb-1 block">Financial Year</Label>
+            <FinancialYearSelect
+              value={selectedFY}
+              onValueChange={handleFYChange}
+              includeAll={false}
+              className="w-56"
+            />
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">From Date</Label>
+            <Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="h-9 w-36 text-xs" />
+          </div>
+          <div>
+            <Label className="text-xs mb-1 block">To Date</Label>
+            <Input type="date" value={to} onChange={e => setTo(e.target.value)} className="h-9 w-36 text-xs" />
+          </div>
+          <div className="flex items-center gap-1.5 pb-0.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 text-xs"
+              onClick={() => handleFYChange(currentFY.key)}
+            >
+              Current FY
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 text-xs"
+              onClick={() => {
+                const prev = getFinancialYearByKey(currentFY.startYear - 1);
+                handleFYChange(prev.key);
+              }}
+            >
+              Previous FY
+            </Button>
+          </div>
         </CardContent>
       </Card>
 

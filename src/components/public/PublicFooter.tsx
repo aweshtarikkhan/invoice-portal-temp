@@ -107,8 +107,38 @@ export function PublicFooter() {
                 <ul className="space-y-3 text-sm text-slate-300">
                   <li><a href="/#features" className="hover:text-[#ff9438] transition-colors">Features</a></li>
                   <li><a href="/#pricing" className="hover:text-[#ff9438] transition-colors">Pricing & Plans</a></li>
-                  <li><Link to="/brochure" className="hover:text-[#ff9438] transition-colors">Product Brochure (PDF)</Link></li>
-                  <li><Link to="/pamphlet" className="hover:text-[#ff9438] transition-colors">Marketing Pamphlet</Link></li>
+                  <li>
+                    {socials?.custom_brochure_url ? (
+                      <a
+                        href={socials.custom_brochure_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-[#ff9438] transition-colors"
+                      >
+                        Product Brochure (PDF)
+                      </a>
+                    ) : (
+                      <Link to="/brochure" className="hover:text-[#ff9438] transition-colors">
+                        Product Brochure (PDF)
+                      </Link>
+                    )}
+                  </li>
+                  <li>
+                    {socials?.custom_pamphlet_url ? (
+                      <a
+                        href={socials.custom_pamphlet_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="hover:text-[#ff9438] transition-colors"
+                      >
+                        Marketing Pamphlet (PDF)
+                      </a>
+                    ) : (
+                      <Link to="/pamphlet" className="hover:text-[#ff9438] transition-colors">
+                        Marketing Pamphlet
+                      </Link>
+                    )}
+                  </li>
                   <li><Link to="/partner-with-us" className="hover:text-[#ff9438] transition-colors">Partner With Us</Link></li>
                   <li><Link to="/contact" className="hover:text-[#ff9438] transition-colors">Contact Us</Link></li>
                 </ul>

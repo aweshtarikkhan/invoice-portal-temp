@@ -81,7 +81,7 @@ export default function PurchaseOrderBuilderPage() {
   const [terms, setTerms] = useState("");
   const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
   const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
-  const [tdsTcsRate, setTdsTcsRate] = useState(0);
+  const [tdsTcsRate, setTdsTcsRate] = useState<number | string>(0);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const [addVendorOpen, setAddVendorOpen] = useState(false);
@@ -153,9 +153,21 @@ export default function PurchaseOrderBuilderPage() {
       }
       setNotes(po.notes || "");
       setTerms(po.terms || "");
-      setTdsTcsApplicable(!!po.tds_tcs_applicable);
-      setTdsTcsType(po.tds_tcs_type === "tcs" ? "tcs" : "tds");
-      setTdsTcsRate(Number(po.tds_tcs_rate || 0));
+      const isTdsTcsOn = Boolean(
+        po.tds_tcs_applicable ||
+        (po.metadata as any)?.tds_tcs_applicable ||
+        Number(po.tds_tcs_rate || 0) > 0 ||
+        Number(po.tds_tcs_amount || 0) > 0 ||
+        Number((po.metadata as any)?.tds_tcs_rate || 0) > 0 ||
+        Number((po.metadata as any)?.tds_tcs_amount || 0) > 0
+      );
+      const loadedRate = po.tds_tcs_rate != null && po.tds_tcs_rate !== ""
+        ? Number(po.tds_tcs_rate)
+        : (Number((po.metadata as any)?.tds_tcs_rate) || 0);
+      const loadedType = po.tds_tcs_type || (po.metadata as any)?.tds_tcs_type || "tds";
+      setTdsTcsApplicable(isTdsTcsOn);
+      setTdsTcsType(loadedType === "tcs" ? "tcs" : "tds");
+      setTdsTcsRate(loadedRate);
     }
     if (pl) setLines(pl.map((l: any) => ({
       id: duplicateId ? crypto.randomUUID() : l.id, item_id: l.item_id || "", description: l.description, hsn: l.hsn || "",
@@ -165,6 +177,10 @@ export default function PurchaseOrderBuilderPage() {
 
   // GST-aware totals
   const totals = useMemo(() => {
+    const cleanTdsTcsRate = Math.max(0, parseFloat(String(tdsTcsRate)) || 0);
+    const isTds = Boolean(tdsTcsApplicable && tdsTcsType === "tds" && cleanTdsTcsRate > 0);
+    const tdsFactor = isTds ? (1 - cleanTdsTcsRate / 100) : 1;
+
     let sub = 0, cgst = 0, sgst = 0, igst = 0;
     const breakdown: Record<number, number> = {};
     lines.forEach(l => {
@@ -174,7 +190,8 @@ export default function PurchaseOrderBuilderPage() {
       const t = (vendorHasGst || orgHasGst) ? (Number(l.tax_rate) || 0) : 0;
       const amt = q * r;
       sub += amt;
-      const taxAmt = amt * (t / 100);
+      const effectiveAmt = amt * tdsFactor;
+      const taxAmt = effectiveAmt * (t / 100);
       if (t > 0) {
         breakdown[t] = (breakdown[t] || 0) + taxAmt;
       }
@@ -186,26 +203,14 @@ export default function PurchaseOrderBuilderPage() {
       }
     });
     const totalTax = igst + cgst + sgst;
-    const baseTotal = sub + totalTax;
-
-    // TDS is calculated BEFORE GST on Subtotal (sub) and DEDUCTED (-)
-    // TCS is calculated AFTER GST on Total Value (sub + totalTax) and ADDED (+)
-    const tdsTcsAmount = tdsTcsApplicable
-      ? tdsTcsType === "tds"
-        ? (sub * Math.max(0, tdsTcsRate)) / 100
-        : (baseTotal * Math.max(0, tdsTcsRate)) / 100
-      : 0;
+    const tdsAmount = isTds ? (sub * cleanTdsTcsRate) / 100 : 0;
+    const taxableSubtotal = Math.max(0, sub - tdsAmount);
+    const totalWithGst = taxableSubtotal + totalTax;
+    const tcsAmount = (tdsTcsApplicable && tdsTcsType === "tcs") ? (totalWithGst * cleanTdsTcsRate) / 100 : 0;
+    const tdsTcsAmount = tdsTcsType === "tds" ? tdsAmount : tcsAmount;
+    const total = totalWithGst + tcsAmount;
     
-    let total = baseTotal;
-    if (tdsTcsApplicable) {
-      if (tdsTcsType === "tds") {
-        total -= tdsTcsAmount;
-      } else {
-        total += tdsTcsAmount;
-      }
-    }
-    
-    return { sub, cgst, sgst, igst, totalTax, tdsTcsAmount, total, breakdown };
+    return { sub, taxableSubtotal, tdsAmount, tcsAmount, cgst, sgst, igst, totalTax, tdsTcsAmount, total, breakdown };
   }, [lines, vendorHasGst, isInterstate, tdsTcsApplicable, tdsTcsType, tdsTcsRate]);
 
   const pickItem = (idx: number, itemId: string) => {
@@ -292,7 +297,13 @@ export default function PurchaseOrderBuilderPage() {
         po_number: poNumber, po_date: poDate, expected_date: expectedDate || null,
         status, subtotal: totals.sub, tax_amount: totals.totalTax, 
         tds_tcs_applicable: tdsTcsApplicable, tds_tcs_type: tdsTcsType, 
-        tds_tcs_rate: tdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
+        tds_tcs_rate: cleanTdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
+        metadata: {
+          tds_tcs_applicable: tdsTcsApplicable,
+          tds_tcs_type: tdsTcsType,
+          tds_tcs_rate: cleanTdsTcsRate,
+          tds_tcs_amount: totals.tdsTcsAmount,
+        },
         total: totals.total,
         currency: (org as any)?.currency || "INR", notes: notes || null, terms: terms || null,
       };
@@ -353,7 +364,8 @@ export default function PurchaseOrderBuilderPage() {
         const q = Number(l.quantity) || 0;
         const r = Number(l.rate) || 0;
         const tRate = canApplyTax ? (Number(l.tax_rate) || 0) : 0;
-        const tAmount = canApplyTax ? (q * r * (tRate / 100)) : 0;
+        const effectiveAmt = (q * r) * (totals.tdsAmount > 0 && totals.sub > 0 ? (1 - (totals.tdsAmount / totals.sub)) : 1);
+        const tAmount = canApplyTax ? (effectiveAmt * (tRate / 100)) : 0;
         return {
           org_id: org.id, po_id: poId, item_id: l.item_id || null, description: l.description,
           hsn: l.hsn || null, quantity: q, rate: r, tax_rate: tRate,
@@ -709,6 +721,18 @@ export default function PurchaseOrderBuilderPage() {
                 <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400" /> <span>Subtotal</span></div>
                 <span className="font-medium text-slate-900">{formatCurrency(totals.sub, currency)}</span>
               </div>
+              {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
+                <div className="flex justify-between items-center text-red-600">
+                  <span>TDS Deducted ({tdsTcsRate}%)</span>
+                  <span>-{formatCurrency(totals.tdsAmount, currency)}</span>
+                </div>
+              )}
+              {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
+                <div className="flex justify-between items-center font-semibold text-slate-800 bg-slate-100/80 px-2 py-1 rounded">
+                  <span>Taxable Amount</span>
+                  <span>{formatCurrency(totals.taxableSubtotal, currency)}</span>
+                </div>
+              )}
               {vendorHasGst && Object.entries(totals.breakdown).map(([rateStr, amt]) => {
                 const rate = Number(rateStr);
                 const amount = Number(amt);
@@ -763,10 +787,11 @@ export default function PurchaseOrderBuilderPage() {
                         <Input
                           type="number"
                           min={0}
+                          step="any"
                           className="h-7 w-16 text-xs text-right"
-                          value={tdsTcsRate}
+                          value={tdsTcsRate === 0 && !tdsTcsApplicable ? "" : tdsTcsRate}
                           onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
-                          onChange={(e) => setTdsTcsRate(Math.max(0, parseFloat(e.target.value) || 0))}
+                          onChange={(e) => setTdsTcsRate(e.target.value)}
                           placeholder="Rate"
                         />
                         <span className="text-muted-foreground">%</span>

@@ -361,7 +361,7 @@ export function AddWarehouseDialog({
                   Warehouse GSTIN (GST Number)
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Alag state ya location ke hisab se alag GSTIN select ya enter karein.
+                  Select or enter a separate GSTIN based on the specific state or warehouse location.
                 </p>
               </div>
             </div>

@@ -212,6 +212,7 @@ function r2(n: number): number { return Math.round(n * 100) / 100; }
 export interface BuildGstrInput {
   orgGstin: string;
   period: { year: number; month: number };
+  customFp?: string;
   invoices: InvoiceForGst[];
   lines: LineForGst[];
   clients: ClientForGst[];
@@ -345,7 +346,7 @@ export function buildGstr1Json(input: BuildGstrInput) {
 
   return {
     gstin: orgGstin,
-    fp: gstrPeriod(period.year, period.month),
+    fp: input.customFp || gstrPeriod(period.year, period.month),
     gt: r2(grossTurnover),
     cur_gt: r2(grossTurnover),
     b2b,
@@ -482,6 +483,7 @@ export function buildTallySalesCsv(input: BuildGstrInput) {
 export function buildGstr2Json(input: {
   orgGstin: string;
   period: { year: number; month: number };
+  customFp?: string;
   bills: any[];
   lines?: any[];
   billLines?: any[];
@@ -606,7 +608,7 @@ export function buildGstr2Json(input: {
 
   return {
     gstin: orgGstin,
-    fp: gstrPeriod(period.year, period.month),
+    fp: input.customFp || gstrPeriod(period.year, period.month),
     gt: r2(totalPurchaseValue),
     cur_gt: r2(totalPurchaseValue),
     b2b,

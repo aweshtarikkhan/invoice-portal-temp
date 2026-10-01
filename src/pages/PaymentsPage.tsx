@@ -31,6 +31,8 @@ import {
 import { format, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { revertPaymentBankingTransaction } from "@/lib/banking-sync";
+import { getCurrentFinancialYear, isDateInFinancialYear } from "@/lib/financial-year";
+import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
 
 const paymentImportFields: ImportField[] = [
   { key: "payment_number", label: "Payment #", required: true },
@@ -49,6 +51,7 @@ interface ClientSummary {
   totalBilled: number;
   totalPaid: number;
   pending: number;
+  advanceCredit: number;
   oldestDueDays: number;
   overdueInvoices: number;
 }
@@ -92,6 +95,19 @@ export default function PaymentsPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
+  const [selectedFY, setSelectedFY] = useState<string>("all");
+
+  const fyPayments = useMemo(() => {
+    if (selectedFY === "all") return payments;
+    return payments.filter(p => isDateInFinancialYear(p.payment_date || p.created_at, selectedFY));
+  }, [payments, selectedFY]);
+
+  const fyInvoices = useMemo(() => {
+    if (selectedFY === "all") return invoices;
+    return invoices.filter(i => isDateInFinancialYear(i.issue_date || i.created_at, selectedFY));
+  }, [invoices, selectedFY]);
+
   const fetchData = async () => {
     if (!org?.id) return;
     setLoading(true);
@@ -109,16 +125,64 @@ export default function PaymentsPage() {
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
+  // Map of total advance credit applied for each advance payment number
+  const advanceUsageMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    payments.forEach((p) => {
+      if (p.payment_mode === "advance_credit" && p.reference_number) {
+        const ref = p.reference_number.trim();
+        map[ref] = (map[ref] || 0) + Number(p.amount);
+      }
+    });
+    return map;
+  }, [payments]);
+
+  // Map of available advance credit per client
+  const clientAdvanceCreditMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    payments.forEach((p) => {
+      if (!p.invoice_id && p.client_id) {
+        const used = advanceUsageMap[p.payment_number?.trim()] || 0;
+        const remaining = Math.max(0, Number(p.amount) - used);
+        map[p.client_id] = (map[p.client_id] || 0) + remaining;
+      }
+    });
+    return map;
+  }, [payments, advanceUsageMap]);
+
+  const totalAdvanceCreditsAvailable = useMemo(() => {
+    return Object.values(clientAdvanceCreditMap).reduce((s, a) => s + a, 0);
+  }, [clientAdvanceCreditMap]);
+
+  const getPaymentUnusedAmount = (p: any): number => {
+    if (!p.invoice_id) {
+      const used = advanceUsageMap[p.payment_number?.trim()] || 0;
+      return Math.max(0, Number(p.amount) - used);
+    }
+    return 0;
+  };
+
   // Client Summaries
   const clientSummaries = useMemo<ClientSummary[]>(() => {
     const map: Record<string, ClientSummary> = {};
     const today = new Date();
-    invoices.forEach((inv) => {
+    fyInvoices.forEach((inv) => {
       if (inv.status === "draft" || inv.status === "void") return;
 
       const clientId = inv.client_id;
       const clientName = (inv.clients as any)?.display_name || "Unknown";
-      if (!map[clientId]) map[clientId] = { id: clientId, name: clientName, totalBilled: 0, totalPaid: 0, pending: 0, oldestDueDays: 0, overdueInvoices: 0 };
+      if (!map[clientId]) {
+        map[clientId] = {
+          id: clientId,
+          name: clientName,
+          totalBilled: 0,
+          totalPaid: 0,
+          pending: 0,
+          advanceCredit: clientAdvanceCreditMap[clientId] || 0,
+          oldestDueDays: 0,
+          overdueInvoices: 0,
+        };
+      }
       map[clientId].totalBilled += Number(inv.total);
       map[clientId].totalPaid += Number(inv.amount_paid);
       map[clientId].pending += Number(inv.balance_due);
@@ -128,8 +192,28 @@ export default function PaymentsPage() {
         if (daysPast > 0) map[clientId].overdueInvoices++;
       }
     });
+
+    // Also include any clients who have advance credit even if they have no active invoices in fyInvoices
+    Object.entries(clientAdvanceCreditMap).forEach(([clientId, adv]) => {
+      if (adv > 0 && !map[clientId]) {
+        const clientObj = payments.find((p) => p.client_id === clientId)?.clients;
+        map[clientId] = {
+          id: clientId,
+          name: (clientObj as any)?.display_name || "Client",
+          totalBilled: 0,
+          totalPaid: 0,
+          pending: 0,
+          advanceCredit: adv,
+          oldestDueDays: 0,
+          overdueInvoices: 0,
+        };
+      } else if (map[clientId]) {
+        map[clientId].advanceCredit = adv;
+      }
+    });
+
     return Object.values(map);
-  }, [invoices]);
+  }, [fyInvoices, clientAdvanceCreditMap, payments]);
 
   const filteredClients = useMemo(() => {
     let list = clientSummaries;
@@ -168,7 +252,7 @@ export default function PaymentsPage() {
   const overdueCount = clientSummaries.filter((c) => c.oldestDueDays > 0 && c.pending > 0).length;
 
   // Payments table
-  const filtered = payments.filter((p) =>
+  const filtered = fyPayments.filter((p) =>
     [p.payment_number, (p.clients as any)?.display_name, p.reference_number, (p.invoices as any)?.invoice_number]
       .filter(Boolean).some((f) => f.toLowerCase().includes(search.toLowerCase()))
   );
@@ -227,7 +311,7 @@ export default function PaymentsPage() {
 
   // Charts
   const monthlyMap: Record<string, number> = {};
-  payments.forEach((p) => {
+  fyPayments.forEach((p) => {
     const m = (p.payment_date || "").slice(0, 7);
     if (m) monthlyMap[m] = (monthlyMap[m] || 0) + Number(p.amount);
   });
@@ -240,12 +324,12 @@ export default function PaymentsPage() {
   }
 
   const modeMap: Record<string, number> = {};
-  payments.forEach((p) => { const mode = (p.payment_mode || "other").replace(/_/g, " "); modeMap[mode] = (modeMap[mode] || 0) + Number(p.amount); });
+  fyPayments.forEach((p) => { const mode = (p.payment_mode || "other").replace(/_/g, " "); modeMap[mode] = (modeMap[mode] || 0) + Number(p.amount); });
   const modeData = Object.entries(modeMap).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })).sort((a, b) => b.value - a.value);
   const PIE_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
   const topClients = Object.entries(
-    payments.reduce<Record<string, number>>((acc, p) => { const name = (p.clients as any)?.display_name || "Unknown"; acc[name] = (acc[name] || 0) + Number(p.amount); return acc; }, {})
+    fyPayments.reduce<Record<string, number>>((acc, p) => { const name = (p.clients as any)?.display_name || "Unknown"; acc[name] = (acc[name] || 0) + Number(p.amount); return acc; }, {})
   ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
 
   // Aging buckets
@@ -279,8 +363,15 @@ export default function PaymentsPage() {
             <Trash2 className="mr-1 h-4 w-4" /> Delete ({selected.size})
           </Button>
         )}
+        <FinancialYearSelect
+          value={selectedFY}
+          onValueChange={setSelectedFY}
+          includeAll={true}
+          allLabel="All Financial Years"
+          className="w-44"
+        />
         <Button variant="outline" size="sm" onClick={() => {
-          downloadCSV(payments.map(p => ({
+          downloadCSV(fyPayments.map(p => ({
             payment_number: p.payment_number,
             customer: (p.clients as any)?.display_name,
             amount: p.amount,
@@ -289,7 +380,7 @@ export default function PaymentsPage() {
             reference_number: p.reference_number || "",
             invoice: (p.invoices as any)?.invoice_number || "",
             notes: p.notes || "",
-          })), "payments");
+          })), `payments_${selectedFY !== 'all' ? `FY${selectedFY}` : 'all'}`);
         }}>
           <Download className="mr-1 h-4 w-4" /> Export
         </Button>
@@ -308,6 +399,9 @@ export default function PaymentsPage() {
           { label: "Total Billed", value: fmt(globalTotalBilled), accent: "info" },
           { label: "Total Received", value: fmt(globalTotalPaid), accent: "success" },
           { label: "Total Pending", value: fmt(globalPending), accent: "warning" },
+          ...(totalAdvanceCreditsAvailable > 0
+            ? [{ label: "Advance Credits Available", value: fmt(totalAdvanceCreditsAvailable), accent: "default" as const }]
+            : []),
           { label: "Overdue Clients", value: overdueCount, accent: "danger" },
         ]}
       />
@@ -349,6 +443,9 @@ export default function PaymentsPage() {
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("pending")}>
                     <div className="flex items-center justify-end">Pending <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
                   </TableHead>
+                  <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("advanceCredit")}>
+                    <div className="flex items-center justify-end">Advance Credit <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
+                  </TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-center cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => handleSort("oldestDueDays")}>
                     <div className="flex items-center justify-center">Overdue Since <ArrowUpDown className="ml-1 h-3 w-3 opacity-50" /></div>
                   </TableHead>
@@ -362,6 +459,15 @@ export default function PaymentsPage() {
                     <TableCell className="text-right text-sm text-blue-600 dark:text-blue-400">{fmt(c.totalBilled)}</TableCell>
                     <TableCell className="text-right text-sm text-emerald-600 dark:text-emerald-400">{fmt(c.totalPaid)}</TableCell>
                     <TableCell className={`text-right font-semibold text-sm ${getPendingColor(c.oldestDueDays)}`}>{fmt(c.pending)}</TableCell>
+                    <TableCell className="text-right text-sm">
+                      {c.advanceCredit > 0 ? (
+                        <Badge variant="outline" className="border-orange-500/80 text-[#e77817] dark:text-orange-400 bg-orange-50/80 dark:bg-orange-950/20 text-xs font-semibold">
+                          {fmt(c.advanceCredit)}
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-center text-sm">
                       {c.pending > 0 && c.oldestDueDays > 0 ? (
                         <span className={`font-medium ${getPendingColor(c.oldestDueDays)}`}>{c.oldestDueDays} days</span>
@@ -453,9 +559,18 @@ export default function PaymentsPage() {
             </Button>
           )}
         </div>
-        <div className="relative max-w-sm w-full sm:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search payments..." className="pl-9 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <FinancialYearSelect
+            value={selectedFY}
+            onValueChange={setSelectedFY}
+            includeAll={true}
+            allLabel="All Financial Years"
+            className="w-44"
+          />
+          <div className="relative max-w-sm w-full sm:w-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search payments..." className="pl-9 h-8 text-sm" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
         </div>
       </div>
 
@@ -489,8 +604,26 @@ export default function PaymentsPage() {
                     <TableCell className="text-sm font-medium text-primary">{p.payment_number}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{p.reference_number || "-"}</TableCell>
                     <TableCell className="text-sm">{(p.clients as any)?.display_name}</TableCell>
-                    <TableCell className="text-sm">{(p.invoices as any)?.invoice_number || "-"}</TableCell>
-                    <TableCell className="text-sm capitalize">{(p.payment_mode || "").replace(/_/g, " ")}</TableCell>
+                    <TableCell className="text-sm">
+                      {(p.invoices as any)?.invoice_number ? (
+                        (p.invoices as any).invoice_number
+                      ) : !p.invoice_id ? (
+                        <Badge variant="outline" className="border-amber-500/70 text-amber-700 dark:text-amber-300 bg-amber-50/60 dark:bg-amber-950/20 text-[11px] font-medium">
+                          Advance Payment
+                        </Badge>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {p.payment_mode === "advance_credit" ? (
+                        <Badge variant="outline" className="border-blue-500/70 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/20 text-[11px] font-medium">
+                          Advance Credit
+                        </Badge>
+                      ) : (
+                        <span className="capitalize">{(p.payment_mode || "").replace(/_/g, " ")}</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-sm">
                       {p.bank_accounts ? (
                         <div className="flex items-center gap-1.5">
@@ -499,12 +632,31 @@ export default function PaymentsPage() {
                           </span>
                           <Badge variant="outline" className="text-[10px] py-0 px-1 uppercase">{p.bank_accounts.account_type || 'Bank'}</Badge>
                         </div>
+                      ) : p.payment_mode === "advance_credit" ? (
+                        <span className="text-xs text-muted-foreground italic">Client Advance Credit</span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm text-right font-medium">{fmt(Number(p.amount))}</TableCell>
-                    <TableCell className="text-sm text-right text-muted-foreground">{fmt(0)}</TableCell>
+                    <TableCell className="text-sm text-right">
+                      {(() => {
+                        const unused = getPaymentUnusedAmount(p);
+                        if (!p.invoice_id) {
+                          return unused > 0 ? (
+                            <Badge variant="outline" className="border-emerald-500 text-emerald-700 dark:text-emerald-300 bg-emerald-50/70 dark:bg-emerald-950/30 text-xs font-semibold">
+                              {fmt(unused)}
+                            </Badge>
+                          ) : (
+                            <span className="text-xs text-muted-foreground italic">{fmt(0)} (Applied)</span>
+                          );
+                        }
+                        if (p.payment_mode === "advance_credit") {
+                          return <span className="text-muted-foreground text-xs">—</span>;
+                        }
+                        return <span className="text-muted-foreground text-xs">{fmt(0)}</span>;
+                      })()}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
