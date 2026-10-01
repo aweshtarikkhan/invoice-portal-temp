@@ -20,7 +20,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { Save, Eye, Trash2, Plus, GripVertical, Printer, Share2, Clock, ChevronDown, AlertTriangle, Layers, Check, Mail, MessageCircle, ArrowLeft, Lock, RefreshCw, FileText, CheckCircle2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -461,6 +461,10 @@ export default function BillBuilderPage() {
   const [paymentTerms, setPaymentTerms] = useState(30);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
+  const [autoRoundOff, setAutoRoundOff] = useState(false);
+  const [includeBankDetails, setIncludeBankDetails] = useState(false);
+  const [showTerms, setShowTerms] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
   const [discount, setDiscount] = useState(0);
   const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
   const [shippingCharge, setShippingCharge] = useState(0);
@@ -616,7 +620,12 @@ export default function BillBuilderPage() {
       }
       
       setNotes(inv.notes || "");
-      setTerms(inv.terms_conditions || "");
+      setTerms(inv.terms || inv.terms_conditions || "");
+      const meta = inv.metadata && typeof inv.metadata === 'object' ? inv.metadata : {};
+      setAutoRoundOff(!!meta.autoRoundOff);
+      setIncludeBankDetails(!!meta.includeBankDetails);
+      setShowTerms(meta.showTerms !== false);
+      setShowNotes(meta.showNotes !== false);
       setDiscount(Number(inv.discount));
       setDiscountType(inv.discount_type as any);
       setShippingCharge(Number(inv.shipping_charge));
@@ -854,7 +863,13 @@ export default function BillBuilderPage() {
     : 0;
 
   const tdsTcsAmount = isTds ? tdsAmount : tcsAmount;
-  const total = Math.max(0, totalWithGst + tcsAmount + adjustment);
+  const rawTotalBeforeRoundOff = totalWithGst + tcsAmount;
+  let finalAdjustment = adjustment;
+  if (autoRoundOff) {
+    const rounded = Math.round(rawTotalBeforeRoundOff);
+    finalAdjustment = rounded - rawTotalBeforeRoundOff;
+  }
+  const total = Math.max(0, rawTotalBeforeRoundOff + finalAdjustment);
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
 
@@ -959,12 +974,16 @@ export default function BillBuilderPage() {
         tds_tcs_applicable: tdsTcsApplicable,
         tds_tcs_type: tdsTcsType,
         tds_tcs_rate: cleanTdsTcsRate,
-        round_off: adjustment,
+        round_off: finalAdjustment,
         metadata: {
           tds_tcs_applicable: tdsTcsApplicable,
           tds_tcs_type: tdsTcsType,
           tds_tcs_rate: cleanTdsTcsRate,
           tds_tcs_amount: tdsTcsAmount,
+          autoRoundOff,
+          includeBankDetails,
+          showTerms,
+          showNotes,
         },
         tds_tcs_amount: tdsTcsAmount,
         deduct_stock: deductStock,
@@ -1538,15 +1557,79 @@ export default function BillBuilderPage() {
       </Dialog>
 
       {/* Totals & Notes */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Notes visible on bill..." />
-          </div>
-          <div className="space-y-2">
-            <Label>Terms & Conditions</Label>
-            <Textarea value={terms} onChange={(e) => setTerms(e.target.value)} placeholder="Payment terms, late fees..." />
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-3 border-b bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 bg-blue-100 text-blue-700 rounded-md flex items-center justify-center">
+                    <FileText className="h-3.5 w-3.5" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold text-blue-700">Notes</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <Textarea 
+                  value={notes} 
+                  onChange={e => setNotes(e.target.value)} 
+                  rows={3} 
+                  placeholder="Notes visible on bill..."
+                  className="resize-none bg-slate-50/50 border-slate-200 text-sm"
+                  maxLength={500}
+                />
+                <div className="text-right text-xs text-slate-400 mt-2">{notes.length} / 500</div>
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-3 border-b bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 bg-blue-100 text-blue-700 rounded-md flex items-center justify-center">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold text-blue-700">Terms</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-3">
+                <Textarea 
+                  value={terms} 
+                  onChange={e => setTerms(e.target.value)} 
+                  rows={3} 
+                  placeholder="Payment terms, late fees..."
+                  className="resize-none bg-slate-50/50 border-slate-200 text-sm"
+                />
+              </CardContent>
+            </Card>
+
+            <Card className="shadow-sm border-slate-200">
+              <CardHeader className="pb-3 border-b bg-slate-50/50">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 bg-blue-100 text-blue-700 rounded-md flex items-center justify-center">
+                    <Eye className="h-3.5 w-3.5" />
+                  </div>
+                  <CardTitle className="text-sm font-semibold text-blue-700">Display Options</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+                  <Checkbox checked={autoRoundOff} onCheckedChange={(v) => setAutoRoundOff(!!v)} />
+                  <span className="text-sm font-medium text-slate-700">Auto Round Off Total</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+                  <Checkbox checked={includeBankDetails} onCheckedChange={(v) => setIncludeBankDetails(!!v)} />
+                  <span className="text-sm font-medium text-slate-700">Show Bank / UPI Details</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+                  <Checkbox checked={showTerms} onCheckedChange={(v) => setShowTerms(!!v)} />
+                  <span className="text-sm font-medium text-slate-700">Show Terms</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+                  <Checkbox checked={showNotes} onCheckedChange={(v) => setShowNotes(!!v)} />
+                  <span className="text-sm font-medium text-slate-700">Show Notes</span>
+                </label>
+              </CardContent>
+            </Card>
           </div>
           {linkedGrnId ? (
             <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50/70 dark:bg-amber-950/20 dark:border-amber-800 p-3">
@@ -1642,8 +1725,9 @@ export default function BillBuilderPage() {
           </div>
         </div>
 
-        <Card>
-          <CardContent className="pt-6 space-y-3">
+        <div className="lg:col-span-4 space-y-4">
+          <Card>
+            <CardContent className="pt-6 space-y-3">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">Subtotal</span>
               <span>{fmt(subtotal)}</span>
@@ -1776,12 +1860,14 @@ export default function BillBuilderPage() {
                 className="h-7 w-24 text-xs"
                 value={adjustmentName}
                 onChange={(e) => setAdjustmentName(e.target.value)}
+                disabled={autoRoundOff}
               />
               <Input
                 type="number"
                 className="h-7 w-24 text-xs text-right"
-                value={adjustment}
+                value={autoRoundOff ? finalAdjustment.toFixed(2) : adjustment}
                 onChange={(e) => setAdjustment(parseFloat(e.target.value) || 0)}
+                disabled={autoRoundOff}
               />
             </div>
             <div className="border-t pt-3 flex justify-between text-lg font-bold">
@@ -1790,6 +1876,7 @@ export default function BillBuilderPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
 
 

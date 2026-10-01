@@ -264,7 +264,7 @@ export function computeDocumentTotals(
   } else if (metaRoundOff != null && metaRoundOff !== 0) {
     effectiveAdjustment = metaRoundOff;
     effectiveAdjustmentName = "Round Off";
-  } else if (invoice?.total != null && !isNaN(Number(invoice.total))) {
+  } else if (invoice?.total != null && !isNaN(Number(invoice.total)) && invoice?.metadata?.auto_round_off !== false) {
     // If invoice.total was stored as a rounded integer or differs slightly from unroundedTotal (<= 2.00 INR)
     const diff = Number((Number(invoice.total) - unroundedTotal).toFixed(2));
     if (Math.abs(diff) > 0.0001 && Math.abs(diff) < 2.0) {

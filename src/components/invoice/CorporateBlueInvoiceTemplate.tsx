@@ -302,7 +302,7 @@ export function CorporateBlueInvoiceTemplate({
             <th style={{ padding: "8px 10px", textAlign: "left", borderRight: "1px solid #2563eb" }}>DESCRIPTION</th>
             {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 90, borderRight: "1px solid #2563eb" }}>HSN / SAC</th>}
             <th style={{ padding: "8px 6px", textAlign: "center", width: 50, borderRight: "1px solid #2563eb" }}>QTY</th>
-            <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: hasGst ? "1px solid #2563eb" : "none" }}>RATE (₹)</th>
+            <th style={{ padding: "8px 10px", textAlign: "right", width: 90, borderRight: "none" }}>RATE (₹)</th>
             {hasGst && <th style={{ padding: "8px 6px", textAlign: "center", width: 70, borderRight: "1px solid #2563eb" }}>GST %</th>}
             {hasGst && <th style={{ padding: "8px 10px", textAlign: "right", width: 110, borderRight: "1px solid #2563eb" }}>GST AMOUNT (₹)</th>}
             <th style={{ padding: "8px 10px", textAlign: "right", width: 100 }}>SUBTOTAL (₹)</th>

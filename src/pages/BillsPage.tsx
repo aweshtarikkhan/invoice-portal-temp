@@ -207,7 +207,7 @@ export default function BillsPage() {
                   <TableRow key={b.id} className="cursor-pointer" onClick={() => navigate(`/bills/${b.id}`)}>
                     <TableCell className="font-medium">{b.bill_number}</TableCell>
                     <TableCell>{b.vendors?.display_name || b.vendors?.name || "—"}</TableCell>
-                    <TableCell>{format(new Date(b.bill_date), "dd MMM yyyy")}</TableCell>
+                    <TableCell>{b.bill_date ? format(new Date(b.bill_date), "dd MMM yyyy") : "—"}</TableCell>
                     <TableCell>{b.due_date ? format(new Date(b.due_date), "dd MMM yyyy") : "—"}</TableCell>
                     <TableCell><Badge className={statusColor[b.status] || ""}>{b.status}</Badge></TableCell>
                     <TableCell className="text-right">{formatCurrency(Number(b.total), (org as any)?.currency || "INR")}</TableCell>

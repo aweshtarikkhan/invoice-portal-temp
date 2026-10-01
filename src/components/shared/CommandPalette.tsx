@@ -35,7 +35,7 @@ const routes = [
   { label: "Items & Catalog", path: "/items", group: "Pages", icon: Package },
   { label: "Inventory Stock", path: "/inventory", group: "Pages", icon: Package },
   { label: "Vendors & Suppliers", path: "/vendors", group: "Pages", icon: Truck },
-  { label: "Purchase Bills", path: "/bills", group: "Pages", icon: FileText },
+  { label: "Purchase Invoices", path: "/purchase-invoices", group: "Pages", icon: FileText },
   { label: "Employees & Staff", path: "/employees", group: "Pages", icon: Users },
   { label: "Attendance Portal", path: "/attendance", group: "Pages", icon: Briefcase },
   { label: "Leaves Management", path: "/leaves", group: "Pages", icon: Briefcase },

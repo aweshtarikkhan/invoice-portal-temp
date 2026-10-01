@@ -94,7 +94,7 @@ const purchaseItems = [
   { title: "Vendor", url: "/vendors", icon: Truck, addUrl: null },
   { title: "Purchase Orders", url: "/purchase-orders", icon: ClipboardList, addUrl: "/purchase-orders/new" },
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
-  { title: "Purchase Invoice", url: "/bills", icon: Receipt, addUrl: "/bills/new" },
+  { title: "Purchase Invoice", url: "/purchase-invoices", icon: Receipt, addUrl: "/purchase-invoices/new" },
   { title: "Debit Notes", url: "/debit-notes", icon: RotateCcw, addUrl: "/debit-notes/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
 ];
@@ -339,7 +339,7 @@ export function AppSidebar() {
     }
 
     // Purchases & Banking
-    if (["/vendors", "/purchase-orders", "/grns", "/bills", "/debit-notes", "/expenses", "/accounts", "/journal", "/bank-accounts", "/cash-flow"].some(u => url === u || url.startsWith(u + "/"))) {
+    if (["/vendors", "/purchase-orders", "/grns", "/purchase-invoices", "/debit-notes", "/expenses", "/accounts", "/journal", "/bank-accounts", "/cash-flow"].some(u => url === u || url.startsWith(u + "/"))) {
       return !hasPlan("accounting");
     }
 

@@ -214,9 +214,6 @@ export function ModernTealInvoiceTemplate({
               <th className="py-2 px-2 text-center">Qty</th>
               <th className="py-2 px-2 text-center">Unit</th>
               <th className="py-2 px-2 text-right">Rate (₹)</th>
-              {hasGst && <th className="py-2 px-2 text-right">Taxable (₹)</th>}
-              {hasGst && <th className="py-2 px-2 text-center">GST %</th>}
-              {hasGst && <th className="py-2 px-2 text-right">GST (₹)</th>}
               <th className="py-2 px-2 text-right" style={{backgroundColor: accent}}>Subtotal (₹)</th>
             </tr>
           </thead>
@@ -242,17 +239,6 @@ export function ModernTealInvoiceTemplate({
                 <td className="py-2 px-2 text-center border-r border-gray-200">{qty}</td>
                 <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || line.items?.unit || "PCS"}</td>
                 <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(rate).replace('₹', '').trim()}</td>
-                {hasGst && <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(taxableAmt).replace('₹', '').trim()}</td>}
-                {hasGst && (
-                  <td className="py-2 px-2 text-center border-r border-gray-200">
-                    {taxRate > 0 ? `${taxRate}%` : "-"}
-                  </td>
-                )}
-                {hasGst && (
-                  <td className="py-2 px-2 text-right border-r border-gray-200">
-                    {fmt(taxAmt).replace('₹', '').trim()}
-                  </td>
-                )}
                 <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
                   {fmt(lineTotal).replace('₹', '').trim()}
                 </td>
@@ -260,7 +246,7 @@ export function ModernTealInvoiceTemplate({
             );})}
             {(!lines || lines.length === 0) && (
               <tr className="border-b border-gray-200">
-                <td colSpan={hasGst ? 10 : 6} className="py-6 text-center text-gray-400 italic">No items added to this document</td>
+                <td colSpan={hasGst ? 7 : 4} className="py-6 text-center text-gray-400 italic">No items added to this document</td>
               </tr>
             )}
           </tbody>

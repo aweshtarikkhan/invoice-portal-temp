@@ -330,9 +330,6 @@ export function ProfessionalNavyInvoiceTemplate({
               <th style={{ ...thStyle, width: "6%" }}>Qty.</th>
               <th style={{ ...thStyle, width: "6%" }}>Unit</th>
               <th style={{ ...thStyle, width: "10%" }}>Rate (₹)</th>
-              <th style={{ ...thStyle, width: "11%" }}>Taxable<br/>Value (₹)</th>
-              {hasGst && <th style={{ ...thStyle, width: "6%" }}>GST %</th>}
-              {hasGst && <th style={{ ...thStyle, width: "10%" }}>GST<br/>Amount (₹)</th>}
               <th style={{ ...thStyle, borderRight: "none", width: "12%" }}>Subtotal<br/>(₹)</th>
             </tr>
           </thead>
@@ -362,9 +359,6 @@ export function ProfessionalNavyInvoiceTemplate({
                   <td style={{ ...tdStyle }}>{qty}</td>
                   <td style={{ ...tdStyle }}>{line.unit || "Pcs"}</td>
                   <td style={{ ...tdStyle }}>{fmt(rate)}</td>
-                  <td style={{ ...tdStyle }}>{fmt(taxableAmt)}</td>
-                  {hasGst && <td style={{ ...tdStyle }}>{taxRate > 0 ? `${taxRate}%` : "-"}</td>}
-                  {hasGst && <td style={{ ...tdStyle }}>{taxAmt > 0 ? fmt(taxAmt) : "-"}</td>}
                   <td style={{ ...tdStyle, borderRight: "none" }}>{fmt(lineTotal)}</td>
                 </tr>
               );

@@ -84,6 +84,18 @@ export default function PurchaseOrderBuilderPage() {
   const [tdsTcsRate, setTdsTcsRate] = useState<number | string>(0);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
+  const [discount, setDiscount] = useState<number | string>(0);
+  const [discountType, setDiscountType] = useState<"percentage" | "fixed">("percentage");
+  const [shippingCharge, setShippingCharge] = useState<number | string>(0);
+  const [adjustment, setAdjustment] = useState<number | string>(0);
+  const [adjustmentName, setAdjustmentName] = useState<string>("Adjustment");
+  
+  // Display Options
+  const [autoRoundOff, setAutoRoundOff] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
+  const [showTerms, setShowTerms] = useState(true);
+  const [includeBankDetails, setIncludeBankDetails] = useState(false);
+
   const [addVendorOpen, setAddVendorOpen] = useState(false);
   const [createItemOpen, setCreateItemOpen] = useState(false);
   const [newItemTargetLine, setNewItemTargetLine] = useState<number | null>(null);
@@ -298,11 +310,22 @@ export default function PurchaseOrderBuilderPage() {
         status, subtotal: totals.sub, tax_amount: totals.totalTax, 
         tds_tcs_applicable: tdsTcsApplicable, tds_tcs_type: tdsTcsType, 
         tds_tcs_rate: cleanTdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
+        discount: Number(discount) || null,
+        discount_type: discountType,
+        shipping_charge: Number(shippingCharge) || 0,
+        adjustment: totals.finalAdjustment || 0,
+        adjustment_name: totals.finalAdjustmentName,
         metadata: {
           tds_tcs_applicable: tdsTcsApplicable,
           tds_tcs_type: tdsTcsType,
           tds_tcs_rate: cleanTdsTcsRate,
           tds_tcs_amount: totals.tdsTcsAmount,
+          displayOptions: {
+            autoRoundOff,
+            showNotes,
+            showTerms,
+            includeBankDetails
+          }
         },
         total: totals.total,
         currency: (org as any)?.currency || "INR", notes: notes || null, terms: terms || null,
@@ -716,34 +739,79 @@ export default function PurchaseOrderBuilderPage() {
           </Table>
 
           <div className="mt-6 flex justify-end">
-            <div className="w-80 bg-slate-50/80 rounded-xl p-4 border shadow-sm space-y-2.5 text-sm">
-              <div className="flex justify-between items-center text-slate-600">
-                <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400" /> <span>Subtotal</span></div>
-                <span className="font-medium text-slate-900">{formatCurrency(totals.sub, currency)}</span>
-              </div>
-              {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
-                <div className="flex justify-between items-center text-red-600">
-                  <span>TDS Deducted ({tdsTcsRate}%)</span>
-                  <span>-{formatCurrency(totals.tdsAmount, currency)}</span>
+            <div className="w-96 bg-slate-50/80 rounded-xl p-4 border shadow-sm space-y-3 text-sm">
+                <div className="flex justify-between items-center text-slate-600">
+                  <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400" /> <span>Subtotal</span></div>
+                  <span className="font-medium text-slate-900">{formatCurrency(totals.sub, currency)}</span>
                 </div>
-              )}
-              {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
-                <div className="flex justify-between items-center font-semibold text-slate-800 bg-slate-100/80 px-2 py-1 rounded">
-                  <span>Taxable Amount</span>
-                  <span>{formatCurrency(totals.taxableSubtotal, currency)}</span>
+
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Discount</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
+                      className="h-8 w-20 text-right"
+                      value={discount}
+                      onChange={(e) => {
+                        let val = parseFloat(e.target.value) || 0;
+                        if (discountType === "percentage" && val > 100) val = 100;
+                        setDiscount(val);
+                      }}
+                    />
+                    <Select value={discountType} onValueChange={(v: any) => {
+                      setDiscountType(v);
+                      if (v === "percentage" && Number(discount) > 100) setDiscount(100);
+                    }}>
+                      <SelectTrigger className="h-8 w-16"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="percentage">%</SelectItem>
+                        <SelectItem value="fixed">Fixed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {totals.totalDiscount > 0 && <span className="text-red-600 font-medium">-{formatCurrency(totals.totalDiscount, currency)}</span>}
+                  </div>
                 </div>
-              )}
-              {vendorHasGst && Object.entries(totals.breakdown).map(([rateStr, amt]) => {
-                const rate = Number(rateStr);
-                const amount = Number(amt);
-                if (isInterstate) {
-                  return (
-                    <div key={rate} className="flex justify-between items-center text-slate-600">
-                      <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400" /> <span>IGST ({rate}%)</span></div>
-                      <span>{formatCurrency(amount, currency)}</span>
-                    </div>
-                  );
-                } else {
+
+                <div className="flex justify-between items-center text-slate-600">
+                  <span>Shipping Charge</span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={0}
+                      className="h-8 w-24 text-right"
+                      value={shippingCharge}
+                      onChange={(e) => setShippingCharge(e.target.value)}
+                    />
+                    <span className="text-slate-900 font-medium">{formatCurrency(Number(shippingCharge) || 0, currency)}</span>
+                  </div>
+                </div>
+
+                {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
+                  <div className="flex justify-between items-center text-red-600">
+                    <span>TDS Deducted ({tdsTcsRate}%)</span>
+                    <span>-{formatCurrency(totals.tdsAmount, currency)}</span>
+                  </div>
+                )}
+                {tdsTcsApplicable && tdsTcsType === "tds" && totals.tdsAmount > 0 && (
+                  <div className="flex justify-between items-center font-semibold text-slate-800 bg-slate-100/80 px-2 py-1 rounded">
+                    <span>Taxable Amount</span>
+                    <span>{formatCurrency(totals.taxableSubtotal, currency)}</span>
+                  </div>
+                )}
+                
+                {vendorHasGst && Object.entries(totals.breakdown).map(([rateStr, amt]) => {
+                  const rate = Number(rateStr);
+                  const amount = Number(amt);
+                  if (isInterstate) {
+                    return (
+                      <div key={rate} className="flex justify-between items-center text-slate-600">
+                        <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-slate-400" /> <span>IGST ({rate}%)</span></div>
+                        <span>{formatCurrency(amount, currency)}</span>
+                      </div>
+                    );
+                  }
                   return (
                     <React.Fragment key={rate}>
                       <div className="flex justify-between items-center text-slate-600">
@@ -756,65 +824,45 @@ export default function PurchaseOrderBuilderPage() {
                       </div>
                     </React.Fragment>
                   );
-                }
-              })}
-              {!vendorHasGst && vendorId && (
-                <div className="flex justify-between items-center text-amber-600">
-                  <div className="flex items-center gap-2"><FileText className="h-4 w-4 text-amber-400" /> <span>GST</span></div>
-                  <span>N/A</span>
+                })}
+
+                <div className="flex justify-between items-center text-slate-600">
+                  <Input
+                    type="text"
+                    className="h-8 w-28 text-xs"
+                    value={adjustmentName}
+                    onChange={(e) => setAdjustmentName(e.target.value)}
+                    disabled={autoRoundOff}
+                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      className="h-8 w-24 text-right"
+                      value={autoRoundOff ? totals.finalAdjustment : adjustment}
+                      onChange={(e) => setAdjustment(e.target.value)}
+                      disabled={autoRoundOff}
+                    />
+                    <span className="text-slate-900 font-medium">{formatCurrency(totals.finalAdjustment, currency)}</span>
+                  </div>
                 </div>
-              )}
-              {/* TDS/TCS Section */}
-              <div className="space-y-2 border-y py-3 my-2">
-                <label className="flex items-center justify-between cursor-pointer">
-                  <span className="text-sm font-medium">TDS / TCS Applicable?</span>
-                  <Checkbox checked={tdsTcsApplicable} onCheckedChange={(v) => setTdsTcsApplicable(!!v)} />
-                </label>
-                {tdsTcsApplicable && (
-                  <div className="flex flex-col gap-2 mt-2 text-sm text-slate-600">
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tds"} onChange={() => setTdsTcsType("tds")} className="cursor-pointer" />
-                        <span>TDS (-)</span>
-                      </label>
-                      <label className="flex items-center gap-1 cursor-pointer">
-                        <input type="radio" name="tdsTcsTypePo" checked={tdsTcsType === "tcs"} onChange={() => setTdsTcsType("tcs")} className="cursor-pointer" />
-                        <span>TCS</span>
-                      </label>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1">
-                        <Input
-                          type="number"
-                          min={0}
-                          step="any"
-                          className="h-7 w-16 text-xs text-right"
-                          value={tdsTcsRate === 0 && !tdsTcsApplicable ? "" : tdsTcsRate}
-                          onKeyDown={(e) => { if (e.key === "-" || e.key === "e") e.preventDefault(); }}
-                          onChange={(e) => setTdsTcsRate(e.target.value)}
-                          placeholder="Rate"
-                        />
-                        <span className="text-muted-foreground">%</span>
-                      </div>
-                      {totals.tdsTcsAmount > 0 && (
-                        <span className={tdsTcsType === "tds" ? "text-destructive font-medium" : "text-green-600 font-medium"}>
-                          {tdsTcsType === "tds" ? "-" : ""}{formatCurrency(totals.tdsTcsAmount, currency)}
-                        </span>
-                      )}
-                    </div>
+
+                {tdsTcsApplicable && tdsTcsType === "tcs" && totals.tcsAmount > 0 && (
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>TCS ({tdsTcsRate}%)</span>
+                    <span>{formatCurrency(totals.tcsAmount, currency)}</span>
                   </div>
                 )}
+                
+                <div className="flex justify-between items-center font-bold text-base border-t border-slate-200 border-dashed pt-3 text-blue-700 mt-2">
+                  <div className="flex items-center gap-2"><span>Total</span></div>
+                  <span>{formatCurrency(totals.total, currency)}</span>
+                </div>
               </div>
-              <div className="flex justify-between items-center font-bold text-base border-t border-slate-200 border-dashed pt-3 text-blue-700 mt-2">
-                <div className="flex items-center gap-2"><span>Total</span></div>
-                <span>{formatCurrency(totals.total, currency)}</span>
-              </div>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="shadow-sm border-slate-200">
           <CardHeader className="pb-3 border-b bg-slate-50/50">
             <div className="flex items-center gap-2">
@@ -878,6 +926,35 @@ export default function PurchaseOrderBuilderPage() {
               <Calendar className="h-3.5 w-3.5" />
               Payment is due as per the selected terms.
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-3 border-b bg-slate-50/50 flex flex-row items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 bg-blue-100 text-blue-700 rounded-md flex items-center justify-center">
+                <Eye className="h-3.5 w-3.5" />
+              </div>
+              <CardTitle className="text-sm font-semibold text-blue-700">Display Options</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-4 space-y-2">
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+              <Checkbox checked={autoRoundOff} onCheckedChange={(v) => setAutoRoundOff(!!v)} />
+              <span className="text-sm font-medium text-slate-700">Auto Round Off Total</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+              <Checkbox checked={includeBankDetails} onCheckedChange={(v) => setIncludeBankDetails(!!v)} />
+              <span className="text-sm font-medium text-slate-700">Show Bank / UPI Details</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+              <Checkbox checked={showTerms} onCheckedChange={(v) => setShowTerms(!!v)} />
+              <span className="text-sm font-medium text-slate-700">Show Terms & Conditions</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-1.5 rounded-md transition-colors">
+              <Checkbox checked={showNotes} onCheckedChange={(v) => setShowNotes(!!v)} />
+              <span className="text-sm font-medium text-slate-700">Show Notes</span>
+            </label>
           </CardContent>
         </Card>
       </div>

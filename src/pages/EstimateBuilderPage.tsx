@@ -15,7 +15,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft, Lock, RefreshCw } from "lucide-react";
+import { Save, Trash2, Plus, GripVertical, Mail, MessageCircle, Eye, ChevronDown, Clock, Printer, Share2, ArrowLeft, Lock, RefreshCw, Building2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
 import { ItemFormDialog } from "@/components/shared/ItemFormDialog";
 import { ContactPromptDialog } from "@/components/shared/ContactPromptDialog";
@@ -229,6 +231,19 @@ export default function EstimateBuilderPage() {
   const { subscriptionPlan } = useSubscription();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
+  const [autoRoundOff, setAutoRoundOff] = useState(true);
+  const [showBankDetails, setShowBankDetails] = useState(false);
+  const [showTerms, setShowTerms] = useState(true);
+  const [showNotes, setShowNotes] = useState(true);
+  const [showQr, setShowQr] = useState(false);
+  const [savedBankAccounts, setSavedBankAccounts] = useState<any[]>([]);
+  const [selectedBankAccountId, setSelectedBankAccountId] = useState<string | null>(null);
+  const [bankName, setBankName] = useState("");
+  const [bankAccountName, setBankAccountName] = useState("");
+  const [bankAccountNumber, setBankAccountNumber] = useState("");
+  const [bankIfsc, setBankIfsc] = useState("");
+  const [bankBranch, setBankBranch] = useState("");
+  const [bankUpiId, setBankUpiId] = useState("");
 
   useEffect(() => {
     if (!org?.id) return;
@@ -263,6 +278,8 @@ export default function EstimateBuilderPage() {
       setClients(c.data || []);
       setCatalogItems(i.data || []);
       setTaxRates(t.data || []);
+      const { data: allBankAccounts } = await supabase.from("bank_accounts").select("*").eq("org_id", org.id).eq("is_active", true).order("created_at");
+      setSavedBankAccounts(allBankAccounts || []);
       if (!id) {
         const { data: freshOrg } = await supabase
           .from("organizations")
@@ -321,6 +338,21 @@ export default function EstimateBuilderPage() {
       setShippingCharge(Number(est.shipping_charge));
       setAdjustment(Number(est.adjustment));
       setAdjustmentName(est.adjustment_name || "Adjustment");
+      if (est.metadata) {
+        setAutoRoundOff(est.metadata.auto_round_off !== false);
+        setShowBankDetails(!!est.metadata.show_bank_details);
+        setShowTerms(est.metadata.show_terms !== false);
+        setShowNotes(est.metadata.show_notes !== false);
+        setShowQr(!!est.metadata.show_qr);
+      }
+      if (est.bank_details?.enabled) {
+        setBankName(est.bank_details.bank_name || "");
+        setBankAccountName(est.bank_details.bank_account_name || "");
+        setBankAccountNumber(est.bank_details.bank_account_number || "");
+        setBankIfsc(est.bank_details.bank_ifsc || "");
+        setBankBranch(est.bank_details.bank_branch || "");
+        setBankUpiId(est.bank_details.bank_upi_id || "");
+      }
 
       const { data: lineData } = await supabase.from("estimate_lines").select("*").eq("estimate_id", id).order("sort_order");
       if (lineData?.length) {
@@ -385,6 +417,8 @@ export default function EstimateBuilderPage() {
   const clientState = extractEntityState(selectedClient);
   const isInterstate = Boolean(orgState && clientState && orgState !== clientState);
 
+  const discountRatio = subtotal > 0 ? discountedSubtotal / subtotal : 1;
+
   const taxBreakdownMap: Record<string, { id: string, name: string, rate: number, amount: number }> = {};
   let maxTaxRate = 0;
   lines.forEach(line => {
@@ -393,7 +427,7 @@ export default function EstimateBuilderPage() {
       const tax = taxRates.find((t: any) => t.id === line.tax_id);
       const rate = slab ? slab.rate : (tax ? Number(tax.rate) : 0);
       if (rate > maxTaxRate) maxTaxRate = rate;
-      const taxAmt = Number(line.tax_amount || 0);
+      const taxAmt = Number(line.tax_amount || 0) * discountRatio;
       if (taxAmt > 0) {
         if (isInterstate) {
           const key = `IGST_${rate}`;
@@ -431,9 +465,31 @@ export default function EstimateBuilderPage() {
 
   const taxBreakdown = Object.values(taxBreakdownMap);
   const totalTax = taxBreakdown.length > 0 ? taxBreakdown.reduce((s, t) => s + t.amount, 0) : lines.reduce((s, l) => s + (l.tax_amount || 0), 0);
-  const total = discountedSubtotal + totalTax + shippingCharge + adjustment;
+  const baseTotalBeforeRoundOff = discountedSubtotal + totalTax + shippingCharge + adjustment;
+  let roundOffAdjustment = 0;
+  let total = baseTotalBeforeRoundOff;
+  if (autoRoundOff) {
+    const roundedTotal = Math.round(baseTotalBeforeRoundOff);
+    roundOffAdjustment = Number((roundedTotal - baseTotalBeforeRoundOff).toFixed(2));
+    total = roundedTotal;
+  }
   const currency = org?.currency_code || "INR";
   const fmt = (n: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
+
+  const handleBankAccountSelect = (accountId: string) => {
+    const acc = savedBankAccounts.find((a: any) => a.id === accountId);
+    if (acc) {
+      setSelectedBankAccountId(accountId);
+      setBankName(acc.bank_name || "");
+      const parsedNotes = acc.notes ? (() => { try { return JSON.parse(acc.notes); } catch { return {}; } })() : {};
+      setBankAccountName(parsedNotes.account_holder_name || acc.name || "");
+      setBankAccountNumber(acc.account_number || "");
+      setBankIfsc(acc.ifsc || "");
+      setBankBranch(parsedNotes.branch || "");
+      setBankUpiId(acc.upi_id || "");
+      setShowBankDetails(true);
+    }
+  };
 
   const handleActionClick = (action: "email") => {
     if (action === "email" && !canSendDirectEmailOrWhatsApp(plan, activeOrgPlans)) {
@@ -493,6 +549,8 @@ export default function EstimateBuilderPage() {
         discount, discount_type: discountType, shipping_charge: shippingCharge,
         adjustment, adjustment_name: adjustmentName, subtotal, total_tax: totalTax,
         total_discount: totalDiscount, total, notes, terms_conditions: terms,
+        metadata: { auto_round_off: autoRoundOff, show_bank_details: showBankDetails, show_terms: showTerms, show_notes: showNotes, show_qr: showQr },
+        bank_details: showBankDetails ? { bank_name: bankName, bank_account_name: bankAccountName, bank_account_number: bankAccountNumber, bank_ifsc: bankIfsc, bank_branch: bankBranch, bank_upi_id: bankUpiId, enabled: true } : { enabled: false },
         ...(status === "sent" ? { sent_at: new Date().toISOString() } : {}),
       };
 
@@ -746,6 +804,58 @@ export default function EstimateBuilderPage() {
               ))}
             </SortableContext>
           </DndContext>
+        </CardContent>
+      </Card>
+
+      {/* Display Options */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-2 rounded-md border p-3">
+            <div className="text-sm font-medium">Display Options</div>
+            <p className="text-xs text-muted-foreground mb-2">Configure what appears on the quotation PDF.</p>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+              <Checkbox checked={autoRoundOff} onCheckedChange={(v) => setAutoRoundOff(!!v)} />
+              <span className="text-sm font-medium">Auto Round Off Total</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+              <Checkbox checked={showBankDetails} onCheckedChange={(v) => setShowBankDetails(!!v)} />
+              <span className="text-sm font-medium">Show Bank / UPI Details</span>
+            </label>
+            {showBankDetails && (
+              <div className="pl-6 space-y-3 pt-2">
+                {savedBankAccounts.length > 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Select Saved Account</Label>
+                    <Select value={selectedBankAccountId || ""} onValueChange={handleBankAccountSelect}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Choose account..." /></SelectTrigger>
+                      <SelectContent>
+                        {savedBankAccounts.map((acc: any) => {
+                          const parsedNotes = acc.notes ? (() => { try { return JSON.parse(acc.notes); } catch { return {}; } })() : {};
+                          return <SelectItem key={acc.id} value={acc.id}>{acc.bank_name} — {parsedNotes.account_holder_name || acc.name}</SelectItem>;
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1"><Label className="text-xs">Bank Name</Label><Input className="h-8 text-xs" value={bankName} onChange={e => setBankName(e.target.value)} placeholder="e.g. HDFC Bank" /></div>
+                  <div className="space-y-1"><Label className="text-xs">Account Holder</Label><Input className="h-8 text-xs" value={bankAccountName} onChange={e => setBankAccountName(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Account Number</Label><Input className="h-8 text-xs" value={bankAccountNumber} onChange={e => setBankAccountNumber(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">IFSC Code</Label><Input className="h-8 text-xs" value={bankIfsc} onChange={e => setBankIfsc(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">Branch</Label><Input className="h-8 text-xs" value={bankBranch} onChange={e => setBankBranch(e.target.value)} /></div>
+                  <div className="space-y-1"><Label className="text-xs">UPI ID</Label><Input className="h-8 text-xs" value={bankUpiId} onChange={e => setBankUpiId(e.target.value)} /></div>
+                </div>
+              </div>
+            )}
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+              <Checkbox checked={showTerms} onCheckedChange={(v) => setShowTerms(!!v)} />
+              <span className="text-sm font-medium">Show Terms & Conditions</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/40 p-1 rounded">
+              <Checkbox checked={showNotes} onCheckedChange={(v) => setShowNotes(!!v)} />
+              <span className="text-sm font-medium">Show Notes</span>
+            </label>
+          </div>
         </CardContent>
       </Card>
 

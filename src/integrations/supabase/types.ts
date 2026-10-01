@@ -756,6 +756,8 @@ export type Database = {
       }
       bills: {
         Row: {
+          adjustment: number
+          adjustment_name: string | null
           amount_paid: number | null
           balance_due: number | null
           bill_date: string
@@ -765,14 +767,17 @@ export type Database = {
           created_by: string | null
           currency: string | null
           discount: number | null
+          discount_type: Database["public"]["Enums"]["discount_type"]
           due_date: string | null
           exchange_rate: number | null
           grn_id: string | null
           id: string
+          metadata: Json | null
           notes: string | null
           org_id: string
           po_id: string | null
           round_off: number | null
+          shipping_charge: number
           status: Database["public"]["Enums"]["bill_status"] | null
           subtotal: number | null
           tax_total: number | null
@@ -789,6 +794,8 @@ export type Database = {
           vendor_id: string
         }
         Insert: {
+          adjustment?: number
+          adjustment_name?: string | null
           amount_paid?: number | null
           balance_due?: number | null
           bill_date?: string
@@ -798,14 +805,17 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           discount?: number | null
+          discount_type?: Database["public"]["Enums"]["discount_type"]
           due_date?: string | null
           exchange_rate?: number | null
           grn_id?: string | null
           id?: string
+          metadata?: Json | null
           notes?: string | null
           org_id: string
           po_id?: string | null
           round_off?: number | null
+          shipping_charge?: number
           status?: Database["public"]["Enums"]["bill_status"] | null
           subtotal?: number | null
           tax_total?: number | null
@@ -822,6 +832,8 @@ export type Database = {
           vendor_id: string
         }
         Update: {
+          adjustment?: number
+          adjustment_name?: string | null
           amount_paid?: number | null
           balance_due?: number | null
           bill_date?: string
@@ -831,14 +843,17 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           discount?: number | null
+          discount_type?: Database["public"]["Enums"]["discount_type"]
           due_date?: string | null
           exchange_rate?: number | null
           grn_id?: string | null
           id?: string
+          metadata?: Json | null
           notes?: string | null
           org_id?: string
           po_id?: string | null
           round_off?: number | null
+          shipping_charge?: number
           status?: Database["public"]["Enums"]["bill_status"] | null
           subtotal?: number | null
           tax_total?: number | null
@@ -5250,6 +5265,12 @@ export type Database = {
           updated_at: string
           vendor_id: string | null
           warehouse_id: string | null
+          metadata: Json | null
+          discount: number | null
+          discount_type: Database["public"]["Enums"]["discount_type"] | null
+          shipping_charge: number | null
+          adjustment: number | null
+          adjustment_name: string | null
         }
         Insert: {
           branch_id?: string | null
@@ -5274,6 +5295,12 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           warehouse_id?: string | null
+          metadata?: Json | null
+          discount?: number | null
+          discount_type?: Database["public"]["Enums"]["discount_type"] | null
+          shipping_charge?: number | null
+          adjustment?: number | null
+          adjustment_name?: string | null
         }
         Update: {
           branch_id?: string | null
@@ -5298,6 +5325,12 @@ export type Database = {
           updated_at?: string
           vendor_id?: string | null
           warehouse_id?: string | null
+          metadata?: Json | null
+          discount?: number | null
+          discount_type?: Database["public"]["Enums"]["discount_type"] | null
+          shipping_charge?: number | null
+          adjustment?: number | null
+          adjustment_name?: string | null
         }
         Relationships: [
           {
