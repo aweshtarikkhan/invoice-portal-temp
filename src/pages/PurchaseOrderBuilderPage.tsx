@@ -188,42 +188,99 @@ export default function PurchaseOrderBuilderPage() {
   };
 
   // GST-aware totals
+  // GST-aware totals
   const totals = useMemo(() => {
+    const rawSubtotal = lines.reduce((s, l) => s + ((Number(l.quantity) || 0) * (Number(l.rate) || 0)), 0);
+    const cleanDiscount = Math.max(0, Number(discount) || 0);
+    const totalDiscount = discountType === "percentage" ? (rawSubtotal * cleanDiscount) / 100 : cleanDiscount;
+    const discountedSubtotal = Math.max(0, rawSubtotal - totalDiscount);
+    const discountRatio = rawSubtotal > 0 ? discountedSubtotal / rawSubtotal : 1;
+
     const cleanTdsTcsRate = Math.max(0, parseFloat(String(tdsTcsRate)) || 0);
     const isTds = Boolean(tdsTcsApplicable && tdsTcsType === "tds" && cleanTdsTcsRate > 0);
     const tdsFactor = isTds ? (1 - cleanTdsTcsRate / 100) : 1;
+    const effectiveLineRatio = discountRatio * tdsFactor;
 
     let sub = 0, cgst = 0, sgst = 0, igst = 0;
     const breakdown: Record<number, number> = {};
+    
+    let maxTaxRate = 0;
     lines.forEach(l => {
       const q = Number(l.quantity) || 0;
       const r = Number(l.rate) || 0;
       const orgHasGst = Boolean((org?.gst_number?.trim() || (org as any)?.tax_number?.trim()) || (org as any)?.gst_enabled);
       const t = (vendorHasGst || orgHasGst) ? (Number(l.tax_rate) || 0) : 0;
+      if (t > maxTaxRate) maxTaxRate = t;
+      
       const amt = q * r;
       sub += amt;
-      const effectiveAmt = amt * tdsFactor;
+      
+      const effectiveAmt = amt * effectiveLineRatio;
       const taxAmt = effectiveAmt * (t / 100);
+      
       if (t > 0) {
         breakdown[t] = (breakdown[t] || 0) + taxAmt;
-      }
-      if (isInterstate) {
-        igst += taxAmt;
-      } else {
-        cgst += taxAmt / 2;
-        sgst += taxAmt / 2;
+        if (isInterstate) {
+          igst += taxAmt;
+        } else {
+          cgst += taxAmt / 2;
+          sgst += taxAmt / 2;
+        }
       }
     });
+
+    const cleanShipping = Math.max(0, Number(shippingCharge) || 0);
+    const cleanAdjustment = Number(adjustment) || 0;
+    const baseAmountBeforeTds = discountedSubtotal + cleanShipping;
+
+    if (maxTaxRate > 0 && cleanShipping > 0) {
+      const extraTaxBase = cleanShipping * tdsFactor;
+      const extraTaxAmount = extraTaxBase * (maxTaxRate / 100);
+      if (extraTaxAmount > 0) {
+        breakdown[maxTaxRate] = (breakdown[maxTaxRate] || 0) + extraTaxAmount;
+        if (isInterstate) {
+          igst += extraTaxAmount;
+        } else {
+          cgst += extraTaxAmount / 2;
+          sgst += extraTaxAmount / 2;
+        }
+      }
+    }
+
     const totalTax = igst + cgst + sgst;
-    const tdsAmount = isTds ? (sub * cleanTdsTcsRate) / 100 : 0;
-    const taxableSubtotal = Math.max(0, sub - tdsAmount);
-    const totalWithGst = taxableSubtotal + totalTax;
+    const tdsAmount = isTds ? (baseAmountBeforeTds * cleanTdsTcsRate) / 100 : 0;
+    const taxableAmount = Math.max(0, baseAmountBeforeTds - tdsAmount);
+    const totalWithGst = taxableAmount + totalTax;
     const tcsAmount = (tdsTcsApplicable && tdsTcsType === "tcs") ? (totalWithGst * cleanTdsTcsRate) / 100 : 0;
     const tdsTcsAmount = tdsTcsType === "tds" ? tdsAmount : tcsAmount;
-    const total = totalWithGst + tcsAmount;
     
-    return { sub, taxableSubtotal, tdsAmount, tcsAmount, cgst, sgst, igst, totalTax, tdsTcsAmount, total, breakdown };
-  }, [lines, vendorHasGst, isInterstate, tdsTcsApplicable, tdsTcsType, tdsTcsRate]);
+    const rawTotal = totalWithGst + tcsAmount + cleanAdjustment;
+    let finalTotal = rawTotal;
+    let finalAdjustment = cleanAdjustment;
+    if (autoRoundOff) {
+      finalTotal = Math.round(rawTotal);
+      finalAdjustment = finalTotal - (totalWithGst + tcsAmount);
+    }
+    
+    return { 
+      sub, 
+      totalDiscount,
+      discountedSubtotal,
+      shippingCharge: cleanShipping,
+      adjustment: cleanAdjustment,
+      finalAdjustment,
+      taxableSubtotal: taxableAmount, 
+      tdsAmount, 
+      tcsAmount, 
+      cgst, 
+      sgst, 
+      igst, 
+      totalTax, 
+      tdsTcsAmount, 
+      total: finalTotal, 
+      breakdown 
+    };
+  }, [lines, vendorHasGst, isInterstate, tdsTcsApplicable, tdsTcsType, tdsTcsRate, discount, discountType, shippingCharge, adjustment, autoRoundOff, org]);
 
   const pickItem = (idx: number, itemId: string) => {
     const it = items.find(x => x.id === itemId);

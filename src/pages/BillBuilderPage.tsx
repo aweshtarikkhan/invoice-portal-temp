@@ -461,8 +461,8 @@ export default function BillBuilderPage() {
   const [paymentTerms, setPaymentTerms] = useState(30);
   const [notes, setNotes] = useState("");
   const [terms, setTerms] = useState("");
-  const [autoRoundOff, setAutoRoundOff] = useState(false);
-  const [includeBankDetails, setIncludeBankDetails] = useState(false);
+  const [autoRoundOff, setAutoRoundOff] = useState(true);
+  const [includeBankDetails, setIncludeBankDetails] = useState(true);
   const [showTerms, setShowTerms] = useState(true);
   const [showNotes, setShowNotes] = useState(true);
   const [discount, setDiscount] = useState(0);
