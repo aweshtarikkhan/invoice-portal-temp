@@ -82,7 +82,7 @@ export async function savePlatformSocials(socials: PlatformSocials): Promise<{ s
           .from("portal_ads")
           .update({
             link_url: payload,
-            is_active: true,
+            is_active: false,
             updated_at: new Date().toISOString()
           })
           .eq("id", existing.id);
@@ -91,7 +91,7 @@ export async function savePlatformSocials(socials: PlatformSocials): Promise<{ s
           .from("portal_ads")
           .update({
             link_url: payload,
-            is_active: true,
+            is_active: false,
           })
           .eq("id", existing.id);
       }
@@ -102,7 +102,7 @@ export async function savePlatformSocials(socials: PlatformSocials): Promise<{ s
           title: "__platform_socials__",
           image_url: "https://placehold.co/100?text=Socials",
           link_url: payload,
-          is_active: true,
+          is_active: false,
           sort_order: 9999
         }]);
     }
