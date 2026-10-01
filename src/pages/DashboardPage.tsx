@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { format, subDays, isAfter, isSameDay } from "date-fns";
 import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 
 function computeShiftStatus(clockInTime: string, shift: any): string {
   if (!clockInTime) return "absent";
@@ -247,7 +248,9 @@ export default function DashboardPage() {
   
   // KPI Calculations
   const totalRevenue = filteredInvoices.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
-  const paymentReceived = filteredPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const paymentReceived = filteredPayments
+    .filter(p => !isAdvanceAdjustmentPayment(p))
+    .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalExpenses = filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalOutstanding = filteredInvoices.reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
   

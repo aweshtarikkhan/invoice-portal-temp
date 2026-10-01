@@ -17,6 +17,7 @@ import {
 import { Printer, Download, ArrowLeft, IndianRupee, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { getDocumentPreviewClass, getPrintPageCSS } from "@/lib/document-templates";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 
@@ -105,6 +106,8 @@ export default function CustomerStatementPage() {
     });
 
     payments.forEach((p) => {
+      // Do not count internal advance adjustment payments as fresh cash receipts in statement
+      if (isAdvanceAdjustmentPayment(p)) return;
       allTxns.push({
         date: p.payment_date,
         sortKey: `${p.payment_date}_2_${p.payment_number}`,
@@ -147,7 +150,9 @@ export default function CustomerStatementPage() {
   }, [invoices, payments, creditNotes, client]);
 
   const totalInvoiced = invoices.reduce((s, i) => s + Number(i.total), 0);
-  const totalPayments = payments.reduce((s, p) => s + Number(p.amount), 0);
+  const totalPayments = payments
+    .filter((p) => !isAdvanceAdjustmentPayment(p))
+    .reduce((s, p) => s + Number(p.amount), 0);
   const totalCredits = creditNotes.reduce((s, c) => s + Number(c.total), 0);
 
   const handlePrint = () => window.print();

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAppStore } from "@/store/app-store";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +82,11 @@ export default function ClientDetailPage() {
 
   // Analytics
   const totalBilled = useMemo(() => invoices.filter(i => i.status !== "void" && i.status !== "draft").reduce((s, i) => s + Number(i.total), 0), [invoices]);
-  const totalPaid = useMemo(() => payments.reduce((s, p) => s + Number(p.amount), 0), [payments]);
+  const totalPaid = useMemo(() => {
+    return payments
+      .filter((p) => !isAdvanceAdjustmentPayment(p))
+      .reduce((s, p) => s + Number(p.amount), 0);
+  }, [payments]);
   const totalDue = useMemo(() => invoices.filter(i => i.status !== "void" && i.status !== "draft").reduce((s, i) => s + Number(i.balance_due), 0), [invoices]);
   const overdueAmount = useMemo(() => {
     const today = new Date();
@@ -124,6 +129,7 @@ export default function ClientDetailPage() {
       map[m].billed += Number(inv.total);
     });
     payments.forEach((p) => {
+      if (isAdvanceAdjustmentPayment(p)) return;
       const m = (p.payment_date || "").slice(0, 7);
       if (!map[m]) map[m] = { billed: 0, paid: 0 };
       map[m].paid += Number(p.amount);

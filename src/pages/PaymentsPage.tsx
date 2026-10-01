@@ -33,6 +33,7 @@ import { toast } from "@/hooks/use-toast";
 import { revertPaymentBankingTransaction } from "@/lib/banking-sync";
 import { getCurrentFinancialYear, isDateInFinancialYear } from "@/lib/financial-year";
 import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 
 const paymentImportFields: ImportField[] = [
   { key: "payment_number", label: "Payment #", required: true },
@@ -312,6 +313,7 @@ export default function PaymentsPage() {
   // Charts
   const monthlyMap: Record<string, number> = {};
   fyPayments.forEach((p) => {
+    if (isAdvanceAdjustmentPayment(p)) return;
     const m = (p.payment_date || "").slice(0, 7);
     if (m) monthlyMap[m] = (monthlyMap[m] || 0) + Number(p.amount);
   });
@@ -324,12 +326,18 @@ export default function PaymentsPage() {
   }
 
   const modeMap: Record<string, number> = {};
-  fyPayments.forEach((p) => { const mode = (p.payment_mode || "other").replace(/_/g, " "); modeMap[mode] = (modeMap[mode] || 0) + Number(p.amount); });
+  fyPayments.forEach((p) => {
+    if (isAdvanceAdjustmentPayment(p)) return;
+    const mode = (p.payment_mode || "other").replace(/_/g, " ");
+    modeMap[mode] = (modeMap[mode] || 0) + Number(p.amount);
+  });
   const modeData = Object.entries(modeMap).map(([name, value]) => ({ name: name.charAt(0).toUpperCase() + name.slice(1), value })).sort((a, b) => b.value - a.value);
   const PIE_COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
   const topClients = Object.entries(
-    fyPayments.reduce<Record<string, number>>((acc, p) => { const name = (p.clients as any)?.display_name || "Unknown"; acc[name] = (acc[name] || 0) + Number(p.amount); return acc; }, {})
+    fyPayments
+      .filter((p) => !isAdvanceAdjustmentPayment(p))
+      .reduce<Record<string, number>>((acc, p) => { const name = (p.clients as any)?.display_name || "Unknown"; acc[name] = (acc[name] || 0) + Number(p.amount); return acc; }, {})
   ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5);
 
   // Aging buckets

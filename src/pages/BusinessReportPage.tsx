@@ -11,6 +11,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell, LineChart, Line, Legend
 } from "recharts";
 import { FileText, Wallet, Users, AlertCircle, TrendingUp, TrendingDown, CalendarClock, Package, BarChart3, ArrowLeft } from "lucide-react";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 
 const STATUS_COLORS: Record<string, string> = { paid: "#22c55e", unpaid: "#3b82f6", overdue: "#ef4444", draft: "#6b7280", partial: "#f59e0b" };
 const AGING_COLORS = ["#22c55e", "#facc15", "#fb923c", "#f87171", "#dc2626"];
@@ -33,7 +34,7 @@ export default function BusinessReportPage() {
     const fetchData = async () => {
       const [invRes, payRes, recentRes, clientRes, expRes] = await Promise.all([
         supabase.from("invoices").select("id, balance_due, status, due_date, total, issue_date, created_at, amount_paid, client_id").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
-        supabase.from("payments").select("amount, payment_date, payment_mode, client_id").eq("org_id", org.id),
+        supabase.from("payments").select("amount, payment_date, payment_mode, client_id, notes").eq("org_id", org.id),
         supabase.from("invoices").select("*, clients(display_name)").eq("org_id", org.id).order("created_at", { ascending: false }).limit(10),
         supabase.from("clients").select("id, display_name, created_at").eq("org_id", org.id),
         supabase.from("business_expenses").select("amount, expense_date, category").eq("org_id", org.id),
@@ -68,7 +69,7 @@ export default function BusinessReportPage() {
 
   const totalReceivable = useMemo(() => invoices.reduce((s, i) => s + Number(i.balance_due), 0), [invoices]);
   const totalSales = useMemo(() => invoices.reduce((s, i) => s + Number(i.total), 0), [invoices]);
-  const totalReceipts = useMemo(() => payments.reduce((s, p) => s + Number(p.amount), 0), [payments]);
+  const totalReceipts = useMemo(() => payments.filter((p) => !isAdvanceAdjustmentPayment(p)).reduce((s, p) => s + Number(p.amount), 0), [payments]);
   const collectionRate = totalSales > 0 ? ((totalReceipts / totalSales) * 100).toFixed(1) : "0";
 
   const agingData = useMemo(() => {
@@ -115,7 +116,7 @@ export default function BusinessReportPage() {
         .filter((i) => new Date(i.issue_date) >= start)
         .reduce((s, i) => s + Number(i.total), 0);
       const receipts = payments
-        .filter((p) => new Date(p.payment_date) >= start)
+        .filter((p) => !isAdvanceAdjustmentPayment(p) && new Date(p.payment_date) >= start)
         .reduce((s, p) => s + Number(p.amount), 0);
       return { label, sales, receipts, due: sales - receipts };
     });
@@ -129,6 +130,7 @@ export default function BusinessReportPage() {
       if (m) monthMap[m] = (monthMap[m] || 0) + Number(i.total);
     });
     payments.forEach((p) => {
+      if (isAdvanceAdjustmentPayment(p)) return;
       const m = (p.payment_date || "").slice(0, 7);
       if (m) paymentMonthMap[m] = (paymentMonthMap[m] || 0) + Number(p.amount);
     });

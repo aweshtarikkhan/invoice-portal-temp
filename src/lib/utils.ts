@@ -155,3 +155,14 @@ export function safeFormatDate(dateVal: any, formatPattern: string = "yyyy-MM-dd
     return fallback;
   }
 }
+
+/**
+ * Checks whether a payment record is an advance adjustment (settlement from existing advance credit)
+ * rather than fresh money received. Advance adjustments should NOT be added to Total Received.
+ */
+export function isAdvanceAdjustmentPayment(p: any): boolean {
+  if (!p) return false;
+  if (p.payment_mode === "advance_credit") return true;
+  if (typeof p.notes === "string" && p.notes.toLowerCase().startsWith("adjusted from advance")) return true;
+  return false;
+}

@@ -15,6 +15,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TrendingUp, FileText, IndianRupee, PieChart as PieChartIcon, Download, ArrowLeft } from "lucide-react";
 import { format, subMonths, startOfMonth, endOfMonth, isWithinInterval } from "date-fns";
+import { isAdvanceAdjustmentPayment } from "@/lib/utils";
 
 const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#f97316", "#64748b", "#84cc16"];
 
@@ -59,7 +60,7 @@ export default function SalesReportsPage() {
   }, [period]);
 
   const totalSales = useMemo(() => invoices.reduce((acc, inv) => acc + Number(inv.total), 0), [invoices]);
-  const totalReceived = useMemo(() => payments.reduce((acc, pay) => acc + Number(pay.amount), 0), [payments]);
+  const totalReceived = useMemo(() => payments.filter((p) => !isAdvanceAdjustmentPayment(p)).reduce((acc, pay) => acc + Number(pay.amount), 0), [payments]);
   const outstanding = totalSales - totalReceived;
   
   const estimateConversion = useMemo(() => {
@@ -71,6 +72,7 @@ export default function SalesReportsPage() {
   const revenueData = useMemo(() => {
     return months.map((m) => {
       const monthPayments = payments.filter((p) =>
+        !isAdvanceAdjustmentPayment(p) &&
         isWithinInterval(new Date(p.payment_date), { start: m.start, end: m.end })
       );
       const revenue = monthPayments.reduce((s, p) => s + Number(p.amount), 0);
