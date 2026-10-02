@@ -30,7 +30,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle, MoreHorizontal, Copy, AlertCircle } from "lucide-react";
+import { Plus, FileText, Search, Upload, Trash2, Send, Download, ArrowUp, ArrowDown, MessageCircle, MoreHorizontal, Copy, AlertCircle, Eye, Ban } from "lucide-react";
 import { downloadCSV } from "@/lib/export-csv";
 import { differenceInDays, parseISO, isToday, isBefore, addDays } from "date-fns";
 import { format } from "date-fns";
@@ -38,6 +38,7 @@ import { toast } from "@/hooks/use-toast";
 import { BulkReminderDialog } from "@/components/shared/BulkReminderDialog";
 import { parseTallyExcel } from "@/lib/tally-parser";
 import { restoreInvoiceStock } from "@/lib/stock";
+import { deleteInvoiceRecord, cancelVoidInvoiceRecord } from "@/lib/invoice-actions";
 import { getCurrentFinancialYear, isDateInFinancialYear } from "@/lib/financial-year";
 import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
 
@@ -89,7 +90,7 @@ export default function InvoicesPage() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showIncompleteProfileDialog, setShowIncompleteProfileDialog] = useState(false);
   const { subscriptionPlan } = useSubscription();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const plan = subscriptionPlan || org?.subscription_plan || 'free';
   const [activeOrgPlans, setActiveOrgPlans] = useState<string[]>([]);
   const currentFY = useMemo(() => getCurrentFinancialYear(), []);
@@ -97,6 +98,14 @@ export default function InvoicesPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Single & Bulk action states
+  const [invoiceToDelete, setInvoiceToDelete] = useState<any>(null);
+  const [singleDeleteOpen, setSingleDeleteOpen] = useState(false);
+  const [invoiceToVoid, setInvoiceToVoid] = useState<any>(null);
+  const [singleVoidOpen, setSingleVoidOpen] = useState(false);
+  const [bulkVoidOpen, setBulkVoidOpen] = useState(false);
+  const [voiding, setVoiding] = useState(false);
   type SortKey = "issue_date" | "due_date" | "total" | "balance_due" | "invoice_number" | "client" | "status";
   const [sortKey, setSortKey] = useState<SortKey>("issue_date");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -288,67 +297,78 @@ export default function InvoicesPage() {
   };
 
   const handleDeleteSelected = async () => {
+    if (!org) return;
     setDeleting(true);
     const ids = Array.from(selected);
     let totalRestored = 0;
+    let failedCount = 0;
 
-    // Restore stock and delete related data first
     for (const id of ids) {
-      const inv = invoices.find(i => i.id === id);
-      if (org && inv && inv.status !== "void") {
-        const { restoredCount } = await restoreInvoiceStock(
-          id,
-          org.id,
-          `Invoice ${inv.invoice_number || id} deleted / restocked`,
-          inv.invoice_number,
-          user?.id
-        );
-        totalRestored += restoredCount;
+      const res = await deleteInvoiceRecord(id, org.id, user?.id);
+      if (res.success) {
+        totalRestored += res.restoredCount;
+      } else {
+        failedCount++;
       }
-      await supabase.from("invoice_lines").delete().eq("invoice_id", id);
-      await supabase.from("payments").delete().eq("invoice_id", id);
-      await supabase.from("portal_tokens").delete().eq("entity_id", id).eq("entity_type", "invoice");
     }
-    const { error } = await supabase.from("invoices").delete().in("id", ids);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+
+    if (failedCount > 0) {
+      toast({ title: "Partial Delete", description: `${ids.length - failedCount} deleted, ${failedCount} failed.`, variant: "destructive" });
     } else {
       toast({ 
         title: "Deleted", 
-        description: `${ids.length} invoice(s) deleted.${totalRestored > 0 ? ` ${totalRestored} item(s) restocked to inventory.` : ""}` 
+        description: `${ids.length} invoice(s) deleted permanently.${totalRestored > 0 ? ` ${totalRestored} item(s) restocked to inventory.` : ""}` 
       });
-      setInvoices(prev => prev.filter(i => !selected.has(i.id)));
-      setSelected(new Set());
     }
+    setInvoices(prev => prev.filter(i => !selected.has(i.id)));
+    setSelected(new Set());
     setDeleting(false);
     setDeleteOpen(false);
   };
 
+  const handleSingleDelete = async () => {
+    if (!invoiceToDelete || !org) return;
+    setDeleting(true);
+    try {
+      const res = await deleteInvoiceRecord(invoiceToDelete.id, org.id, user?.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to delete invoice", variant: "destructive" });
+      } else {
+        toast({
+          title: "Invoice Deleted",
+          description: `Invoice ${invoiceToDelete.invoice_number} deleted permanently.${res.restoredCount > 0 ? ` ${res.restoredCount} item(s) restocked to inventory.` : ""}`,
+        });
+        setInvoices(prev => prev.filter(i => i.id !== invoiceToDelete.id));
+        setSingleDeleteOpen(false);
+        setInvoiceToDelete(null);
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const handleCancelSelected = async () => {
     if (!org) return;
+    setVoiding(true);
     const ids = Array.from(selected);
     const nonVoidIds = ids.filter(id => {
       const inv = invoices.find(i => i.id === id);
       return inv && inv.status !== "void";
     });
+
     if (nonVoidIds.length === 0) {
       toast({ title: "Already cancelled", description: "Selected invoices are already void/cancelled.", variant: "destructive" });
+      setVoiding(false);
+      setBulkVoidOpen(false);
       return;
     }
-    if (!confirm(`Cancel ${nonVoidIds.length} invoice(s)? This will mark them as Void and RESTORE all stock to inventory.`)) return;
 
     let totalRestored = 0;
     for (const id of nonVoidIds) {
-      const inv = invoices.find(i => i.id === id);
-      const { restoredCount } = await restoreInvoiceStock(
-        id,
-        org.id,
-        `Invoice ${inv?.invoice_number || id} cancelled / voided`,
-        inv?.invoice_number,
-        user?.id
-      );
-      totalRestored += restoredCount;
-      await supabase.from("invoices").update({ status: "void", balance_due: 0 }).eq("id", id);
+      const res = await cancelVoidInvoiceRecord(id, org.id, user?.id);
+      if (res.success) totalRestored += res.restoredCount;
     }
 
     toast({
@@ -357,6 +377,31 @@ export default function InvoicesPage() {
     });
     setInvoices(prev => prev.map(i => nonVoidIds.includes(i.id) ? { ...i, status: "void", balance_due: 0 } : i));
     setSelected(new Set());
+    setVoiding(false);
+    setBulkVoidOpen(false);
+  };
+
+  const handleSingleVoid = async () => {
+    if (!invoiceToVoid || !org) return;
+    setVoiding(true);
+    try {
+      const res = await cancelVoidInvoiceRecord(invoiceToVoid.id, org.id, user?.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to void invoice", variant: "destructive" });
+      } else {
+        toast({
+          title: "Invoice Cancelled / Voided",
+          description: `Invoice ${invoiceToVoid.invoice_number} marked as void.${res.restoredCount > 0 ? ` ${res.restoredCount} item(s) restored to stock.` : ""}`,
+        });
+        setInvoices(prev => prev.map(i => i.id === invoiceToVoid.id ? { ...i, status: "void", balance_due: 0 } : i));
+        setSingleVoidOpen(false);
+        setInvoiceToVoid(null);
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setVoiding(false);
+    }
   };
 
   const handleMarkSent = async () => {
@@ -444,7 +489,7 @@ export default function InvoicesPage() {
               variant="outline"
               size="sm"
               className="text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950 dark:text-amber-300"
-              onClick={handleCancelSelected}
+              onClick={() => setBulkVoidOpen(true)}
             >
               Cancel / Void ({selected.size})
             </Button>
@@ -584,8 +629,33 @@ export default function InvoicesPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/invoices/${inv.id}`); }}>
+                            <Eye className="mr-2 h-4 w-4" /> View Details
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); navigate(`/invoices/new?duplicate=${inv.id}`); }}>
                             <Copy className="mr-2 h-4 w-4" /> Duplicate
+                          </DropdownMenuItem>
+                          {inv.status !== "void" && (
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInvoiceToVoid(inv);
+                                setSingleVoidOpen(true);
+                              }}
+                              className="text-amber-600 focus:text-amber-700"
+                            >
+                              <Ban className="mr-2 h-4 w-4" /> Cancel / Void
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setInvoiceToDelete(inv);
+                              setSingleDeleteOpen(true);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete Invoice
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -799,6 +869,72 @@ export default function InvoicesPage() {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSelected} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Invoice Delete Dialog */}
+      <AlertDialog open={singleDeleteOpen} onOpenChange={setSingleDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice {invoiceToDelete?.invoice_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete invoice <strong className="text-foreground">{invoiceToDelete?.invoice_number}</strong>, along with its line items, attached payments, stock adjustments, and share links. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSingleDelete}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete Invoice"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Invoice Cancel / Void Dialog */}
+      <AlertDialog open={singleVoidOpen} onOpenChange={setSingleVoidOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel / Void Invoice {invoiceToVoid?.invoice_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cancelling/voiding invoice <strong className="text-foreground">{invoiceToVoid?.invoice_number}</strong> will mark it as void, set remaining balance to zero, and restore any deducted inventory quantities back to stock.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voiding}>Go Back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSingleVoid}
+              disabled={voiding}
+              className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
+            >
+              {voiding ? "Cancelling..." : "Confirm Void"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Cancel / Void Dialog */}
+      <AlertDialog open={bulkVoidOpen} onOpenChange={setBulkVoidOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel / Void {selected.size} Invoice(s)?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the selected invoices as void, reset their remaining balance to zero, and restore their items back to inventory stock.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voiding}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelSelected}
+              disabled={voiding}
+              className="bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-700 dark:hover:bg-amber-800"
+            >
+              {voiding ? "Cancelling..." : "Confirm Void"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -15,6 +15,10 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,7 +26,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2, ArrowLeft, Lock, Wallet } from "lucide-react";
+import { Edit, Send, FileDown, Copy, Ban, CreditCard, Share2, Download, Printer, MessageCircle, FileMinus2, MoreHorizontal, Mail, Loader2, ArrowLeft, Lock, Wallet, Trash2 } from "lucide-react";
+import { deleteSinglePayment, deleteInvoiceRecord, cancelVoidInvoiceRecord } from "@/lib/invoice-actions";
 import { getWhatsappTemplate, compileWhatsappMessage, openWhatsappShare } from "@/lib/whatsapp";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -81,6 +86,19 @@ export default function InvoiceDetailPage() {
   });
   const [bankAccounts, setBankAccounts] = useState<any[]>([]);
   const [selectedBankAccountId, setSelectedBankAccountId] = useState<string>("");
+
+  // Delete payment states
+  const [paymentToDelete, setPaymentToDelete] = useState<any>(null);
+  const [deletePaymentDialogOpen, setDeletePaymentDialogOpen] = useState(false);
+  const [deletingPayment, setDeletingPayment] = useState(false);
+
+  // Delete invoice states
+  const [deleteInvoiceDialogOpen, setDeleteInvoiceDialogOpen] = useState(false);
+  const [deletingInvoice, setDeletingInvoice] = useState(false);
+
+  // Void invoice states
+  const [voidInvoiceDialogOpen, setVoidInvoiceDialogOpen] = useState(false);
+  const [voidingInvoice, setVoidingInvoice] = useState(false);
 
   useEffect(() => {
     if (!org?.id) return;
@@ -445,44 +463,73 @@ export default function InvoiceDetailPage() {
     fetchInvoice();
   };
 
-  const handleVoid = async () => {
-    if (!invoice || !org) return;
-    if (!confirm(`Are you sure you want to cancel / void invoice ${invoice.invoice_number}? This will reverse the transaction and RESTORE all stock items to inventory.`)) return;
-
-    // Restore stock to inventory
-    const { restoredCount } = await restoreInvoiceStock(
-      invoice.id,
-      org.id,
-      `Invoice ${invoice.invoice_number} Cancelled / Voided`,
-      invoice.invoice_number,
-      user?.id
-    );
-
-    await supabase.from("invoices").update({ status: "void", balance_due: 0 }).eq("id", invoice.id);
-    toast({ 
-      title: "Invoice Cancelled / Voided", 
-      description: restoredCount > 0 
-        ? `${restoredCount} item(s) restored to inventory.` 
-        : "Invoice has been marked as void." 
-    });
-
-    if (org && user) {
-      await logAudit({ 
-        orgId: org.id, 
-        userId: user.id, 
-        entityType: "invoice", 
-        entityId: invoice.id, 
-        action: "void", 
-        description: `Invoice ${invoice.invoice_number} voided & ${restoredCount} items restocked to inventory`,
-        metadata: {
-          previous_status: invoice.status,
-          new_status: "void",
-          items_restored: restoredCount,
-          invoice_total: invoice.total,
-        }
-      });
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setDeletingPayment(true);
+    try {
+      const res = await deleteSinglePayment(paymentToDelete.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to delete payment", variant: "destructive" });
+      } else {
+        toast({
+          title: "Payment Deleted",
+          description: `Payment ${paymentToDelete.payment_number || ""} deleted successfully. Invoice balance and bank account updated.`,
+        });
+        setDeletePaymentDialogOpen(false);
+        setPaymentToDelete(null);
+        await fetchInvoice();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingPayment(false);
     }
-    fetchInvoice();
+  };
+
+  const handleDeleteInvoice = async () => {
+    if (!invoice || !org) return;
+    setDeletingInvoice(true);
+    try {
+      const res = await deleteInvoiceRecord(invoice.id, org.id, user?.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to delete invoice", variant: "destructive" });
+      } else {
+        toast({
+          title: "Invoice Deleted",
+          description: `Invoice ${invoice.invoice_number} has been permanently deleted.${res.restoredCount > 0 ? ` ${res.restoredCount} item(s) restocked to inventory.` : ""}`,
+        });
+        setDeleteInvoiceDialogOpen(false);
+        navigate("/invoices");
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDeletingInvoice(false);
+    }
+  };
+
+  const handleConfirmVoid = async () => {
+    if (!invoice || !org) return;
+    setVoidingInvoice(true);
+    try {
+      const res = await cancelVoidInvoiceRecord(invoice.id, org.id, user?.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to void invoice", variant: "destructive" });
+      } else {
+        toast({
+          title: "Invoice Cancelled / Voided",
+          description: res.restoredCount > 0
+            ? `${res.restoredCount} item(s) restored to inventory.`
+            : "Invoice has been marked as void.",
+        });
+        setVoidInvoiceDialogOpen(false);
+        await fetchInvoice();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setVoidingInvoice(false);
+    }
   };
 
   const handleMarkSent = async () => {
@@ -884,11 +931,15 @@ export default function InvoiceDetailPage() {
               </DropdownMenuItem>
             )}
 
-            {invoice.status !== "void" && invoice.status !== "paid" && (
-              <DropdownMenuItem onClick={handleVoid} className="text-red-600 focus:text-red-700">
-                <Ban className="mr-2 h-4 w-4" /> Void
+            {invoice.status !== "void" && (
+              <DropdownMenuItem onClick={() => setVoidInvoiceDialogOpen(true)} className="text-amber-600 focus:text-amber-700">
+                <Ban className="mr-2 h-4 w-4" /> Cancel / Void Invoice
               </DropdownMenuItem>
             )}
+
+            <DropdownMenuItem onClick={() => setDeleteInvoiceDialogOpen(true)} className="text-destructive focus:text-destructive">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Invoice
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </PageHeader>
@@ -978,15 +1029,38 @@ export default function InvoiceDetailPage() {
                   <TableHead>Payment #</TableHead>
                   <TableHead>Mode</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="w-16 text-center">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell>{p.payment_date}</TableCell>
-                    <TableCell>{p.payment_number}</TableCell>
-                    <TableCell className="capitalize">{p.payment_mode.replace("_", " ")}</TableCell>
-                    <TableCell className="text-right">{fmt(Number(p.amount))}</TableCell>
+                    <TableCell className="font-medium text-primary">{p.payment_number}</TableCell>
+                    <TableCell>
+                      {p.payment_mode === "advance_credit" ? (
+                        <Badge variant="outline" className="border-blue-500/70 text-blue-700 dark:text-blue-300 bg-blue-50/60 dark:bg-blue-950/20 text-[11px] font-medium">
+                          Advance Adjusted
+                        </Badge>
+                      ) : (
+                        <span className="capitalize">{p.payment_mode.replace("_", " ")}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{fmt(Number(p.amount))}</TableCell>
+                    <TableCell className="text-center">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        title="Delete received payment"
+                        onClick={() => {
+                          setPaymentToDelete(p);
+                          setDeletePaymentDialogOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -1128,6 +1202,74 @@ export default function InvoiceDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Payment Dialog */}
+      <AlertDialog open={deletePaymentDialogOpen} onOpenChange={setDeletePaymentDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment {paymentToDelete?.payment_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this payment of <strong>{fmt(Number(paymentToDelete?.amount || 0))}</strong>?
+              This will reverse the payment from this invoice, increase the balance due, and revert any bank account deposit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingPayment}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePayment}
+              disabled={deletingPayment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingPayment ? "Deleting..." : "Delete Payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Invoice Dialog */}
+      <AlertDialog open={deleteInvoiceDialogOpen} onOpenChange={setDeleteInvoiceDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invoice {invoice?.invoice_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this invoice, restock any inventory items, and delete associated payments and portal tokens.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingInvoice}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteInvoice}
+              disabled={deletingInvoice}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingInvoice ? "Deleting..." : "Delete Invoice"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Void Invoice Dialog */}
+      <AlertDialog open={voidInvoiceDialogOpen} onOpenChange={setVoidInvoiceDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel / Void Invoice {invoice?.invoice_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Marking this invoice as <strong>VOID</strong> will cancel the transaction, reset the balance due to 0, and restore all stock items to inventory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voidingInvoice}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmVoid}
+              disabled={voidingInvoice}
+              className="bg-amber-600 text-white hover:bg-amber-700"
+            >
+              {voidingInvoice ? "Cancelling..." : "Confirm Void"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <PlanSelectorModal
         isOpen={showUpgradeModal}

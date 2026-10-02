@@ -14,9 +14,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft, IndianRupee, FileText, CreditCard, TrendingUp, AlertTriangle, CheckCircle2, Clock, FileSpreadsheet,
-  Search, ArrowUp, ArrowDown, Wallet
+  Search, ArrowUp, ArrowDown, Wallet, Trash2
 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
+import { deleteSinglePayment } from "@/lib/invoice-actions";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -60,22 +66,50 @@ export default function ClientDetailPage() {
       paymentSortDir === "asc" ? <ArrowUp className="inline h-3 w-3 ml-1" /> : <ArrowDown className="inline h-3 w-3 ml-1" />
     ) : null;
 
-  useEffect(() => {
+  const [paymentToDelete, setPaymentToDelete] = useState<any | null>(null);
+  const [deletePaymentDialogOpen, setDeletePaymentDialogOpen] = useState(false);
+  const [deletingPayment, setDeletingPayment] = useState(false);
+
+  const fetchData = async () => {
     if (!id || !org?.id) return;
-    const load = async () => {
-      setLoading(true);
-      const [{ data: cl }, { data: inv }, { data: pay }] = await Promise.all([
-        supabase.from("clients").select("*").eq("id", id).single(),
-        supabase.from("invoices").select("*").eq("client_id", id).eq("org_id", org.id).order("issue_date", { ascending: false }),
-        supabase.from("payments").select("*").eq("client_id", id).eq("org_id", org.id).order("payment_date", { ascending: false }),
-      ]);
-      setClient(cl);
-      setInvoices(inv || []);
-      setPayments(pay || []);
-      setLoading(false);
-    };
-    load();
+    setLoading(true);
+    const [{ data: cl }, { data: inv }, { data: pay }] = await Promise.all([
+      supabase.from("clients").select("*").eq("id", id).single(),
+      supabase.from("invoices").select("*").eq("client_id", id).eq("org_id", org.id).order("issue_date", { ascending: false }),
+      supabase.from("payments").select("*").eq("client_id", id).eq("org_id", org.id).order("payment_date", { ascending: false }),
+    ]);
+    setClient(cl);
+    setInvoices(inv || []);
+    setPayments(pay || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchData();
   }, [id, org?.id]);
+
+  const handleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setDeletingPayment(true);
+    try {
+      const res = await deleteSinglePayment(paymentToDelete.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to delete payment", variant: "destructive" });
+      } else {
+        toast({
+          title: "Payment Deleted",
+          description: `Payment ${paymentToDelete.payment_number || ""} deleted successfully.`,
+        });
+        setDeletePaymentDialogOpen(false);
+        setPaymentToDelete(null);
+        await fetchData();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete payment", variant: "destructive" });
+    } finally {
+      setDeletingPayment(false);
+    }
+  };
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -487,6 +521,7 @@ export default function ClientDetailPage() {
                       <TableHead onClick={() => togglePaymentSort("payment_mode")} className="cursor-pointer select-none hover:text-foreground">Mode<PaymentSortArrow k="payment_mode" /></TableHead>
                       <TableHead className="cursor-pointer select-none">Reference</TableHead>
                       <TableHead onClick={() => togglePaymentSort("amount")} className="cursor-pointer select-none hover:text-foreground text-right">Amount<PaymentSortArrow k="amount" /></TableHead>
+                      <TableHead className="w-14 text-center text-xs uppercase font-semibold text-muted-foreground">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -511,6 +546,21 @@ export default function ClientDetailPage() {
                         </TableCell>
                         <TableCell>{p.reference_number || "—"}</TableCell>
                         <TableCell className="text-right text-emerald-600 dark:text-emerald-400 font-semibold">{fmt(Number(p.amount))}</TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                            title="Delete payment"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPaymentToDelete(p);
+                              setDeletePaymentDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -520,6 +570,29 @@ export default function ClientDetailPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Payment Dialog */}
+      <AlertDialog open={deletePaymentDialogOpen} onOpenChange={setDeletePaymentDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment {paymentToDelete?.payment_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete payment <strong className="text-foreground">{paymentToDelete?.payment_number}</strong> for amount <strong className="text-foreground">{fmt(Number(paymentToDelete?.amount || 0))}</strong>.
+              {paymentToDelete?.invoice_id && " Any linked invoice balance will be restored, and bank account entries reverted."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingPayment}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeletePayment}
+              disabled={deletingPayment}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingPayment ? "Deleting..." : "Delete Payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

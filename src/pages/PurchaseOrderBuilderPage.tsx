@@ -82,6 +82,7 @@ export default function PurchaseOrderBuilderPage() {
   const [tdsTcsApplicable, setTdsTcsApplicable] = useState(false);
   const [tdsTcsType, setTdsTcsType] = useState<"tds" | "tcs">("tds");
   const [tdsTcsRate, setTdsTcsRate] = useState<number | string>(0);
+  const cleanTdsTcsRate = Math.max(0, parseFloat(String(tdsTcsRate)) || 0);
   const [lines, setLines] = useState<Line[]>([emptyLine()]);
   const [saving, setSaving] = useState(false);
   const [discount, setDiscount] = useState<number | string>(0);
@@ -361,31 +362,32 @@ export default function PurchaseOrderBuilderPage() {
     }
     setSaving(true);
     try {
-      const payload: any = {
-        org_id: org.id, vendor_id: vendorId,
-        po_number: poNumber, po_date: poDate, expected_date: expectedDate || null,
-        status, subtotal: totals.sub, tax_amount: totals.totalTax, 
-        tds_tcs_applicable: tdsTcsApplicable, tds_tcs_type: tdsTcsType, 
-        tds_tcs_rate: cleanTdsTcsRate, tds_tcs_amount: totals.tdsTcsAmount,
+      const extraData = {
+        tds_tcs_applicable: tdsTcsApplicable,
+        tds_tcs_type: tdsTcsType,
+        tds_tcs_rate: cleanTdsTcsRate,
+        tds_tcs_amount: totals.tdsTcsAmount,
         discount: Number(discount) || null,
         discount_type: discountType,
         shipping_charge: Number(shippingCharge) || 0,
         adjustment: totals.finalAdjustment || 0,
         adjustment_name: totals.finalAdjustmentName,
-        metadata: {
-          tds_tcs_applicable: tdsTcsApplicable,
-          tds_tcs_type: tdsTcsType,
-          tds_tcs_rate: cleanTdsTcsRate,
-          tds_tcs_amount: totals.tdsTcsAmount,
-          displayOptions: {
-            autoRoundOff,
-            showNotes,
-            showTerms,
-            includeBankDetails
-          }
-        },
+        displayOptions: {
+          autoRoundOff,
+          showNotes,
+          showTerms,
+          includeBankDetails
+        }
+      };
+      
+      const payload: any = {
+        org_id: org.id, vendor_id: vendorId,
+        po_number: poNumber, po_date: poDate, expected_date: expectedDate || null,
+        status, subtotal: totals.sub, tax_amount: totals.totalTax, 
         total: totals.total,
-        currency: (org as any)?.currency || "INR", notes: notes || null, terms: terms || null,
+        currency: (org as any)?.currency || "INR", 
+        notes: (notes || "") + "\n\n---EXTRA_DATA---\n" + JSON.stringify(extraData), 
+        terms: terms || null,
       };
       let poId = id;
       if (id) {

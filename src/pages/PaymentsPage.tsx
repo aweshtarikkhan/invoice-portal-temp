@@ -31,6 +31,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { toast } from "@/hooks/use-toast";
 import { revertPaymentBankingTransaction } from "@/lib/banking-sync";
+import { deleteSinglePayment } from "@/lib/invoice-actions";
 import { getCurrentFinancialYear, isDateInFinancialYear } from "@/lib/financial-year";
 import { FinancialYearSelect } from "@/components/shared/FinancialYearSelect";
 import { isAdvanceAdjustmentPayment } from "@/lib/utils";
@@ -95,6 +96,8 @@ export default function PaymentsPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [paymentToDelete, setPaymentToDelete] = useState<any | null>(null);
+  const [singleDeleteOpen, setSingleDeleteOpen] = useState(false);
 
   const currentFY = useMemo(() => getCurrentFinancialYear(), []);
   const [selectedFY, setSelectedFY] = useState<string>("all");
@@ -308,6 +311,29 @@ export default function PaymentsPage() {
     setDeleting(false);
     setDeleteOpen(false);
     fetchData();
+  };
+
+  const handleSingleDeletePayment = async () => {
+    if (!paymentToDelete) return;
+    setDeleting(true);
+    try {
+      const res = await deleteSinglePayment(paymentToDelete.id);
+      if (!res.success) {
+        toast({ title: "Error", description: res.error || "Failed to delete payment", variant: "destructive" });
+      } else {
+        toast({
+          title: "Payment Deleted",
+          description: `Payment ${paymentToDelete.payment_number || ""} has been deleted and balances updated.`,
+        });
+        setSingleDeleteOpen(false);
+        setPaymentToDelete(null);
+        await fetchData();
+      }
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message || "Failed to delete payment", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Charts
@@ -602,6 +628,7 @@ export default function PaymentsPage() {
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground">Deposit Account</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Amount</TableHead>
                   <TableHead className="text-xs uppercase font-semibold text-muted-foreground text-right">Unused Amount</TableHead>
+                  <TableHead className="w-14 text-center text-xs uppercase font-semibold text-muted-foreground">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -664,6 +691,21 @@ export default function PaymentsPage() {
                         }
                         return <span className="text-muted-foreground text-xs">{fmt(0)}</span>;
                       })()}
+                    </TableCell>
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                        title="Delete payment"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPaymentToDelete(p);
+                          setSingleDeleteOpen(true);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -760,6 +802,29 @@ export default function PaymentsPage() {
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteSelected} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Single Payment Delete Dialog */}
+      <AlertDialog open={singleDeleteOpen} onOpenChange={setSingleDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Payment {paymentToDelete?.payment_number}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete payment <strong className="text-foreground">{paymentToDelete?.payment_number}</strong> for amount <strong className="text-foreground">{fmt(Number(paymentToDelete?.amount || 0))}</strong>.
+              {paymentToDelete?.invoice_id && " Any linked invoice balance will be restored, and bank account entries reverted."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleSingleDeletePayment}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete Payment"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

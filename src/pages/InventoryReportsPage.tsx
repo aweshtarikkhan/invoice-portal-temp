@@ -36,7 +36,7 @@ export default function InventoryReportsPage() {
       const [itemsRes, movementsRes, billLinesRes] = await Promise.all([
         (supabase as any).from("items").select("*").eq("org_id", org.id).order("name"),
         (supabase as any).from("stock_movements").select("*, items(name, type)").eq("org_id", org.id).order("created_at", { ascending: false }),
-        (supabase as any).from("bill_lines").select("item_id, quantity, rate, bills(status, deduct_stock)").eq("org_id", org.id)
+        (supabase as any).from("bill_lines").select("item_id, quantity, rate, bills(status)").eq("org_id", org.id)
       ]);
       
       const rawItems = itemsRes.data || [];

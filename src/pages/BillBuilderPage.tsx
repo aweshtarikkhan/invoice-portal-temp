@@ -619,24 +619,49 @@ export default function BillBuilderPage() {
         setDueDate(inv.due_date);
       }
       
-      setNotes(inv.notes || "");
+      let baseNotes = inv.notes || "";
+      let extraData: any = {};
+      if (baseNotes.includes("---EXTRA_DATA---")) {
+        const parts = baseNotes.split("---EXTRA_DATA---");
+        baseNotes = parts[0].trim();
+        try {
+          extraData = JSON.parse(parts[1].trim());
+        } catch (e) {
+          console.error("Failed to parse extra data", e);
+        }
+      }
+
+      setNotes(baseNotes);
       setTerms(inv.terms || inv.terms_conditions || "");
       const meta = inv.metadata && typeof inv.metadata === 'object' ? inv.metadata : {};
-      setAutoRoundOff(!!meta.autoRoundOff);
-      setIncludeBankDetails(!!meta.includeBankDetails);
-      setShowTerms(meta.showTerms !== false);
-      setShowNotes(meta.showNotes !== false);
+      
+      setAutoRoundOff(extraData.autoRoundOff ?? !!meta.autoRoundOff);
+      setIncludeBankDetails(extraData.includeBankDetails ?? !!meta.includeBankDetails);
+      setShowTerms(extraData.showTerms ?? meta.showTerms !== false);
+      setShowNotes(extraData.showNotes ?? meta.showNotes !== false);
+      
       setDiscount(Number(inv.discount));
       setDiscountType(inv.discount_type as any);
       setShippingCharge(Number(inv.shipping_charge));
       setExpenses(Number((inv as any).expenses || 0));
       setAdjustment(Number(inv.adjustment));
       setAdjustmentName(inv.adjustment_name || "Adjustment");
-      setTdsTcsApplicable(!!(inv as any).tds_tcs_applicable);
-      setTdsTcsType((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds");
-      setTdsTcsRate(Number((inv as any).tds_tcs_rate || 0));
-      setDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
-      setPrevDeductStock((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null ? !!(inv as any).deduct_stock : true);
+      
+      setTdsTcsApplicable(extraData.tds_tcs_applicable ?? !!(inv as any).tds_tcs_applicable);
+      setTdsTcsType(extraData.tds_tcs_type ?? ((inv as any).tds_tcs_type === "tcs" ? "tcs" : "tds"));
+      setTdsTcsRate(Number(extraData.tds_tcs_rate ?? (inv as any).tds_tcs_rate ?? 0));
+      
+      let loadedDeductStock = true;
+      if (extraData.deduct_stock !== undefined) {
+         loadedDeductStock = !!extraData.deduct_stock;
+      } else if ((inv as any).deduct_stock !== undefined && (inv as any).deduct_stock !== null) {
+         loadedDeductStock = !!(inv as any).deduct_stock;
+      } else if ((inv.metadata as any)?.deduct_stock !== undefined) {
+         loadedDeductStock = !!(inv.metadata as any).deduct_stock;
+      }
+      
+      setDeductStock(loadedDeductStock);
+      setPrevDeductStock(loadedDeductStock);
       setAmountPaid(duplicateId ? 0 : Number(inv.amount_paid || 0));
       
       // Phase 5 compliance load
@@ -956,6 +981,18 @@ export default function BillBuilderPage() {
       }
     }
 
+      const extraData = {
+        tds_tcs_applicable: tdsTcsApplicable,
+        tds_tcs_type: tdsTcsType,
+        tds_tcs_rate: cleanTdsTcsRate,
+        tds_tcs_amount: tdsTcsAmount,
+        autoRoundOff,
+        includeBankDetails,
+        showTerms,
+        showNotes,
+        deduct_stock: deductStock,
+      };
+
       const billPayload = {
         org_id: org!.id,
         vendor_id: vendorId,
@@ -975,19 +1012,8 @@ export default function BillBuilderPage() {
         tds_tcs_type: tdsTcsType,
         tds_tcs_rate: cleanTdsTcsRate,
         round_off: finalAdjustment,
-        metadata: {
-          tds_tcs_applicable: tdsTcsApplicable,
-          tds_tcs_type: tdsTcsType,
-          tds_tcs_rate: cleanTdsTcsRate,
-          tds_tcs_amount: tdsTcsAmount,
-          autoRoundOff,
-          includeBankDetails,
-          showTerms,
-          showNotes,
-        },
         tds_tcs_amount: tdsTcsAmount,
-        deduct_stock: deductStock,
-        notes,
+        notes: (notes || "") + "\n\n---EXTRA_DATA---\n" + JSON.stringify(extraData),
         terms,
         grn_id: linkedGrnId || null,
       };
@@ -1087,13 +1113,15 @@ export default function BillBuilderPage() {
             if (ln.item_id) delta[ln.item_id] = (delta[ln.item_id] || 0) + Number(ln.quantity || 0);
           }
         }
+        let stockToastMessages: string[] = [];
         const itemIds = Object.keys(delta).filter((k) => delta[k] !== 0);
         if (itemIds.length) {
-          const { data: itemsForStock } = await supabase.from("items").select("id, type, stock_quantity").in("id", itemIds);
+          const { data: itemsForStock } = await supabase.from("items").select("id, name, type, stock_quantity").in("id", itemIds);
           const movements: Parameters<typeof logStockMovements>[0] = [];
           for (const it of itemsForStock || []) {
             if (it.type !== "product") continue;
-            const newQty = Math.max(0, Number(it.stock_quantity || 0) + delta[it.id]);
+            const oldQty = Number(it.stock_quantity || 0);
+            const newQty = Math.max(0, oldQty + delta[it.id]);
             await supabase.from("items").update({ stock_quantity: newQty }).eq("id", it.id);
             movements.push({
               orgId: org!.id,
@@ -1102,14 +1130,18 @@ export default function BillBuilderPage() {
               balanceAfter: newQty,
               reason: id ? "Purchase bill updated" : "Purchase bill created",
               refType: "bill",
-              refId: billId,
+              refId: billId!,
               refNumber: billNumber,
               createdBy: user?.id || null,
             });
+            stockToastMessages.push(`${it.name}: Prev ${oldQty} → Updated ${newQty}`);
           }
           await logStockMovements(movements);
         }
         setPrevDeductStock(deductStock);
+        if (stockToastMessages.length) {
+          (window as any).__lastStockMessages = stockToastMessages;
+        }
       }
 
       // Save custom fields
@@ -1135,7 +1167,16 @@ export default function BillBuilderPage() {
           return;
         }
       } else {
-        toast({ title: status === "received" ? "Purchase invoice saved!" : "Purchase invoice saved as draft!" });
+        const stockMsgs = (window as any).__lastStockMessages as string[] | undefined;
+        let desc = stockMsgs && stockMsgs.length > 0 
+          ? "Product added to inventory.\n" + stockMsgs.join("\n")
+          : undefined;
+          
+        toast({ 
+          title: status === "received" ? "Purchase invoice saved!" : "Purchase invoice saved as draft!",
+          description: desc,
+        });
+        (window as any).__lastStockMessages = undefined;
       }
 
       navigate(`/purchase-invoices/${billId}`, { replace: true });
