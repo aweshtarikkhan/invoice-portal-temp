@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays, History, PlusCircle, MinusCircle, AlertTriangle } from "lucide-react";
+import { Plus, Check, X, Trash2, Settings, Users, ClipboardList, Info, CalendarDays, History, PlusCircle, MinusCircle, AlertTriangle, Loader2 } from "lucide-react";
 import { differenceInCalendarDays, parseISO, format } from "date-fns";
 
 export const LEAVE_TYPES = [
@@ -55,6 +55,7 @@ export default function LeavesPage() {
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState<any>({ employee_id: "", leave_type: "casual", start_date: "", end_date: "", reason: "" });
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   // Leave policies
   const [policies, setPolicies] = useState<any[]>([]);
@@ -193,97 +194,102 @@ export default function LeavesPage() {
     const oldStatus = leaveReq?.status;
     if (oldStatus === status) return;
     
-    const { error } = await (supabase as any).from("leaves").update({ status, approved_at: new Date().toISOString() }).eq("id", id);
-    if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
-    
-    if (leaveReq) {
-      try {
-        const { data: bData } = await (supabase as any).from('employee_leave_balances')
-          .select('id, used')
-          .eq('employee_id', leaveReq.employee_id)
-          .eq('leave_type', leaveReq.leave_type)
-          .maybeSingle();
-          
-        let currentUsed = bData?.used || 0;
-        
-        if (status === "approved" && oldStatus !== "approved") {
-          currentUsed += leaveReq.days;
-          
-          // Auto-mark each leave day in both attendance and attendances tables
-          const start = parseISO(String(leaveReq.start_date).split('T')[0]);
-          const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
-          const datesToMark: string[] = [];
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            datesToMark.push(format(d, 'yyyy-MM-dd'));
-          }
-          
-          for (const dateStr of datesToMark) {
-            let attStatus = 'paid_leave';
-            if (leaveReq.leave_type === 'half_day') attStatus = 'half_day';
-            else if (leaveReq.leave_type === 'wfh') attStatus = 'wfh';
-            else if (leaveReq.leave_type === 'unpaid' || leaveReq.leave_type === 'lwp') attStatus = 'absent';
-            else attStatus = leaveReq.leave_type || 'paid_leave';
+    setProcessingId(id);
+    try {
+      const { error } = await (supabase as any).from("leaves").update({ status, approved_at: new Date().toISOString() }).eq("id", id);
+      if (error) { toast({ title: "Update failed", description: error.message, variant: "destructive" }); return; }
+      
+      if (leaveReq) {
+        try {
+          const { data: bData } = await (supabase as any).from('employee_leave_balances')
+            .select('id, used')
+            .eq('employee_id', leaveReq.employee_id)
+            .eq('leave_type', leaveReq.leave_type)
+            .maybeSingle();
             
-            await (supabase as any).from('attendance').upsert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              attendance_date: dateStr,
-              status: attStatus,
-              override_status: leaveReq.leave_type || attStatus
-            }, { onConflict: 'employee_id,attendance_date' });
+          let currentUsed = bData?.used || 0;
+          
+          if (status === "approved" && oldStatus !== "approved") {
+            currentUsed += leaveReq.days;
+            
+            // Auto-mark each leave day in both attendance and attendances tables
+            const start = parseISO(String(leaveReq.start_date).split('T')[0]);
+            const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
+            const datesToMark: string[] = [];
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              datesToMark.push(format(d, 'yyyy-MM-dd'));
+            }
+            
+            for (const dateStr of datesToMark) {
+              let attStatus = 'paid_leave';
+              if (leaveReq.leave_type === 'half_day') attStatus = 'half_day';
+              else if (leaveReq.leave_type === 'wfh') attStatus = 'wfh';
+              else if (leaveReq.leave_type === 'unpaid' || leaveReq.leave_type === 'lwp') attStatus = 'absent';
+              else attStatus = leaveReq.leave_type || 'paid_leave';
+              
+              await (supabase as any).from('attendance').upsert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                attendance_date: dateStr,
+                status: attStatus,
+                override_status: leaveReq.leave_type || attStatus
+              }, { onConflict: 'employee_id,attendance_date' });
 
-            await (supabase as any).from('attendances').upsert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              date: dateStr,
-              status: attStatus === 'absent' ? 'absent' : 'approved_leave',
-            }, { onConflict: 'employee_id,date' });
-          }
-          
-          toast({ title: "Leave Approved", description: `Attendance marked as ${leaveReq.leave_type.toUpperCase()} for ${leaveReq.days} day(s).` });
-        } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
-          currentUsed = Math.max(0, currentUsed - leaveReq.days);
-          
-          // Revert attendance records back to absent for those days
-          const start = parseISO(String(leaveReq.start_date).split('T')[0]);
-          const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
-          for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-            const dateStr = format(d, 'yyyy-MM-dd');
-            await (supabase as any).from('attendance').upsert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              attendance_date: dateStr,
-              status: 'absent',
-              override_status: 'absent'
-            }, { onConflict: 'employee_id,attendance_date' });
+              await (supabase as any).from('attendances').upsert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                date: dateStr,
+                status: attStatus === 'absent' ? 'absent' : 'approved_leave',
+              }, { onConflict: 'employee_id,date' });
+            }
+            
+            toast({ title: "Leave Approved", description: `Attendance marked as ${leaveReq.leave_type.toUpperCase()} for ${leaveReq.days} day(s).` });
+          } else if (oldStatus === "approved" && (status === "rejected" || status === "cancelled")) {
+            currentUsed = Math.max(0, currentUsed - leaveReq.days);
+            
+            // Revert attendance records back to absent for those days
+            const start = parseISO(String(leaveReq.start_date).split('T')[0]);
+            const end = parseISO(String(leaveReq.end_date || leaveReq.start_date).split('T')[0]);
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+              const dateStr = format(d, 'yyyy-MM-dd');
+              await (supabase as any).from('attendance').upsert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                attendance_date: dateStr,
+                status: 'absent',
+                override_status: 'absent'
+              }, { onConflict: 'employee_id,attendance_date' });
 
-            await (supabase as any).from('attendances').upsert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              date: dateStr,
-              status: 'absent',
-            }, { onConflict: 'employee_id,date' });
-          }
-          toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s). Attendance reverted to Absent.` });
-        }
-        
-        if (bData?.id) {
-            await (supabase as any).from('employee_leave_balances').update({
-              used: currentUsed
-            }).eq('id', bData.id);
-          } else {
-            await (supabase as any).from('employee_leave_balances').insert({
-              org_id: org.id,
-              employee_id: leaveReq.employee_id,
-              leave_type: leaveReq.leave_type,
-              used: currentUsed
-            });
+              await (supabase as any).from('attendances').upsert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                date: dateStr,
+                status: 'absent',
+              }, { onConflict: 'employee_id,date' });
+            }
+            toast({ title: "Leave Rejected", description: `Balance refunded by ${leaveReq.days} day(s). Attendance reverted to Absent.` });
           }
           
-        } catch (e) {
-          console.error("Error updating leave balance:", e);
-          toast({ title: "Balance update failed", description: "Failed to update leave balance.", variant: "destructive" });
-        }
+          if (bData?.id) {
+              await (supabase as any).from('employee_leave_balances').update({
+                used: currentUsed
+              }).eq('id', bData.id);
+            } else {
+              await (supabase as any).from('employee_leave_balances').insert({
+                org_id: org.id,
+                employee_id: leaveReq.employee_id,
+                leave_type: leaveReq.leave_type,
+                used: currentUsed
+              });
+            }
+            
+          } catch (e) {
+            console.error("Error updating leave balance:", e);
+            toast({ title: "Balance update failed", description: "Failed to update leave balance.", variant: "destructive" });
+          }
+      }
+    } finally {
+      setProcessingId(null);
     }
     load();
     window.dispatchEvent(new CustomEvent('hr-action-updated'));
@@ -425,7 +431,7 @@ export default function LeavesPage() {
                   <TableHeader><TableRow>
                     <TableHead>Employee</TableHead><TableHead>Type</TableHead><TableHead>From</TableHead>
                     <TableHead>To</TableHead><TableHead>Days</TableHead><TableHead>Reason</TableHead>
-                    <TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Status</TableHead><TableHead className="text-right min-w-[220px]">Actions</TableHead>
                   </TableRow></TableHeader>
                   <TableBody>
                     {(rows || []).map((r) => {
@@ -451,19 +457,51 @@ export default function LeavesPage() {
                           <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">{r.reason || "—"}</TableCell>
                           <TableCell>{statusBadge(r.status)}</TableCell>
                           <TableCell className="text-right">
-                            {r.status === "pending" && (
-                              <>
-                                <Button variant="ghost" size="icon" onClick={() => setStatus(r.id, "approved")} title="Approve">
-                                  <Check className="h-4 w-4 text-green-600" />
-                                </Button>
-                                <Button variant="ghost" size="icon" onClick={() => setStatus(r.id, "rejected")} title="Reject">
-                                  <X className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </>
-                            )}
-                            <Button variant="ghost" size="icon" onClick={() => remove(r.id)}>
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex items-center justify-end gap-2">
+                              {r.status === "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="h-8 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-xs gap-1.5 transition-all active:scale-95"
+                                    onClick={() => setStatus(r.id, "approved")}
+                                    disabled={processingId === r.id}
+                                    title="Approve Leave"
+                                  >
+                                    {processingId === r.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Check className="h-3.5 w-3.5" />
+                                    )}
+                                    Approve
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 px-3 text-red-600 border-red-200 bg-red-50/50 hover:bg-red-100 hover:text-red-700 hover:border-red-300 dark:border-red-900/50 dark:bg-red-950/20 dark:hover:bg-red-950/50 font-medium text-xs gap-1.5 transition-all active:scale-95"
+                                    onClick={() => setStatus(r.id, "rejected")}
+                                    disabled={processingId === r.id}
+                                    title="Reject Leave"
+                                  >
+                                    {processingId === r.id ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <X className="h-3.5 w-3.5" />
+                                    )}
+                                    Reject
+                                  </Button>
+                                </>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-red-50 dark:hover:bg-red-950/30"
+                                onClick={() => remove(r.id)}
+                                disabled={processingId === r.id}
+                                title="Delete Leave Request"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       );
