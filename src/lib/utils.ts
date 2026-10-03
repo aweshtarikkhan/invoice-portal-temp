@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { format as dateFnsFormat } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -117,40 +118,7 @@ export function safeFormatDate(dateVal: any, formatPattern: string = "yyyy-MM-dd
 
     if (isNaN(d.getTime())) return fallback;
 
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const fullMonths = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-    const fullDays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-
-    const yyyy = d.getFullYear().toString();
-    const MM = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    const dNum = d.getDate().toString();
-    const EEE = days[d.getDay()];
-    const EEEE = fullDays[d.getDay()];
-    const MMM = months[d.getMonth()];
-    const MMMM = fullMonths[d.getMonth()];
-
-    let h = d.getHours();
-    const min = String(d.getMinutes()).padStart(2, "0");
-    const ampm = h >= 12 ? "PM" : "AM";
-    const hh = String(h % 12 || 12).padStart(2, "0");
-    const HH = String(h).padStart(2, "0");
-
-    let res = formatPattern;
-    res = res.replace(/yyyy/g, yyyy);
-    res = res.replace(/MMMM/g, MMMM);
-    res = res.replace(/MMM/g, MMM);
-    res = res.replace(/MM/g, MM);
-    res = res.replace(/EEEE/g, EEEE);
-    res = res.replace(/EEE/g, EEE);
-    res = res.replace(/dd/g, dd);
-    res = res.replace(/\bd\b/g, dNum);
-    res = res.replace(/HH/g, HH);
-    res = res.replace(/hh/g, hh);
-    res = res.replace(/mm/g, min);
-    res = res.replace(/a/g, ampm);
-    return res;
+    return dateFnsFormat(d, formatPattern);
   } catch {
     return fallback;
   }
