@@ -202,9 +202,9 @@ IMPORTANT CONTACT RULES:
     - Custom API Keys: Users can generate secret API keys (sk_live_...) to authenticate external applications, scripts, Zapier, Make, or custom website forms with the CRM. Clicking "+ Generate Key" opens a centered modal dialog with key name and permission scope. Once generated, a secure modal reveals the full secret key with a 1-click Copy button and security reminder.
     - Outgoing Webhooks: Users can register public HTTPS webhook endpoints to receive real-time HTTP POST payloads when CRM events happen (lead.created, lead.updated, deal.won, contact.created, or all events). Clicking "+ Add Endpoint" opens a centered modal with URL, event checkboxes, auto-generated HMAC-SHA256 signing secret, and active toggle. Each webhook card provides an on/off switch, secret copy button, test ping button, and delete confirmation.
     - Developer Guide & API Documentation: Interactive in-app developer documentation featuring cURL, JavaScript (Fetch), and Python code samples for:
-      1. POST /rest/v1/leads: Ingesting new leads with name, phone, email, company, source, and estimated value.
+      1. POST /rest/v1/leads (or /crm/v1/leads): Ingesting new leads with name, phone, email, company, source, and estimated value.
       2. Instant No-Code Ingestion Webhook URL: Direct endpoint for HTML forms, WordPress/Elementor, Webflow, and Zapier to capture leads with zero code.
-      3. GET /rest/v1/leads: Querying, searching, and filtering leads with status and pagination filters.
+      3. GET /rest/v1/leads (or /crm/v1/leads): Querying, searching, and filtering leads with status and pagination filters.
       4. Webhook Security: JSON payload format and HMAC-SHA256 signature verification code examples.
 
 6. MARKETING & PROMOTION (Business Promotion)

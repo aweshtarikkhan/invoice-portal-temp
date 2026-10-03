@@ -172,10 +172,18 @@ export default function CRMIntegrationsPage() {
     const rawKey = `${prefix}_${randomHex}`;
     const preview = `${rawKey.substring(0, 16)}...${rawKey.substring(rawKey.length - 4)}`;
 
+    // Generate SHA-256 hash of the rawKey
+    const encoder = new TextEncoder();
+    const data = encoder.encode(rawKey);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashHex = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
     const { error } = await (supabase as any).from("org_api_keys").insert({
       org_id: org!.id,
       name: keyName.trim(),
-      key_hash: "sha256_secured",
+      key_hash: hashHex,
       preview
     });
 
@@ -1042,7 +1050,7 @@ app.post("/webhook/assaybiz", express.raw({ type: "application/json" }), (req, r
       {/* 1. MODAL: GENERATE API KEY (Centered Dialog)           */}
       {/* ======================================================== */}
       <Dialog open={apiKeyModalOpen} onOpenChange={setApiKeyModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white rounded-2xl p-6 shadow-2xl border-slate-200">
+        <DialogContent className="sm:max-w-xl bg-white rounded-2xl p-6 shadow-2xl border-slate-200">
           <DialogHeader>
             <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-2">
               <Key className="w-5 h-5" />
@@ -1067,20 +1075,25 @@ app.post("/webhook/assaybiz", express.raw({ type: "application/json" }), (req, r
                 </p>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-slate-700">Your Full Secret Key</Label>
-                <div className="p-3 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl break-all select-all border border-slate-800 flex items-center justify-between gap-2">
-                  <span className="truncate">{generatedRawKey}</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold text-slate-700">Your Full Secret Key</Label>
+                  <span className="text-[11px] text-slate-400 font-mono">Store securely</span>
+                </div>
+                <div className="p-3.5 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+                  <span className="break-all select-all leading-relaxed text-xs tracking-tight font-mono">
+                    {generatedRawKey}
+                  </span>
                   <Button
                     size="sm"
                     onClick={() => {
                       copyToClipboard(generatedRawKey, "API Key copied to clipboard!");
                       setKeyCopied(true);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 h-8 text-xs px-3"
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 self-end sm:self-center h-8 text-xs px-3.5 shadow-sm transition-all flex items-center gap-1.5"
                   >
-                    {keyCopied ? <Check className="w-3.5 h-3.5 mr-1" /> : <Copy className="w-3.5 h-3.5 mr-1" />}
-                    {keyCopied ? "Copied" : "Copy"}
+                    {keyCopied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5" />}
+                    {keyCopied ? "Copied" : "Copy Key"}
                   </Button>
                 </div>
               </div>
