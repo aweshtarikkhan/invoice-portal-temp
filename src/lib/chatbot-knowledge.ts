@@ -196,6 +196,16 @@ IMPORTANT CONTACT RULES:
   4. "Welcome WhatsApp for New Leads": Sends a warm greeting WhatsApp message when a new lead is captured.
   Users can toggle each workflow on/off and click "Preview Message" on each card to view live interactive email and WhatsApp message previews. The previous draft invoice auto-creation has been replaced with these customer communication workflows.
 - Support Tickets: Go to Business CRM -> Support Tickets (/tickets). Create and track support tickets for both Customers (Clients) and CRM Leads using an interactive segmented contact selector (Customers vs Leads). Tickets display priority, real-time status badges, two-way threaded discussion messages, and search filtering across both customer and lead names.
+- Integrations & Custom API (/crm/integrations): Connect your CRM with third-party lead sources, website forms, and external software:
+  * Lead Sources Tab: Integrates with IndiaMart (auto-fetches leads every 15 minutes using CRM key & registered mobile) and Justdial (unique webhook URL for real-time lead capture).
+  * Custom API & Webhooks Tab:
+    - Custom API Keys: Users can generate secret API keys (sk_live_...) to authenticate external applications, scripts, Zapier, Make, or custom website forms with the CRM. Clicking "+ Generate Key" opens a centered modal dialog with key name and permission scope. Once generated, a secure modal reveals the full secret key with a 1-click Copy button and security reminder.
+    - Outgoing Webhooks: Users can register public HTTPS webhook endpoints to receive real-time HTTP POST payloads when CRM events happen (lead.created, lead.updated, deal.won, contact.created, or all events). Clicking "+ Add Endpoint" opens a centered modal with URL, event checkboxes, auto-generated HMAC-SHA256 signing secret, and active toggle. Each webhook card provides an on/off switch, secret copy button, test ping button, and delete confirmation.
+    - Developer Guide & API Documentation: Interactive in-app developer documentation featuring cURL, JavaScript (Fetch), and Python code samples for:
+      1. POST /rest/v1/leads: Ingesting new leads with name, phone, email, company, source, and estimated value.
+      2. Instant No-Code Ingestion Webhook URL: Direct endpoint for HTML forms, WordPress/Elementor, Webflow, and Zapier to capture leads with zero code.
+      3. GET /rest/v1/leads: Querying, searching, and filtering leads with status and pagination filters.
+      4. Webhook Security: JSON payload format and HMAC-SHA256 signature verification code examples.
 
 6. MARKETING & PROMOTION (Business Promotion)
 - Festival Posters: Go to Marketing -> Festival Posters. Here you can generate promotional graphics.
