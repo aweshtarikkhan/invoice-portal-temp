@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2 } from "lucide-react";
+import { MessageCircle, X, Send, Bot, User, Minimize2, Maximize2, Phone, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { chatbotKnowledgeBase } from "@/lib/chatbot-knowledge";
+import { usePlatformSocials } from "@/hooks/use-platform-socials";
 import ReactMarkdown from "react-markdown";
 
 // Initialize Gemini
@@ -20,19 +21,27 @@ type Message = {
 };
 
 export const AIChatWidget = () => {
+  const { socials } = usePlatformSocials();
+  const displayPhone = socials?.phone || "+91 7806025875";
+  const displayEmail = "support@aassaybiz.com";
+
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "model",
-      content: "Hello! I am the AssayBiz AI Assistant. How can I help you today?",
+      content: "Hello! I am the AssayBiz AI Assistant. How can I help you today? You can ask me about features, pricing, or official contact details.",
     }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatSession, setChatSession] = useState<any>(null);
+
+  const dynamicSystemInstruction = socials?.phone
+    ? chatbotKnowledgeBase.replace(/\+91 7806025875/g, socials.phone)
+    : chatbotKnowledgeBase;
 
   useEffect(() => {
     if (messagesEndRef.current) {
@@ -46,7 +55,7 @@ export const AIChatWidget = () => {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({
           model: "gemini-2.5-flash",
-          systemInstruction: chatbotKnowledgeBase,
+          systemInstruction: dynamicSystemInstruction,
         });
         const session = model.startChat({
           history: [],
@@ -60,12 +69,28 @@ export const AIChatWidget = () => {
         console.error("Failed to initialize Gemini", err);
       }
     }
-  }, [apiKey]);
+  }, [apiKey, dynamicSystemInstruction]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  const isContactInquiry = (text: string) => {
+    return /(contact|phone|mobile|number|call|email|mail|helpline|whatsapp|sampark|support|address|reach|office)/i.test(text);
+  };
+
+  const getContactInfoMessage = () => {
+    return `AssayBiz की सहायता व बिक्री टीम से आप इन आधिकारिक माध्यमों से संपर्क कर सकते हैं:\n\n` +
+      `* 📞 **Direct Phone & WhatsApp:** [${displayPhone}](tel:${displayPhone.replace(/[^0-9+]/g, "")})\n` +
+      `* ✉️ **Official Support Email:** [${displayEmail}](mailto:${displayEmail})\n` +
+      `* 🕒 **Support Hours:** सोमवार – शनिवार: सुबह 9:30 बजे से शाम 7:00 बजे तक (IST)\n` +
+      `* 📍 **Location:** इंदौर, मध्य प्रदेश, भारत\n` +
+      `* 📝 **Online Inquiry Form:** [Contact Us Page](/contact)\n` +
+      `* 🌐 **Official Website:** [https://aassaybiz.com](https://aassaybiz.com)\n\n` +
+      `किसी भी प्रश्न, डेमो या ऑनबोर्डिंग सहायता के लिए आप सीधे कॉल या WhatsApp कर सकते हैं!`;
+  };
+
+  const handleSendText = async (textToSend?: string) => {
+    const messageToSend = typeof textToSend === "string" ? textToSend : input;
+    if (!messageToSend.trim() || isLoading) return;
     
-    const userMessage = input.trim();
+    const userMessage = messageToSend.trim();
     setInput("");
     setMessages(prev => [...prev, { id: Date.now().toString(), role: "user", content: userMessage }]);
     setIsLoading(true);
@@ -75,10 +100,12 @@ export const AIChatWidget = () => {
         setMessages(prev => [...prev, { 
           id: Date.now().toString(), 
           role: "model", 
-          content: "Sorry, I am currently offline. Please configure the VITE_GEMINI_API_KEY to enable AI chat." 
+          content: isContactInquiry(userMessage)
+            ? getContactInfoMessage()
+            : "Sorry, I am currently offline. Please configure the VITE_GEMINI_API_KEY to enable AI chat." 
         }]);
         setIsLoading(false);
-      }, 1000);
+      }, 500);
       return;
     }
 
@@ -99,7 +126,7 @@ export const AIChatWidget = () => {
         try {
           const model = genAI.getGenerativeModel({
             model: "gemini-2.5-flash",
-            systemInstruction: chatbotKnowledgeBase,
+            systemInstruction: dynamicSystemInstruction,
           });
           const result = await model.generateContent(userMessage);
           replyText = result.response.text();
@@ -107,7 +134,7 @@ export const AIChatWidget = () => {
           console.warn("gemini-2.5-flash direct failed, trying gemini-flash-latest:", mErr);
           const modelFallback = genAI.getGenerativeModel({
             model: "gemini-flash-latest",
-            systemInstruction: chatbotKnowledgeBase,
+            systemInstruction: dynamicSystemInstruction,
           });
           const result = await modelFallback.generateContent(userMessage);
           replyText = result.response.text();
@@ -117,14 +144,16 @@ export const AIChatWidget = () => {
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         role: "model", 
-        content: replyText || "I am here to help! Please ask any question about AssayBiz." 
+        content: replyText || (isContactInquiry(userMessage) ? getContactInfoMessage() : "I am here to help! Please ask any question about AssayBiz.") 
       }]);
     } catch (error: any) {
       console.error("Chat error:", error);
       setMessages(prev => [...prev, { 
         id: Date.now().toString(), 
         role: "model", 
-        content: "I'm having trouble connecting right now. Please try again in a few moments." 
+        content: isContactInquiry(userMessage)
+          ? getContactInfoMessage()
+          : "I'm having trouble connecting right now. Please try again in a few moments." 
       }]);
     } finally {
       setIsLoading(false);
@@ -193,12 +222,40 @@ export const AIChatWidget = () => {
                 </div>
               </div>
             )}
+
+            {/* Quick Suggestion Chips */}
+            {messages.length <= 1 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleSendText("What are your contact details, phone number and email?")}
+                  className="text-[11px] px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-full transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                >
+                  <Phone size={12} /> Contact Details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendText("AssayBiz ke pricing plans aur packages kya hain?")}
+                  className="text-[11px] px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-full transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                >
+                  💰 Pricing Plans
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendText("AssayBiz me kya kya core features aur modules hain?")}
+                  className="text-[11px] px-2.5 py-1 bg-white dark:bg-gray-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 rounded-full transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
+                >
+                  <Sparkles size={12} /> Platform Features
+                </button>
+              </div>
+            )}
+
             <div ref={messagesEndRef} />
           </div>
 
           {/* Footer */}
           <div className="p-3 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800">
-            <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="flex gap-2">
+            <form onSubmit={(e) => { e.preventDefault(); handleSendText(); }} className="flex gap-2">
               <Input
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
