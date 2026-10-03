@@ -64,7 +64,7 @@ const INDIAN_FESTIVALS = [
   { name: "Raksha Bandhan", date: "2026-08-28", type: "public" },
   { name: "Janmashtami", date: "2026-09-04", type: "public" },
   { name: "Gandhi Jayanti", date: "2026-10-02", type: "public" },
-  { name: "Dussehra", date: "2026-10-19", type: "public" },
+  { name: "Dussehra", date: "2026-10-20", type: "public" },
   { name: "Diwali", date: "2026-11-08", type: "public" },
   { name: "Guru Nanak Jayanti", date: "2026-11-24", type: "public" },
   { name: "Christmas", date: "2026-12-25", type: "public" }
