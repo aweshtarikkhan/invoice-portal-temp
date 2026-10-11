@@ -18,12 +18,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { hasModuleAccess, hasUnlimitedLeads, getLeadLimit, normalizePlanKey, FREE_PLAN_LIMITS } from "@/lib/subscription";
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, DollarSign, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle, AlertTriangle } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, IndianRupee, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle, AlertTriangle, UserCheck, UserPlus, MoreVertical } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
@@ -106,7 +113,7 @@ const cleanLeadField = (val: any): string | null => {
   return str;
 };
 
-const emptyForm = { name: "", company: "", email: "", phone: "", source: "", status: "new", estimated_value: "0", notes: "", tags: "", priority: "warm" };
+const emptyForm = { name: "", company: "", email: "", phone: "", source: "", status: "new", estimated_value: "0", notes: "", tags: "", priority: "warm", owner_id: null };
 
 export default function LeadsPage() {
   const org = useAppStore((s) => s.organization);
@@ -119,6 +126,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
+  const [ownerFilter, setOwnerFilter] = useState<string>("all");
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -146,20 +154,59 @@ export default function LeadsPage() {
     }
   };
   const [form, setForm] = useState<any>(emptyForm);
+  const [addExecutiveOpen, setAddExecutiveOpen] = useState(false);
+
+  const handleQuickAddExecutive = async () => {
+    if (!org?.id || !newTeamMemberName.trim()) return;
+    try {
+      const { data, error } = await supabase
+        .from("crm_team")
+        .insert({ org_id: org.id, name: newTeamMemberName.trim(), role: "Sales Executive", is_active: true })
+        .select()
+        .single();
+      if (error) throw error;
+      setCrmTeam(prev => [...prev, data]);
+      setForm(f => ({ ...f, owner_id: data.id }));
+      setAddExecutiveOpen(false);
+      setNewTeamMemberName("");
+      toast({ title: "Executive Added" });
+    } catch (error: any) {
+      toast({ title: "Error adding executive", description: error.message, variant: "destructive" });
+    }
+  };
+  const [crmTeam, setCrmTeam] = useState<any[]>([]);
+  const [newTeamMemberName, setNewTeamMemberName] = useState("");
+
+  const updateLeadOwner = async (leadId: string, newOwnerId: string | null) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("leads")
+        .update({ owner_id: newOwnerId })
+        .eq("id", leadId);
+      if (error) throw error;
+      setRows(prev => prev.map(r => r.id === leadId ? { ...r, owner_id: newOwnerId } : r));
+      const member = crmTeam.find(m => m.id === newOwnerId);
+      toast({ title: newOwnerId ? `Assigned to ${member?.name || "Sales Executive"}` : "Lead unassigned" });
+    } catch (err: any) {
+      toast({ title: "Failed to update assignment", description: err.message, variant: "destructive" });
+    }
+  };
 
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
     try {
-      const [{ data: leadsData, error: leadsErr }, { data: subsData }] = await Promise.all([
+      const [{ data: leadsData, error: leadsErr }, { data: subsData }, { data: teamData }] = await Promise.all([
         (supabase as any).from("leads").select("*").eq("org_id", org.id).order("created_at", { ascending: false }),
-        supabase.from("subscriptions").select("plan_id, status").eq("org_id", org.id).eq("status", "active")
+        supabase.from("subscriptions").select("plan_id, status").eq("org_id", org.id).eq("status", "active"),
+        supabase.from("crm_team").select("*").eq("org_id", org.id).eq("is_active", true).order("name")
       ]);
       if (leadsErr) toast({ title: "Load failed", description: leadsErr.message, variant: "destructive" });
       setRows(leadsData || []);
       if (subsData && Array.isArray(subsData)) {
         setActiveOrgPlans(subsData.map((s: any) => s.plan_id));
       }
+      setCrmTeam(teamData || []);
     } catch (e: any) {
       console.error("Failed to load leads or subscriptions:", e);
     } finally {
@@ -185,6 +232,7 @@ export default function LeadsPage() {
       name: l.name, company: l.company || "", email: l.email || "", phone: l.phone || "",
       source: l.source || "", status: l.status, estimated_value: String(l.estimated_value || 0),
       notes: l.notes || "", tags: (l.tags || []).join(", "), priority: l.priority || "warm",
+      owner_id: l.owner_id || null,
     });
     setOpen(true);
   };
@@ -253,6 +301,7 @@ export default function LeadsPage() {
       estimated_value: Number(form.estimated_value) || 0, notes: form.notes || null,
       tags: form.tags ? form.tags.split(",").map((t: string) => t.trim()).filter(Boolean) : [],
       priority: form.priority || "warm",
+      owner_id: form.owner_id || null,
     };
     const q = editId
       ? (supabase as any).from("leads").update(payload).eq("id", editId)
@@ -298,6 +347,10 @@ export default function LeadsPage() {
   const filtered = rows.filter((r) => {
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (priorityFilter !== "all" && (r.priority || "warm") !== priorityFilter) return false;
+    if (ownerFilter !== "all") {
+      if (ownerFilter === "unassigned" && r.owner_id) return false;
+      if (ownerFilter !== "unassigned" && r.owner_id !== ownerFilter) return false;
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (r.name?.toLowerCase().includes(s) || r.company?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.phone?.toLowerCase().includes(s));
@@ -420,7 +473,7 @@ export default function LeadsPage() {
         </Card>
         <Card className="bg-gradient-to-br from-amber-500/10 to-amber-600/5 border-amber-500/20 min-w-0">
           <CardContent className="p-3.5 sm:p-4 min-w-0">
-            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1 truncate"><DollarSign className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Pipeline Value</span></div>
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 mb-1 truncate"><IndianRupee className="h-4 w-4 shrink-0" /><span className="text-xs font-medium truncate">Pipeline Value</span></div>
             <div className="text-slate-900 min-w-0"><AutoFitNumber value={formatCurrency(stats.pipelineValue, currency)} /></div>
           </CardContent>
         </Card>
@@ -452,6 +505,16 @@ export default function LeadsPage() {
             {PRIORITIES.map((p) => <SelectItem key={p.v} value={p.v}>{p.l}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="All assignees" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All assignees</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {crmTeam.map((m) => (
+              <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -462,16 +525,20 @@ export default function LeadsPage() {
           : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Name</TableHead><TableHead>Company</TableHead><TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead>
+                <TableHead>Name</TableHead><TableHead>Contact</TableHead>
+                <TableHead>Source</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Assigned To</TableHead>
                 <TableHead className="text-right">Est. Value</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filtered.map((l) => (
                   <TableRow key={l.id} className="cursor-pointer hover:bg-muted/50" onClick={() => navigate(`/leads/${l.id}`)}>
-                    <TableCell className="font-medium">{l.name}<div className="text-xs text-muted-foreground">{format(parseISO(l.created_at), "dd MMM yyyy")}</div></TableCell>
-                    <TableCell>{l.company || "—"}</TableCell>
+                    <TableCell className="font-medium">
+                      <div>{l.name}</div>
+                      {l.company && <div className="text-xs text-muted-foreground font-normal truncate max-w-[200px]">{l.company}</div>}
+                      <div className="text-[11px] text-muted-foreground/70 font-normal">{format(parseISO(l.created_at), "dd MMM yyyy")}</div>
+                    </TableCell>
+
                     <TableCell>
                       <div className="text-sm flex items-center gap-1">{l.email && <><Mail className="h-3 w-3 text-muted-foreground" />{l.email}</>}{!l.email && "—"}</div>
                       <div className="text-xs text-muted-foreground flex items-center gap-1">{l.phone && <><Phone className="h-3 w-3" />{l.phone}</>}</div>
@@ -479,14 +546,67 @@ export default function LeadsPage() {
                     <TableCell><span className="text-sm">{l.source || "—"}</span></TableCell>
                     <TableCell>{priorityBadge(l.priority)}</TableCell>
                     <TableCell>{statusBadge(l.status)}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={l.owner_id || "unassigned"}
+                        onValueChange={(val) => updateLeadOwner(l.id, val === "unassigned" ? null : val)}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-[145px] bg-background hover:bg-accent/40 transition-colors">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <UserCheck className={`h-3.5 w-3.5 shrink-0 ${l.owner_id ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`} />
+                            <span className={`truncate font-medium ${!l.owner_id ? "text-muted-foreground font-normal" : ""}`}>
+                              {crmTeam.find(m => m.id === l.owner_id)?.name || "Unassigned"}
+                            </span>
+                          </div>
+                        </SelectTrigger>
+                        <SelectContent onClick={(e) => e.stopPropagation()}>
+                          <SelectItem value="unassigned">
+                            <span className="text-muted-foreground">— Unassigned —</span>
+                          </SelectItem>
+                          {crmTeam.map((m) => (
+                            <SelectItem key={m.id} value={m.id}>
+                              {m.name} {m.role ? `(${m.role})` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell className="text-right">{formatCurrency(Number(l.estimated_value || 0), currency)}</TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" title="View details" onClick={() => navigate(`/leads/${l.id}`)}><Eye className="h-4 w-4" /></Button>
-                      {l.status !== "converted" && (
-                        <Button variant="ghost" size="icon" title="Convert to Client" onClick={() => convertToClient(l)}><ArrowRightCircle className="h-4 w-4 text-green-600" /></Button>
-                      )}
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(l)}><Pencil className="h-4 w-4" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => remove(l.id)}><Trash2 className="h-4 w-4" /></Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 p-0 hover:bg-muted">
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Open actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => navigate(`/leads/${l.id}`)}>
+                            <Eye className="mr-2 h-4 w-4 text-slate-500" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(l)}>
+                            <Pencil className="mr-2 h-4 w-4 text-blue-500" />
+                            Edit Lead
+                          </DropdownMenuItem>
+                          {l.status !== "converted" && (
+                            <DropdownMenuItem onClick={() => convertToClient(l)}>
+                              <ArrowRightCircle className="mr-2 h-4 w-4 text-emerald-600" />
+                              Convert to Client
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-red-600 focus:text-red-600" onClick={() => remove(l.id)}>
+                            <Trash2 className="mr-2 h-4 w-4 text-red-500" />
+                            Delete Lead
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+
+
+
+
                     </TableCell>
                   </TableRow>
                 ))}
@@ -530,10 +650,58 @@ export default function LeadsPage() {
               </Select>
             </div>
             <div><Label>Estimated Value</Label><Input type="number" value={form.estimated_value} onChange={(e) => setForm({ ...form, estimated_value: e.target.value })} /></div>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Assign To (Sales Team)</Label>
+                <button
+                  type="button"
+                  onClick={() => setAddExecutiveOpen(true)}
+                  className="text-xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-0.5"
+                >
+                  <Plus className="h-3 w-3" /> Quick Add
+                </button>
+              </div>
+              <Select
+                value={form.owner_id || "none"}
+                onValueChange={(v) => setForm({ ...form, owner_id: v === "none" ? null : v })}
+              >
+                <SelectTrigger><SelectValue placeholder="Select team member…" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Unassigned —</SelectItem>
+                  {crmTeam.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name} {m.role ? `(${m.role})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="col-span-2"><Label>Tags (comma separated)</Label><Input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} /></div>
             <div className="col-span-2"><Label>Notes</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
           </div>
           <DialogFooter><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save}>{editId ? "Save" : "Add Lead"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Add Sales Executive Dialog */}
+      <Dialog open={addExecutiveOpen} onOpenChange={setAddExecutiveOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Quick Add Sales Executive</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label>Executive Name *</Label>
+            <Input
+              placeholder="e.g. Rahul Sharma"
+              value={newTeamMemberName}
+              onChange={(e) => setNewTeamMemberName(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddExecutiveOpen(false)}>Cancel</Button>
+            <Button onClick={handleQuickAddExecutive} disabled={!newTeamMemberName.trim()}>Add & Select</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -715,6 +883,27 @@ export default function LeadsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={addExecutiveOpen} onOpenChange={setAddExecutiveOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Quick Add Executive</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Executive Name</Label>
+              <Input value={newTeamMemberName} onChange={(e) => setNewTeamMemberName(e.target.value)} placeholder="e.g. John Doe" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddExecutiveOpen(false)}>Cancel</Button>
+            <Button onClick={handleQuickAddExecutive} disabled={!newTeamMemberName.trim()}>Save & Assign</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+
+
+
+

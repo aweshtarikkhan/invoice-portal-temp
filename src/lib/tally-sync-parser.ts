@@ -1,4 +1,4 @@
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 
 export type TallySyncType = "debtors" | "creditors";
 
@@ -26,37 +26,45 @@ export interface ParsedTallyItem {
 }
 
 export async function parseTallyOutstandingReport(file: File, type: TallySyncType): Promise<ParsedTallyParty[]> {
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(await file.arrayBuffer());
-  const ws = wb.worksheets[0];
-  if (!ws) throw new Error("No worksheet found");
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result as string);
+    reader.onerror = () => reject(new Error("File read failed"));
+    reader.readAsBinaryString(file);
+  });
+  const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) throw new Error("No worksheet found");
+
+  const worksheet = workbook.Sheets[firstSheetName];
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
   const parties: ParsedTallyParty[] = [];
   let currentParty: ParsedTallyParty | null = null;
   let currentTransaction: ParsedTallyTransaction | null = null;
 
   const getCellValue = (r: number, c: number) => {
-    const cell = ws.getCell(r, c);
-    return cell && cell.master ? cell.master.value : (cell ? cell.value : null);
+    const row = rows[r - 1];
+    return row ? row[c - 1] : null;
   };
 
   const getCellText = (r: number, c: number) => {
     const val = getCellValue(r, c);
     if (val === null || val === undefined) return "";
-    if (typeof val === "object" && "richText" in (val as any)) {
-      return (val as any).richText.map((rt: any) => rt.text).join("");
-    }
     return String(val).trim();
   };
 
   const parseDate = (d: any) => {
     if (!d) return "";
+    if (d instanceof Date) {
+      if (!isNaN(d.getTime())) return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    }
     const dt = new Date(d);
     if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0];
     return String(d);
   };
 
-  for (let r = 1; r <= ws.rowCount; r++) {
+  for (let r = 1; r <= rows.length; r++) {
     const col1 = getCellText(r, 1);
     const col2 = getCellText(r, 2);
     const col3 = getCellText(r, 3);

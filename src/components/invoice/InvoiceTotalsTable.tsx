@@ -72,21 +72,21 @@ export function InvoiceTotalsTable({
       <div className={`text-[11px] ${className}`} style={{ minWidth: 280 }}>
         {/* Total Items count if requested */}
         {showItemCount && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderBottom: "1px dashed #cbd5e1", marginBottom: 6, paddingBottom: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", borderBottom: "1px dashed #cbd5e1", marginBottom: 6, paddingBottom: 4 }}>
             <span style={{ color: "#475569" }}>Total Items</span>
             <span style={{ fontWeight: 600 }}>{lines.length} ({calculatedTotalQty} Qty)</span>
           </div>
         )}
 
         {/* Subtotal */}
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
           <span style={{ color: "#475569" }}>Subtotal</span>
           <span style={{ fontWeight: 600 }}>{fmt(subtotalVal)}</span>
         </div>
 
         {/* Discount */}
         {discountAmt > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#dc2626" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#dc2626" }}>
             <span>
               Discount {invoice?.discount_type === "percentage" && Number(invoice?.discount) > 0 ? `(${invoice.discount}%)` : ""}
             </span>
@@ -96,7 +96,7 @@ export function InvoiceTotalsTable({
 
         {/* Fixed Cost / Expenses */}
         {expensesAmt > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
             <span style={{ color: "#475569" }}>Fixed Cost / Expenses</span>
             <span style={{ fontWeight: 600 }}>+ {fmt(expensesAmt)}</span>
           </div>
@@ -104,7 +104,7 @@ export function InvoiceTotalsTable({
 
         {/* Shipping Charge */}
         {shippingAmt > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0" }}>
             <span style={{ color: "#475569" }}>Shipping Charge</span>
             <span style={{ fontWeight: 600 }}>+ {fmt(shippingAmt)}</span>
           </div>
@@ -112,7 +112,7 @@ export function InvoiceTotalsTable({
 
         {/* TDS (Deducted before GST on base amount) */}
         {tdsAmount > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#dc2626" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#dc2626" }}>
             <span>TDS Deducted {tdsTcsRate > 0 ? `(${tdsTcsRate}%)` : ""}</span>
             <span style={{ fontWeight: 600 }}>- {fmt(tdsAmount)}</span>
           </div>
@@ -145,7 +145,7 @@ export function InvoiceTotalsTable({
 
         {/* TCS */}
         {tcsAmount > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", color: "#059669" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", color: "#059669" }}>
             <span>TCS Collected {tdsTcsRate > 0 ? `(${tdsTcsRate}%)` : ""}</span>
             <span style={{ fontWeight: 600 }}>+ {fmt(tcsAmount)}</span>
           </div>
@@ -153,7 +153,7 @@ export function InvoiceTotalsTable({
 
         {/* Round Off / Adjustment Row (right above Grand Total) */}
         {effectiveAdjustment !== 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "3px 0", borderTop: "1px dashed #cbd5e1", marginTop: 4, paddingTop: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "2px 0", borderTop: "1px dashed #cbd5e1", marginTop: 4, paddingTop: 4 }}>
             <span style={{ color: "#475569", fontWeight: 500 }}>{effectiveAdjustmentName}</span>
             <span style={{ fontWeight: 600, color: effectiveAdjustment > 0 ? "#16a34a" : "#dc2626" }}>
               {formatRoundOffText(effectiveAdjustment, fmt)}
@@ -162,7 +162,7 @@ export function InvoiceTotalsTable({
         )}
 
         {/* Grand Total Box */}
-        <div style={{ background: "#f8fafc", border: `1.5px solid ${primaryColor}22`, borderRadius: 6, padding: "8px 12px", marginTop: 8 }}>
+        <div style={{ background: "#f8fafc", border: `1.5px solid ${primaryColor}22`, borderRadius: 6, padding: "6px 10px", marginTop: 5 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
               <span style={{ fontWeight: 800, fontSize: 13, color: primaryColor, letterSpacing: 0.5 }}>GRAND TOTAL</span>
@@ -201,56 +201,56 @@ export function InvoiceTotalsTable({
   // Standard bordered table layout
   return (
     <div className={className}>
-      <div className="border mb-3 border-gray-200 rounded-xl overflow-hidden shadow-sm">
+      <div className="border mb-2 border-gray-200 rounded-xl overflow-hidden shadow-sm">
         <table className="w-full text-[11px]">
           <tbody>
             {/* Subtotal */}
             <tr className="border-b border-gray-200">
-              <td className="p-2 font-bold w-1/2">Subtotal</td>
-              <td className="p-2 text-right border-l border-gray-200">{fmt(subtotalVal)}</td>
+              <td className="py-1.5 px-2.5 font-bold w-1/2">Subtotal</td>
+              <td className="py-1.5 px-2.5 text-right border-l border-gray-200">{fmt(subtotalVal)}</td>
             </tr>
 
             {/* Discount */}
             {discountAmt > 0 && (
               <tr className="border-b border-gray-200">
-                <td className="p-2 font-bold w-1/2">
+                <td className="py-1.5 px-2.5 font-bold w-1/2">
                   Discount {invoice?.discount_type === "percentage" && Number(invoice?.discount) > 0 ? `(${invoice.discount}%)` : ""}
                 </td>
-                <td className="p-2 text-right border-l border-gray-200 text-red-600 font-semibold">- {fmt(discountAmt)}</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 text-red-600 font-semibold">- {fmt(discountAmt)}</td>
               </tr>
             )}
 
             {/* Fixed Cost / Expenses */}
             {expensesAmt > 0 && (
               <tr className="border-b border-gray-200">
-                <td className="p-2 font-bold w-1/2">Fixed Cost / Expenses</td>
-                <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(expensesAmt)}</td>
+                <td className="py-1.5 px-2.5 font-bold w-1/2">Fixed Cost / Expenses</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(expensesAmt)}</td>
               </tr>
             )}
 
             {/* Shipping Charge */}
             {shippingAmt > 0 && (
               <tr className="border-b border-gray-200">
-                <td className="p-2 font-bold w-1/2">Shipping Charge</td>
-                <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(shippingAmt)}</td>
+                <td className="py-1.5 px-2.5 font-bold w-1/2">Shipping Charge</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(shippingAmt)}</td>
               </tr>
             )}
 
             {/* TDS (Deducted before GST on base amount) */}
             {tdsAmount > 0 && (
               <tr className="border-b border-gray-200">
-                <td className="p-2 font-bold w-1/2 text-red-600">
+                <td className="py-1.5 px-2.5 font-bold w-1/2 text-red-600">
                   TDS Deducted {tdsTcsRate > 0 ? `(${tdsTcsRate}%)` : ""}
                 </td>
-                <td className="p-2 text-right border-l border-gray-200 text-red-600 font-semibold">- {fmt(tdsAmount)}</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 text-red-600 font-semibold">- {fmt(tdsAmount)}</td>
               </tr>
             )}
 
             {/* Taxable Amount */}
             {(discountAmt > 0 || expensesAmt > 0 || shippingAmt > 0 || tdsAmount > 0 || hasGst) && (
               <tr className="border-b border-gray-200 bg-gray-50/80 font-bold">
-                <td className="p-2 w-1/2">Taxable Amount</td>
-                <td className="p-2 text-right border-l border-gray-200">{fmt(taxableAmount)}</td>
+                <td className="py-1.5 px-2.5 w-1/2">Taxable Amount</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200">{fmt(taxableAmount)}</td>
               </tr>
             )}
 
@@ -259,25 +259,25 @@ export function InvoiceTotalsTable({
               gstBreakdown.length > 0 ? (
                 gstBreakdown.map((tax, i) => (
                   <tr key={i} className="border-b border-gray-200">
-                    <td className="p-2 font-bold w-1/2">{tax.name}</td>
-                    <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(tax.amount)}</td>
+                    <td className="py-1.5 px-2.5 font-bold w-1/2">{tax.name}</td>
+                    <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(tax.amount)}</td>
                   </tr>
                 ))
               ) : totalTaxAmt > 0 ? (
                 isInterstate ? (
                   <tr className="border-b border-gray-200">
-                    <td className="p-2 font-bold w-1/2">IGST</td>
-                    <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt)}</td>
+                    <td className="py-1.5 px-2.5 font-bold w-1/2">IGST</td>
+                    <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt)}</td>
                   </tr>
                 ) : (
                   <>
                     <tr className="border-b border-gray-200">
-                      <td className="p-2 font-bold w-1/2">CGST</td>
-                      <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt / 2)}</td>
+                      <td className="py-1.5 px-2.5 font-bold w-1/2">CGST</td>
+                      <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt / 2)}</td>
                     </tr>
                     <tr className="border-b border-gray-200">
-                      <td className="p-2 font-bold w-1/2">SGST</td>
-                      <td className="p-2 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt / 2)}</td>
+                      <td className="py-1.5 px-2.5 font-bold w-1/2">SGST</td>
+                      <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">+ {fmt(totalTaxAmt / 2)}</td>
                     </tr>
                   </>
                 )
@@ -287,26 +287,26 @@ export function InvoiceTotalsTable({
             {/* TCS */}
             {tcsAmount > 0 && (
               <tr className="border-b border-gray-200">
-                <td className="p-2 font-bold w-1/2 text-emerald-600">
+                <td className="py-1.5 px-2.5 font-bold w-1/2 text-emerald-600">
                   TCS Collected {tdsTcsRate > 0 ? `(${tdsTcsRate}%)` : ""}
                 </td>
-                <td className="p-2 text-right border-l border-gray-200 text-emerald-600 font-semibold">+ {fmt(tcsAmount)}</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 text-emerald-600 font-semibold">+ {fmt(tcsAmount)}</td>
               </tr>
             )}
 
             {/* Round Off / Adjustment Row (right above Grand Total) */}
             {effectiveAdjustment !== 0 && (
               <tr className="border-b border-gray-200 bg-gray-50/50">
-                <td className="p-2 font-bold w-1/2 text-gray-700">{effectiveAdjustmentName}</td>
-                <td className="p-2 text-right border-l border-gray-200 font-semibold text-gray-800">
+                <td className="py-1.5 px-2.5 font-bold w-1/2 text-gray-700">{effectiveAdjustmentName}</td>
+                <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold text-gray-800">
                   {formatRoundOffText(effectiveAdjustment, fmt)}
                 </td>
               </tr>
             )}
 
             {/* Grand Total Row */}
-            <tr className="text-white text-sm" style={{ backgroundColor: primaryColor }}>
-              <td className="p-3 font-bold uppercase tracking-wider">
+            <tr className="text-white text-xs" style={{ backgroundColor: primaryColor }}>
+              <td className="py-2 px-2.5 font-bold uppercase tracking-wider">
                 GRAND TOTAL
                 {effectiveAdjustment !== 0 && (
                   <span className="block text-[9px] font-normal opacity-90 tracking-normal normal-case mt-0.5">
@@ -314,7 +314,7 @@ export function InvoiceTotalsTable({
                   </span>
                 )}
               </td>
-              <td className="p-3 text-right font-bold text-lg" style={{ backgroundColor: accentColor || primaryColor }}>
+              <td className="py-2 px-2.5 text-right font-bold text-base" style={{ backgroundColor: accentColor || primaryColor }}>
                 {fmt(grandTotal)}
               </td>
             </tr>
@@ -323,12 +323,12 @@ export function InvoiceTotalsTable({
             {type === "invoice" && Number(invoice?.amount_paid) > 0 && (
               <>
                 <tr className="border-b border-gray-200">
-                  <td className="p-2 font-bold w-1/2 text-gray-700">Amount Paid</td>
-                  <td className="p-2 text-right border-l border-gray-200 font-semibold">{fmt(Number(invoice.amount_paid))}</td>
+                  <td className="py-1.5 px-2.5 font-bold w-1/2 text-gray-700">Amount Paid</td>
+                  <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-semibold">{fmt(Number(invoice.amount_paid))}</td>
                 </tr>
                 <tr className="border-b border-gray-200 bg-red-50/50">
-                  <td className="p-2 font-bold w-1/2 text-red-700">Balance Due</td>
-                  <td className="p-2 text-right border-l border-gray-200 font-bold text-red-700">
+                  <td className="py-1.5 px-2.5 font-bold w-1/2 text-red-700">Balance Due</td>
+                  <td className="py-1.5 px-2.5 text-right border-l border-gray-200 font-bold text-red-700">
                     {fmt(Math.max(0, grandTotal - Number(invoice.amount_paid)))}
                   </td>
                 </tr>

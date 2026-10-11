@@ -345,13 +345,13 @@ export default function EstimateBuilderPage() {
         setShowNotes(est.metadata.show_notes !== false);
         setShowQr(!!est.metadata.show_qr);
       }
-      if (est.bank_details?.enabled) {
-        setBankName(est.bank_details.bank_name || "");
-        setBankAccountName(est.bank_details.bank_account_name || "");
-        setBankAccountNumber(est.bank_details.bank_account_number || "");
-        setBankIfsc(est.bank_details.bank_ifsc || "");
-        setBankBranch(est.bank_details.bank_branch || "");
-        setBankUpiId(est.bank_details.bank_upi_id || "");
+      if (est.metadata?.bank_details?.enabled) {
+        setBankName(est.metadata.bank_details.bank_name || "");
+        setBankAccountName(est.metadata.bank_details.bank_account_name || "");
+        setBankAccountNumber(est.metadata.bank_details.bank_account_number || "");
+        setBankIfsc(est.metadata.bank_details.bank_ifsc || "");
+        setBankBranch(est.metadata.bank_details.bank_branch || "");
+        setBankUpiId(est.metadata.bank_details.bank_upi_id || "");
       }
 
       const { data: lineData } = await supabase.from("estimate_lines").select("*").eq("estimate_id", id).order("sort_order");
@@ -549,8 +549,14 @@ export default function EstimateBuilderPage() {
         discount, discount_type: discountType, shipping_charge: shippingCharge,
         adjustment, adjustment_name: adjustmentName, subtotal, total_tax: totalTax,
         total_discount: totalDiscount, total, notes, terms_conditions: terms,
-        metadata: { auto_round_off: autoRoundOff, show_bank_details: showBankDetails, show_terms: showTerms, show_notes: showNotes, show_qr: showQr },
-        bank_details: showBankDetails ? { bank_name: bankName, bank_account_name: bankAccountName, bank_account_number: bankAccountNumber, bank_ifsc: bankIfsc, bank_branch: bankBranch, bank_upi_id: bankUpiId, enabled: true } : { enabled: false },
+        metadata: { 
+          auto_round_off: autoRoundOff, 
+          show_bank_details: showBankDetails, 
+          show_terms: showTerms, 
+          show_notes: showNotes, 
+          show_qr: showQr,
+          bank_details: showBankDetails ? { bank_name: bankName, bank_account_name: bankAccountName, bank_account_number: bankAccountNumber, bank_ifsc: bankIfsc, bank_branch: bankBranch, bank_upi_id: bankUpiId, enabled: true } : { enabled: false }
+        },
         ...(status === "sent" ? { sent_at: new Date().toISOString() } : {}),
       };
 

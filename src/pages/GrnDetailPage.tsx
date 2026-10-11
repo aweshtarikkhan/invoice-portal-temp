@@ -66,7 +66,7 @@ export default function GrnDetailPage() {
           <div><div className="text-muted-foreground">Vendor</div><div className="font-medium">{g.vendors?.name || "—"}</div></div>
           <div><div className="text-muted-foreground">PO #</div><div>{g.purchase_orders?.po_number || "—"}</div></div>
           <div><div className="text-muted-foreground">Date</div><div>{format(new Date(g.grn_date), "dd MMM yyyy")}</div></div>
-          <div><div className="text-muted-foreground">Warehouse</div><div>{g.warehouses?.name || "—"}</div></div>
+          <div><div className="text-muted-foreground">Branch (Warehouse)</div><div>{g.warehouses?.name || "—"}</div></div>
           <div><div className="text-muted-foreground">Vehicle</div><div>{g.vehicle_number || "—"}</div></div>
           <div><div className="text-muted-foreground">Transporter</div><div>{g.transporter || "—"}</div></div>
         </CardContent>

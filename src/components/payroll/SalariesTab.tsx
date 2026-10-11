@@ -37,7 +37,7 @@ import {
   Pencil,
   Eye,
   Sliders,
-  DollarSign,
+  IndianRupee,
   Download,
   Clock,
   HardHat,
@@ -835,7 +835,7 @@ export function SalariesTab() {
                   </p>
                 </div>
                 <div className="p-2.5 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 rounded-xl">
-                  <DollarSign className="w-5 h-5" />
+                  <IndianRupee className="w-5 h-5" />
                 </div>
               </CardContent>
             </Card>
@@ -1106,7 +1106,7 @@ export function SalariesTab() {
                     </p>
                   </div>
                   <div className="p-2.5 bg-emerald-100 text-emerald-700 rounded-xl">
-                    <DollarSign className="w-5 h-5" />
+                    <IndianRupee className="w-5 h-5" />
                   </div>
                 </CardContent>
               </Card>

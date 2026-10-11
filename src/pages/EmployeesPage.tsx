@@ -23,7 +23,7 @@ import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
 import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { useSubscription } from "@/hooks/use-subscription";
-import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, DollarSign, Settings2, Eye, EyeOff, ExternalLink, Download, FileCheck, Loader2, Copy, Check, Share2, ShieldCheck, MailCheck } from "lucide-react";
+import { Plus, Pencil, Trash2, CalendarCheck, FileText, KeyRound, Calculator, HardHat, Clock, Users, IndianRupee, Settings2, Eye, EyeOff, ExternalLink, Download, FileCheck, Loader2, Copy, Check, Share2, ShieldCheck, MailCheck } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
 import { NavLink } from "@/components/NavLink";

@@ -246,13 +246,52 @@ export default function DebitNoteBuilderPage() {
         }
       }
 
-      // If bill is linked, reduce bill balance due
+      // If bill is linked, reduce bill balance due & update status
+      let remainingReturnAmt = total;
       if (billId) {
-        const { data: bData } = await supabase.from("bills").select("balance_due").eq("id", billId).single();
+        const { data: bData } = await supabase.from("bills").select("id, total, balance_due").eq("id", billId).single();
         if (bData) {
-          const newBal = Math.max(0, Number(bData.balance_due || 0) - total);
-          await supabase.from("bills").update({ balance_due: newBal }).eq("id", billId);
+          const deduction = Math.min(remainingReturnAmt, Number(bData.balance_due || 0));
+          const newBal = Math.max(0, Number(bData.balance_due || 0) - deduction);
+          const newStatus = newBal <= 0 ? "paid" : "partial";
+          await supabase.from("bills").update({ balance_due: newBal, status: newStatus }).eq("id", billId);
+          remainingReturnAmt = Math.max(0, remainingReturnAmt - deduction);
         }
+      }
+
+      // If unallocated return amount remains, allocate across vendor's open unpaid bills (FIFO)
+      if (remainingReturnAmt > 0 && vendorId) {
+        const { data: unpaidBills } = await supabase
+          .from("bills")
+          .select("id, balance_due")
+          .eq("org_id", org.id)
+          .eq("vendor_id", vendorId)
+          .not("status", "in", '("draft","cancelled","paid")')
+          .gt("balance_due", 0)
+          .order("bill_date", { ascending: true });
+
+        for (const ub of (unpaidBills || [])) {
+          if (remainingReturnAmt <= 0) break;
+          const deduction = Math.min(remainingReturnAmt, Number(ub.balance_due || 0));
+          const newBal = Math.max(0, Number(ub.balance_due || 0) - deduction);
+          const newStatus = newBal <= 0 ? "paid" : "partial";
+          await supabase.from("bills").update({ balance_due: newBal, status: newStatus }).eq("id", ub.id);
+          remainingReturnAmt = Math.max(0, remainingReturnAmt - deduction);
+        }
+      }
+
+      // Update vendor's due balance in vendors table
+      if (vendorId) {
+        const { data: vBills } = await supabase
+          .from("bills")
+          .select("balance_due")
+          .eq("vendor_id", vendorId)
+          .not("status", "in", '("draft","cancelled")');
+        const computedVendorDue = (vBills || []).reduce((sum, b) => sum + Number(b.balance_due || 0), 0);
+        await supabase.from("vendors").update({
+          balance_due: Math.max(0, computedVendorDue),
+          updated_at: new Date().toISOString(),
+        }).eq("id", vendorId);
       }
 
       toast({

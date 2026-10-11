@@ -1,32 +1,42 @@
-import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 
 export async function parseTallyExcel(file: File) {
-  const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(await file.arrayBuffer());
-  const ws = wb.worksheets[0];
-  if (!ws) throw new Error("No worksheet found");
+  const data = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target?.result as string);
+    reader.onerror = () => reject(new Error("File read failed"));
+    reader.readAsBinaryString(file);
+  });
+  const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+  const firstSheetName = workbook.SheetNames[0];
+  if (!firstSheetName) throw new Error("No worksheet found");
+  
+  const worksheet = workbook.Sheets[firstSheetName];
+  // Parse as a 2D array (array of arrays)
+  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
 
   const extractedRows: Record<string, any>[] = [];
   let currentInvoice: any = null;
   
   const getCellValue = (r: number, c: number) => {
-    const cell = ws.getCell(r, c);
-    return cell && cell.master ? cell.master.value : (cell ? cell.value : null);
+    // XLSX uses 0-indexed rows and columns
+    const row = rows[r - 1];
+    return row ? row[c - 1] : null;
   };
 
   const getCellText = (r: number, c: number) => {
     const val = getCellValue(r, c);
     if (val === null || val === undefined) return "";
-    if (typeof val === "object" && "richText" in (val as any)) {
-      return (val as any).richText.map((rt: any) => rt.text).join("");
-    }
     return String(val).trim();
   };
 
   const colMap: Record<string, number> = {};
   
-  for (let r = 1; r <= Math.min(10, ws.rowCount); r++) {
-    for (let c = 1; c <= ws.columnCount; c++) {
+  const maxRows = Math.min(10, rows.length);
+  const maxCols = rows.length > 0 ? Math.max(...rows.slice(0, 10).map(row => row.length)) : 0;
+  
+  for (let r = 1; r <= maxRows; r++) {
+    for (let c = 1; c <= maxCols; c++) {
       const text = getCellText(r, c).toLowerCase().replace(/[\n\r]/g, " ").trim();
       if (!text) continue;
       
@@ -50,12 +60,15 @@ export async function parseTallyExcel(file: File) {
 
   const parseTallyDate = (d: any) => {
     if (!d) return "";
+    if (d instanceof Date) {
+      if (!isNaN(d.getTime())) return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+    }
     const dt = new Date(d);
     if (!isNaN(dt.getTime())) return dt.toISOString().split("T")[0];
     return String(d);
   };
 
-  for (let r = 1; r <= ws.rowCount; r++) {
+  for (let r = 1; r <= rows.length; r++) {
     const rawDate = colMap["date"] ? getCellValue(r, colMap["date"]) : getCellValue(r, 1);
     const dateText = parseTallyDate(rawDate);
     

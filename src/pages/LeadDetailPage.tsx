@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import {
-  ArrowLeft, Phone, Mail, Users, ClipboardList, StickyNote, MessageSquare, Check, Clock, Tag, Building2, DollarSign, Calendar, Edit, UserPlus, Target, Plus, CheckCircle2, Circle, Activity
+  ArrowLeft, Phone, Mail, Users, ClipboardList, StickyNote, MessageSquare, Check, Clock, Tag, Building2, IndianRupee, Calendar, Edit, UserPlus, Target, Plus, CheckCircle2, Circle, Activity
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,6 +54,7 @@ export default function LeadDetailPage() {
   const [lead, setLead] = useState<any>(null);
   const [activities, setActivities] = useState<any[]>([]);
   const [stages, setStages] = useState<any[]>([]);
+  const [crmTeam, setCrmTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Quick Activity Form
@@ -75,10 +76,11 @@ export default function LeadDetailPage() {
     if (!org?.id || !id) return;
     setLoading(true);
 
-    const [leadRes, actsRes, stagesRes] = await Promise.all([
+    const [leadRes, actsRes, stagesRes, crmTeamRes] = await Promise.all([
       (supabase as any).from("leads").select("*").eq("id", id).eq("org_id", org.id).single(),
       (supabase as any).from("activities").select("*").eq("lead_id", id).eq("org_id", org.id).order("created_at", { ascending: false }),
-      (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true })
+      (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true }),
+      (supabase as any).from("crm_team").select("*").eq("org_id", org.id).eq("is_active", true).order("name")
     ]);
 
     if (leadRes.error) {
@@ -90,6 +92,7 @@ export default function LeadDetailPage() {
     setLead(leadRes.data);
     setActivities(actsRes.data || []);
     setStages(stagesRes.data || []);
+    setCrmTeam(crmTeamRes.data || []);
     setNotesTemp(leadRes.data.notes || "");
     setLoading(false);
   };
@@ -131,6 +134,17 @@ export default function LeadDetailPage() {
       toast({ title: "Notes updated" });
       setLead({ ...lead, notes: notesTemp });
       setEditingNotes(false);
+    }
+  };
+
+  const updateAssignedOwner = async (ownerId: string | null) => {
+    if (!org?.id || !id) return;
+    const { error } = await (supabase as any).from("leads").update({ owner_id: ownerId }).eq("id", id);
+    if (error) {
+      toast({ title: "Failed to update assignment", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Assignment updated" });
+      setLead({ ...lead, owner_id: ownerId });
     }
   };
 
@@ -344,22 +358,45 @@ export default function LeadDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-                  {lead.email ? <a href={`mailto:${lead.email}`} className="text-primary hover:underline truncate">{lead.email}</a> : <span className="text-muted-foreground">No email</span>}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                    {lead.email ? <a href={`mailto:${lead.email}`} className="text-primary hover:underline truncate">{lead.email}</a> : <span className="text-muted-foreground">No email</span>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                  {lead.phone ? <a href={`tel:${lead.phone}`} className="text-primary hover:underline">{lead.phone}</a> : <span className="text-muted-foreground">No phone</span>}
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                    {lead.phone ? <a href={`tel:${lead.phone}`} className="text-primary hover:underline">{lead.phone}</a> : <span className="text-muted-foreground">No phone</span>}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>{formatCurrency(Number(lead.estimated_value || 0), currency)}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <IndianRupee className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>{formatCurrency(Number(lead.estimated_value || 0), currency)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-3 text-sm">
-                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                  <span>Added {format(parseISO(lead.created_at), "MMM d, yyyy")}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-3">
+                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                    <span>Added {format(parseISO(lead.created_at), "MMM d, yyyy")}</span>
+                  </div>
                 </div>
+              </div>
+
+              <div className="pt-2 border-t">
+                <div className="text-xs text-muted-foreground mb-2">Assigned To (Sales Team)</div>
+                <Select value={lead.owner_id || "unassigned"} onValueChange={(v) => updateAssignedOwner(v === "unassigned" ? null : v)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Unassigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="unassigned">Unassigned</SelectItem>
+                    {crmTeam.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>{member.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               {lead.source && (

@@ -18,7 +18,7 @@ import {
 import {
   ArrowLeft, IndianRupee, FileText, CreditCard, Clock, AlertTriangle, CheckCircle2,
   Search, ArrowUp, ArrowDown, ShoppingCart, PackageCheck, Building2, Phone, Mail,
-  Pencil, Plus, Eye, MapPin, ReceiptText
+  Pencil, Plus, Eye, MapPin, ReceiptText, RotateCcw
 } from "lucide-react";
 import {
   BarChart, Bar, PieChart, Pie, Cell, AreaChart, Area,
@@ -39,6 +39,7 @@ export default function VendorDetailPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [purchaseOrders, setPurchaseOrders] = useState<any[]>([]);
   const [grns, setGrns] = useState<any[]>([]);
+  const [debitNotes, setDebitNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Edit dialog state
@@ -67,12 +68,13 @@ export default function VendorDetailPage() {
     if (!id || !org?.id) return;
     setLoading(true);
     try {
-      const [vRes, bRes, pRes, poRes, grnRes] = await Promise.all([
+      const [vRes, bRes, pRes, poRes, grnRes, dnRes] = await Promise.all([
         (supabase as any).from("vendors").select("*").eq("id", id).single(),
         (supabase as any).from("bills").select("*").eq("vendor_id", id).eq("org_id", org.id).order("bill_date", { ascending: false }),
         (supabase as any).from("bill_payments").select("*, bills(bill_number)").eq("vendor_id", id).eq("org_id", org.id).order("payment_date", { ascending: false }),
         (supabase as any).from("purchase_orders").select("*").eq("vendor_id", id).eq("org_id", org.id).order("po_date", { ascending: false }),
         (supabase as any).from("grns").select("*").eq("vendor_id", id).eq("org_id", org.id).order("created_at", { ascending: false }),
+        (supabase as any).from("debit_notes").select("*").eq("vendor_id", id).eq("org_id", org.id).order("issue_date", { ascending: false }),
       ]);
 
       setVendor(vRes.data || null);
@@ -80,6 +82,7 @@ export default function VendorDetailPage() {
       setPayments(pRes.data || []);
       setPurchaseOrders(poRes.data || []);
       setGrns(grnRes.data || []);
+      setDebitNotes(dnRes.data || []);
     } catch (err: any) {
       console.error("Failed to load vendor detail:", err);
       toast({ title: "Failed to load vendor data", description: err.message, variant: "destructive" });
@@ -156,6 +159,10 @@ export default function VendorDetailPage() {
     if (fromPayments > 0) return fromPayments;
     return bills.reduce((sum, b) => sum + Number(b.amount_paid || 0), 0);
   }, [payments, bills]);
+
+  const totalReturns = useMemo(() => {
+    return debitNotes.filter(d => d.status !== "cancelled" && d.status !== "draft").reduce((sum, d) => sum + Number(d.total || 0), 0);
+  }, [debitNotes]);
 
   const totalDue = useMemo(() => {
     return bills.filter(b => b.status !== "cancelled" && b.status !== "draft").reduce((sum, b) => sum + Number(b.balance_due || 0), 0);
@@ -385,6 +392,12 @@ export default function VendorDetailPage() {
         <Button variant="outline" size="sm" onClick={openEdit}>
           <Pencil className="mr-1.5 h-4 w-4" /> Edit Vendor
         </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate(`/vendor-payments/new?vendor_id=${id}`)}>
+          <CreditCard className="mr-1.5 h-4 w-4" /> Record Payment
+        </Button>
+        <Button variant="outline" size="sm" onClick={() => navigate(`/debit-notes/new?vendor_id=${id}`)}>
+          <RotateCcw className="mr-1.5 h-4 w-4" /> Purchase Return
+        </Button>
         <Button variant="outline" size="sm" onClick={() => navigate(`/purchase-orders/new?vendor_id=${id}`)}>
           <ShoppingCart className="mr-1.5 h-4 w-4" /> + Purchase Order
         </Button>
@@ -394,7 +407,7 @@ export default function VendorDetailPage() {
       </PageHeader>
 
       {/* Summary KPI Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card className="border-l-4 border-l-blue-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Purchases</CardTitle>
@@ -417,6 +430,16 @@ export default function VendorDetailPage() {
           </CardContent>
         </Card>
 
+        <Card className="border-l-4 border-l-rose-500 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Purchase Returns</CardTitle>
+            <RotateCcw className="h-4 w-4 text-rose-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-rose-600 dark:text-rose-400">{fmt(totalReturns)}</div>
+            <p className="text-xs text-muted-foreground mt-1">{debitNotes.length} debit notes</p>
+          </CardContent>
+        </Card>
         <Card className="border-l-4 border-l-orange-500 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Balance Due</CardTitle>
@@ -455,7 +478,7 @@ export default function VendorDetailPage() {
                   <BarChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="month" tick={{ fontSize: 12 }} className="fill-muted-foreground" />
-                    <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : `${v}`)} />
+                    <YAxis tick={{ fontSize: 12 }} className="fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <Tooltip
                       contentStyle={{
                         borderRadius: "var(--radius)",
@@ -522,6 +545,10 @@ export default function VendorDetailPage() {
           <TabsTrigger value="payments" className="text-xs font-semibold py-2 px-3.5">
             <CreditCard className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
             Payments Made ({payments.length})
+          </TabsTrigger>
+          <TabsTrigger value="returns" className="text-xs font-semibold py-2 px-3.5">
+            <RotateCcw className="w-3.5 h-3.5 mr-1.5 text-rose-500" />
+            Purchase Returns ({debitNotes.length})
           </TabsTrigger>
           <TabsTrigger value="orders" className="text-xs font-semibold py-2 px-3.5">
             <ShoppingCart className="w-3.5 h-3.5 mr-1.5 text-amber-500" />
@@ -817,6 +844,73 @@ export default function VendorDetailPage() {
                             size="sm"
                             className="h-8 px-2"
                             onClick={() => navigate(`/grns/${grn.id}`)}
+                          >
+                            <Eye className="w-3.5 h-3.5 mr-1" /> View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Purchase Returns Tab */}
+        <TabsContent value="returns">
+          <Card className="shadow-sm">
+            <CardContent className="p-0">
+              <div className="p-4 border-b flex justify-between items-center bg-muted/20 gap-3">
+                <p className="text-sm text-muted-foreground font-medium">
+                  Debit Notes issued to this vendor reducing your payable dues
+                </p>
+                <Button size="sm" onClick={() => navigate(`/debit-notes/new?vendor_id=${id}`)}>
+                  <Plus className="w-3.5 h-3.5 mr-1" /> New Return Note
+                </Button>
+              </div>
+
+              {debitNotes.length === 0 ? (
+                <div className="p-12 text-center text-muted-foreground">
+                  <RotateCcw className="w-8 h-8 mx-auto mb-2 opacity-30 text-rose-500" />
+                  <p>No purchase returns (debit notes) recorded for this vendor.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Debit Note #</TableHead>
+                      <TableHead>Issue Date</TableHead>
+                      <TableHead>Reason</TableHead>
+                      <TableHead className="text-right">Subtotal</TableHead>
+                      <TableHead className="text-right">Tax</TableHead>
+                      <TableHead className="text-right">Total Returned</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {debitNotes.map((dn) => (
+                      <TableRow
+                        key={dn.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => navigate(`/debit-notes/${dn.id}`)}
+                      >
+                        <TableCell className="font-semibold text-primary">{dn.debit_note_number}</TableCell>
+                        <TableCell>{dn.issue_date || "—"}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{dn.reason || "Goods returned"}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{fmt(dn.subtotal)}</TableCell>
+                        <TableCell className="text-right font-mono text-xs">{fmt(dn.total_tax)}</TableCell>
+                        <TableCell className="text-right font-bold text-rose-600 font-mono">{fmt(dn.total)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="capitalize border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/20">{dn.status || "issued"}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 px-2"
+                            onClick={() => navigate(`/debit-notes/${dn.id}`)}
                           >
                             <Eye className="w-3.5 h-3.5 mr-1" /> View
                           </Button>

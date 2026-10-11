@@ -21,7 +21,7 @@ interface DeliveryChallanModalProps {
   lines: DeliveryChallanLineData[];
   org: any;
   client: any;
-  warehouse?: any | null;
+  branch?: any | null;
   onEdit?: () => void;
 }
 
@@ -32,7 +32,7 @@ export function DeliveryChallanModal({
   lines,
   org,
   client,
-  warehouse,
+  branch,
   onEdit,
 }: DeliveryChallanModalProps) {
   const { toast } = useToast();
@@ -209,7 +209,7 @@ ${itemsText}
                 lines={lines}
                 org={org}
                 client={client}
-                warehouse={warehouse}
+                branch={branch}
               />
             </div>
           </div>

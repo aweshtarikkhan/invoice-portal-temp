@@ -1,4 +1,5 @@
 import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { getAdaptiveCompanyNameStyle, splitCompanyNameIntoTwoLines } from "@/lib/document-templates";
 import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -47,7 +48,7 @@ export function CorporateBlueInvoiceTemplate({
     ? Boolean(snapshot.has_gst)
     : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
-  const clientName = (invoice.clients as any)?.display_name || (invoice.vendors as any)?.name || (invoice.vendors as any)?.display_name || invoice.client_name || "Client Name";
+  const clientName = (invoice.clients as any)?.display_name || (invoice.clients as any)?.company_name || (invoice.vendors as any)?.name || (invoice.vendors as any)?.display_name || invoice.client_name || "Client Name";
   const clientGst = (invoice.clients as any)?.tax_number || (invoice.vendors as any)?.tax_number || invoice.client_gst;
   const clientPhone = (invoice.clients as any)?.phone || (invoice.vendors as any)?.phone || invoice.client_phone;
   const number = type === "estimate" ? invoice.estimate_number : (type === "po" ? invoice.po_number : (type === "bill" ? invoice.bill_number : invoice.invoice_number));
@@ -71,7 +72,7 @@ export function CorporateBlueInvoiceTemplate({
 
   // Billing address parsing
   const billingAddressLines: string[] = useMemo(() => {
-    const raw = invoice.billing_address || (invoice.clients as any)?.address || (invoice.vendors as any)?.address;
+    const raw = invoice.billing_address || (invoice.clients as any)?.billing_address || (invoice.clients as any)?.address || (invoice.vendors as any)?.address;
     if (!raw) return [];
     try {
       const a = typeof raw === "string" ? JSON.parse(raw) : raw;
@@ -116,6 +117,7 @@ export function CorporateBlueInvoiceTemplate({
   const subtotal = useMemo(() => (!hasGst && totalTax === 0 && Number(invoice.subtotal || 0) < Number(invoice.total || 0) ? Number(invoice.total) : Number(invoice.subtotal || invoice.total)), [invoice.subtotal, invoice.total, hasGst, totalTax]);
   const grandTotal = useMemo(() => Number(invoice.total || 0), [invoice.total]);
 
+  const { line1: orgLine1, line2: orgLine2 } = splitCompanyNameIntoTwoLines(org?.name);
   const titleText = type === "estimate" ? "QUOTATION" : (type === "po" ? "PURCHASE ORDER" : (type === "bill" ? "PURCHASE INVOICE" : (hasGst ? "TAX INVOICE" : "INVOICE")));
 
   return (
@@ -125,13 +127,13 @@ export function CorporateBlueInvoiceTemplate({
         fontFamily: "'Inter', sans-serif, system-ui",
         fontSize: 12,
         lineHeight: 1.4,
-        padding: "20px 28px",
+        padding: "16px 22px",
         color: "#0f172a",
         boxSizing: "border-box",
       }}
     >
       {/* 1. Header Section */}
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 14 }}>
         {/* Company Info Left */}
         <div style={{ flex: 1, paddingRight: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 6 }}>
@@ -143,8 +145,9 @@ export function CorporateBlueInvoiceTemplate({
               </div>
             )}
             <div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: darkNavy, letterSpacing: -0.3, lineHeight: 1.1 }}>
-                {org?.name || "COMPANY NAME"}
+              <div style={{ fontSize: getAdaptiveCompanyNameStyle(org?.name).fontSize, fontWeight: 900, color: darkNavy, letterSpacing: -0.3, lineHeight: getAdaptiveCompanyNameStyle(org?.name).lineHeight }}>
+                <div>{orgLine1}</div>
+                {orgLine2 && <div>{orgLine2}</div>}
               </div>
               <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>
                 {org?.tagline || "Your Tagline Goes Here"}

@@ -1,5 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
-import { revertPaymentBankingTransaction } from "@/lib/banking-sync";
+import { revertPaymentBankingTransaction, revertVendorPaymentBankingTransaction } from "@/lib/banking-sync";
 import { restoreInvoiceStock } from "@/lib/stock";
 import { logAudit } from "@/lib/audit";
 
@@ -71,6 +71,100 @@ export async function deleteSinglePayment(paymentId: string): Promise<{ success:
   } catch (err: any) {
     console.error("Error in deleteSinglePayment:", err);
     return { success: false, error: err?.message || "Failed to delete payment" };
+  }
+}
+
+/**
+ * Safely delete a vendor payment record, restoring any linked bill's balance & status,
+ * reverting any banking transaction and bank balance impact, removing journal entry,
+ * and updating vendor's balance due.
+ */
+export async function deleteSingleVendorPayment(paymentId: string): Promise<{ success: boolean; error?: string; billId?: string | null }> {
+  try {
+    // 1. Fetch payment details
+    const { data: payment, error: fetchErr } = await (supabase as any)
+      .from("bill_payments")
+      .select("id, bill_id, vendor_id, amount, org_id")
+      .eq("id", paymentId)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!payment) {
+      return { success: false, error: "Payment not found" };
+    }
+
+    const billId = payment.bill_id;
+    const vendorId = payment.vendor_id;
+    const amount = Number(payment.amount || 0);
+
+    // 2. Revert banking transaction and account balance
+    await revertVendorPaymentBankingTransaction(paymentId);
+
+    // 3. Delete journal entry for this payment
+    await (supabase as any)
+      .from("journal_entries")
+      .delete()
+      .eq("source_type", "bill_payment")
+      .eq("source_id", paymentId);
+
+    // 4. Delete the bill payment record
+    const { error: delErr } = await (supabase as any)
+      .from("bill_payments")
+      .delete()
+      .eq("id", paymentId);
+
+    if (delErr) throw delErr;
+
+    // 5. If linked to a bill, restore bill's balance_due and amount_paid
+    if (billId) {
+      const { data: b } = await (supabase as any)
+        .from("bills")
+        .select("id, total, balance_due, amount_paid, status, due_date")
+        .eq("id", billId)
+        .maybeSingle();
+
+      if (b) {
+        const newPaid = Math.max(0, Number(b.amount_paid || 0) - amount);
+        const newBalance = Math.min(Number(b.total || 0), Number(b.total || 0) - newPaid);
+        let newStatus = b.status;
+        if (newPaid <= 0) {
+          const isOverdue = b.due_date && new Date(b.due_date) < new Date();
+          newStatus = isOverdue ? "overdue" : "received";
+        } else if (newPaid < Number(b.total || 0)) {
+          newStatus = "partial";
+        }
+
+        await (supabase as any)
+          .from("bills")
+          .update({
+            amount_paid: newPaid,
+            balance_due: newBalance,
+            status: newStatus,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", billId);
+      }
+    }
+
+    // 6. Recalculate vendor's balance due
+    if (vendorId) {
+      const { data: vBills } = await (supabase as any)
+        .from("bills")
+        .select("balance_due, status")
+        .eq("vendor_id", vendorId)
+        .not("status", "in", '("draft","cancelled")');
+
+      const totalDue = (vBills || []).reduce((sum: number, bill: any) => sum + Number(bill.balance_due || 0), 0);
+      await (supabase as any)
+        .from("vendors")
+        .update({ balance_due: totalDue })
+        .eq("id", vendorId);
+    }
+
+    return { success: true, billId };
+  } catch (err: any) {
+    console.error("Error in deleteSingleVendorPayment:", err);
+    return { success: false, error: err?.message || "Failed to delete vendor payment" };
   }
 }
 

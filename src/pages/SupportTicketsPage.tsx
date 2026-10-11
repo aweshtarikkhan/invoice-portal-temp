@@ -13,6 +13,84 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Search, CheckCircle2, Ticket, X, RefreshCw, ArrowLeft, Users, UserPlus } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
+import { openWhatsappShare } from "@/lib/whatsapp";
+
+const generateTicketNumber = (name: string) => {
+  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+  const random4 = Math.floor(1000 + Math.random() * 9000);
+  return `${initials || 'TK'}${random4}`;
+};
+
+const dispatchTicketNotification = async (ticket: any, status: string, note: string, channel: string, contact: any, org: any) => {
+  if (!contact || !org) return;
+
+  const phone = contact.phone;
+  const email = contact.email;
+  const name = contact.display_name || contact.name || "Customer";
+  const orgId = org.id;
+  const ticketNum = ticket.ticket_number || "TK0000";
+
+  let subject = `Support Ticket Update: [${ticketNum}]`;
+  let title = "Ticket Update";
+  let subtitle = ticket.subject;
+  let message = "";
+
+  if (status === "open") {
+    title = "Support Ticket Created";
+    message = `Dear ${name},\n\nThank you for reaching out to us. We have successfully received your request regarding "${ticket.subject}".\n\nYour ticket reference number is [${ticketNum}]. Our support team is currently reviewing the details and will get back to you as soon as possible.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  } else if (status === "in_progress" || status === "pending") {
+    title = "Ticket In Progress";
+    message = `Dear ${name},\n\nWe wanted to let you know that our team is now actively working on your support ticket [${ticketNum}].\n\nWe appreciate your patience and will keep you updated as soon as we have more information.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  } else if (status === "resolved") {
+    title = "Ticket Resolved";
+    message = `Dear ${name},\n\nWe are pleased to inform you that your support ticket [${ticketNum}] has been marked as resolved.\n\nResolution Details:\n${note}\n\nIf you have any further questions or if the issue persists, please feel free to reach out. Thank you for your patience.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  } else if (status === "closed") {
+    title = "Ticket Closed";
+    message = `Dear ${name},\n\nYour support ticket [${ticketNum}] has been closed.\n\nClosing Remarks:\n${note}\n\nThank you for getting in touch with us. Should you need any further assistance, do not hesitate to contact us again.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  } else if (status === "reply") {
+    title = "New Reply Received";
+    message = `Dear ${name},\n\nYou have received a new response regarding your support ticket [${ticketNum}]:\n\n"${note}"\n\nPlease feel free to reply directly to this email if you need further assistance.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  } else {
+    title = "Ticket Status Updated";
+    message = `Dear ${name},\n\nThere has been an update to your support ticket [${ticketNum}]. The status has been changed to: ${status.replace("_", " ").toUpperCase()}.\n\nBest regards,\n${org?.name || "Our Support Team"}`;
+  }
+
+  const html = `
+    <div style="font-family: sans-serif; color: #333;">
+      <p style="white-space: pre-wrap; line-height: 1.5;">${message}</p>
+    </div>
+  `;
+
+  if ((channel === "email" || channel === "both") && email) {
+    try {
+      const emailOptions = {
+        title,
+        subtitle,
+        companyName: org?.name,
+        companyEmail: org?.email,
+        logoUrl: org?.logo_url,
+        customBodyHtml: html
+      };
+      
+      // @ts-ignore
+      const brandedHtml = buildBrandedEmailHtml ? buildBrandedEmailHtml(emailOptions) : html;
+      await supabase.functions.invoke("send-custom-email", {
+        body: { to: email, subject, html: brandedHtml, orgId }
+      });
+    } catch (e) {
+      console.error("Failed to send email notification", e);
+    }
+  }
+
+  if ((channel === "whatsapp" || channel === "both") && phone) {
+    try {
+      openWhatsappShare({ orgId, phone, message });
+    } catch (e) {
+      console.error("Failed to send whatsapp notification", e);
+    }
+  }
+};
 
 export default function SupportTicketsPage() {
   const navigate = useNavigate();
@@ -22,6 +100,7 @@ export default function SupportTicketsPage() {
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [clients, setClients] = useState<any[]>([]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
   const [leads, setLeads] = useState<any[]>([]);
   const [search, setSearch] = useState("");
   
@@ -32,7 +111,8 @@ export default function SupportTicketsPage() {
     contact_id: "",
     subject: "",
     priority: "medium",
-    message: ""
+    message: "",
+    notification_channel: "both", assigned_to: "", due_date: ""
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -44,12 +124,37 @@ export default function SupportTicketsPage() {
   const [replyText, setReplyText] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
 
+  const [ticketTemplates, setTicketTemplates] = useState<any[]>([]);
+
+  const [statusUpdateDialog, setStatusUpdateDialog] = useState({
+    isOpen: false,
+    ticketId: "",
+    newStatus: "",
+    text: ""
+  });
+
   useEffect(() => {
     if (org?.id) {
       fetchTickets();
       fetchContacts();
+      fetchTeamMembers();
+      fetchTemplates();
     }
   }, [org?.id]);
+
+  const fetchTemplates = async () => {
+    if (!org?.id) return;
+    try {
+      const { data } = await (supabase as any)
+        .from("message_templates")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("category", "support_tickets");
+      if (data) setTicketTemplates(data);
+    } catch (e) {
+      console.error("fetchTemplates exception:", e);
+    }
+  };
 
   const fetchTickets = async () => {
     if (!org?.id) return;
@@ -96,6 +201,28 @@ export default function SupportTicketsPage() {
     }
   };
 
+  const fetchTeamMembers = async () => {
+    if (!org?.id) return;
+    try {
+      const { data, error } = await (supabase as any)
+        .from("crm_team")
+        .select("*")
+        .eq("org_id", org.id)
+        .eq("is_active", true);
+
+      if (error) {
+        console.error("Error fetching crm team members:", error);
+        return;
+      }
+
+      if (data) {
+        setTeamMembers(data);
+      }
+    } catch (e) {
+      console.error("fetchTeamMembers error:", e);
+    }
+  };
+
   const fetchContacts = async () => {
     if (!org?.id) return;
     const [{ data: clientData }, { data: leadData }] = await Promise.all([
@@ -114,19 +241,42 @@ export default function SupportTicketsPage() {
     if (leadData) setLeads(leadData);
   };
 
-  const handleUpdateStatus = async (ticketId: string, newStatus: string) => {
+  const handleStatusChangeInitiated = (ticketId: string, newStatus: string) => {
+    if (newStatus === "resolved" || newStatus === "closed") {
+      setStatusUpdateDialog({ isOpen: true, ticketId, newStatus, text: "" });
+    } else {
+      handleUpdateStatus(ticketId, newStatus, "");
+    }
+  };
+
+  const handleUpdateStatus = async (ticketId: string, newStatus: string, noteOrComment: string = "") => {
     try {
-      const { error } = await (supabase as any)
+      const updatePayload: any = { status: newStatus, updated_at: new Date().toISOString() };
+      if (newStatus === "resolved") updatePayload.resolution_note = noteOrComment;
+      if (newStatus === "closed") updatePayload.closing_comment = noteOrComment;
+
+      const { data: updatedTicket, error } = await (supabase as any)
         .from("tickets")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", ticketId);
+        .update(updatePayload)
+        .eq("id", ticketId)
+        .select()
+        .single();
 
       if (error) throw error;
-      toast({ title: `Ticket status updated to ${newStatus.toUpperCase()}` });
-      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus } : t));
-      if (selectedTicket?.id === ticketId) {
-        setSelectedTicket((prev: any) => prev ? { ...prev, status: newStatus } : null);
+      
+      const ticketFull = tickets.find(t => t.id === ticketId);
+      if (ticketFull) {
+        const contact = ticketFull.clients || ticketFull.leads;
+        const channel = updatedTicket.notification_channel || ticketFull.notification_channel || "both";
+        dispatchTicketNotification(updatedTicket, newStatus, noteOrComment, channel, contact, org);
       }
+
+      toast({ title: `Ticket status updated to ${newStatus.toUpperCase()}` });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: newStatus, ...updatePayload } : t));
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket((prev: any) => prev ? { ...prev, status: newStatus, ...updatePayload } : null);
+      }
+      setStatusUpdateDialog({ isOpen: false, ticketId: "", newStatus: "", text: "" });
     } catch (err: any) {
       toast({ title: "Failed to update status", description: err.message, variant: "destructive" });
     }
@@ -149,7 +299,7 @@ export default function SupportTicketsPage() {
     }
   };
 
-  const handleSendReply = async () => {
+  const handleSendReply = async (channelOverride?: string) => {
     if (!replyText.trim() || !selectedTicket) return;
     setSendingReply(true);
     try {
@@ -167,8 +317,13 @@ export default function SupportTicketsPage() {
 
       if (error) throw error;
       setTicketMessages(prev => [...prev, data]);
+      
+      const contact = selectedTicket.clients || selectedTicket.leads;
+      const channel = channelOverride || selectedTicket.notification_channel || "both";
+      dispatchTicketNotification(selectedTicket, "reply", replyText.trim(), channel, contact, org);
+
       setReplyText("");
-      toast({ title: "Reply sent" });
+      toast({ title: "Reply sent and customer notified" });
     } catch (err: any) {
       toast({ title: "Failed to send reply", description: err.message, variant: "destructive" });
     } finally {
@@ -194,12 +349,22 @@ export default function SupportTicketsPage() {
         return;
       }
 
+      const contactName = newTicket.contact_type === "client" 
+        ? clients.find(c => c.id === newTicket.contact_id)?.display_name 
+        : leads.find(l => l.id === newTicket.contact_id)?.name;
+
+      const generatedTicketNumber = generateTicketNumber(contactName || "User");
+
       const ticketPayload: any = {
         org_id: org!.id,
         subject: newTicket.subject.trim(),
         priority: newTicket.priority,
         created_by: currentUserId,
-        status: "open"
+        status: "open",
+        ticket_number: generatedTicketNumber,
+        assigned_to: newTicket.assigned_to === "unassigned" ? null : (newTicket.assigned_to || null),
+        notification_channel: newTicket.notification_channel,
+        due_date: newTicket.due_date ? newTicket.due_date : null
       };
 
       if (newTicket.contact_type === "client") {
@@ -240,9 +405,13 @@ export default function SupportTicketsPage() {
         leads: newTicket.contact_type === "lead" ? leads.find(l => l.id === newTicket.contact_id) || null : null,
       };
       setTickets(prev => [createdTicket, ...prev.filter(t => t.id !== ticket.id)]);
+      
+      const contact = createdTicket.clients || createdTicket.leads;
+      dispatchTicketNotification(createdTicket, "open", "", newTicket.notification_channel, contact, org);
+
       toast({ title: "Ticket created successfully" });
       setIsNewTicketOpen(false);
-      setNewTicket({ contact_type: "client", contact_id: "", subject: "", priority: "medium", message: "" });
+      setNewTicket({ contact_type: "client", contact_id: "", subject: "", priority: "medium", message: "", notification_channel: "both", assigned_to: "", due_date: "" });
       fetchTickets();
     } catch (err: any) {
       console.error("Error creating ticket:", err);
@@ -252,14 +421,58 @@ export default function SupportTicketsPage() {
     }
   };
 
+  const handleUpdateDueDate = async (ticketId: string, newDate: string) => {
+    try {
+      const payload = { due_date: newDate || null };
+      const { error } = await (supabase as any)
+        .from("tickets")
+        .update(payload)
+        .eq("id", ticketId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Due date updated" });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...payload } : t));
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket((prev: any) => prev ? { ...prev, ...payload } : null);
+      }
+    } catch (err: any) {
+      console.error("Error updating due date:", err);
+      toast({ title: "Failed to update due date", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleReassignTicket = async (ticketId: string, assigneeId: string) => {
+    try {
+      const payload = { assigned_to: assigneeId === "unassigned" ? null : assigneeId };
+      const { error } = await (supabase as any)
+        .from("tickets")
+        .update(payload)
+        .eq("id", ticketId);
+      
+      if (error) throw error;
+      
+      toast({ title: "Ticket reassigned" });
+      setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, ...payload } : t));
+      if (selectedTicket?.id === ticketId) {
+        setSelectedTicket((prev: any) => prev ? { ...prev, ...payload } : null);
+      }
+    } catch (err: any) {
+      console.error("Error reassigning ticket:", err);
+      toast({ title: "Failed to reassign", description: err.message, variant: "destructive" });
+    }
+  };
+
   const filteredTickets = tickets.filter(t => {
     const clientName = t.clients?.display_name || "";
     const leadName = t.leads?.name || "";
     const leadCompany = t.leads?.company || "";
+    const ticketNum = t.ticket_number || "";
     const matchesSearch = t.subject.toLowerCase().includes(search.toLowerCase()) ||
       clientName.toLowerCase().includes(search.toLowerCase()) ||
       leadName.toLowerCase().includes(search.toLowerCase()) ||
-      leadCompany.toLowerCase().includes(search.toLowerCase());
+      leadCompany.toLowerCase().includes(search.toLowerCase()) ||
+      ticketNum.toLowerCase().includes(search.toLowerCase());
     if (!matchesSearch) return false;
     if (statusFilter === "all") return true;
     if (statusFilter === "in_progress") return t.status === "in_progress" || t.status === "pending";
@@ -319,6 +532,14 @@ export default function SupportTicketsPage() {
               ))}
             </div>
           </div>
+
+          {/* Table Headers */}
+          <div className="hidden sm:flex items-center justify-between px-4 py-3 bg-slate-50/80 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            <div className="flex-1 pl-12">Ticket Details</div>
+            <div className="w-48 shrink-0">Assign To</div>
+            <div className="w-64 flex items-center justify-end pr-2 shrink-0">Status & Actions</div>
+          </div>
+
           <div className="divide-y divide-slate-100">
             {loading ? (
               <div className="p-8 text-center text-slate-500">Loading tickets...</div>
@@ -335,6 +556,8 @@ export default function SupportTicketsPage() {
                 const isLead = !!ticket.leads && !ticket.clients;
                 const contactName = ticket.clients?.display_name || ticket.leads?.name || "Unknown Contact";
                 const companyInfo = ticket.leads?.company || "";
+                const displayNum = ticket.ticket_number ? `[${ticket.ticket_number}] ` : "";
+                const assignee = teamMembers.find(m => m.id === ticket.assigned_to);
 
                 return (
                   <div 
@@ -342,7 +565,7 @@ export default function SupportTicketsPage() {
                     onClick={() => handleOpenTicket(ticket)}
                     className="p-4 hover:bg-slate-50 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer group"
                   >
-                    <div className="flex items-start gap-4">
+                    <div className="flex items-start gap-4 flex-1">
                       <div className={`p-2.5 rounded-full mt-1 shrink-0 ${
                         ticket.status === 'open' ? 'bg-amber-100 text-amber-600' : 
                         ticket.status === 'in_progress' || ticket.status === 'pending' ? 'bg-blue-100 text-blue-600' :
@@ -353,7 +576,7 @@ export default function SupportTicketsPage() {
                       </div>
                       <div>
                         <div className="font-semibold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
-                          {ticket.subject}
+                          {displayNum}{ticket.subject}
                         </div>
                         <div className="text-sm text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
                           <span className="font-medium text-slate-700">{contactName}</span>
@@ -371,11 +594,30 @@ export default function SupportTicketsPage() {
 
                           <span className="text-slate-300">•</span>
                           <span>Created {format(new Date(ticket.created_at), "MMM d, yyyy")}</span>
+                          {ticket.due_date && (
+                            <>
+                              <span className="text-slate-300">•</span>
+                              <span className="font-medium text-rose-600">Due: {format(new Date(ticket.due_date), "MMM d, yyyy")}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
+                    <div className="hidden sm:block w-48 shrink-0">
+                      {assignee ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">
+                            {assignee.name?.[0]?.toUpperCase() || 'U'}
+                          </div>
+                          <span className="text-sm font-medium text-slate-700 truncate">{assignee.name || assignee.phone}</span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-slate-400 italic">Unassigned</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2.5 shrink-0 w-64 self-end sm:self-auto" onClick={(e) => e.stopPropagation()}>
                       <Badge variant="outline" className={
                         ticket.priority === 'urgent' ? 'border-rose-200 text-rose-700 bg-rose-50' :
                         ticket.priority === 'high' ? 'border-orange-200 text-orange-700 bg-orange-50' :
@@ -387,7 +629,7 @@ export default function SupportTicketsPage() {
                       {/* Status Dropdown */}
                       <Select 
                         value={ticket.status} 
-                        onValueChange={(val) => handleUpdateStatus(ticket.id, val)}
+                        onValueChange={(val) => handleStatusChangeInitiated(ticket.id, val)}
                       >
                         <SelectTrigger className={`h-7 px-2 text-xs font-semibold rounded-md border-0 text-white ${
                           ticket.status === 'open' ? 'bg-amber-500 hover:bg-amber-600' :
@@ -398,10 +640,10 @@ export default function SupportTicketsPage() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="open">🟡 Open</SelectItem>
-                          <SelectItem value="in_progress">🔵 In Progress</SelectItem>
-                          <SelectItem value="resolved">🟢 Resolved</SelectItem>
-                          <SelectItem value="closed">⚪ Closed</SelectItem>
+                          <SelectItem value="open">Open</SelectItem>
+                          <SelectItem value="in_progress">In Progress</SelectItem>
+                          <SelectItem value="resolved">Resolved</SelectItem>
+                          <SelectItem value="closed">Closed</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -411,7 +653,7 @@ export default function SupportTicketsPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2.5 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 hover:text-rose-700 font-medium gap-1"
-                          onClick={() => handleUpdateStatus(ticket.id, "closed")}
+                          onClick={() => handleStatusChangeInitiated(ticket.id, "closed")}
                           title="Close this ticket"
                         >
                           <X className="w-3.5 h-3.5" /> Close
@@ -421,7 +663,7 @@ export default function SupportTicketsPage() {
                           size="sm"
                           variant="outline"
                           className="h-7 px-2.5 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 font-medium gap-1"
-                          onClick={() => handleUpdateStatus(ticket.id, "open")}
+                          onClick={() => handleStatusChangeInitiated(ticket.id, "open")}
                           title="Reopen this ticket"
                         >
                           <RefreshCw className="w-3.5 h-3.5" /> Reopen
@@ -507,8 +749,57 @@ export default function SupportTicketsPage() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Subject</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="space-y-2">
+                  <Label>Priority</Label>
+                  <Select value={newTicket.priority} onValueChange={(val) => setNewTicket({...newTicket, priority: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="low">Low</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label>Notification</Label>
+                  <Select value={newTicket.notification_channel} onValueChange={(val) => setNewTicket({...newTicket, notification_channel: val})}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="email">Email</SelectItem>
+                      <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                      <SelectItem value="both">Both</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Assignee</Label>
+                  <Select value={newTicket.assigned_to} onValueChange={(val) => setNewTicket({...newTicket, assigned_to: val})}>
+                    <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {teamMembers.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.name || m.phone || 'Unknown User'}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Due Date</Label>
+                  <Input 
+                    type="date"
+                    value={newTicket.due_date}
+                    onChange={(e) => setNewTicket({...newTicket, due_date: e.target.value})}
+                  />
+                </div>
+              </div>
+
+            <div className="space-y-2">
+              <Label>Subject</Label>
                 <Input 
                   value={newTicket.subject} 
                   onChange={e => setNewTicket({...newTicket, subject: e.target.value})} 
@@ -517,20 +808,31 @@ export default function SupportTicketsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select value={newTicket.priority} onValueChange={(val) => setNewTicket({...newTicket, priority: val})}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="low">🟢 Low</SelectItem>
-                    <SelectItem value="medium">🟡 Medium</SelectItem>
-                    <SelectItem value="high">🟠 High</SelectItem>
-                    <SelectItem value="urgent">🔴 Urgent</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Initial Message</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Initial Message</Label>
+                  {ticketTemplates.length > 0 && (
+                    <Select onValueChange={(val) => {
+                      const tmpl = ticketTemplates.find(t => t.id === val);
+                      if (tmpl) {
+                        let body = tmpl.body || "";
+                        const c = newTicket.contact_type === "client" 
+                          ? clients.find(c => c.id === newTicket.contact_id) 
+                          : leads.find(l => l.id === newTicket.contact_id);
+                        const cName = c?.display_name || c?.name || "";
+                        body = body.replace(/{{contact_name}}/g, cName);
+                        body = body.replace(/{{org_name}}/g, org?.name || "");
+                        setNewTicket({...newTicket, message: body});
+                      }
+                    }}>
+                      <SelectTrigger className="h-7 w-[160px] text-xs"><SelectValue placeholder="Insert Template" /></SelectTrigger>
+                      <SelectContent>
+                        {ticketTemplates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
                 <textarea 
                   className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="Describe the issue in detail..."
@@ -548,6 +850,38 @@ export default function SupportTicketsPage() {
           </DialogContent>
         </Dialog>
 
+        {/* Status Update Note Dialog */}
+        <Dialog open={statusUpdateDialog.isOpen} onOpenChange={(open) => {
+          if (!open) setStatusUpdateDialog({ isOpen: false, ticketId: "", newStatus: "", text: "" });
+        }}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-slate-900">
+                {statusUpdateDialog.newStatus === "resolved" ? "Resolution Note" : "Closing Comment"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="py-4">
+              <Label className="mb-2 block">
+                {statusUpdateDialog.newStatus === "resolved" 
+                  ? "Please provide a note on how this was resolved:" 
+                  : "Please provide a comment before closing:"}
+              </Label>
+              <textarea 
+                className="flex min-h-[100px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder="Enter details..."
+                value={statusUpdateDialog.text}
+                onChange={e => setStatusUpdateDialog({...statusUpdateDialog, text: e.target.value})}
+              ></textarea>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setStatusUpdateDialog({ isOpen: false, ticketId: "", newStatus: "", text: "" })}>Cancel</Button>
+              <Button onClick={() => handleUpdateStatus(statusUpdateDialog.ticketId, statusUpdateDialog.newStatus, statusUpdateDialog.text)}>
+                Confirm & Notify
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
         {/* Ticket Details & Discussion Dialog */}
         <Dialog open={!!selectedTicket} onOpenChange={(open) => { if (!open) setSelectedTicket(null); }}>
           <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col p-6">
@@ -556,7 +890,7 @@ export default function SupportTicketsPage() {
                 <div>
                   <DialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
                     <Ticket className="w-5 h-5 text-indigo-600" />
-                    {selectedTicket?.subject}
+                    {selectedTicket?.ticket_number ? `[${selectedTicket.ticket_number}] ` : ""}{selectedTicket?.subject}
                   </DialogTitle>
                   <div className="text-xs text-slate-500 mt-1 flex items-center gap-2 flex-wrap">
                     <span>Contact:</span>
@@ -597,28 +931,58 @@ export default function SupportTicketsPage() {
               </div>
 
               {/* Status Selector Bar */}
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-700">Ticket Status:</span>
-                  <Select 
-                    value={selectedTicket?.status} 
-                    onValueChange={(val) => handleUpdateStatus(selectedTicket.id, val)}
-                  >
-                    <SelectTrigger className={`h-8 px-2.5 text-xs font-semibold rounded-lg text-white border-0 ${
-                      selectedTicket?.status === 'open' ? 'bg-amber-500' :
-                      selectedTicket?.status === 'in_progress' || selectedTicket?.status === 'pending' ? 'bg-blue-600' :
-                      selectedTicket?.status === 'resolved' ? 'bg-emerald-600' :
-                      'bg-slate-600'
-                    }`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="open">🟡 Open</SelectItem>
-                      <SelectItem value="in_progress">🔵 In Progress</SelectItem>
-                      <SelectItem value="resolved">🟢 Resolved</SelectItem>
-                      <SelectItem value="closed">⚪ Closed</SelectItem>
-                    </SelectContent>
-                  </Select>
+              <div className="flex flex-wrap items-center justify-between mt-3 pt-3 border-t border-slate-100 bg-slate-50 p-2.5 rounded-xl gap-3">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700">Ticket Status:</span>
+                    <Select 
+                      value={selectedTicket?.status} 
+                      onValueChange={(val) => handleStatusChangeInitiated(selectedTicket.id, val)}
+                    >
+                      <SelectTrigger className={`h-8 w-[120px] px-2.5 text-xs font-semibold rounded-lg text-white border-0 ${
+                        selectedTicket?.status === 'open' ? 'bg-amber-500' :
+                        selectedTicket?.status === 'in_progress' || selectedTicket?.status === 'pending' ? 'bg-blue-600' :
+                        selectedTicket?.status === 'resolved' ? 'bg-emerald-600' :
+                        'bg-slate-600'
+                      }`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-slate-700">Assignee:</span>
+                    <Select 
+                      value={selectedTicket?.assigned_to || "unassigned"} 
+                      onValueChange={(val) => handleReassignTicket(selectedTicket.id, val)}
+                    >
+                      <SelectTrigger className="h-8 px-2.5 text-xs font-semibold rounded-lg border-slate-200">
+                        <SelectValue placeholder="Unassigned" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="unassigned">Unassigned</SelectItem>
+                        {teamMembers.map((m: any) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name || m.phone || 'Unknown User'}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="flex items-center gap-2 ml-4">
+                    <span className="text-xs font-semibold text-slate-700">Due:</span>
+                    <Input 
+                      type="date"
+                      value={selectedTicket?.due_date || ""}
+                      onChange={(e) => handleUpdateDueDate(selectedTicket.id, e.target.value)}
+                      className="h-8 text-xs border-slate-200 rounded-lg w-auto"
+                    />
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -627,7 +991,7 @@ export default function SupportTicketsPage() {
                       size="sm" 
                       variant="outline"
                       className="h-8 text-xs text-rose-600 border-rose-200 hover:bg-rose-50 gap-1 font-medium"
-                      onClick={() => handleUpdateStatus(selectedTicket.id, 'closed')}
+                      onClick={() => handleStatusChangeInitiated(selectedTicket.id, 'closed')}
                     >
                       <X className="w-3.5 h-3.5" /> Close Ticket
                     </Button>
@@ -636,7 +1000,7 @@ export default function SupportTicketsPage() {
                       size="sm" 
                       variant="outline"
                       className="h-8 text-xs text-emerald-600 border-emerald-200 hover:bg-emerald-50 gap-1 font-medium"
-                      onClick={() => handleUpdateStatus(selectedTicket.id, 'open')}
+                      onClick={() => handleStatusChangeInitiated(selectedTicket.id, 'open')}
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> Reopen Ticket
                     </Button>
@@ -645,7 +1009,7 @@ export default function SupportTicketsPage() {
                     <Button 
                       size="sm" 
                       className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white gap-1 font-medium"
-                      onClick={() => handleUpdateStatus(selectedTicket.id, 'resolved')}
+                      onClick={() => handleStatusChangeInitiated(selectedTicket.id, 'resolved')}
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" /> Mark Resolved
                     </Button>
@@ -682,6 +1046,29 @@ export default function SupportTicketsPage() {
 
             {/* Reply Input Box */}
             <div className="pt-3 border-t border-slate-100 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold text-slate-700">Reply Message</Label>
+                {ticketTemplates.length > 0 && (
+                  <Select onValueChange={(val) => {
+                    const tmpl = ticketTemplates.find(t => t.id === val);
+                    if (tmpl && selectedTicket) {
+                      let body = tmpl.body || "";
+                      const cName = selectedTicket.clients?.display_name || selectedTicket.leads?.name || "";
+                      body = body.replace(/{{contact_name}}/g, cName);
+                      body = body.replace(/{{ticket_number}}/g, selectedTicket.ticket_number || "");
+                      body = body.replace(/{{org_name}}/g, org?.name || "");
+                      setReplyText(body);
+                    }
+                  }}>
+                    <SelectTrigger className="h-7 w-[160px] text-xs"><SelectValue placeholder="Insert Template" /></SelectTrigger>
+                    <SelectContent>
+                      {ticketTemplates.map(t => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
               <textarea
                 className="w-full min-h-[75px] max-h-[120px] p-2.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-white"
                 placeholder="Type a reply or solution for this ticket..."
@@ -692,14 +1079,25 @@ export default function SupportTicketsPage() {
                 <span className="text-[11px] text-slate-400">
                   Replying adds a note to this ticket's resolution thread.
                 </span>
-                <Button
-                  size="sm"
-                  onClick={handleSendReply}
-                  disabled={sendingReply || !replyText.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs px-3 gap-1.5"
-                >
-                  {sendingReply ? "Sending…" : "Send Reply"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleSendReply("whatsapp")}
+                    disabled={sendingReply || !replyText.trim()}
+                    className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 h-8 text-xs px-3 gap-1.5"
+                  >
+                    {sendingReply ? "Sending…" : "Reply on WhatsApp"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleSendReply("email")}
+                    disabled={sendingReply || !replyText.trim()}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white h-8 text-xs px-3 gap-1.5"
+                  >
+                    {sendingReply ? "Sending…" : "Reply on Email"}
+                  </Button>
+                </div>
               </div>
             </div>
           </DialogContent>
@@ -708,3 +1106,16 @@ export default function SupportTicketsPage() {
     </>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+

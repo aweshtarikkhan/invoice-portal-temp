@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
-import { Loader2, DollarSign, CreditCard, Clock, Receipt, ArrowLeft, FileText, ShoppingCart, Eye } from "lucide-react";
+import { Loader2, IndianRupee, CreditCard, Clock, Receipt, ArrowLeft, FileText, ShoppingCart, Eye } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { format } from "date-fns";
 
@@ -205,7 +205,7 @@ export default function PurchaseAccountingReportsPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Purchases</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalPurchases, currency)}</div>
@@ -261,7 +261,7 @@ export default function PurchaseAccountingReportsPage() {
                 <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" tickLine={false} axisLine={false} />
-                  <YAxis className="text-xs" tickLine={false} axisLine={false} tickFormatter={(value) => `${value >= 1000 ? value/1000 + 'k' : value}`} />
+                  <YAxis className="text-xs" tickLine={false} axisLine={false} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                   <Tooltip 
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '6px' }}
                     itemStyle={{ color: '#f8fafc' }}

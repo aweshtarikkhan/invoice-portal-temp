@@ -1,4 +1,5 @@
 import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { getAdaptiveCompanyNameStyle, splitCompanyNameIntoTwoLines } from "@/lib/document-templates";
 import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { useMemo } from "react";
 import { QRCodeSVG } from "qrcode.react";
@@ -176,6 +177,7 @@ export function ProfessionalNavyInvoiceTemplate({
     color: "#111827"
   };
 
+  const { line1: orgLine1, line2: orgLine2 } = splitCompanyNameIntoTwoLines(org?.name);
   const stateObj = INDIAN_STATES.find(s => s.code === invoice.place_of_supply);
   const posName = stateObj ? `${stateObj.name} (${stateObj.code})` : (invoice.place_of_supply || "-");
 
@@ -187,17 +189,18 @@ export function ProfessionalNavyInvoiceTemplate({
       margin: "0 auto",
       backgroundColor: "#fff",
       boxSizing: "border-box",
-      padding: "20px"
+      padding: "16px 20px"
     }}>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 15 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
         <div style={{ display: "flex", gap: 15 }}>
           {org?.template_show_logo !== false && org?.logo_url && (
             <img src={org.logo_url} alt="Logo" style={{ width: 65, height: 'auto', objectFit: "contain" }} />
           )}
           <div style={{ paddingTop: org?.template_show_logo !== false && org?.logo_url ? 0 : 5 }}>
-            <div style={{ fontSize: 24, fontWeight: 800, color: navy, textTransform: "uppercase", letterSpacing: "-0.02em", marginBottom: 2 }}>
-              {org?.name || "YOUR COMPANY NAME"}
+            <div style={{ fontSize: getAdaptiveCompanyNameStyle(org?.name).fontSize, fontWeight: 800, color: navy, textTransform: "uppercase", letterSpacing: "-0.02em", marginBottom: 2, lineHeight: getAdaptiveCompanyNameStyle(org?.name).lineHeight }}>
+              <div>{orgLine1}</div>
+              {orgLine2 && <div>{orgLine2}</div>}
             </div>
             <div style={{ fontSize: 10, fontWeight: 700, color: blue, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8 }}>
               {org?.tagline || ""}

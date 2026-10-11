@@ -333,7 +333,7 @@ export default function BusinessReportPage() {
               <BarChart data={agingData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="label" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={fmt} />
+                <YAxis className="text-xs" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Bar dataKey="amount" name="Amount">
                   {agingData.map((_, index) => (
@@ -353,7 +353,7 @@ export default function BusinessReportPage() {
               <AreaChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={fmt} />
+                <YAxis className="text-xs" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Legend />
                 <Area type="monotone" dataKey="invoiced" name="Invoiced" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
@@ -400,7 +400,7 @@ export default function BusinessReportPage() {
               <AreaChart data={cashFlowData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={fmt} />
+                <YAxis className="text-xs" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Legend />
                 <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#16a34a" fill="#16a34a" fillOpacity={0.3} />
@@ -417,7 +417,7 @@ export default function BusinessReportPage() {
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={topCustomersByRevenue} layout="vertical" margin={{ left: 40 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" horizontal={false} />
-                <XAxis type="number" className="text-xs" tickFormatter={fmt} />
+                <XAxis type="number" className="text-xs" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <YAxis dataKey="name" type="category" className="text-xs" width={100} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Bar dataKey="revenue" name="Revenue" fill="#8b5cf6" radius={[0, 4, 4, 0]} />
@@ -468,7 +468,7 @@ export default function BusinessReportPage() {
               <BarChart data={expenseByCategory}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" className="text-xs" />
-                <YAxis className="text-xs" tickFormatter={fmt} />
+                <YAxis className="text-xs" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Bar dataKey="value" name="Amount">
                   {expenseByCategory.map((_, i) => (

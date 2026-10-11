@@ -68,6 +68,8 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
       { key: "purchase-orders", title: "Purchase Orders", description: "Create purchase orders", icon: "ClipboardList", url: "/purchase-orders" },
       { key: "grns", title: "Goods Receipt (GRN)", description: "Track received goods", icon: "PackageCheck", url: "/grns" },
       { key: "bills", title: "Purchase Invoice", description: "Manage purchase invoices", icon: "Receipt", url: "/purchase-invoices" },
+      { key: "vendor-payments", title: "Vendor Payments", description: "Record & track vendor payments", icon: "CreditCard", url: "/vendor-payments" },
+      { key: "debit-notes", title: "Purchase Returns", description: "Manage debit notes & returns", icon: "RotateCcw", url: "/purchase-returns" },
       { key: "expenses", title: "Expenses", description: "Track business expenses", icon: "Coins", url: "/expenses" },
     ],
   },
@@ -106,6 +108,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     items: [
       { key: "crm-reports", title: "CRM Reports", description: "Analyze your leads and pipeline", icon: "BarChart3", url: "/crm-reports" },
       { key: "leads", title: "Leads", description: "Manage sales leads", icon: "Users", url: "/leads" },
+      { key: "crm-team", title: "Sales Team", description: "Manage CRM executives", icon: "Briefcase", url: "/crm-team" },
       { key: "pipeline", title: "Pipeline", description: "Sales pipeline view", icon: "BarChart3", url: "/pipeline" },
       { key: "calendar", title: "Calendar", description: "Schedule and tasks", icon: "Calendar", url: "/calendar" },
       { key: "automations", title: "Automations", description: "Workflow rules", icon: "Zap", url: "/crm/automations" },

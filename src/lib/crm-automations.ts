@@ -315,3 +315,399 @@ export async function triggerLeadCreatedAutomations({ org, lead }: LeadAutomatio
     console.error("Failed to run lead created automation:", err);
   }
 }
+
+/**
+ * Dynamic Task Due Reminder — WhatsApp Message Generator
+ * Captures all fields: Task Title, Type, Priority, Due Date & Time, Assignee, Lead, Deal, Notes, Org
+ */
+export function getTaskDueWhatsappText(
+  org: any,
+  task: any,
+  assignee: { name: string; phone?: string; role?: string }
+): string {
+  const companyName = org?.name || "Assay Biz";
+  const dueDateStr = task.due_at
+    ? new Date(task.due_at).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Immediate";
+  const priority = task.priority || "Medium";
+  const taskType = task.activity_type || "Follow-up";
+  const leadInfo = task.leadName || task.lead?.name;
+  const leadCompany = task.leadCompany || task.lead?.company;
+  const dealTitle = task.dealTitle || task.opportunity?.title;
+
+  return `⏰ *TASK DUE REMINDER — SALES ACTION REQUIRED*
+
+Hi *${assignee.name || "Sales Executive"}*${assignee.role ? ` (${assignee.role})` : ""},
+
+Your scheduled CRM task is *Due Now / Approaching Deadline*:
+
+📌 *Task Title:* ${task.subject || task.title || "CRM Task"}
+🏷️ *Task Type:* ${taskType}
+⚡ *Priority:* ${priority}
+⏰ *Due Date & Time:* ${dueDateStr}
+${leadInfo ? `👤 *Customer / Lead:* ${leadInfo}${leadCompany ? ` (${leadCompany})` : ""}\n` : ""}${dealTitle ? `💼 *Opportunity:* ${dealTitle}\n` : ""}${task.body ? `📝 *Notes:* ${task.body}\n` : ""}🏢 *Organization:* ${companyName}
+
+👉 *Action Needed:* Please connect with the client or execute this task promptly, and update status in your CRM dashboard.`;
+}
+
+/**
+ * Dynamic Task Due Reminder — Branded Email HTML Generator
+ * Captures all fields in high-impact branded table layout
+ */
+export function getTaskDueEmailHtml(
+  org: any,
+  task: any,
+  assignee: { name: string; email?: string; role?: string }
+): string {
+  const companyName = org?.name || "Assay Biz";
+  const dueDateStr = task.due_at
+    ? new Date(task.due_at).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Immediate";
+  const priority = task.priority || "Medium";
+  const taskType = task.activity_type || "Follow-up";
+  const leadInfo = task.leadName || task.lead?.name;
+  const leadCompany = task.leadCompany || task.lead?.company;
+  const dealTitle = task.dealTitle || task.opportunity?.title;
+
+  return buildBrandedEmailHtml({
+    logoUrl: org?.logo_url || "https://aassaybiz.com/email-logo.png",
+    companyName,
+    companyEmail: org?.email || "support@aassaybiz.com",
+    badgeText: "TASK DUE DEADLINE · SALES ACTION",
+    title: `Task Due Reminder: ${task.subject || task.title || "CRM Task"}`,
+    subtitle: `Scheduled task has reached its due deadline in ${companyName}`,
+    recipientName: assignee.name,
+    introText: `This is an automated notification that an assigned sales task has reached or is approaching its deadline.`,
+    details: [
+      { label: "Task Title", value: task.subject || task.title || "Sales Task", isHighlight: true },
+      { label: "Task Type", value: taskType },
+      { label: "Priority", value: priority, isHighlight: priority === "Urgent" || priority === "High" },
+      { label: "Due Date & Time", value: dueDateStr, isHighlight: true },
+      ...(leadInfo ? [{ label: "Related Lead", value: `${leadInfo}${leadCompany ? ` (${leadCompany})` : ""}` }] : []),
+      ...(dealTitle ? [{ label: "Related Deal", value: dealTitle }] : []),
+    ],
+    customBodyHtml: `
+      ${task.body ? `
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0;">
+          <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Task Description / Instructions:</p>
+          <p style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.5;">${task.body}</p>
+        </div>
+      ` : ""}
+      <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 14px; margin-top: 16px; text-align: center;">
+        <p style="margin: 0; font-size: 13px; color: #1e40af; font-weight: 600;">
+          Please log into your CRM Dashboard -> Calendar / Activities to complete this task and update status.
+        </p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Dynamic Custom Reminder — WhatsApp Message Generator
+ * Captures all fields: Custom Reminder Timestamp, Due Date, Type, Priority, Lead, Deal, Notes, Org
+ */
+export function getTaskCustomReminderWhatsappText(
+  org: any,
+  task: any,
+  assignee: { name: string; phone?: string; role?: string }
+): string {
+  const companyName = org?.name || "Assay Biz";
+  const dueDateStr = task.due_at
+    ? new Date(task.due_at).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Immediate";
+  const customReminderStr = task.custom_reminder_at || (task.reminder_type?.startsWith("custom:") ? task.reminder_type.slice(7) : null);
+  const reminderTimeFormatted = customReminderStr
+    ? new Date(customReminderStr).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Scheduled Reminder";
+
+  const priority = task.priority || "Medium";
+  const taskType = task.activity_type || "Follow-up";
+  const leadInfo = task.leadName || task.lead?.name;
+  const leadCompany = task.leadCompany || task.lead?.company;
+  const dealTitle = task.dealTitle || task.opportunity?.title;
+
+  return `🔔 *CUSTOM TASK REMINDER — AUTO NOTIFICATION*
+
+Hi *${assignee.name || "Sales Executive"}*${assignee.role ? ` (${assignee.role})` : ""},
+
+This is your scheduled *Custom Reminder* for the following CRM task:
+
+📌 *Task Title:* ${task.subject || task.title || "CRM Task"}
+🏷️ *Task Type:* ${taskType}
+⚡ *Priority:* ${priority}
+⏰ *Task Due Date:* ${dueDateStr}
+⏱️ *Reminder Scheduled For:* ${reminderTimeFormatted}
+${leadInfo ? `👤 *Customer / Lead:* ${leadInfo}${leadCompany ? ` (${leadCompany})` : ""}\n` : ""}${dealTitle ? `💼 *Opportunity / Deal:* ${dealTitle}\n` : ""}${task.body ? `📝 *Notes & Instructions:* ${task.body}\n` : ""}🏢 *Organization:* ${companyName}
+
+👉 *Status:* ${task.status || "Pending"}
+Please check your CRM dashboard or Calendar to execute this task before the due time.`;
+}
+
+/**
+ * Dynamic Custom Reminder — Branded Email HTML Generator
+ * Captures all updated fields dynamically
+ */
+export function getTaskCustomReminderEmailHtml(
+  org: any,
+  task: any,
+  assignee: { name: string; email?: string; role?: string }
+): string {
+  const companyName = org?.name || "Assay Biz";
+  const dueDateStr = task.due_at
+    ? new Date(task.due_at).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Immediate";
+  const customReminderStr = task.custom_reminder_at || (task.reminder_type?.startsWith("custom:") ? task.reminder_type.slice(7) : null);
+  const reminderTimeFormatted = customReminderStr
+    ? new Date(customReminderStr).toLocaleString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "Scheduled Reminder";
+
+  const priority = task.priority || "Medium";
+  const taskType = task.activity_type || "Follow-up";
+  const leadInfo = task.leadName || task.lead?.name;
+  const leadCompany = task.leadCompany || task.lead?.company;
+  const dealTitle = task.dealTitle || task.opportunity?.title;
+
+  return buildBrandedEmailHtml({
+    logoUrl: org?.logo_url || "https://aassaybiz.com/email-logo.png",
+    companyName,
+    companyEmail: org?.email || "support@aassaybiz.com",
+    badgeText: "CUSTOM REMINDER · SALES TASK",
+    title: `Custom Task Reminder: ${task.subject || task.title || "CRM Task"}`,
+    subtitle: `Scheduled custom reminder alert triggered for ${assignee.name}`,
+    recipientName: assignee.name,
+    introText: `This automated custom reminder was scheduled for ${reminderTimeFormatted} to alert you about an upcoming task due on ${dueDateStr}.`,
+    details: [
+      { label: "Task Title", value: task.subject || task.title || "Sales Task", isHighlight: true },
+      { label: "Task Type", value: taskType },
+      { label: "Priority", value: priority, isHighlight: priority === "Urgent" || priority === "High" },
+      { label: "Due Date & Time", value: dueDateStr, isHighlight: true },
+      { label: "Custom Reminder At", value: reminderTimeFormatted },
+      ...(leadInfo ? [{ label: "Related Lead", value: `${leadInfo}${leadCompany ? ` (${leadCompany})` : ""}` }] : []),
+      ...(dealTitle ? [{ label: "Related Deal", value: dealTitle }] : []),
+    ],
+    customBodyHtml: `
+      ${task.body ? `
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; margin: 16px 0;">
+          <p style="margin: 0 0 4px; font-size: 12px; font-weight: 700; color: #475569; text-transform: uppercase;">Task Description / Instructions:</p>
+          <p style="margin: 0; font-size: 14px; color: #0f172a; line-height: 1.5;">${task.body}</p>
+        </div>
+      ` : ""}
+      <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px; margin-top: 16px; text-align: center;">
+        <p style="margin: 0; font-size: 13px; color: #166534; font-weight: 600;">
+          Log into your CRM Dashboard -> Calendar / Activities to review details and update task status once completed.
+        </p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Task Activity Reminder & Assignment Notification
+ * Dispatches WhatsApp and/or Email to the assigned sales executive
+ * Checks crm_automations settings and auto-captures all dynamic fields
+ */
+export async function sendActivityReminderNotification({
+  org,
+  activity,
+  assignee,
+}: {
+  org: any;
+  activity: any;
+  assignee: any;
+}) {
+  if (!assignee || !org?.id) return;
+
+  try {
+    // Check automations configuration from crm_automations table
+    const { data: automations } = await (supabase as any)
+      .from("crm_automations")
+      .select("*")
+      .eq("org_id", org.id);
+
+    const isCustom = activity.reminder_type?.startsWith("custom:");
+    
+    // Check whether WhatsApp & Email automations are enabled (defaults to true if not explicitly disabled)
+    const checkActive = (action: string) => {
+      if (!automations || automations.length === 0) return true;
+      const found = automations.find((a: any) => a.action_type === action);
+      return found ? found.is_active : true;
+    };
+
+    const allowWhatsapp = isCustom
+      ? checkActive("send_custom_reminder_whatsapp")
+      : checkActive("send_task_due_whatsapp");
+
+    const allowEmail = isCustom
+      ? checkActive("send_custom_reminder_email")
+      : checkActive("send_task_due_email");
+
+    const taskTitle = activity.subject || activity.title || "CRM Task";
+
+    // 1. WhatsApp Dispatch
+    if (allowWhatsapp && assignee.phone) {
+      const waText = isCustom
+        ? getTaskCustomReminderWhatsappText(org, activity, assignee)
+        : getTaskDueWhatsappText(org, activity, assignee);
+
+      openWhatsappShare({
+        orgId: org.id,
+        phone: assignee.phone,
+        message: waText,
+      }).catch((err) => console.error("Error sending activity WA reminder:", err));
+    }
+
+    // 2. Email Dispatch
+    if (allowEmail && assignee.email) {
+      const subject = isCustom
+        ? `🔔 Custom Task Reminder: ${taskTitle} (${activity.priority || "Medium"} Priority)`
+        : `⏰ Task Due Reminder: ${taskTitle} (${activity.priority || "Medium"} Priority)`;
+
+      const html = isCustom
+        ? getTaskCustomReminderEmailHtml(org, activity, assignee)
+        : getTaskDueEmailHtml(org, activity, assignee);
+
+      supabase.functions.invoke("send-custom-email", {
+        body: { to: assignee.email, subject, html, orgId: org.id },
+      }).catch((err) => console.error("Error sending activity Email reminder:", err));
+    }
+  } catch (err) {
+    console.error("Error executing task reminder automation:", err);
+  }
+}
+
+/**
+ * Calculates the exact trigger timestamp for a task reminder
+ * - "10_min" -> due_at - 10 minutes
+ * - "1_hour" -> due_at - 60 minutes
+ * - "1_day"  -> due_at - 24 hours
+ * - "custom:<ISO>" -> exact custom date & time selected by user
+ */
+export function getScheduledReminderTime(activity: {
+  due_at?: string | null;
+  reminder_type?: string | null;
+}): Date | null {
+  if (!activity.due_at || !activity.reminder_type || activity.reminder_type === "none") {
+    return null;
+  }
+
+  // Custom reminder timestamp
+  if (activity.reminder_type.startsWith("custom:")) {
+    const customIso = activity.reminder_type.slice(7);
+    const parsed = new Date(customIso);
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const due = new Date(activity.due_at);
+  if (isNaN(due.getTime())) return null;
+
+  if (activity.reminder_type === "10_min") {
+    return new Date(due.getTime() - 10 * 60 * 1000);
+  }
+  if (activity.reminder_type === "1_hour") {
+    return new Date(due.getTime() - 60 * 60 * 1000);
+  }
+  if (activity.reminder_type === "1_day") {
+    return new Date(due.getTime() - 24 * 60 * 60 * 1000);
+  }
+
+  return null;
+}
+
+/**
+ * Check and process active due/custom task reminders
+ * Runs periodically to dispatch WhatsApp & Email alerts when the scheduled reminder time arrives
+ */
+export async function checkAndProcessDueTaskReminders(org: any) {
+  if (!org?.id) return;
+
+  try {
+    const now = new Date();
+    // Fetch pending activities with a reminder set and an assigned executive
+    const { data: activities, error } = await (supabase as any)
+      .from("activities")
+      .select("*, leads(name, company), opportunities(title)")
+      .eq("org_id", org.id)
+      .neq("reminder_type", "none")
+      .not("owner_id", "is", null)
+      .neq("status", "Completed")
+      .is("completed_at", null)
+      .limit(50);
+
+    if (error || !activities || activities.length === 0) return;
+
+    // Fetch team members
+    const { data: team } = await supabase
+      .from("crm_team")
+      .select("*")
+      .eq("org_id", org.id)
+      .eq("is_active", true);
+
+    const teamMap = new Map<string, any>();
+    (team || []).forEach((m: any) => teamMap.set(m.id, m));
+
+    for (const act of activities) {
+      const scheduledTime = getScheduledReminderTime(act);
+      if (!scheduledTime) continue;
+
+      // Check if scheduled time has arrived and is within past 2 hours
+      const diffMs = now.getTime() - scheduledTime.getTime();
+      const isDue = diffMs >= 0 && diffMs <= 2 * 60 * 60 * 1000;
+
+      if (isDue) {
+        // Prevent duplicate alerts in localStorage
+        const storageKey = `crm_reminder_sent_${act.id}_${act.reminder_type}`;
+        if (localStorage.getItem(storageKey)) continue;
+
+        const assignee = teamMap.get(act.owner_id);
+        if (assignee) {
+          await sendActivityReminderNotification({
+            org,
+            activity: act,
+            assignee,
+          });
+          localStorage.setItem(storageKey, new Date().toISOString());
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Error in checkAndProcessDueTaskReminders:", err);
+  }
+}
+
+

@@ -93,10 +93,20 @@ export default function EstimateDetailPage() {
     return Boolean(orgState && clientState && orgState !== clientState);
   }, [estimate, org, client]);
 
+  const enhancedLines = React.useMemo(() => {
+    return lines.map((l) => ({
+      ...l,
+      name: l.name || l.items?.name || l.item?.name || l.item_name || (l.description ? String(l.description).split("\n")[0] : "") || "Item",
+      description: l.description || l.items?.description || l.item?.description || "",
+      hsn_code: l.hsn_code || l.items?.hsn_code || l.item?.hsn_code || l.hsn || l.hsn_sac || "",
+      unit: l.unit || l.items?.unit || l.item?.unit || "PCS",
+    }));
+  }, [lines]);
+
   const taxBreakdown = React.useMemo(() => {
-    if (!estimate || !org || !lines.length) return [];
-    return calculateTaxBreakdown(lines, taxRates, isInterstate);
-  }, [estimate, lines, org, taxRates, isInterstate]);
+    if (!estimate || !org || !enhancedLines.length) return [];
+    return calculateTaxBreakdown(enhancedLines, taxRates, isInterstate);
+  }, [estimate, enhancedLines, org, taxRates, isInterstate]);
 
   const fmt = (n: number) =>
     new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(n);
@@ -203,10 +213,38 @@ export default function EstimateDetailPage() {
   }, [estimate, org]);
 
   const fullEstimateData = React.useMemo(() => {
-    return estimate && client ? { ...estimate, clients: client } : null;
+    if (!estimate) return null;
+    const cl = client || {};
+    const cName = cl.display_name || cl.company_name || cl.name || "";
+    const cAddress = cl.billing_address || estimate.billing_address || null;
+    const cShipping = cl.shipping_address || estimate.shipping_address || null;
+    const clientObj = {
+      ...cl,
+      display_name: cName,
+      company_name: cl.company_name || cName,
+      name: cName,
+      billing_address: cAddress,
+      address: cAddress,
+      shipping_address: cShipping,
+      tax_number: cl.tax_number || cl.gstin || "",
+      gst_number: cl.tax_number || cl.gstin || "",
+      phone: cl.phone || cl.mobile || "",
+      email: cl.email || "",
+    };
+    return {
+      ...estimate,
+      clients: clientObj,
+      client: clientObj,
+      client_name: cName,
+      client_gst: cl.tax_number || cl.gstin || "",
+      client_email: cl.email || "",
+      client_phone: cl.phone || cl.mobile || "",
+      billing_address: cAddress,
+      shipping_address: cShipping,
+    };
   }, [estimate, client]);
 
-  useAutoEmailPDF({ entityType: "estimate", entityData: fullEstimateData, lines, generatePDFBlob });
+  useAutoEmailPDF({ entityType: "estimate", entityData: fullEstimateData, lines: enhancedLines, generatePDFBlob });
 
   const [isSendingEmail, setIsSendingEmail] = useState(false);
 
@@ -411,7 +449,7 @@ export default function EstimateDetailPage() {
                 discount: fmt(Number(estimate.discount_total)),
                 tds: estimate.tds_amount ? fmt(Number(estimate.tds_amount)) : "0.00",
                 adjustment: estimate.adjustment ? fmt(Number(estimate.adjustment)) : "0.00",
-                items: lines.map(l => `- ${l.items?.name || 'Item'} x${l.quantity}`).join('\n'),
+                items: enhancedLines.map(l => `- ${l.name || 'Item'} x${l.quantity}`).join('\n'),
                 portal_link: token ? portalUrl(token) : "",
                 org_name: org.name
               });
@@ -453,7 +491,7 @@ export default function EstimateDetailPage() {
 
       <div className="bg-muted p-4 sm:p-8 overflow-auto border-y flex justify-center" id="invoice-print-view">
         <div className={getDocumentPreviewClass(org?.template_style, org?.template_paper_size)}>
-          <StyledInvoiceTemplate org={org} invoice={estimate} lines={lines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
+          <StyledInvoiceTemplate org={org} invoice={fullEstimateData || estimate} lines={enhancedLines} fmt={fmt} type="estimate" taxBreakdown={taxBreakdown} isInterstate={isInterstate} />
         </div>
       </div>
 

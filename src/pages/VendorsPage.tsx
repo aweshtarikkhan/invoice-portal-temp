@@ -56,8 +56,26 @@ export default function VendorsPage() {
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
-    const { data } = await (supabase as any).from("vendors").select("*").eq("org_id", org.id).order("name");
-    setList(data || []);
+    const [{ data: vData }, { data: bData }] = await Promise.all([
+      (supabase as any).from("vendors").select("*").eq("org_id", org.id).order("name"),
+      (supabase as any).from("bills").select("vendor_id, total, balance_due, status").eq("org_id", org.id).not("status", "in", '("draft","cancelled")'),
+    ]);
+
+    const billsMap: Record<string, number> = {};
+    (bData || []).forEach((b: any) => {
+      billsMap[b.vendor_id] = (billsMap[b.vendor_id] || 0) + Number(b.balance_due || 0);
+    });
+
+    const mapped = (vData || []).map((v: any) => {
+      const billsDue = billsMap[v.id];
+      const dynamicDue = billsDue !== undefined ? billsDue : Number(v.balance_due || v.opening_balance || 0);
+      return {
+        ...v,
+        balance_due: dynamicDue,
+      };
+    });
+
+    setList(mapped);
     setLoading(false);
   };
   useEffect(() => { load(); }, [org?.id]);

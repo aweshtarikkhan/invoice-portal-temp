@@ -30,6 +30,7 @@ export default function ReportsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [bizExpenses, setBizExpenses] = useState<any[]>([]);
+  const [billPayments, setBillPayments] = useState<any[]>([]);
   const [period, setPeriod] = useState("fy_current");
   const [loading, setLoading] = useState(true);
 
@@ -40,16 +41,18 @@ export default function ReportsPage() {
     if (!org?.id) return;
     const fetch = async () => {
       setLoading(true);
-      const [inv, pay, cl, exp] = await Promise.all([
+      const [inv, pay, cl, exp, bp] = await Promise.all([
         supabase.from("invoices").select("*").eq("org_id", org.id),
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("clients").select("*").eq("org_id", org.id),
         supabase.from("business_expenses").select("*").eq("org_id", org.id),
+        (supabase as any).from("bill_payments").select("*").eq("org_id", org.id),
       ]);
       setInvoices(inv.data || []);
       setPayments(pay.data || []);
       setClients(cl.data || []);
       setBizExpenses(exp.data || []);
+      setBillPayments(bp.data || []);
       setLoading(false);
     };
     fetch();
@@ -149,23 +152,36 @@ export default function ReportsPage() {
     return { totalTax, totalRevenue, totalCollected, totalOutstanding };
   }, [invoices, payments, dateRange]);
 
-  // Expense analytics
-  const expenseTotal = useMemo(() => bizExpenses.reduce((s, e) => s + Number(e.amount), 0), [bizExpenses]);
+  // Expense analytics (Business Expenses + Vendor Payments)
+  const expenseTotal = useMemo(() => {
+    const bizTotal = bizExpenses.reduce((s, e) => s + Number(e.amount), 0);
+    const billTotal = billPayments.reduce((s, b) => s + Number(b.amount), 0);
+    return bizTotal + billTotal;
+  }, [bizExpenses, billPayments]);
 
   const expenseCategoryData = useMemo(() => {
     const map: Record<string, number> = {};
     bizExpenses.forEach(e => { map[e.category] = (map[e.category] || 0) + Number(e.amount); });
+    billPayments.forEach(b => {
+      const cat = "Vendor Payments / Purchases";
+      map[cat] = (map[cat] || 0) + Number(b.amount);
+    });
     return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
-  }, [bizExpenses]);
+  }, [bizExpenses, billPayments]);
 
   const expenseMonthlyData = useMemo(() => {
     return months.map(m => {
       const monthExp = bizExpenses.filter(e =>
         isWithinInterval(new Date(e.expense_date), { start: m.start, end: m.end })
-      );
-      return { name: m.label, expenses: monthExp.reduce((s, e) => s + Number(e.amount), 0) };
+      ).reduce((s, e) => s + Number(e.amount), 0);
+
+      const monthBillExp = billPayments.filter(b =>
+        isWithinInterval(new Date(b.payment_date), { start: m.start, end: m.end })
+      ).reduce((s, b) => s + Number(b.amount), 0);
+
+      return { name: m.label, expenses: monthExp + monthBillExp };
     });
-  }, [months, bizExpenses]);
+  }, [months, bizExpenses, billPayments]);
 
   const downloadCSV = (data: any[], filename: string) => {
     if (!data.length) return;
@@ -271,7 +287,7 @@ export default function ReportsPage() {
                 <BarChart data={revenueData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-                  <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+                  <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
                   <Legend />
                   <Bar dataKey="invoiced" name="Invoiced" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
@@ -296,7 +312,7 @@ export default function ReportsPage() {
                   <BarChart data={expenseMonthlyData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-                    <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+                    <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <Tooltip formatter={(v: number) => fmt(v)} />
                     <Bar dataKey="expenses" name="Expenses" fill="hsl(0, 72%, 55%)" radius={[4, 4, 0, 0]} />
                   </BarChart>
@@ -359,7 +375,7 @@ export default function ReportsPage() {
                 <BarChart data={agingData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="bucket" className="text-xs fill-muted-foreground" />
-                  <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+                  <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                   <Tooltip formatter={(v: number) => fmt(v)} />
                   <Bar dataKey="amount" name="Outstanding" fill="hsl(var(--chart-4))" radius={[4, 4, 0, 0]} />
                 </BarChart>

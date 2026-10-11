@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, Printer, Download, Mail, Loader2, Lock } from "lucide-react";
+import { Pencil, ArrowLeft, Plus, Copy, MessageCircle, RotateCcw, Printer, Download, Mail, Loader2, Lock } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -185,6 +185,18 @@ export default function BillDetailPage() {
     const status = newDue <= 0 ? "paid" : "partial";
     await (supabase as any).from("bills").update({ amount_paid: newPaid, balance_due: newDue, status }).eq("id", bill.id);
     await postBillPaymentJournal(org.id, pmt.id, payDate, bill.bill_number, bill.vendor_id, amt, payMethod, bill.branch_id);
+
+    // Update vendor balance due
+    const { data: vBills } = await (supabase as any)
+      .from("bills")
+      .select("balance_due")
+      .eq("vendor_id", bill.vendor_id)
+      .not("status", "in", '("draft","cancelled")');
+    const computedVendorDue = (vBills || []).reduce((sum: number, b: any) => sum + Number(b.balance_due || 0), 0);
+    await (supabase as any).from("vendors").update({
+      balance_due: Math.max(0, computedVendorDue),
+      updated_at: new Date().toISOString(),
+    }).eq("id", bill.vendor_id);
     toast({ title: "Payment recorded" });
     setPayOpen(false); setPayRef(""); load();
   };
@@ -523,6 +535,7 @@ export default function BillDetailPage() {
             {!canSend && <Lock className="ml-1 h-3.5 w-3.5 text-amber-500" />}
           </Button>
           <Button variant="outline" onClick={() => setDuplicateDialogOpen(true)}><Copy className="h-4 w-4 mr-1" /> Duplicate</Button>
+          <Button variant="outline" onClick={() => navigate(`/debit-notes/new?vendor_id=${bill.vendor_id}&bill_id=${bill.id}`)}><RotateCcw className="h-4 w-4 mr-1 text-rose-500" /> Return Items</Button>
           <Button variant="outline" onClick={() => navigate(`/purchase-invoices/${id}/edit`)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
           {bill.balance_due > 0 && <Button onClick={() => setPayOpen(true)}><Plus className="h-4 w-4 mr-1" /> Record Payment</Button>}
         </div>

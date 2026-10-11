@@ -46,15 +46,18 @@ const invoiceImportFields: ImportField[] = [
   { key: "invoice_number", label: "Invoice Number", required: true },
   { key: "client_name", label: "Customer Name", required: true },
   { key: "item_name", label: "Item Name" },
-  { key: "item_hsn", label: "Item HSN Code" },
+  { key: "item_hsn", label: "HSN/SAC" },
   { key: "qty", label: "Quantity" },
-  { key: "rate", label: "Rate" },
-  { key: "item_amount", label: "Item Amount" },
-  { key: "tax_rate", label: "GST %" },
+  { key: "rate", label: "Item Price" },
+  { key: "item_amount", label: "Item Total" },
+  { key: "tax_rate", label: "Item Tax %" },
+  { key: "igst_rate", label: "IGST Rate %" },
+  { key: "cgst_rate", label: "CGST Rate %" },
+  { key: "sgst_rate", label: "SGST Rate %" },
   { key: "unit", label: "Unit" },
-  { key: "client_gst", label: "Client GST Number" },
+  { key: "client_gst", label: "GST Identification Number (GSTIN)" },
   { key: "pan_no", label: "Client PAN Number" },
-  { key: "client_address", label: "Client Address" },
+  { key: "client_address", label: "Billing Address" },
   { key: "shipping_name", label: "Shipping Name" },
   { key: "shipping_address", label: "Shipping Address" },
   { key: "invoice_date", label: "Invoice Date" },
@@ -62,13 +65,13 @@ const invoiceImportFields: ImportField[] = [
   { key: "due_date", label: "Due Date" },
   { key: "total", label: "Total" },
   { key: "balance_due", label: "Balance" },
-  { key: "status", label: "Status" },
+  { key: "status", label: "Invoice Status" },
   { key: "reference_number", label: "Reference Number" },
   { key: "currency_code", label: "Currency Code" },
   { key: "discount", label: "Discount" },
   { key: "shipping_charge", label: "Shipping Charge" },
   { key: "adjustment", label: "Adjustment" },
-  { key: "notes", label: "Notes" },
+  { key: "notes", label: "Customer Notes" },
   { key: "terms_conditions", label: "Terms & Conditions" },
   { key: "amount_paid", label: "Amount Paid" },
 ];
@@ -494,11 +497,6 @@ export default function InvoicesPage() {
               Cancel / Void ({selected.size})
             </Button>
           )}
-          {selected.size > 0 && (
-            <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)}>
-              <Trash2 className="mr-1 h-4 w-4" /> Delete ({selected.size})
-            </Button>
-          )}
           <Button variant="outline" size="sm" onClick={() => {
             downloadCSV(filtered.map(i => ({
               invoice_number: i.invoice_number,
@@ -647,16 +645,6 @@ export default function InvoicesPage() {
                               <Ban className="mr-2 h-4 w-4" /> Cancel / Void
                             </DropdownMenuItem>
                           )}
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInvoiceToDelete(inv);
-                              setSingleDeleteOpen(true);
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Invoice
-                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -698,6 +686,10 @@ export default function InvoicesPage() {
           const { data: existingClients } = await supabase.from("clients").select("id, display_name").eq("org_id", org!.id);
           const clientMap = new Map<string, string>();
           existingClients?.forEach(c => clientMap.set(c.display_name.toLowerCase(), c.id));
+
+          const { data: existingItems } = await supabase.from("items").select("id, name").eq("org_id", org!.id);
+          const itemMap = new Map<string, string>();
+          existingItems?.forEach(i => itemMap.set(i.name.toLowerCase(), i.id));
 
           const parseDate = (val: any) => {
             if (!val) return null;
@@ -808,7 +800,7 @@ export default function InvoicesPage() {
                   const itemAmount = gRow.item_amount ? parseFloat(gRow.item_amount) : (qty * rate);
 
                   // Handle GST % — support both 18 (percent) and 0.18 (decimal fraction)
-                  let rawGst = parseFloat(gRow.tax_rate) || 0;
+                  let rawGst = parseFloat(gRow.tax_rate) || parseFloat(gRow.igst_rate) || parseFloat(gRow.cgst_rate) * 2 || 0;
                   const gstPct = rawGst > 0 && rawGst < 1 ? rawGst * 100 : rawGst;
                   let taxId: string | null = null;
                   let taxAmount = 0;
@@ -830,8 +822,26 @@ export default function InvoicesPage() {
                     }
                   }
 
+                  // Auto-create item in items table if it doesn't exist
+                  let itemId = itemMap.get(gRow.item_name.toLowerCase());
+                  if (!itemId) {
+                    const { data: newItem } = await supabase.from("items").insert({
+                      org_id: org!.id,
+                      name: gRow.item_name,
+                      hsn_code: gRow.item_hsn || null,
+                      price: rate,
+                      unit: gRow.unit || null,
+                      tax_id: taxId
+                    }).select("id").single();
+                    if (newItem) {
+                      itemId = newItem.id;
+                      itemMap.set(gRow.item_name.toLowerCase(), itemId);
+                    }
+                  }
+
                   lineItems.push({
                     invoice_id: newInvoice.id,
+                    item_id: itemId || null,
                     name: gRow.item_name,
                     hsn_code: gRow.item_hsn || null,
                     quantity: qty,

@@ -305,13 +305,13 @@ export default function GrnBuilderPage() {
             </Select>
           </div>
           <div>
-            <Label>Warehouse</Label>
+            <Label>Branch (Warehouse)</Label>
             <div className="flex gap-2">
               <Select value={warehouseId || undefined} onValueChange={setWarehouseId}>
-                <SelectTrigger><SelectValue placeholder="Select warehouse" /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="Select branch (warehouse)" /></SelectTrigger>
                 <SelectContent className="z-50 max-h-60">
                   {warehouses.length === 0 ? (
-                    <SelectItem value="none" disabled>No warehouses found</SelectItem>
+                    <SelectItem value="none" disabled>No branch/warehouse found</SelectItem>
                   ) : (
                     warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name} {w.is_default ? "(Default)" : ""}</SelectItem>)
                   )}
@@ -322,7 +322,7 @@ export default function GrnBuilderPage() {
                 variant="outline"
                 size="icon"
                 onClick={() => setAddWarehouseOpen(true)}
-                title="Add new warehouse"
+                title="Add new branch (warehouse)"
                 className="shrink-0"
               >
                 <Plus className="h-4 w-4" />

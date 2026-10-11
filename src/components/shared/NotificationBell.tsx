@@ -66,7 +66,24 @@ export function NotificationBell() {
     const dismissed = getDismissedIds();
 
     try {
-      const [leavesRes, regRes, chatRes, notifsRes] = await Promise.allSettled([
+      // Resolve all potential HR/Admin IDs for the organization
+      const hrIdSet = new Set<string>();
+      if (user?.id) hrIdSet.add(user.id);
+      if (org.owner_id) hrIdSet.add(org.owner_id);
+
+      const { data: hrEmps } = await (supabase as any)
+        .from("employees")
+        .select("id, auth_user_id, designation")
+        .eq("org_id", org.id)
+        .or("designation.ilike.%hr%,designation.ilike.%admin%,designation.ilike.%owner%");
+
+      (hrEmps || []).forEach((e: any) => {
+        if (e.id) hrIdSet.add(e.id);
+        if (e.auth_user_id) hrIdSet.add(e.auth_user_id);
+      });
+      const targetHrIds = Array.from(hrIdSet);
+
+      const [leavesRes, regRes, chatRes, notifsRes, allEmpsRes] = await Promise.allSettled([
         // 1. Pending Leaves (Leave ka msg)
         supabase
           .from("leaves")
@@ -85,14 +102,21 @@ export function NotificationBell() {
           .order("created_at", { ascending: false })
           .limit(10),
 
-        // 3. Unread Chat Messages (Chat ka msg)
-        supabase
-          .from("chat_messages")
-          .select("id, sender_id, message, created_at")
-          .eq("org_id", org.id)
-          .eq("is_read", false)
-          .order("created_at", { ascending: false })
-          .limit(10),
+        // 3. Unread Chat Messages (Chat ka msg - directed to any HR identity or unread in org)
+        targetHrIds.length > 0
+          ? (supabase as any)
+              .from("chat_messages")
+              .select("id, sender_id, receiver_id, message, is_read, status, created_at")
+              .eq("org_id", org.id)
+              .in("receiver_id", targetHrIds)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : (supabase as any)
+              .from("chat_messages")
+              .select("id, sender_id, receiver_id, message, is_read, status, created_at")
+              .eq("org_id", org.id)
+              .order("created_at", { ascending: false })
+              .limit(20),
 
         // 4. Notifications Table
         supabase
@@ -101,9 +125,22 @@ export function NotificationBell() {
           .eq("org_id", org.id)
           .order("created_at", { ascending: false })
           .limit(15),
+
+        // 5. Employees list for resolving names
+        supabase
+          .from("employees")
+          .select("id, name, auth_user_id")
+          .eq("org_id", org.id),
       ]);
 
       const items: NotificationItem[] = [];
+
+      const empList: any[] = allEmpsRes.status === "fulfilled" && allEmpsRes.value.data ? allEmpsRes.value.data : [];
+      const empNameMap = new Map<string, string>();
+      for (const e of empList) {
+        if (e.id && e.name) empNameMap.set(e.id, e.name);
+        if (e.auth_user_id && e.name) empNameMap.set(e.auth_user_id, e.name);
+      }
 
       // Process Leaves
       if (leavesRes.status === "fulfilled" && leavesRes.value.data) {
@@ -133,7 +170,7 @@ export function NotificationBell() {
               title: "Attendance Regularization",
               message: `${empName} requested regularization for ${r.date}. Reason: ${r.reason || "Not specified"}`,
               time: r.created_at || new Date().toISOString(),
-              route: "/attendance",
+              route: "/attendance?tab=regularizations",
             });
           }
         }
@@ -142,14 +179,17 @@ export function NotificationBell() {
       // Process Chats
       if (chatRes.status === "fulfilled" && chatRes.value.data) {
         for (const c of chatRes.value.data) {
-          if (c.sender_id !== user?.id && !dismissed.has(`chat-${c.id}`)) {
+          const isUnread = c.status === "sent" || c.is_read === false;
+          const isFromSelf = c.sender_id === user?.id || targetHrIds.includes(c.sender_id);
+          if (isUnread && !isFromSelf && !dismissed.has(`chat-${c.id}`)) {
+            const senderName = empNameMap.get(c.sender_id) || "Employee";
             items.push({
               id: `chat-${c.id}`,
               source: "chat",
-              title: "New Team Chat Message",
+              title: `New Message from ${senderName}`,
               message: c.message?.slice(0, 100) || "You have a new message",
               time: c.created_at || new Date().toISOString(),
-              route: "/chats",
+              route: "/attendance?tab=hr-chat",
             });
           }
         }
@@ -162,7 +202,7 @@ export function NotificationBell() {
             let route = "/dashboard";
             if (n.type?.includes("leave")) route = "/leaves";
             else if (n.type?.includes("attendance")) route = "/attendance";
-            else if (n.type?.includes("chat")) route = "/chats";
+            else if (n.type?.includes("chat")) route = "/attendance?tab=hr-chat";
             else if (n.type?.includes("invoice")) route = "/invoices";
 
             items.push({
@@ -185,13 +225,33 @@ export function NotificationBell() {
     } finally {
       setLoading(false);
     }
-  }, [org?.id, user?.id, getDismissedIds]);
+  }, [org?.id, org?.owner_id, user?.id, getDismissedIds]);
 
   useEffect(() => {
     loadNotifications();
-    const interval = setInterval(loadNotifications, 45000);
-    return () => clearInterval(interval);
-  }, [loadNotifications]);
+    const interval = setInterval(loadNotifications, 10000);
+
+    const channel = supabase
+      .channel(`notification-bell-${org?.id || "default"}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "chat_messages" }, () => {
+        loadNotifications();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "attendance_regularizations" }, () => {
+        loadNotifications();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "leaves" }, () => {
+        loadNotifications();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => {
+        loadNotifications();
+      })
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(channel);
+    };
+  }, [loadNotifications, org?.id]);
 
   // Click & Auto-Delete logic (Case 35: open krte hi us cheez ko auto delete ho jaye)
   const handleOpenAndDismiss = async (item: NotificationItem) => {
@@ -206,7 +266,7 @@ export function NotificationBell() {
         await supabase.from("notifications").delete().eq("id", rawId);
       } else if (item.source === "chat") {
         const rawId = item.id.replace("chat-", "");
-        await supabase.from("chat_messages").update({ is_read: true }).eq("id", rawId);
+        await (supabase as any).from("chat_messages").update({ status: "read", is_read: true }).eq("id", rawId);
       }
     } catch (e) {
       console.error("Failed to auto-delete notification from backend:", e);
@@ -227,7 +287,7 @@ export function NotificationBell() {
       if (org?.id) {
         await Promise.allSettled([
           supabase.from("notifications").delete().eq("org_id", org.id),
-          supabase.from("chat_messages").update({ is_read: true }).eq("org_id", org.id),
+          (supabase as any).from("chat_messages").update({ status: "read", is_read: true }).eq("org_id", org.id),
         ]);
       }
     } catch (e) {

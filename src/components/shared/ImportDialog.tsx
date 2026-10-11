@@ -11,6 +11,7 @@ import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download } from "lu
 import { useToast } from "@/hooks/use-toast";
 import Papa from "papaparse";
 import ExcelJS from "exceljs";
+import * as XLSX from "xlsx";
 
 export interface ImportField {
   key: string;
@@ -88,57 +89,55 @@ export function ImportDialog({ open, onOpenChange, fields, entityName, onImport,
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const wb = new ExcelJS.Workbook();
-          await wb.xlsx.load(e.target?.result as ArrayBuffer);
-          const ws = wb.worksheets[0];
-          if (!ws || ws.rowCount < 2) { toast({ title: "Empty spreadsheet", variant: "destructive" }); return; }
-          const headerRow = ws.getRow(1).values as any[];
+          const data = e.target?.result as string;
+          const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+          const firstSheetName = workbook.SheetNames[0];
+          if (!firstSheetName) { toast({ title: "Empty spreadsheet", variant: "destructive" }); return; }
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+          
+          if (!rows || rows.length < 2) { toast({ title: "Empty spreadsheet", variant: "destructive" }); return; }
+          
+          const headerRow = rows[0] || [];
           const keys: string[] = [];
-          for (let i = 1; i < headerRow.length; i++) {
+          for (let i = 0; i < headerRow.length; i++) {
             const v = headerRow[i];
-            keys.push(v == null ? `Column ${i}` : String(v));
+            keys.push(v == null ? `Column ${i}` : String(v).trim());
           }
-          const rows: Record<string, any>[] = [];
-          for (let r = 2; r <= ws.rowCount; r++) {
-            const rowVals = ws.getRow(r).values as any[];
+          
+          const parsedRows: Record<string, any>[] = [];
+          for (let r = 1; r < rows.length; r++) {
+            const rowVals = rows[r] || [];
             const obj: Record<string, any> = {};
             let hasValue = false;
             keys.forEach((k, idx) => {
-              const cell = rowVals[idx + 1];
-              let val: any = cell;
-              if (cell && typeof cell === "object" && !(cell instanceof Date)) {
-                if (cell.text != null) val = cell.text;
-                else if (cell.value != null) val = cell.value;
-                else if (cell.result != null) val = cell.result;
-                else if (cell.hyperlink != null) val = String(cell.text || cell.hyperlink).replace(/^tel:/i, "").replace(/^mailto:/i, "");
-                else if (Array.isArray(cell.richText)) val = cell.richText.map((rt: any) => (rt && rt.text) || "").join("");
-                else {
-                  const str = String(cell).trim();
-                  val = str !== "[object Object]" ? str : "";
-                }
-              }
+              let val = rowVals[idx];
               if (val instanceof Date) {
                  if (!isNaN(val.getTime())) {
                    val = new Date(val.getTime() - val.getTimezoneOffset() * 60000).toISOString().split('T')[0];
                  } else {
                    val = "";
                  }
+              } else if (val !== undefined && val !== null) {
+                 val = String(val).trim();
               }
               if (val !== undefined && val !== null && val !== "") hasValue = true;
               obj[k] = val ?? "";
             });
-            if (hasValue) rows.push(obj);
+            if (hasValue) parsedRows.push(obj);
           }
-          if (!rows.length) { toast({ title: "Empty spreadsheet", variant: "destructive" }); return; }
+          
+          if (!parsedRows.length) { toast({ title: "Empty spreadsheet", variant: "destructive" }); return; }
           setHeaders(keys);
-          setRawData(rows);
+          setRawData(parsedRows);
           autoMap(keys);
           setStep("map");
-        } catch {
-          toast({ title: "Failed to parse spreadsheet", variant: "destructive" });
+        } catch (err: any) {
+          console.error("Spreadsheet parse error:", err);
+          toast({ title: "Failed to parse spreadsheet", description: err?.message || "Unknown error", variant: "destructive" });
         }
       };
-      reader.readAsArrayBuffer(file);
+      reader.readAsBinaryString(file);
     } else {
       toast({ title: "Unsupported format", description: "Use CSV, Excel (.xlsx), or JSON", variant: "destructive" });
     }

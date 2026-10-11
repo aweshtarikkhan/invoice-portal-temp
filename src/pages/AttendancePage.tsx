@@ -115,11 +115,37 @@ export default function AttendancePage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   // --- HR Chat state ---
-  const [activeTab, setActiveTab] = useState("monthly");
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "hr-chat" || tabParam === "chat") return "hr-chat";
+      if (tabParam === "regularizations") return "regularizations";
+      if (tabParam === "daily") return "daily";
+      if (tabParam === "roster") return "roster";
+    } catch {}
+    return "monthly";
+  });
   const [hrEmployee, setHrEmployee] = useState<any>(null);
   const [chatSelectedEmp, setChatSelectedEmp] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
+  // Respond to URL query changes dynamically
+  useEffect(() => {
+    const handleUrlTab = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tabParam = params.get("tab");
+        if (tabParam === "hr-chat" || tabParam === "chat") setActiveTab("hr-chat");
+        else if (tabParam === "regularizations") setActiveTab("regularizations");
+        else if (tabParam === "daily") setActiveTab("daily");
+        else if (tabParam === "roster") setActiveTab("roster");
+      } catch {}
+    };
+    handleUrlTab();
+    window.addEventListener("popstate", handleUrlTab);
+    return () => window.removeEventListener("popstate", handleUrlTab);
+  }, []);
   const [chatSending, setChatSending] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -482,10 +508,11 @@ export default function AttendancePage() {
   // --- HR Chat: load unread counts for sidebar badges ---
   const loadUnreadCounts = async () => {
     if (!hrEmployee) return;
+    const hrIds = [hrEmployee.id, hrEmployee.auth_user_id].filter(Boolean);
     const { data } = await (supabase as any)
       .from("chat_messages")
       .select("sender_id")
-      .eq("receiver_id", hrEmployee.id)
+      .in("receiver_id", hrIds)
       .eq("status", "sent");
     const counts: Record<string, number> = {};
     (data || []).forEach((m: any) => {
@@ -500,12 +527,8 @@ export default function AttendancePage() {
 
   // Synchronize unread badge with sidebar
   useEffect(() => {
-    if (activeTab === "hr-chat") {
-      window.dispatchEvent(new CustomEvent("hr-chat-unread", { detail: { count: 0 } }));
-    } else {
-      window.dispatchEvent(new CustomEvent("hr-chat-unread", { detail: { count: totalUnread } }));
-    }
-  }, [totalUnread, activeTab]);
+    window.dispatchEvent(new CustomEvent("hr-chat-unread", { detail: { count: totalUnread } }));
+  }, [totalUnread]);
 
   // Dynamic sorting: whoever sent the latest message or has unread messages jumps to the TOP!
   const sortedChatEmployees = useMemo(() => {
@@ -561,12 +584,20 @@ export default function AttendancePage() {
     let isSubscribed = true;
     const loadMsgs = async (showLoading = true) => {
       if (showLoading) setChatLoading(true);
+      let orQuery = `and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.id})`;
+      if (hrEmployee.auth_user_id && hrEmployee.auth_user_id !== hrEmployee.id) {
+        orQuery += `,and(sender_id.eq.${hrEmployee.auth_user_id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.auth_user_id})`;
+      }
+      if (chatSelectedEmp.auth_user_id && chatSelectedEmp.auth_user_id !== chatSelectedEmp.id) {
+        orQuery += `,and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.auth_user_id}),and(sender_id.eq.${chatSelectedEmp.auth_user_id},receiver_id.eq.${hrEmployee.id})`;
+        if (hrEmployee.auth_user_id && hrEmployee.auth_user_id !== hrEmployee.id) {
+          orQuery += `,and(sender_id.eq.${hrEmployee.auth_user_id},receiver_id.eq.${chatSelectedEmp.auth_user_id}),and(sender_id.eq.${chatSelectedEmp.auth_user_id},receiver_id.eq.${hrEmployee.auth_user_id})`;
+        }
+      }
       const { data } = await (supabase as any)
         .from("chat_messages")
         .select("*")
-        .or(
-          `and(sender_id.eq.${hrEmployee.id},receiver_id.eq.${chatSelectedEmp.id}),and(sender_id.eq.${chatSelectedEmp.id},receiver_id.eq.${hrEmployee.id})`
-        )
+        .or(orQuery)
         .order("created_at", { ascending: true });
       if (!isSubscribed) return;
       if (data) {
@@ -596,11 +627,13 @@ export default function AttendancePage() {
         });
       }
       // Mark as read immediately
+      const hrIds = [hrEmployee.id, hrEmployee.auth_user_id].filter(Boolean);
+      const empIds = [chatSelectedEmp.id, chatSelectedEmp.auth_user_id].filter(Boolean);
       await (supabase as any)
         .from("chat_messages")
         .update({ status: "read" })
-        .eq("sender_id", chatSelectedEmp.id)
-        .eq("receiver_id", hrEmployee.id)
+        .in("sender_id", empIds)
+        .in("receiver_id", hrIds)
         .eq("status", "sent");
       setUnreadMap((prev) => ({ ...prev, [chatSelectedEmp.id]: 0 }));
       if (showLoading && isSubscribed) setChatLoading(false);
@@ -633,13 +666,18 @@ export default function AttendancePage() {
         { event: "INSERT", schema: "public", table: "chat_messages" },
         async (payload) => {
           const msg = payload.new as any;
+          const hrAuthId = hrEmployee.auth_user_id;
           const isForHR =
-            msg.receiver_id === hrEmployee.id || msg.sender_id === hrEmployee.id;
+            msg.receiver_id === hrEmployee.id || msg.sender_id === hrEmployee.id ||
+            (hrAuthId && (msg.receiver_id === hrAuthId || msg.sender_id === hrAuthId));
           if (!isForHR || msg.group_id) return;
 
           const activeEmp = chatSelectedEmpRef.current;
-          const otherId =
-            msg.sender_id === hrEmployee.id ? msg.receiver_id : msg.sender_id;
+          let otherId = msg.sender_id === hrEmployee.id || msg.sender_id === hrAuthId ? msg.receiver_id : msg.sender_id;
+
+          // Resolve otherId from auth_user_id to employee.id if needed so it matches the UI lists
+          const matchedEmp = employees.find(e => e.id === otherId || (e.auth_user_id && e.auth_user_id === otherId));
+          if (matchedEmp) otherId = matchedEmp.id;
 
           // Update last activity timestamp so this employee immediately jumps to top
           setLastMessageTimeMap((prev) => ({ ...prev, [otherId]: Date.now() }));
@@ -1573,7 +1611,7 @@ export default function AttendancePage() {
       </div>
 
       
-      <Tabs value={activeTab} onValueChange={(val) => { setActiveTab(val); if (val === 'hr-chat') { window.dispatchEvent(new CustomEvent('hr-chat-unread', { detail: { count: 0 } })); } }} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="mb-4 flex-wrap">
           <TabsTrigger value="monthly">Monthly Overview</TabsTrigger>
           <TabsTrigger value="roster">Roster Planner</TabsTrigger>

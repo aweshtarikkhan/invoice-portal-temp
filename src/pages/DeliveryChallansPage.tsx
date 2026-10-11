@@ -31,7 +31,7 @@ export default function DeliveryChallansPage() {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from("delivery_challans")
-      .select("*, clients(*), warehouses(*), delivery_challan_lines(*)")
+      .select("*, clients(*), branches(*), delivery_challan_lines(*)")
       .eq("org_id", org.id)
       .order("challan_date", { ascending: false });
 
@@ -321,7 +321,7 @@ export default function DeliveryChallansPage() {
           }))}
           org={org}
           client={selectedChallan.clients}
-          warehouse={selectedChallan.warehouses}
+          branch={selectedChallan.branches}
           onEdit={() => {
             navigate(`/delivery-challans/${selectedChallan.id}/edit`);
           }}

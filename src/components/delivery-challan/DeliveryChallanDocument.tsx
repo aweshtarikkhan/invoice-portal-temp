@@ -31,11 +31,11 @@ export interface DeliveryChallanDocumentProps {
   lines: DeliveryChallanLineData[];
   org: any;
   client: any;
-  warehouse?: any | null;
+  branch?: any | null;
 }
 
 export const DeliveryChallanDocument = forwardRef<HTMLDivElement, DeliveryChallanDocumentProps>(
-  ({ challan, lines, org, client, warehouse }, ref) => {
+  ({ challan, lines, org, client, branch }, ref) => {
     const formattedDate = challan.challan_date
       ? (() => {
           try {
@@ -55,11 +55,10 @@ export const DeliveryChallanDocument = forwardRef<HTMLDivElement, DeliveryChalla
       ? [org?.address?.street, org?.address?.city, org?.address?.state, org?.address?.pincode].filter(Boolean).join(", ")
       : (org?.address || "");
 
-    // Warehouse / Dispatch From details
-    const whName = warehouse?.name || "";
-    const whAddr = warehouse?.address || {};
-    const whGst = whAddr.gstin || (whAddr.gst_type === "same" ? orgGst : "");
-    const whLocation = [whAddr.street, whAddr.city, whAddr.state, whAddr.pincode].filter(Boolean).join(", ");
+    // Branch / Dispatch From details
+    const whName = branch?.name || orgName;
+    const whGst = branch?.gstin || orgGst;
+    const whLocation = branch?.address || orgAddress;
 
     // Client / Consignee details
     const formatAddress = (addr: any): string => {

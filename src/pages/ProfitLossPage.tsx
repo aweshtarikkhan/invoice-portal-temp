@@ -24,6 +24,7 @@ export default function ProfitLossPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
+  const [billPayments, setBillPayments] = useState<any[]>([]);
   const [period, setPeriod] = useState("fy_current");
   const [loading, setLoading] = useState(true);
 
@@ -37,14 +38,16 @@ export default function ProfitLossPage() {
     if (!org?.id) return;
     const fetch = async () => {
       setLoading(true);
-      const [inv, pay, exp] = await Promise.all([
+      const [inv, pay, exp, bp] = await Promise.all([
         supabase.from("invoices").select("total, total_tax, total_discount, issue_date, status").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("amount, payment_date").eq("org_id", org.id),
         supabase.from("business_expenses").select("amount, expense_date, category").eq("org_id", org.id),
+        (supabase as any).from("bill_payments").select("amount, payment_date, notes, reference").eq("org_id", org.id),
       ]);
       setInvoices(inv.data || []);
       setPayments(pay.data || []);
       setExpenses(exp.data || []);
+      setBillPayments(bp.data || []);
       setLoading(false);
     };
     fetch();
@@ -71,11 +74,21 @@ export default function ProfitLossPage() {
     return months.map((m) => {
       const revenue = payments.filter(p => isWithinInterval(new Date(p.payment_date), { start: m.start, end: m.end }))
         .reduce((s, p) => s + Number(p.amount), 0);
-      const expense = expenses.filter(e => isWithinInterval(new Date(e.expense_date), { start: m.start, end: m.end }))
+      const bizExp = expenses.filter(e => isWithinInterval(new Date(e.expense_date), { start: m.start, end: m.end }))
         .reduce((s, e) => s + Number(e.amount), 0);
-      return { name: m.label, revenue, expense, profit: revenue - expense };
+      const vendorExp = billPayments.filter(bp => isWithinInterval(new Date(bp.payment_date), { start: m.start, end: m.end }))
+        .reduce((s, bp) => s + Number(bp.amount), 0);
+      const expense = bizExp + vendorExp;
+      return {
+        name: m.label,
+        revenue,
+        expense,
+        profit: revenue - expense,
+        bizExp,
+        vendorExp,
+      };
     });
-  }, [months, payments, expenses]);
+  }, [months, payments, expenses, billPayments]);
 
   const totals = useMemo(() => {
     const totalRevenue = monthlyData.reduce((s, m) => s + m.revenue, 0);
@@ -111,8 +124,15 @@ export default function ProfitLossPage() {
         map[e.category] = (map[e.category] || 0) + Number(e.amount);
       }
     });
+    billPayments.forEach(bp => {
+      const d = new Date(bp.payment_date);
+      if (d >= firstMonthStart && d <= lastMonthEnd) {
+        const cat = "Vendor Payments / Purchases";
+        map[cat] = (map[cat] || 0) + Number(bp.amount);
+      }
+    });
     return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([category, amount]) => ({ category, amount }));
-  }, [expenses, months]);
+  }, [expenses, billPayments, months]);
 
   if (loading) return <div className="p-6">Loading P&L report...</div>;
 
@@ -208,7 +228,7 @@ export default function ProfitLossPage() {
             <BarChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-              <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+              <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Legend />
               <Bar dataKey="revenue" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
@@ -226,7 +246,7 @@ export default function ProfitLossPage() {
             <AreaChart data={monthlyData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-              <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+              <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
               <Tooltip formatter={(v: number) => fmt(v)} />
               <Area type="monotone" dataKey="profit" name="Net Profit" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} />
             </AreaChart>

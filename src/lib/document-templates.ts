@@ -129,3 +129,77 @@ export function getPrintPageCSS(paperSize?: string): string {
   .no-print, header, nav, aside, [data-sidebar], .sidebar-trigger { display: none !important; }
 }`;
 }
+
+/**
+ * Dynamic typography helper for company name display on invoices & quotations.
+ * Automatically scales font size so that longer company names (e.g. 50-70+ chars)
+ * neatly fit in at most 2 lines, preventing unsightly 3-5 line wraps.
+ */
+export function getAdaptiveCompanyNameStyle(name?: string): {
+  className: string;
+  fontSize: string;
+  lineHeight: string;
+} {
+  const len = (name || "").trim().length;
+  if (len > 50) {
+    return {
+      className: "text-[12.5px] leading-[1.2] font-black uppercase tracking-tight",
+      fontSize: "12.5px",
+      lineHeight: "1.2",
+    };
+  }
+  if (len > 35) {
+    return {
+      className: "text-[14px] leading-[1.2] font-black uppercase tracking-tight",
+      fontSize: "14px",
+      lineHeight: "1.2",
+    };
+  }
+  if (len > 20) {
+    return {
+      className: "text-[16.5px] leading-[1.2] font-black uppercase tracking-tight",
+      fontSize: "16.5px",
+      lineHeight: "1.2",
+    };
+  }
+  return {
+    className: "text-[21px] leading-[1.2] font-black uppercase tracking-tight",
+    fontSize: "21px",
+    lineHeight: "1.2",
+  };
+}
+
+/**
+ * Splits a company name gracefully into at most 2 balanced lines across words,
+ * ensuring lengthy names never spill into 3 or 4 lines.
+ */
+export function splitCompanyNameIntoTwoLines(name?: string): { line1: string; line2?: string } {
+  if (!name) return { line1: "" };
+  const trimmed = name.trim();
+  if (trimmed.includes("\n")) {
+    const parts = trimmed.split("\n");
+    return { line1: parts[0], line2: parts.slice(1).join(" ") };
+  }
+  if (trimmed.length <= 32) {
+    return { line1: trimmed };
+  }
+  const words = trimmed.split(/\s+/);
+  if (words.length <= 1) {
+    return { line1: trimmed };
+  }
+  const mid = trimmed.length / 2;
+  let bestIdx = 1;
+  let bestDiff = Infinity;
+  let runningLen = 0;
+  for (let i = 0; i < words.length - 1; i++) {
+    runningLen += words[i].length + (i > 0 ? 1 : 0);
+    const diff = Math.abs(runningLen - mid);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestIdx = i + 1;
+    }
+  }
+  const line1 = words.slice(0, bestIdx).join(" ");
+  const line2 = words.slice(bestIdx).join(" ");
+  return { line1, line2 };
+}

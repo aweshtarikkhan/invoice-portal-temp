@@ -160,3 +160,128 @@ export async function revertPaymentBankingTransaction(paymentId: string) {
     console.error("Error in revertPaymentBankingTransaction:", err);
   }
 }
+
+/**
+ * Record a debit transaction in bank_transactions and decrement bank account balance
+ * when a payment is made to a vendor (bill_payment).
+ */
+export async function recordVendorPaymentBankingTransaction(params: {
+  orgId: string;
+  bankAccountId: string;
+  amount: number;
+  paymentDate: string;
+  billNumber?: string;
+  vendorName?: string;
+  reference?: string;
+  paymentId?: string;
+  notes?: string;
+}) {
+  const {
+    orgId,
+    bankAccountId,
+    amount,
+    paymentDate,
+    billNumber,
+    vendorName,
+    reference,
+    paymentId,
+    notes,
+  } = params;
+
+  if (!orgId || !bankAccountId || !amount || amount <= 0) return null;
+
+  try {
+    const descParts = ["Payment made"];
+    if (billNumber) descParts.push(`for Bill ${billNumber}`);
+    if (vendorName) descParts.push(`to ${vendorName}`);
+    const description = descParts.join(" ");
+
+    // 1. Fetch current bank account to get balance_after
+    const { data: account } = await (supabase as any)
+      .from("bank_accounts")
+      .select("current_balance")
+      .eq("id", bankAccountId)
+      .single();
+
+    const previousBalance = Number(account?.current_balance || 0);
+    const newBalance = previousBalance - Number(amount);
+
+    // 2. Insert into bank_transactions
+    const { data: txn, error: txnErr } = await (supabase as any)
+      .from("bank_transactions")
+      .insert({
+        org_id: orgId,
+        bank_account_id: bankAccountId,
+        txn_date: paymentDate || new Date().toISOString().slice(0, 10),
+        amount: Number(amount),
+        direction: "debit",
+        description,
+        reference: reference || null,
+        counterparty: vendorName || null,
+        balance_after: newBalance,
+        source: "bill_payment",
+        reconciled: true,
+        reconciled_at: new Date().toISOString(),
+        matched_type: "bill_payment",
+        matched_id: paymentId || null,
+        notes: notes || null,
+      })
+      .select()
+      .single();
+
+    if (txnErr) {
+      console.error("Error creating bank_transaction for vendor payment:", txnErr);
+    }
+
+    // 3. Update bank account balance
+    await (supabase as any)
+      .from("bank_accounts")
+      .update({
+        current_balance: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", bankAccountId);
+
+    return txn;
+  } catch (err) {
+    console.error("Exception in recordVendorPaymentBankingTransaction:", err);
+    return null;
+  }
+}
+
+/**
+ * Revert a bank transaction when a vendor payment (bill_payment) is deleted or removed.
+ */
+export async function revertVendorPaymentBankingTransaction(paymentId: string) {
+  try {
+    const { data: txns } = await (supabase as any)
+      .from("bank_transactions")
+      .select("*")
+      .eq("matched_id", paymentId)
+      .eq("source", "bill_payment");
+
+    for (const t of txns || []) {
+      const { data: acct } = await (supabase as any)
+        .from("bank_accounts")
+        .select("current_balance")
+        .eq("id", t.bank_account_id)
+        .single();
+
+      if (acct) {
+        // Since it was a debit (balance deducted), reversion means adding back the amount
+        const updatedBal = Number(acct.current_balance || 0) + Number(t.amount);
+        await (supabase as any)
+          .from("bank_accounts")
+          .update({ current_balance: updatedBal })
+          .eq("id", t.bank_account_id);
+      }
+
+      await (supabase as any)
+        .from("bank_transactions")
+        .delete()
+        .eq("id", t.id);
+    }
+  } catch (err) {
+    console.error("Error in revertVendorPaymentBankingTransaction:", err);
+  }
+}

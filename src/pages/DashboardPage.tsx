@@ -85,6 +85,7 @@ export default function DashboardPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
+  const [billPayments, setBillPayments] = useState<any[]>([]);
   const [employees, setEmployees] = useState<any[]>([]);
   const [todayHRStats, setTodayHRStats] = useState({ present: 0, absent: 0, onLeave: 0, late: 0, total: 0 });
   const [leaves, setLeaves] = useState<any[]>([]);
@@ -99,11 +100,12 @@ export default function DashboardPage() {
 
       const todayStr = format(new Date(), "yyyy-MM-dd");
 
-      const [invRes, payRes, expRes, billRes, empRes, leadRes, actRes, hrAttRes, clockinRes, leavesRes, shiftsRes, empShiftsRes, regRes] = await Promise.all([
+      const [invRes, payRes, expRes, billRes, billPayRes, empRes, leadRes, actRes, hrAttRes, clockinRes, leavesRes, shiftsRes, empShiftsRes, regRes] = await Promise.all([
         supabase.from("invoices").select("*").eq("org_id", org.id).neq("status", "void").neq("status", "draft"),
         supabase.from("payments").select("*").eq("org_id", org.id),
         supabase.from("business_expenses").select("*").eq("org_id", org.id),
         supabase.from("bills").select("*").eq("org_id", org.id),
+        (supabase as any).from("bill_payments").select("*").eq("org_id", org.id),
         supabase.from("employees").select("*").eq("org_id", org.id).eq("is_active", true),
         supabase.from("leads").select("*").eq("org_id", org.id),
         supabase.from("activities").select("*").eq("org_id", org.id),
@@ -120,6 +122,7 @@ export default function DashboardPage() {
       setPayments(payRes.data || []);
       setExpenses(expRes.data || []);
       setBills(billRes.data || []);
+      setBillPayments(billPayRes.data || []);
       setEmployees(empRes.data || []);
       setLeads(leadRes.data || []);
       setActivities(actRes.data || []);
@@ -245,13 +248,16 @@ export default function DashboardPage() {
   const filteredInvoices = invoices.filter(i => isInRange(i.issue_date || i.created_at));
   const filteredPayments = payments.filter(p => isInRange(p.payment_date || p.created_at));
   const filteredExpenses = expenses.filter(e => isInRange(e.expense_date || e.created_at));
+  const filteredBillPayments = billPayments.filter(bp => isInRange(bp.payment_date || bp.created_at));
   
   // KPI Calculations
   const totalRevenue = filteredInvoices.reduce((acc, curr) => acc + Number(curr.total || 0), 0);
   const paymentReceived = filteredPayments
     .filter(p => !isAdvanceAdjustmentPayment(p))
     .reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-  const totalExpenses = filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalExpenses =
+    filteredExpenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0) +
+    filteredBillPayments.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const totalOutstanding = filteredInvoices.reduce((acc, curr) => acc + Number(curr.balance_due || 0), 0);
   
   // Real Action Required Calculations
@@ -299,6 +305,10 @@ export default function DashboardPage() {
   filteredExpenses.forEach(exp => {
     const dStr = format(new Date(exp.expense_date || exp.created_at), "MMM dd");
     if (chartDataMap[dStr]) chartDataMap[dStr].expense += Number(exp.amount || 0);
+  });
+  filteredBillPayments.forEach(bp => {
+    const dStr = format(new Date(bp.payment_date || bp.created_at), "MMM dd");
+    if (chartDataMap[dStr]) chartDataMap[dStr].expense += Number(bp.amount || 0);
   });
   const areaChartData = Object.values(chartDataMap);
 
@@ -492,7 +502,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₹${val/1000}k`} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value, name) => [`₹${Number(value).toLocaleString('en-IN')}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
                     <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorRev)" />
                   </AreaChart>
@@ -512,7 +522,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₹${val/1000}k`} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value, name) => [`₹${Number(value).toLocaleString('en-IN')}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
                     <Area type="monotone" dataKey="expense" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorExp)" />
                   </AreaChart>
@@ -532,7 +542,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₹${val/1000}k`} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value, name) => [`₹${Number(value).toLocaleString('en-IN')}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
                     <Area type="monotone" dataKey="collections" stroke="#3b82f6" strokeWidth={2} fillOpacity={1} fill="url(#colorCol)" />
                   </AreaChart>
@@ -552,7 +562,7 @@ export default function DashboardPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                     <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₹${val/1000}k`} />
+                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <RechartsTooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} formatter={(value, name) => [`₹${Number(value).toLocaleString('en-IN')}`, String(name).charAt(0).toUpperCase() + String(name).slice(1)]} />
                     <Area type="monotone" dataKey="profit" stroke="#8b5cf6" strokeWidth={2} fillOpacity={1} fill="url(#colorPro)" />
                   </AreaChart>

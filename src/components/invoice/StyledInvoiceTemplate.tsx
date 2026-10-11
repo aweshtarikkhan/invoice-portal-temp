@@ -1,4 +1,5 @@
 import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { getAdaptiveCompanyNameStyle, splitCompanyNameIntoTwoLines } from "@/lib/document-templates";
 import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { QRCodeSVG } from "qrcode.react";
 import { CorporateBlueInvoiceTemplate } from "./CorporateBlueInvoiceTemplate";
@@ -74,7 +75,8 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
   const font = (org?.template_font as string) || "Inter, system-ui, sans-serif";
   const showLogo = org?.template_show_logo !== false;
 
-  const clientName = (invoice.clients as any)?.display_name || "";
+  const { line1: orgLine1, line2: orgLine2 } = splitCompanyNameIntoTwoLines(org?.name);
+  const clientName = (invoice.clients as any)?.display_name || (invoice.clients as any)?.company_name || (invoice.clients as any)?.name || (invoice as any)?.client_name || "";
   const clientGst = (invoice.clients as any)?.tax_number;
   const number = type === "estimate" ? invoice.estimate_number : (type === "po" ? invoice.po_number : invoice.invoice_number);
   const balanceDue = type === "estimate" ? Number(invoice.total) : Number(invoice.balance_due ?? invoice.total);
@@ -145,18 +147,21 @@ export function StyledInvoiceTemplate({ org, invoice, lines, fmt, type = "invoic
         fontFamily: font,
         fontSize: 12,
         lineHeight: 1.5,
-        padding: "20px 32px",
+        padding: "16px 24px",
         color: "#000",
         boxSizing: "border-box",
       }}
     >
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `2px solid ${accent}`, paddingBottom: 16, marginBottom: 20 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", borderBottom: `2px solid ${accent}`, paddingBottom: 16, marginBottom: 14 }}>
         <div>
           {showLogo && org?.logo_url && (
             <img src={org.logo_url} alt={org.name} style={{ maxHeight: 48, maxWidth: 130, objectFit: "contain", marginBottom: 8 }} />
           )}
-          <div style={{ fontWeight: 900, fontSize: 22, textTransform: "uppercase", letterSpacing: "-0.02em", color: accent, lineHeight: 1.1 }}>{org?.name}</div>
+          <div style={{ fontWeight: 900, fontSize: getAdaptiveCompanyNameStyle(org?.name).fontSize, textTransform: "uppercase", letterSpacing: "-0.02em", color: accent, lineHeight: getAdaptiveCompanyNameStyle(org?.name).lineHeight }}>
+            <div>{orgLine1}</div>
+            {orgLine2 && <div>{orgLine2}</div>}
+          </div>
           {addressLines.map((l, i) => (
             <div key={i} style={{ fontSize: 11, color: "#3f3f46" }}>{l}</div>
           ))}

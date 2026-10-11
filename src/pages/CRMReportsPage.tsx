@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/currency";
 import {
-  DollarSign,
+  IndianRupee,
   BarChart3,
   Download,
   FileText,

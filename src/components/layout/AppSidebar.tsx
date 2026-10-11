@@ -28,6 +28,7 @@ import {
   Boxes,
   UserCog,
   CalendarCheck,
+  Calendar,
   FileBarChart2,
   Truck,
   PackageCheck,
@@ -95,7 +96,8 @@ const purchaseItems = [
   { title: "Purchase Orders", url: "/purchase-orders", icon: ClipboardList, addUrl: "/purchase-orders/new" },
   { title: "Goods Receipt (GRN)", url: "/grns", icon: PackageCheck, addUrl: "/grns/new" },
   { title: "Purchase Invoice", url: "/purchase-invoices", icon: Receipt, addUrl: "/purchase-invoices/new" },
-  { title: "Debit Notes", url: "/debit-notes", icon: RotateCcw, addUrl: "/debit-notes/new" },
+  { title: "Vendor Payments", url: "/vendor-payments", icon: CreditCard, addUrl: "/vendor-payments/new" },
+  { title: "Purchase Returns", url: "/purchase-returns", icon: RotateCcw, addUrl: "/purchase-returns/new" },
   { title: "Expenses", url: "/expenses", icon: Coins, addUrl: "/expenses?add=1" },
 ];
 
@@ -125,6 +127,7 @@ const crmItems = [
   { title: "CRM Dashboard", url: "/crm-dashboard", icon: BarChart3, addUrl: null },
   { title: "CRM Reports", url: "/crm-reports", icon: BarChart3, addUrl: null },
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
+  { title: "Sales Team", url: "/crm-team", icon: Briefcase, addUrl: "/crm-team?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
 ];
@@ -180,22 +183,42 @@ export function AppSidebar() {
     let isMounted = true;
     const fetchCounts = async () => {
       try {
-        // 1. HR Chat unread
-        const { data: hrEmp } = await (supabase as any)
-          .from("employees")
-          .select("id")
-          .eq("org_id", org.id)
-          .or("designation.ilike.%hr%,designation.ilike.%admin%")
-          .limit(1)
-          .maybeSingle();
+        // 1. HR Chat unread: Resolve all potential HR/Admin IDs (employees + org owner + current user)
+        const hrIdSet = new Set<string>();
+        if (session?.user?.id) hrIdSet.add(session.user.id);
+        if (org.owner_id) hrIdSet.add(org.owner_id);
 
-        if (hrEmp && isMounted) {
-          const { count } = await (supabase as any)
+        const { data: hrEmps } = await (supabase as any)
+          .from("employees")
+          .select("id, auth_user_id, designation")
+          .eq("org_id", org.id)
+          .or("designation.ilike.%hr%,designation.ilike.%admin%,designation.ilike.%owner%");
+
+        (hrEmps || []).forEach((e: any) => {
+          if (e.id) hrIdSet.add(e.id);
+          if (e.auth_user_id) hrIdSet.add(e.auth_user_id);
+        });
+
+        const targetHrIds = Array.from(hrIdSet);
+        if (targetHrIds.length > 0 && isMounted) {
+          // Query unread messages sent to any HR ID
+          const currentUserId = session?.user?.id;
+          let chatQuery = (supabase as any)
             .from("chat_messages")
-            .select("id", { count: "exact", head: true })
-            .eq("receiver_id", hrEmp.id)
-            .eq("status", "sent");
-          if (isMounted) setUnreadHrChatCount(count || 0);
+            .select("id, status, is_read, sender_id", { count: "exact", head: false })
+            .eq("org_id", org.id)
+            .in("receiver_id", targetHrIds);
+
+          const { data: unreadRows } = await chatQuery;
+          if (isMounted && unreadRows) {
+            // Count messages that are unread (status === 'sent' or is_read === false) and not sent by current user
+            const unreadCount = unreadRows.filter((m: any) => 
+              (m.status === "sent" || m.is_read === false) &&
+              m.sender_id !== currentUserId &&
+              !targetHrIds.includes(m.sender_id)
+            ).length;
+            setUnreadHrChatCount(unreadCount);
+          }
         }
 
         // 2. Pending Regularizations
@@ -257,7 +280,7 @@ export function AppSidebar() {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [org?.id]);
+  }, [org?.id, org?.owner_id, session?.user?.id]);
 
   const toggleGroup = (key: string, isOpen: boolean) => {
     setOpenGroups(prev => ({ ...prev, [key]: !isOpen }));
@@ -339,7 +362,7 @@ export function AppSidebar() {
     }
 
     // Purchases & Banking
-    if (["/vendors", "/purchase-orders", "/grns", "/purchase-invoices", "/debit-notes", "/expenses", "/accounts", "/journal", "/bank-accounts", "/cash-flow"].some(u => url === u || url.startsWith(u + "/"))) {
+    if (["/vendors", "/purchase-orders", "/grns", "/purchase-invoices", "/vendor-payments", "/purchase-returns", "/debit-notes", "/expenses", "/accounts", "/journal", "/bank-accounts", "/cash-flow"].some(u => url === u || url.startsWith(u + "/"))) {
       return !hasPlan("accounting");
     }
 
@@ -371,12 +394,15 @@ export function AppSidebar() {
         label: g.label,
         isUpcoming: g.isUpcoming,
         isLocked: (!isSuiteActive && !isOutreachUnlocked && (!isGroupEnabled(g.key) || !platformFeatures.includes(g.key))) || !isGroupAccessible(g.key),
-        items: g.items.map(i => {
-          let itemIcon = ShoppingCart;
+        items: (ADMIN_GROUP_ITEMS[g.key]?.items || g.items).map(i => {
+          let itemIcon = typeof i.icon === "function" || typeof i.icon === "object" ? i.icon : ShoppingCart;
           if (i.icon === "Truck") itemIcon = Truck;
           if (i.icon === "ClipboardList") itemIcon = ClipboardList;
           if (i.icon === "PackageCheck") itemIcon = PackageCheck;
           if (i.icon === "Receipt") itemIcon = Receipt;
+          if (i.icon === "CreditCard") itemIcon = CreditCard;
+          if (i.icon === "RotateCcw") itemIcon = RotateCcw;
+          if (i.icon === "Coins") itemIcon = Coins;
           if (i.icon === "Landmark") itemIcon = Landmark;
           if (i.icon === "PieChart") itemIcon = PieChart;
           if (i.icon === "Building2") itemIcon = Building2;
@@ -386,18 +412,32 @@ export function AppSidebar() {
           if (i.icon === "Percent") itemIcon = Percent;
           if (i.icon === "UserCog") itemIcon = UserCog;
           if (i.icon === "CalendarCheck") itemIcon = CalendarCheck;
+          if (i.icon === "Calendar") itemIcon = Calendar;
           if (i.icon === "ScrollText") itemIcon = ScrollText;
           if (i.icon === "Calculator") itemIcon = Calculator;
           if (i.icon === "Users") itemIcon = Users;
+          if (i.icon === "Briefcase") itemIcon = Briefcase;
           if (i.icon === "BarChart3") itemIcon = BarChart3;
           if (i.icon === "Image") itemIcon = ImageIcon;
           if (i.icon === "BrainCircuit") itemIcon = BrainCircuit;
           if (i.icon === "MessageSquareQuote") itemIcon = MessageSquareQuote;
+          
+          const hasAddBtn = ["/warehouses", "/crm-team", "/leads", "/vendors", "/accounts"].includes(i.url);
+          let addUrl: string | null = i.addUrl !== undefined ? i.addUrl : null;
+          if (addUrl === null) {
+            if (i.url === "/vendor-payments") addUrl = "/vendor-payments/new";
+            else if (i.url === "/purchase-returns") addUrl = "/purchase-returns/new";
+            else if (i.url === "/purchase-invoices") addUrl = "/purchase-invoices/new";
+            else if (i.url === "/purchase-orders") addUrl = "/purchase-orders/new";
+            else if (i.url === "/grns") addUrl = "/grns/new";
+            else if (hasAddBtn) addUrl = `${i.url}?add=1`;
+          }
+          
           return {
             title: i.title,
             url: i.url,
             icon: itemIcon,
-            addUrl: i.url === "/warehouses" ? "/warehouses?add=1" : null
+            addUrl
           };
         })
       };
@@ -646,8 +686,13 @@ export function AppSidebar() {
                               {item.url === "/attendance" && (unreadHrChatCount > 0 || pendingRegularizationsCount > 0) && (
                                 <div className="flex items-center gap-1.5 ml-auto shrink-0">
                                   {pendingRegularizationsCount > 0 && (
-                                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-amber-500 text-white rounded-full">
+                                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-amber-500 text-white rounded-full" title={`${pendingRegularizationsCount} pending regularizations`}>
                                       {pendingRegularizationsCount}
+                                    </span>
+                                  )}
+                                  {unreadHrChatCount > 0 && (
+                                    <span className="px-1.5 py-0.2 text-[9px] font-bold bg-blue-500 text-white rounded-full" title={`${unreadHrChatCount} new HR chat messages`}>
+                                      {unreadHrChatCount > 9 ? "9+" : unreadHrChatCount}
                                     </span>
                                   )}
                                   <span className="relative flex h-2 w-2">

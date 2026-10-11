@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, Printer, Eye, MessageSquare, Download, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { AddClientDialog } from "@/components/shared/AddClientDialog";
-import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 import { DeliveryChallanModal } from "@/components/delivery-challan/DeliveryChallanModal";
 
 interface Line {
@@ -40,11 +39,10 @@ export default function DeliveryChallanBuilderPage() {
   const { toast } = useToast();
   const [clients, setClients] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
-  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [branches, setBranches] = useState<any[]>([]);
   const [clientId, setClientId] = useState(queryClientId || "");
   const [addClientOpen, setAddClientOpen] = useState(false);
-  const [warehouseId, setWarehouseId] = useState("");
-  const [addWarehouseOpen, setAddWarehouseOpen] = useState(false);
+  const [branchId, setBranchId] = useState("");
   const [number, setNumber] = useState("");
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [status, setStatus] = useState("dispatched");
@@ -71,30 +69,30 @@ export default function DeliveryChallanBuilderPage() {
   useEffect(() => {
     if (!org?.id) return;
     (async () => {
-      const [c, it, wh, o] = await Promise.all([
+      const [c, it, br, o] = await Promise.all([
         supabase.from("clients").select("*").eq("org_id", org.id).neq("status", "inactive").order("display_name"),
         supabase.from("items").select("id, name, unit, sku, hsn_code, track_batches, track_serials").eq("org_id", org.id).order("name"),
-        (supabase as any).from("warehouses").select("id, name, address, is_default").eq("org_id", org.id),
+        (supabase as any).from("branches").select("id, name, is_default").eq("org_id", org.id),
         supabase.from("organizations").select("dc_next_number, dc_prefix").eq("id", org.id).maybeSingle(),
       ]);
       setClients(c.data || []);
       setItems(it.data || []);
-      setWarehouses(wh.data || []);
+      setBranches(br.data || []);
 
       if (!id) {
         const prefix = o.data?.dc_prefix || "DC-";
         const next = o.data?.dc_next_number || 1;
         setNumber(formatSequenceNumber(prefix, next, "DC"));
-        // Default warehouse if exists
-        const defWh = wh.data?.find((w: any) => w.is_default);
-        if (defWh) setWarehouseId(defWh.id);
-        else if (wh.data && wh.data.length > 0) setWarehouseId(wh.data[0].id);
-        else setWarehouseId("default");
+        // Default branch if exists
+        const defBr = br.data?.find((b: any) => b.is_default);
+        if (defBr) setBranchId(defBr.id);
+        else if (br.data && br.data.length > 0) setBranchId(br.data[0].id);
+        else setBranchId("default");
       } else {
         const { data: d } = await (supabase as any).from("delivery_challans").select("*").eq("id", id).maybeSingle();
         const { data: l } = await (supabase as any).from("delivery_challan_lines").select("*").eq("dc_id", id).order("sort_order");
         if (d) {
-          setClientId(d.client_id || ""); setWarehouseId(d.warehouse_id || "");
+          setClientId(d.client_id || ""); setBranchId(d.branch_id || "");
           setNumber(d.challan_number); setDate(d.challan_date); setStatus(d.status);
           setVehicleNumber(d.vehicle_number || ""); setTransporter(d.transporter || "");
           setDriverName(d.driver_name || ""); setDriverPhone(d.driver_phone || "");
@@ -122,7 +120,7 @@ export default function DeliveryChallanBuilderPage() {
     setSaving(true);
     try {
       const payload: any = {
-        org_id: org.id, client_id: clientId, warehouse_id: (warehouseId && warehouseId !== "default") ? warehouseId : null,
+        org_id: org.id, client_id: clientId, branch_id: (branchId && branchId !== "default") ? branchId : null,
         challan_number: number, challan_date: date, status,
         vehicle_number: vehicleNumber || null, transporter: transporter || null,
         driver_name: driverName || null, driver_phone: driverPhone || null,
@@ -156,7 +154,7 @@ export default function DeliveryChallanBuilderPage() {
   };
 
   const selectedClient = clients.find((c) => c.id === clientId);
-  const selectedWarehouse = warehouses.find((w) => w.id === warehouseId);
+  const selectedBranch = branches.find((b) => b.id === branchId);
 
   const currentChallanData = {
     challan_number: number || "DC-0001",
@@ -288,32 +286,21 @@ export default function DeliveryChallanBuilderPage() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Dispatch Warehouse / From</Label>
-            <div className="flex gap-2">
-              <Select value={warehouseId || "default"} onValueChange={setWarehouseId}>
-                <SelectTrigger className="text-xs h-9 flex-1">
-                  <SelectValue placeholder="Main Store / Location" />
-                </SelectTrigger>
-                <SelectContent className="z-50 max-h-60">
-                  <SelectItem value="default">Main Store / Location</SelectItem>
-                  {warehouses.map((w) => (
-                    <SelectItem key={w.id} value={w.id}>
-                      {w.name} {w.is_default ? "(Primary)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={() => setAddWarehouseOpen(true)}
-                title="Add new warehouse"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <Label className="text-xs font-semibold">Dispatch Branch / From</Label>
+            <Select value={branchId || "default"} onValueChange={setBranchId}>
+              <SelectTrigger className="text-xs h-9 w-full">
+                <SelectValue placeholder="Main Store / Location" />
+              </SelectTrigger>
+              <SelectContent className="z-50 max-h-60">
+                <SelectItem value="default">Main Store / Location</SelectItem>
+                {branches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>
+                    {b.name} {b.is_default ? "(Primary)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[10px] text-muted-foreground">Manage branches in Settings</p>
           </div>
 
           <div className="space-y-1.5">
@@ -561,16 +548,6 @@ export default function DeliveryChallanBuilderPage() {
         </CardContent>
       </Card>
 
-      {/* Dialogs */}
-      <AddWarehouseDialog
-        open={addWarehouseOpen}
-        onOpenChange={setAddWarehouseOpen}
-        onWarehouseAdded={(w) => {
-          setWarehouses((prev) => [...prev, w]);
-          setWarehouseId(w.id);
-        }}
-      />
-
       {/* Official 1-Page Delivery Challan Modal */}
       <DeliveryChallanModal
         open={previewOpen}
@@ -579,7 +556,7 @@ export default function DeliveryChallanBuilderPage() {
         lines={currentLinesData}
         org={org}
         client={selectedClient}
-        warehouse={selectedWarehouse}
+        branch={selectedBranch}
       />
     </div>
   );

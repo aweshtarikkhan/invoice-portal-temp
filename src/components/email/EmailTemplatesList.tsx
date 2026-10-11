@@ -371,7 +371,7 @@ export default function EmailTemplatesList() {
                           .replace(/{{client_name}}/g, "John Doe")
                           .replace(/{{company_name}}/g, "Acme Corp")
                           .replace(/{{invoice_number}}/g, "INV-2026-001")
-                          .replace(/{{total_amount}}/g, "$1,250.00")
+                          .replace(/{{total_amount}}/g, "₹1,250.00")
                           .replace(/{{due_date}}/g, "Oct 15, 2026")
                           .replace(/{{payment_link}}/g, "#")
                       }}

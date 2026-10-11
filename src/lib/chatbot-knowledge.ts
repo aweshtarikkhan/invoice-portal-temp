@@ -144,16 +144,36 @@ IMPORTANT CONTACT RULES:
   - You can add Bank Account Details (either type them or select from saved accounts via a dropdown).
   - Can also be used for non-GST billing if no GST number is configured.
 - Purchase Orders: Go to Purchases -> Purchase Orders to create POs for vendors. The Purchase Order Builder supports vendor selection, item lines, GST tax calculations, TDS/TCS configuration, document-level discounts, shipping charges, adjustments, and "Display Options" (Auto Round Off Total, Show Bank/UPI Details, Show Terms & Conditions, Show Notes).
+- Goods Receipt Notes (GRN): Go to Purchases -> Goods Receipt (GRN) ('/grns'). Used to record incoming materials against Purchase Orders or direct vendor deliveries, adding quantities to stock inventory. Location selection uses 'Branch (Warehouse)'.
 - Purchase Invoices / Bills: Go to Purchases -> Purchase Invoices to track bills. Similar to Purchase Orders, the Bill Builder also supports "Display Options" (Auto Round-off, Bank Details, Terms, Notes), shipping charges, discounts, and fixed costs. When a purchase bill is created from a Goods Receipt (GRN), stock addition is automatically locked with an informative banner to prevent duplicate stock inflation since stock was already received in the GRN.
-- Debit Notes (Purchase Returns): Go to Purchases -> Debit Notes ('/debit-notes'). Record goods returned to vendors, specify returned quantities and rates, and optionally link to a purchase bill. When saved, returned items are automatically deducted from inventory stock, and outstanding vendor bill payables are reduced.
-- Quotations & Proforma Invoices (Estimates): Create quotes and proforma invoices with full GST support, tax slab mapping, and automated sequence numbering. The Quotation Builder (EstimateBuilderPage) now has full Display Options parity with the Invoice Builder: Auto Round Off Total (rounds the grand total to the nearest rupee), Show Bank/UPI Details (select from saved bank accounts or enter manually - bank name, account holder, account number, IFSC, branch, UPI ID), Show Terms & Conditions, and Show Notes. These settings are saved to the estimates.metadata (JSONB) and estimates.bank_details (JSONB) columns and reflected on the quotation PDF.
+- Vendor Payments: Go to Purchases -> Vendor Payments ('/vendor-payments') or click 'Record Payment' ('/vendor-payments/new').
+  * Record and track payments made to vendors against outstanding purchase bills or on-account.
+  * Vendor Selection & Dynamic Total Due: Selecting any active vendor dynamically calculates their Total Outstanding Due across all unpaid bills in real time. Shows a prominent Total Due alert card with a one-click "Pay Full Due" button that auto-populates the payment amount and auto-allocates across bills.
+  * Payment Modes & Banking Sync: Supports Bank Transfer, Cash, UPI, Cheque, Credit Card, and Other. Paid-from account dropdown connects directly to Bank and Cash accounts, showing live account balances. Making a vendor payment automatically creates a debit transaction in 'bank_transactions' and deducts the amount from the bank or cash account balance.
+  * Auto-Allocation & On-Account: Automatically or manually allocates payments across open bills. Any excess unallocated payment is safely recorded as on-account advance payment.
+  * Banking & Journal Sync: Deducts funds from bank/cash account, creates debit transactions in bank_transactions, and posts double-entry journal entries for Accounts Payable settlement.
+  * Profit & Loss Report Integration: All vendor payments immediately reflect in the Profit & Loss report ('/profit-loss') under monthly expenses, total expenses, net profit calculation, and are categorized under 'Vendor Payments / Purchases' in the category breakdown. They also update the main Dashboard KPIs (Total Expenses, Net Cash Flow, Revenue vs Expenses chart) and Reports analytics.
+  * Payment Deletion & Reversal: Payments can be deleted with full reversal: restores linked bill balances and statuses (paid -> partial/received), refunds the bank/cash balance, and cleans up journal entries.
+  * Filters & CSV Export: Summary Ribbon (Total Payments Made, Outstanding Payables, Paid This Month, Vendors Registered), Financial Year filter, Payment Mode filter, and full CSV export.
+- Purchase Returns / Debit Notes: Go to Purchases -> Purchase Returns ('/purchase-returns' or '/debit-notes').
+  * Return goods to vendors and adjust accounts payable dues.
+  * Automatic Vendor Due Reduction: Issuing a purchase return immediately reduces the vendor's outstanding due balance in real time. If linked to a purchase bill, it reduces that bill's balance due and updates status to 'paid' or 'partial'. Any unlinked or surplus return amount is automatically allocated across other unpaid bills for that vendor in FIFO order, and updates the vendor's balance_due.
+  * Inventory Stock Sync: Returned items are automatically deducted from inventory stock when 'Adjust Inventory' is checked.
+  * Vendor Detail Page Integration: Vendor Detail page ('/vendors/:id') includes a dedicated 'Purchase Returns' tab, a 'Purchase Returns' KPI card, and quick-action buttons for 'Record Payment' and 'Purchase Return'.
+- Quotations & Proforma Invoices (Estimates): Create quotes and proforma invoices with full GST support, tax slab mapping, and automated sequence numbering. The Quotation Builder (EstimateBuilderPage) now has full Display Options parity with the Invoice Builder: Auto Round Off Total (rounds the grand total to the nearest rupee), Show Bank/UPI Details (select from saved bank accounts or enter manually - bank name, account holder, account number, IFSC, branch, UPI ID), Show Terms & Conditions, and Show Notes. These settings are safely stored inside estimates.metadata (JSONB) and seamlessly rendered on all quotation PDF and print templates with complete client and line item details.
 - Templates: Go to Templates section to see invoice designs (Standard GST, Professional Navy, Corporate Blue, Classic Tabular, Modern Navy Yellow, Modern Teal, Modern Crimson). All templates strictly adhere to the GST, TDS/TCS, and column layout standards.
+  - Adaptive Company Name Typography: Across all invoice and quotation templates, the organization/company name dynamically adapts its font size (via getAdaptiveCompanyNameStyle) based on character length. Even lengthy company names (e.g. 50-70+ characters such as 'CHECK YOUR PREMIUM INSURANCE WEB AGGREGATOR PRIVATE LIMITED') automatically scale down so they fit cleanly into at most 2 lines instead of awkwardly breaking into 3-5 lines.
+  - Compact Whitespace Layout: Invoices, quotations, and bills feature tightened vertical and horizontal spacing (reduced container padding, compact header cards, streamlined line item tables, and optimized totals grids) to minimize white space and produce clean, dense, professional one-page documents.
 
-3.1 INVENTORY & INTER-BRANCH TRANSFERS
+3.1 DELIVERY CHALLANS
+- Delivery Challans: Go to Sales -> Delivery Challans. Used to accompany the transportation of goods without immediately generating a tax invoice.
+- Branch Dispatch: Delivery Challans now use Branches as the dispatch location instead of Warehouses. Users can select the dispatching Branch (e.g. Bhopal Branch) from the 'Dispatch From' dropdown. The Multi-Warehouse setting has been completely removed from the portal, and Branches are the single source of truth for physical locations.
+
+3.2 INVENTORY & INTER-BRANCH TRANSFERS
 - Inventory Management: Go to Catalog -> Inventory ('/inventory'). Tracks products and services with real-time stock levels, low-stock alerts, and valuation.
 - Inter-Branch Stock Transfer: In the Inventory page, click "Transfer Stock" to transfer product quantities between branches (e.g., Bhopal Branch to Indore Branch). Select the source branch, destination branch, product, and quantity. It automatically validates available stock, updates branch inventory balances, records transfer vouchers under the "Branch Transfers" tab, and logs complete audit movements.
 
-3.2 PAYMENTS & CUSTOMER ADVANCE CREDITS
+3.3 PAYMENTS & CUSTOMER ADVANCE CREDITS
 - Deleting Received Payments:
   * Users can delete any recorded payment directly from the Payments list ('/payments') via the row-level Trash button, from the Client Details page ('/clients/:id' Payments tab), or from the Invoice Details page ('/invoices/:id' Payments Received section).
   * Deleting a payment automatically restores the invoice's balance due and amount paid, recalculates invoice status (partial, sent, or overdue), and reverts any linked banking ledger transactions and bank account balances.
@@ -175,27 +195,72 @@ IMPORTANT CONTACT RULES:
 - Leaves Management: Go to People & HR -> Leaves to view, approve, or reject employee leave requests. For pending leave requests, HR administrators have clear, dedicated "Approve" (emerald button with check icon) and "Reject" (red outline button with cross icon) action buttons with loading indicators, replacing simple icon ticks. Leave balance counts (Annual, Used, Remaining) are correctly shown per employee per leave type. Approving a leave deducts the exact number of days from the balance (no double-deduction if approved from multiple screens). Date calculations are timezone-safe (no off-by-one in IST).
 - Leave Types: Casual Leave (CL), Sick Leave (SL), Earned/Privilege Leave (EL/PL), Comp Off, Work From Home (WFH), Half Day, LWP/Unpaid, Maternity, Paternity.
 - Attendance Regularization: Employees submit regularization requests via the Employee Attendance Portal (https://attendance.aassaybiz.com/). These requests appear in the HR Admin portal under People & HR -> Attendance -> Regularizations tab where the HR admin can approve or reject them. Foreign keys and resilient fallbacks ensure requests always link reliably to employee details and update attendance history upon approval.
-- Real-time HR Action Notification Dots & Badges: To ensure HR and managers never miss pending employee requests:
+- Real-time HR Action Notification Dots & Badges: To ensure HR and managers never miss pending employee requests or messages:
   * "Business HR" sidebar group header displays an animated amber pinging dot whenever there are pending regularization requests, pending leave requests, or unread HR chat messages.
-  * "Attendance" sidebar item displays an animated pinging dot and count badge when pending regularization requests exist.
+  * "Attendance" sidebar item displays an animated pinging dot and count badges: an amber badge for pending regularization requests, and a blue count badge for new unread HR chat messages.
   * "Leaves" sidebar item displays an animated pinging dot and count badge when pending leave requests exist.
-  * In the Attendance page, the "Regularizations" tab header displays an animated pinging dot and count badge.
+  * In the Attendance page, the "Regularizations" tab header displays an animated pinging dot and count badge, and the "HR Chat" tab displays an animated pinging dot when unread messages arrive.
   * In the Leaves page, the "Leave Requests" tab header displays an animated pinging dot and count badge.
-  * Realtime sync: Incoming regularization requests or leave requests submitted by staff in the employee attendance portal trigger instant updates across these dots and badges via Supabase realtime channels without requiring page reload.
+  * Topbar Notification Bell: The notification bell at the top header immediately displays new employee chat messages directed to HR & Admin, along with sender names and message snippets. Clicking any chat notification opens People & HR -> Attendance with the HR Chat tab pre-selected (/attendance?tab=hr-chat) and automatically clears the notification.
+  * Realtime sync: Incoming regularization requests, leave applications, or chat messages sent by staff from the employee attendance portal trigger instant updates across sidebar badges, tab indicators, and the notification bell via Supabase realtime channels without requiring page reload.
 - Shifts: Go to People & HR -> Shifts to create and manage work shifts (e.g. Morning, Evening, Night). Each shift has start/end time, working days, grace period, late-start cutoff, and half-day cutoff. In the Employee Assignments tab, you can assign any shift to any employee using the dropdown. Assignments persist correctly across page refreshes (stored in the employee_shifts table with a unique constraint per employee).
 - Company Holidays & Festival Management: In People & HR -> Attendance (/attendance) under the "Company Holidays" and "Settings" tabs, managers can create custom holidays or 1-click add official Indian Festivals (e.g. Dussehra on 20 Oct 2026, Diwali on 08 Nov 2026). Scheduled holidays synchronize in real-time with the employee attendance calendar, Monthly Overview, and the Employee Attendance Portal (/holidays and /dashboard).
+- Employee Documents & Document Management: Employees can upload, view, preview, and download their official documents (Aadhaar, PAN, Offer Letter, Appointment Letter, Salary Slip, Bank Proof, Resume, and Other) from the Employee Attendance Portal (/documents). For security, compliance, and audit integrity, the "Delete" option is completely disabled and removed in the Employee Attendance Portal. Employees cannot delete any uploaded documents. Document deletion is strictly restricted to Business HR and HR Administrators from the Business HR / People & HR portal.
+- Employee Dashboard Attendance Overview: In the Employee Attendance Portal Home Dashboard (/dashboard), the Attendance Overview section allows staff to filter their statistics using period options: "This Month", "Last Month", "Last 7 Days", and "Custom Dates" (the obsolete "Last 30 Days" filter has been removed).
 - HR Reports (/hr-reports): Real-time analytics and HR KPI dashboards. Displays a 6-metric Today's Attendance overview: Total Employees, Present, Absent, Late (arrived after grace period), Half Day (arrived after late cutoff or half-day leave), and On Leave (approved leaves). Automatically resolves attendance statuses against assigned shift rules and Indian Standard Time (IST). The "Recent Attendance & Punch Logs" table provides detailed Clock In time, Clock Out time (with "Auto Logout" indicator for automatically closed punches), and total Working Hours for every employee record, complete with one-click CSV and PDF export.
 
 5. BUSINESS CRM
-- Leads: Go to Business CRM -> Leads. Click "Add Lead" button to add a new customer inquiry or lead. (Requires CRM plan).
+- Leads: Go to Business CRM -> Leads (/leads). Click "New Lead" button to add a new customer inquiry or lead. Supports assigning leads directly to sales executives or CRM team members in both Add/Edit dialogs (with inline Quick Add for new executives), direct inline 1-click reassignment from the "Assigned To" dropdown in the main leads table, and filtering leads by specific assignee or unassigned status. (Requires CRM plan).
+- Activities & Tasks (/activities): Go to Business CRM -> Activities. Schedule, log, and track sales activities and team tasks.
+  * "Log Activity" / "New Task" Form: Overhauled with 10 structured fields:
+    1. Task Title (Text box)
+    2. Description (Text area for details/notes)
+    3. Priority (Dropdown: Low, Medium, High, Urgent with color-coded badges)
+    4. Task Type (Dropdown: Call, Meeting, Email, Follow-up, Demo, Site Visit / Field Visit, Support Ticket)
+    5. Related Lead/Deal (Searchable dropdown with real-time text filter over active Leads and Deals)
+    6. Assign To (Dropdown populated from Sales Team executives in 'crm_team')
+    7. Due Date & Time (Date & time picker strictly enforcing today or future dates/times; past date selection is disabled and blocked)
+    8. Reminder (Dropdown in English: None, 10 minutes before, 1 hour before, 1 day before, and Custom Date & Time. When Custom is chosen, a date-time picker appears with its maximum limit automatically locked to the task's Due Date & Time, preventing reminders after the due date. Setting a reminder triggers automated WhatsApp and Email notifications to the assigned sales team executive)
+    9. Repeat (Dropdown: None, Daily, Weekly)
+    10. Status (Dropdown: Pending [default], In Progress, Completed)
+  * Activities Table: Displays Priority badges, Task Type icons, Due Date & Time, Assigned Sales Executive, and a 3-dots action menu (Edit, Complete/Pending toggle, Delete).
+- Sales Team (/crm-team): Go to Business CRM -> Sales Team. Manage sales executives and representatives dedicated to the CRM pipeline. Create, edit, activate/deactivate, and delete sales executives with custom roles (Sales Executive, Team Lead, Sales Manager, Account Executive, Business Development). Leads and activities can be directly assigned to these members for streamlined lead tracking and follow-up.
+- CRM Calendar & Daily Task Tracking (/calendar): Go to Business CRM -> Calendar. Comprehensive schedule planner and live sales team task tracker:
+  * View Modes: Month, Week, and "Today's Tasks (Sales Team)" Daily Task Tracker.
+  * Daily Task Tracking (Today's Tasks for Sales Team):
+    - Real-time KPI Ribbon: Shows Total Tasks for today, Completed count, Pending count, Active Sales Executives count, and Team Completion % Progress bar.
+    - Grouped by Sales Team Executive: Each sales executive in 'crm_team' has a dedicated card displaying their Avatar, Role, Phone (with instant WhatsApp link), Email, and completed vs total progress bar.
+    - Detailed Task Cards: Lists each task assigned to that executive for today with 1-click completion toggle, task title, notes, due time (HH:mm with Overdue badge if delayed), Task Type badge (Call, Meeting, Site Visit, Demo, Email, Support Ticket, Follow-up), Priority badge (Urgent, High, Medium, Low), and linked Lead/Deal.
+    - Inline Reassignment: Managers can reassign any task to another sales executive in 1 click using the inline dropdown right on the task card.
+    - Unassigned Tasks Alert Section: Highlights tasks due today that lack an assignee with immediate 1-click assignment to any sales team member.
+    - Date Navigation: Jump to Today, or browse previous/future days ('<' and '>') to inspect scheduled daily workloads.
+    - Filters: Filter by Sales Executive, Task Status (Pending / Completed), Task Type, and search by keyword.
+    - Quick Add Task Dialog: Add new tasks directly from the calendar for the selected date with assignee, time, type, priority, and linked lead.
+  * Month & Week Views: Full calendar grid showing activities, deals, and leads with assignee badges and day click-through to open daily tracking.
 - Sales Pipeline & Deals: Go to Business CRM -> Pipeline. Drag and drop deals across stages. Moving or marking a deal as "Won" automatically fires configured CRM automations.
-- Automations & Workflows: Go to Business CRM -> Automations (/crm/automations). Enables 4 real-time communication automations:
+- Automations & Workflows: Go to Business CRM -> Automations (/crm/automations). Enables 8 real-time communication automations divided into Customer Communications and Sales Executive Task Reminders:
   1. "Deal Won Client Onboarding & Thank You Email": Automatically sends a professional branded email to the customer confirming deal closure, celebrating the partnership, and providing onboarding next steps.
   2. "Deal Won WhatsApp Celebration & Confirmation": Dispatches an instant WhatsApp message to the customer with deal confirmation, value, and support contacts.
   3. "Welcome Email for New Leads": Automatically sends an introduction email when a new lead is registered.
   4. "Welcome WhatsApp for New Leads": Sends a warm greeting WhatsApp message when a new lead is captured.
-  Users can toggle each workflow on/off and click "Preview Message" on each card to view live interactive email and WhatsApp message previews. The previous draft invoice auto-creation has been replaced with these customer communication workflows.
-- Support Tickets: Go to Business CRM -> Support Tickets (/tickets). Create and track support tickets for both Customers (Clients) and CRM Leads using an interactive segmented contact selector (Customers vs Leads). Tickets display priority, real-time status badges, two-way threaded discussion messages, and search filtering across both customer and lead names.
+  5. "Sales Executive Task Due Reminder (WhatsApp)": Automatically sends an instant WhatsApp alert to the assigned sales executive when their CRM task reaches or approaches its due deadline, capturing all task, lead, and priority fields.
+  6. "Sales Executive Task Due Reminder (Email)": Dispatches a branded deadline alert email to the assigned sales executive with full task details, lead company, and action instructions.
+  7. "Sales Executive Custom Reminder Alert (WhatsApp)": Dispatches an auto-updating WhatsApp reminder to the assigned sales executive at their exact scheduled custom reminder date & time, dynamically capturing every field (task title, type, priority, due date, custom reminder timestamp, notes, and related lead/deal).
+  8. "Sales Executive Custom Reminder Alert (Email)": Triggers a high-impact branded notification email to the assigned sales executive at their custom scheduled reminder time with complete task, lead, and priority details.
+  Users can toggle each workflow on/off, filter by category ("All", "Task & Due Reminders", "Deals & Leads"), and click "Preview Message" on each card to view live interactive email and WhatsApp message previews.
+- Support Tickets: Go to Business CRM -> Support Tickets (/tickets). Create and track support tickets for both Customers (Clients) and CRM Leads using an interactive segmented contact selector (Customers vs Leads).
+  * Custom Ticket Number: Tickets are automatically assigned a custom ticket number generated using the client/lead's name initials and a random 4-digit number (e.g., 'DB1234' for 'Dilip Bachani').
+  * Tickets List Layout: The main tickets list features explicit column headers (Ticket Details, Assign To, Status & Actions) for clarity.
+  * Assignee & Due Date: Users can assign tickets to specific Sales Team members (using the "Assignee" dropdown) and set a "Due Date". The assigned employee is displayed in a dedicated "Assign To" column in the list view, and both are shown in the ticket details header.
+  * Message Templates: When creating the initial message or sending a reply, users can select a pre-designed template from the "Insert Template" dropdown (fetched from Business Promotion -> Templates under the 'support_tickets' category). The system automatically replaces variables like {{ticket_number}}, {{contact_name}}, and {{org_name}} with real ticket data.
+  * Notification Channel Selection: When creating a ticket, users can select the notification channel: "Only Email", "Only WhatsApp", or "Both".
+  * Automated Status Updates: When ticket status changes, automatic updates are sent via the selected channels containing the ticket number:
+    - Open: A "Ticket Created/Opened" message is sent.
+    - In Progress: A "Your ticket is now In Progress" update is sent.
+    - Resolved: Agents must provide a "Resolution Note" which is sent to the client along with the "Resolved" status.
+    - Closed: Agents must provide a "Closing Reason/Comment" which is sent to the client.
+  * Split Reply Channels: Inside the ticket threaded discussion view, agents can explicitly choose to dispatch replies using the "Reply on WhatsApp" or "Reply on Email" split buttons, ensuring notifications route via the exact desired communication channel.
+  * Tickets display priority, real-time status badges, two-way threaded discussion messages, and search filtering across both customer and lead names.
 - Integrations & Custom API (/crm/integrations): Connect your CRM with third-party lead sources, website forms, and external software:
   * Lead Sources Tab: Integrates with IndiaMart (auto-fetches leads every 15 minutes using CRM key & registered mobile) and Justdial (unique webhook URL for real-time lead capture).
   * Custom API & Webhooks Tab:
@@ -302,7 +367,7 @@ IMPORTANT CONTACT RULES:
 18. PLATFORM ADMIN PORTAL & COLLATERAL MANAGEMENT
 - Official Branding & Clean Logo: Platform Admin features the official AssayBiz logo branding cleanly without redundant text strings next to the logo.
 - Platform Admin Notifications (Bell Icon): Top header includes an interactive notification popover displaying pending Help & Support requests with counts, timestamps, and 1-click navigation.
-- Platform Help & Support Management: Under "Support Tickets" (/platform-admin), platform administrators manage platform-level Help & Support queries submitted by businesses and users across the platform (internal CRM client tickets are excluded). Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click, and change ticket statuses (Open, In Progress, Resolved, Closed).
+- Platform Help & Support Management: Under "Support Tickets" (/platform-admin or internal CRM), platform administrators and agents manage Help & Support queries submitted by businesses and users across the platform. Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click. When creating or reassigning tickets, agents can assign them to a specific team member from the "Assignee" dropdown, set a "Due Date", and auto-generate unique ticket numbers. When changing ticket statuses (Open, In Progress, Resolved, Closed), agents are prompted to enter a "Resolution Note" or "Closing Comment", which is automatically included in branded email notifications sent to the user.
 - Plans & Subscription Pricing Management: In Platform Admin under "Plans & Pricing", administrators can inspect and configure monthly and yearly pricing for all subscription tiers (Business Starter, Business Accounting, Business Suite, Business HR, Business CRM, Business Promotion). Plan price updates sync directly to the database and RPC triggers with fallback safeguards and zero crashes.
 - Official Social Media Channels: Under "Social Media", admins configure official links for YouTube, Facebook, Instagram, LinkedIn, and Contact Helpline/Mobile. Updates immediately broadcast and synchronize in real-time across the public Landing Page, Footer, and Header navigation without page reload.
 - Custom Product Brochure & Pamphlet Uploads: Admins can directly upload custom-designed Product & Pricing Brochures (PDF or image) and Promotional Pamphlets/Flyers (PDF or image) from the Social Media collateral cards. When uploaded, visitors accessing /brochure, /pamphlet, or clicking "Product Brochure (PDF)" can immediately view, read, or download the uploaded custom official file directly, with an interactive toggle to switch back to the built-in dynamic web layout at any time.
@@ -340,6 +405,7 @@ IMPORTANT CONTACT RULES:
 - Operating Entity: AASSAY Biz is operated by Emerging Thoughts Private Limited, incorporated under the laws of India.
 - Registered Address: T-4, 501 Sagar Lake View Enclave, Ayodhya Bypass, Bhopal – 462 022, Madhya Pradesh, India.
 - Official Support & Customer Care: Direct Phone & WhatsApp: +91 7806025875 | Support Email: support@aassaybiz.com | Working Hours: Mon - Sat: 9:30 AM - 7:00 PM IST | Location: Indore, MP, India | Website: www.aassaybiz.com.
+- Link Previews & Open Graph Social Cards: Whenever links to the portal (https://aassaybiz.com or https://attendance.aassaybiz.com) are shared on WhatsApp, Telegram, LinkedIn, Twitter, or Facebook, the link preview card displays the official high-resolution Aassay Biz logo (https://aassaybiz.com/og-image.png, standard 1200x630 Open Graph card) with clean title and description.
 - Legal Navigation (/privacy, /refund-policy, /terms): All 3 legal policies are accessible from the website footer, header links, and quick switch tabs (LegalNavTabs) on all public policy pages, complete with direct 1-click Word document (.docx) download buttons.
 - Privacy Policy (/privacy):
   * Fully compliant with India's Digital Personal Data Protection Act, 2023 ("DPDP Act") and DPDP Rules, 2025.
@@ -385,3 +451,4 @@ IMPORTANT CONTACT RULES:
 
 --- END OF KNOWLEDGE BASE ---
 `;
+

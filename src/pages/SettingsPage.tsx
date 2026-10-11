@@ -964,47 +964,7 @@ export default function SettingsPage() {
                       <p className="text-xs text-slate-600 dark:text-slate-300">Items at or below this stock level appear in the dashboard low-stock alert.</p>
                     </div>
                   )}
-                  <div className="flex items-center justify-between border-t pt-4">
-                    <div>
-                      <Label>Multi-warehouse mode</Label>
-                      <p className="text-xs text-slate-600 dark:text-slate-300">Track stock across multiple locations. When off, a single shared stock pool is used (recommended for most users).</p>
-                    </div>
-                    <Switch checked={orgForm.multi_warehouse_enabled} onCheckedChange={(v) => setOrgForm({ ...orgForm, multi_warehouse_enabled: v })} />
-                  </div>
-
-                  {orgForm.multi_warehouse_enabled && (
-                    <div className="rounded-xl border border-primary/20 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in duration-200">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                          <Warehouse className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-foreground">Warehouses & Storage Locations</div>
-                          <div className="text-xs text-muted-foreground">Configure godowns, fulfillment centers, and default dispatch locations.</div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="h-8 gap-1.5 text-xs flex-1 sm:flex-initial"
-                          onClick={() => setAddWarehouseOpen(true)}
-                        >
-                          <Plus className="h-3.5 w-3.5" /> Add Warehouse
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          className="h-8 gap-1.5 text-xs flex-1 sm:flex-initial"
-                          onClick={() => navigate("/warehouses")}
-                        >
-                          Manage Warehouses <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
+                  
                   <div className="flex items-center justify-between border-t pt-4">
                     <div>
                       <Label>Enable Sub Units (e.g. 1 Box = 10 Packs)</Label>
@@ -1315,3 +1275,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

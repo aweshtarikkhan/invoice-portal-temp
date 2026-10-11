@@ -6,7 +6,7 @@ import { exportTableToCSV, exportTableToPDF } from "@/lib/exportUtils";
 import { exportFullPagePDF } from "@/lib/pdfUtils";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, CalendarDays, DollarSign, Download, FileText, ArrowLeft } from "lucide-react";
+import { Users, UserCheck, CalendarDays, IndianRupee, Download, FileText, ArrowLeft } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/currency";
@@ -580,7 +580,7 @@ export default function HRReportsPage() {
         <Card className="bg-white border-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Total Payroll Cost</CardTitle>
-            <DollarSign className="h-4 w-4 text-emerald-500" />
+            <IndianRupee className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-gray-900">{formatCurrency(totalPayrollCost)}</div>
@@ -600,7 +600,7 @@ export default function HRReportsPage() {
                   <BarChart data={payrollData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                     <XAxis dataKey="month" stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => formatCurrency(value)} />
+                    <YAxis stroke="#6b7280" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                     <RechartsTooltip 
                       contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e5e7eb', color: '#111827' }}
                       formatter={(value: number) => [formatCurrency(value), 'Cost']}

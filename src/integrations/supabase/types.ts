@@ -3634,6 +3634,50 @@ export type Database = {
           },
         ]
       }
+      crm_team: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          org_id: string
+          phone: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          org_id: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          org_id?: string
+          phone?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_team_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           company: string | null
@@ -5846,7 +5890,8 @@ export type Database = {
       tickets: {
         Row: {
           assigned_to: string | null
-          client_id: string
+          client_id: string | null
+          lead_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -5855,10 +5900,15 @@ export type Database = {
           status: string
           subject: string
           updated_at: string
+          ticket_number: string | null
+          notification_channel: string | null
+          resolution_note: string | null
+          closing_comment: string | null
         }
         Insert: {
           assigned_to?: string | null
-          client_id: string
+          client_id?: string | null
+          lead_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -5867,10 +5917,15 @@ export type Database = {
           status?: string
           subject: string
           updated_at?: string
+          ticket_number?: string | null
+          notification_channel?: string | null
+          resolution_note?: string | null
+          closing_comment?: string | null
         }
         Update: {
           assigned_to?: string | null
-          client_id?: string
+          client_id?: string | null
+          lead_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -5879,6 +5934,10 @@ export type Database = {
           status?: string
           subject?: string
           updated_at?: string
+          ticket_number?: string | null
+          notification_channel?: string | null
+          resolution_note?: string | null
+          closing_comment?: string | null
         }
         Relationships: [
           {

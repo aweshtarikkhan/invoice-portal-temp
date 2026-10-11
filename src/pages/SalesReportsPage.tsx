@@ -185,7 +185,7 @@ export default function SalesReportsPage() {
               <BarChart data={revenueData}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" className="text-xs fill-muted-foreground" />
-                <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => fmt(v)} />
+                <YAxis className="text-xs fill-muted-foreground" tickFormatter={(v) => '₹' + Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(Number(v))} />
                 <Tooltip formatter={(v: number) => fmt(v)} />
                 <Legend />
                 <Bar dataKey="invoiced" name="Invoiced" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />

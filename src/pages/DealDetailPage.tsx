@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Building2, DollarSign, Calendar, Target, TrendingUp, FileText, Check, X, Phone, Mail, Users, ClipboardList, StickyNote, MessageSquare, Clock, Plus, Edit, ArrowRight } from "lucide-react";
+import { ArrowLeft, Building2, IndianRupee, Calendar, Target, TrendingUp, FileText, Check, X, Phone, Mail, Users, ClipboardList, StickyNote, MessageSquare, Clock, Plus, Edit, ArrowRight } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, formatDistanceToNow } from "date-fns";
 import { triggerDealWonAutomations } from "@/lib/crm-automations";
@@ -209,7 +209,7 @@ export default function DealDetailPage() {
           </div>
           <div className="flex items-center gap-4 mt-3 text-muted-foreground">
             <div className="flex items-center text-lg font-semibold text-foreground">
-              <DollarSign className="h-5 w-5 mr-1" />
+              <IndianRupee className="h-5 w-5 mr-1" />
               {formatCurrency(Number(deal.amount || 0), currency)}
             </div>
             <div className="flex items-center">

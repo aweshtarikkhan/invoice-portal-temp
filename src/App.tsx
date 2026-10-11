@@ -59,6 +59,8 @@ const LandingPage = lazy(() => import("./pages/LandingPage"));
 const ChatUIPage = lazy(() => import("./pages/ChatUIPage"));
 const VendorsPage = lazy(() => import("./pages/VendorsPage"));
 const VendorDetailPage = lazy(() => import("./pages/VendorDetailPage"));
+const VendorPaymentsPage = lazy(() => import("./pages/VendorPaymentsPage"));
+const RecordVendorPaymentPage = lazy(() => import("./pages/RecordVendorPaymentPage"));
 const BillsPage = lazy(() => import("./pages/BillsPage"));
 const BillBuilderPage = lazy(() => import("./pages/BillBuilderPage"));
 const BillDetailPage = lazy(() => import("./pages/BillDetailPage"));
@@ -91,6 +93,7 @@ const PayrollPage = lazy(() => import("./pages/PayrollPage"));
 const PayrollRunDetailPage = lazy(() => import("./pages/PayrollRunDetailPage"));
 const LeadsPage = lazy(() => import("./pages/LeadsPage"));
 const LeadDetailPage = lazy(() => import("./pages/LeadDetailPage"));
+const CRMTeamPage = lazy(() => import("./pages/CRMTeamPage"));
 const PipelinePage = lazy(() => import("./pages/PipelinePage"));
 const ActivitiesPage = lazy(() => import("./pages/ActivitiesPage"));
 const MarketingTemplatesPage = lazy(() => import("./pages/MarketingTemplatesPage"));
@@ -258,6 +261,12 @@ const App = () => (
               <Route element={<FeatureGuard featureKey="purchases" featureName="Purchases" />}>
                 <Route path="/vendors" element={<VendorsPage />} />
                 <Route path="/vendors/:id" element={<VendorDetailPage />} />
+                <Route path="/vendor-payments" element={<VendorPaymentsPage />} />
+                <Route path="/vendor-payments/new" element={<RecordVendorPaymentPage />} />
+                <Route path="/purchase-returns" element={<DebitNotesPage />} />
+                <Route path="/purchase-returns/new" element={<DebitNoteBuilderPage />} />
+                <Route path="/purchase-returns/:id" element={<DebitNoteDetailPage />} />
+                <Route path="/purchase-returns/:id/edit" element={<DebitNoteBuilderPage />} />
                 <Route path="/purchase-invoices" element={<BillsPage />} />
                 <Route path="/purchase-invoices/new" element={<BillBuilderPage />} />
                 <Route path="/purchase-invoices/:id" element={<BillDetailPage />} />
@@ -305,6 +314,7 @@ const App = () => (
                 <Route path="/crm/integrations" element={<CrmIntegrationsPage />} />
                   <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/leads/:id" element={<LeadDetailPage />} />
+                  <Route path="/crm-team" element={<CRMTeamPage />} />
                 <Route path="/pipeline" element={<PipelinePage />} />
                 <Route path="/pipeline/:id" element={<DealDetailPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
@@ -375,3 +385,4 @@ const App = () => (
 );
 
 export default App;
+

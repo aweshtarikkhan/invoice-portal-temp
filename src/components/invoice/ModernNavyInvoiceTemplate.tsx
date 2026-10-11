@@ -4,6 +4,7 @@ import { numberToWords } from "@/lib/number-to-words";
 import { format, parseISO } from "date-fns";
 import { resolveLineTaxRate, computeDocumentTotals, computeLineFinancials } from "@/lib/invoiceCalculations";
 import { InvoiceTotalsTable } from "./InvoiceTotalsTable";
+import { getAdaptiveCompanyNameStyle, splitCompanyNameIntoTwoLines } from "@/lib/document-templates";
 
 export interface InvoiceTemplateProps {
   org: any;
@@ -53,10 +54,11 @@ export function ModernNavyInvoiceTemplate({
     ? Boolean(snapshot.has_gst)
     : Boolean((org?.gst_number || org?.tax_number)?.trim() && org?.gst_enabled !== false);
 
-  const billToName = invoice?.clients?.company_name || invoice?.clients?.display_name || "";
-  const billToGst = invoice?.clients?.tax_number || "";
-  const billToEmail = invoice?.clients?.email || "";
-  const billToPhone = invoice?.clients?.phone || "";
+  const cl = invoice?.clients || invoice?.client;
+  const billToName = cl?.company_name || cl?.display_name || cl?.name || invoice?.client_name || "";
+  const billToGst = cl?.tax_number || cl?.gst_number || cl?.gstin || invoice?.client_gst || "";
+  const billToEmail = cl?.email || invoice?.client_email || "";
+  const billToPhone = cl?.phone || cl?.mobile || invoice?.client_phone || "";
 
   // Parse billing address
   const getAddressString = (addr: any) => {
@@ -65,7 +67,7 @@ export function ModernNavyInvoiceTemplate({
     const parts = [addr.street, addr.city, addr.state, addr.zip, addr.country].filter(Boolean);
     return parts.join(", ");
   };
-  const billToAddress = getAddressString(invoice?.clients?.billing_address);
+  const billToAddress = getAddressString(invoice?.billing_address || cl?.billing_address || cl?.address);
   
   // Parse shipping address
   let shipToName = billToName;
@@ -104,69 +106,76 @@ export function ModernNavyInvoiceTemplate({
   const showTerms = invoice?.metadata?.show_terms !== false;
   const showNotes = invoice?.metadata?.show_notes !== false;
   
+  const orgName = org?.name || org?.business_name || "";
+  const companyStyle = getAdaptiveCompanyNameStyle(orgName);
+  const { line1: orgLine1, line2: orgLine2 } = splitCompanyNameIntoTwoLines(orgName);
+
   const upiString = upiId ? "upi://pay?pa=" + upiId + "&pn=" + encodeURIComponent(upiName) + "&am=" + (invoice?.total || 0) + "&cu=INR" : "";
 
   return (
-    <div className="w-full h-full bg-white text-black p-8 font-sans" style={{ fontSize: "11px", color: "#333" }}>
+    <div className="w-full h-full bg-white text-black p-5 sm:p-6 font-sans" style={{ fontSize: "11px", color: "#333" }}>
       {/* HEADER SECTION */}
       
-      <div className="flex justify-between items-start mb-6">
-        <div className="w-1/2">
-          <div className="inline-block px-4 py-2 text-white font-bold text-lg mb-4 rounded-r-lg" style={{backgroundColor: primary}}>
+      <div className="flex justify-between items-start mb-3.5">
+        <div className="flex-1 min-w-0 pr-3 sm:pr-4">
+          <div className="inline-block px-3 py-1 text-white font-bold text-sm mb-2 rounded-r-lg" style={{backgroundColor: primary}}>
             {getTitleText()}
           </div>
-          <div className="flex items-center mt-2">
-            {org?.logo_url && <img src={org.logo_url} className="h-12 max-w-[130px] object-contain mr-4 shrink-0" alt="Logo" />}
-            <div>
-              <h2 className="text-2xl font-black uppercase tracking-tight" style={{color: primary, lineHeight: 1.1}}>{org?.name || org?.business_name}</h2>
-              <p className="whitespace-pre-wrap mt-1">{org?.address?.street || ""}</p>
-              <p>{[org?.address?.city, org?.address?.state, org?.address?.zip].filter(Boolean).join(", ")}</p>
+          <div className="flex items-start mt-1.5">
+            {org?.logo_url && <img src={org.logo_url} className="h-10 max-w-[110px] object-contain mr-3 shrink-0 self-start mt-0.5" alt="Logo" />}
+            <div className="min-w-0 flex-1">
+              <h2 className={companyStyle.className} style={{color: primary, fontSize: companyStyle.fontSize, lineHeight: companyStyle.lineHeight}}>
+                <span className="block">{orgLine1}</span>
+                {orgLine2 && <span className="block">{orgLine2}</span>}
+              </h2>
+              <p className="whitespace-pre-wrap mt-0.5 text-[10px] text-gray-600 leading-tight">{org?.address?.street || ""}</p>
+              <p className="text-[10px] text-gray-600 leading-tight">{[org?.address?.city, org?.address?.state, org?.address?.zip].filter(Boolean).join(", ")}</p>
             </div>
           </div>
-          <div className="mt-3 flex gap-4 text-xs">
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-gray-600">
             {org?.gst_number && <p><strong>GSTIN:</strong> {org.gst_number}</p>}
             {org?.email && <p><strong>Email:</strong> {org.email}</p>}
             {org?.phone && <p><strong>Mobile:</strong> {org.phone}</p>}
           </div>
         </div>
         
-        <div className="w-1/2 flex justify-end">
-          <div className="grid grid-cols-3 gap-3 border rounded-xl p-3 border-gray-200 bg-gray-50">
-              <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                <p className="text-[9px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Quotation No." : (type === "po" ? "PO No." : "Invoice No.")}</p>
+        <div className="shrink-0 flex justify-end">
+          <div className="grid grid-cols-3 gap-2 border rounded-xl p-2.5 border-gray-200 bg-gray-50">
+              <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                <p className="text-[8.5px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Quotation No." : (type === "po" ? "PO No." : "Invoice No.")}</p>
                 <p className="font-bold">{type === "estimate" ? invoice?.estimate_number : (type === "po" ? invoice?.po_number : invoice?.invoice_number)}</p>
               </div>
-              <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                <p className="text-[9px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Quotation Date" : (type === "po" ? "PO Date" : "Invoice Date")}</p>
+              <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                <p className="text-[8.5px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Quotation Date" : (type === "po" ? "PO Date" : "Invoice Date")}</p>
                 <p className="font-bold">{formatDate(invoice?.issue_date)}</p>
               </div>
-              <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                <p className="text-[9px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Valid Till" : "Due Date"}</p>
+              <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                <p className="text-[8.5px] text-gray-500 font-bold uppercase">{type === "estimate" ? "Valid Till" : "Due Date"}</p>
                 <p className="font-bold">{formatDate(type === "estimate" ? invoice?.expiry_date : invoice?.due_date)}</p>
               </div>
              
              {poNumber && (
-               <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">P.O. No.</p>
+               <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                 <p className="text-[8.5px] text-gray-500 font-bold uppercase">P.O. No.</p>
                  <p className="font-bold">{poNumber}</p>
                </div>
              )}
              {type !== "po" && ewayBill && (
-               <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">E-Way Bill No.</p>
+               <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                 <p className="text-[8.5px] text-gray-500 font-bold uppercase">E-Way Bill No.</p>
                  <p className="font-bold">{ewayBill}</p>
                </div>
              )}
              {type !== "po" && vehicleNo && (
-               <div className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">Vehicle No.</p>
+               <div className="p-1.5 bg-white rounded-lg border border-gray-100 shadow-sm text-center min-w-[76px]">
+                 <p className="text-[8.5px] text-gray-500 font-bold uppercase">Vehicle No.</p>
                  <p className="font-bold">{vehicleNo}</p>
                </div>
              )}
              
              {customFields.slice(0, 3).map((cf: any, idx: number) => (
                <div key={idx} className="p-2 bg-white rounded-lg border border-gray-100 shadow-sm text-center">
-                 <p className="text-[9px] text-gray-500 font-bold uppercase">{cf.name}</p>
+                 <p className="text-[8.5px] text-gray-500 font-bold uppercase">{cf.name}</p>
                  <p className="font-bold">{cf.value}</p>
                </div>
              ))}
@@ -176,12 +185,12 @@ export function ModernNavyInvoiceTemplate({
       
 
       {/* BILL TO / SHIP TO */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-3">
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>BILL TO</div>
-          <div className="p-3">
-            <h3 className="font-bold text-sm mb-1">{billToName}</h3>
-            <p className="whitespace-pre-wrap leading-relaxed">{billToAddress}</p>
+          <div className="p-2.5">
+            <h3 className="font-bold text-xs mb-0.5">{billToName}</h3>
+            <p className="whitespace-pre-wrap leading-tight text-[10px] text-gray-600">{billToAddress}</p>
             {billToGst && <p className="mt-2"><strong>GSTIN:</strong> {billToGst}</p>}
             <p className="mt-1">
               {billToEmail && <span><strong>Email:</strong> {billToEmail}  </span>}
@@ -192,9 +201,9 @@ export function ModernNavyInvoiceTemplate({
         
         <div className="border border-gray-200 rounded-xl overflow-hidden">
           <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>SHIP TO</div>
-          <div className="p-3">
-            <h3 className="font-bold text-sm mb-1">{shipToName}</h3>
-            <p className="whitespace-pre-wrap leading-relaxed">{shipToAddress}</p>
+          <div className="p-2.5">
+            <h3 className="font-bold text-xs mb-0.5">{shipToName}</h3>
+            <p className="whitespace-pre-wrap leading-tight text-[10px] text-gray-600">{shipToAddress}</p>
             {shipToGst && <p className="mt-2"><strong>GSTIN:</strong> {shipToGst}</p>}
             <p className="mt-1">
               {shipToContact && <span><strong>Contact:</strong> {shipToContact}</span>}
@@ -204,17 +213,17 @@ export function ModernNavyInvoiceTemplate({
       </div>
 
       {/* ITEMS TABLE */}
-      <div className="w-full mb-4 rounded-xl overflow-hidden border border-gray-200">
+      <div className="w-full mb-3 rounded-xl overflow-hidden border border-gray-200">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="text-white text-[10px]" style={{backgroundColor: primary}}>
-              <th className="py-2 px-2 text-center w-8">S.No.</th>
-              <th className="py-2 px-2">Description of Goods / Services</th>
-              {hasGst && <th className="py-2 px-2 text-center">HSN / SAC</th>}
-              <th className="py-2 px-2 text-center">Qty</th>
-              <th className="py-2 px-2 text-center">Unit</th>
-              <th className="py-2 px-2 text-right">Rate (₹)</th>
-              <th className="py-2 px-2 text-right" style={{backgroundColor: accent}}>Subtotal (₹)</th>
+              <th className="py-1.5 px-2 text-center w-8">S.No.</th>
+              <th className="py-1.5 px-2">Description of Goods / Services</th>
+              {hasGst && <th className="py-1.5 px-2 text-center">HSN / SAC</th>}
+              <th className="py-1.5 px-2 text-center">Qty</th>
+              <th className="py-1.5 px-2 text-center">Unit</th>
+              <th className="py-1.5 px-2 text-right">Rate (₹)</th>
+              <th className="py-1.5 px-2 text-right" style={{backgroundColor: accent}}>Subtotal (₹)</th>
             </tr>
           </thead>
           <tbody>
@@ -228,18 +237,18 @@ export function ModernNavyInvoiceTemplate({
 
               return (
               <tr key={idx} className="border-b border-gray-200">
-                <td className="py-2 px-2 text-center border-r border-gray-200">{idx + 1}</td>
-                <td className="py-2 px-2 border-r border-gray-200">
-                  <div className="font-semibold text-[11px]">{itemName}</div>
+                <td className="py-1.5 px-2 text-center border-r border-gray-200">{idx + 1}</td>
+                <td className="py-1.5 px-2 border-r border-gray-200">
+                  <div className="font-semibold text-[10.5px] leading-tight">{itemName}</div>
                   {itemDesc ? (
-                    <div className="text-[9px] text-gray-500 mt-0.5 whitespace-pre-wrap opacity-75">{itemDesc}</div>
+                    <div className="text-[8.5px] text-gray-500 mt-0.5 whitespace-pre-wrap opacity-75">{itemDesc}</div>
                   ) : null}
                 </td>
-                {hasGst && <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || line.hsn_code || line.hsn || line.hsn_sac || line.items?.hsn_code || "-"}</td>}
-                <td className="py-2 px-2 text-center border-r border-gray-200">{qty}</td>
-                <td className="py-2 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || line.items?.unit || "PCS"}</td>
-                <td className="py-2 px-2 text-right border-r border-gray-200">{fmt(rate).replace('₹', '').trim()}</td>
-                <td className="py-2 px-2 text-right font-bold" style={{color: primary}}>
+                {hasGst && <td className="py-1.5 px-2 text-center border-r border-gray-200">{line.item?.hsn_code || line.hsn_code || line.hsn || line.hsn_sac || line.items?.hsn_code || "-"}</td>}
+                <td className="py-1.5 px-2 text-center border-r border-gray-200">{qty}</td>
+                <td className="py-1.5 px-2 text-center border-r border-gray-200">{line.item?.unit || line.unit || line.items?.unit || "PCS"}</td>
+                <td className="py-1.5 px-2 text-right border-r border-gray-200">{fmt(rate).replace('₹', '').trim()}</td>
+                <td className="py-1.5 px-2 text-right font-bold" style={{color: primary}}>
                   {fmt(lineTotal).replace('₹', '').trim()}
                 </td>
               </tr>
@@ -254,19 +263,19 @@ export function ModernNavyInvoiceTemplate({
       </div>
 
       {/* FOOTER GRID */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         
         {/* LEFT COLUMN */}
         <div>
            {/* BANK & PAYMENT DETAILS (WITH SCAN & PAY QR NESTED) */}
            {type !== "po" && (showBankDetails || upiId) && (
-             <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden shadow-sm">
-               <div className="text-white font-bold px-3 py-1.5 text-xs flex justify-between items-center" style={{backgroundColor: primary}}>
+             <div className="border mb-2.5 border-gray-200 rounded-xl overflow-hidden shadow-sm">
+               <div className="text-white font-bold px-3 py-1 text-xs flex justify-between items-center" style={{backgroundColor: primary}}>
                  <span>BANK &amp; PAYMENT DETAILS</span>
                  {upiId && <span className="text-[9px] opacity-90 font-normal">Instant UPI Payment</span>}
                </div>
-               <div className="p-3 flex items-center justify-between gap-3">
-                 <div className="grid grid-cols-[105px_1fr] gap-x-2 gap-y-1 text-[10px] flex-1">
+               <div className="p-2.5 flex items-center justify-between gap-2.5">
+                 <div className="grid grid-cols-[95px_1fr] gap-x-2 gap-y-0.5 text-[9.5px] flex-1">
                    {org?.bank_name && <><div className="font-semibold text-gray-600">Bank Name :</div><div className="font-medium text-gray-900">{org.bank_name}</div></>}
                    {(org?.bank_account_name || org?.name) && <><div className="font-semibold text-gray-600">A/C Holder :</div><div className="font-medium text-gray-900">{org?.bank_account_name || org?.name}</div></>}
                    {org?.bank_account_number && <><div className="font-semibold text-gray-600">Account No :</div><div className="font-mono font-bold text-gray-900 tracking-wider">{org.bank_account_number}</div></>}
@@ -276,7 +285,7 @@ export function ModernNavyInvoiceTemplate({
                  </div>
                  {upiString && (
                    <div className="flex flex-col items-center justify-center p-2 bg-gray-50 border border-gray-200 rounded-lg shrink-0">
-                     <QRCodeSVG value={upiString} size={74} />
+                     <QRCodeSVG value={upiString} size={62} />
                      <span className="text-[8.5px] font-bold text-gray-700 mt-1 tracking-tight">Scan &amp; Pay</span>
                    </div>
                  )}
@@ -285,16 +294,16 @@ export function ModernNavyInvoiceTemplate({
            )}
 
            {/* TERMS */}
-           {showTerms && <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
+           {showTerms && <div className="border mb-2.5 border-gray-200 rounded-xl overflow-hidden">
              <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>TERMS &amp; CONDITIONS</div>
-             <div className="p-3 text-[9px] whitespace-pre-wrap">
+             <div className="p-2.5 text-[8.5px] leading-tight whitespace-pre-wrap">
                {invoice?.terms_conditions || org?.default_terms || "1. Goods once sold will not be taken back.\n2. Interest @ 18% p.a. will be charged if payment is delayed."}
              </div>
            </div>}
            
            {/* NOTES */}
            {showNotes && invoice?.notes && (
-             <div className="border mb-4 border-gray-200 rounded-xl overflow-hidden">
+             <div className="border mb-2.5 border-gray-200 rounded-xl overflow-hidden">
                <div className="text-white font-bold px-3 py-1 text-xs" style={{backgroundColor: primary}}>NOTES</div>
                <div className="p-3 text-[9px] whitespace-pre-wrap">
                  {invoice.notes}
@@ -318,14 +327,14 @@ export function ModernNavyInvoiceTemplate({
              isInterstate={isInterstate}
            />
 
-           <div className="flex justify-end items-end mt-8">
+           <div className="flex justify-end items-end mt-4">
               <div className="text-center min-w-[180px]">
                  {showSignature && org?.address?.signature_type && org?.address?.signature_type !== 'none' ? (
-                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 44, marginBottom: 4 }}>
+                   <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-end', height: 38, marginBottom: 3 }}>
                      {org.address.signature_type === 'image' && org.address.signature_image_url ? (
-                       <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 44, mixBlendMode: 'multiply', objectFit: 'contain' }} />
+                       <img src={org.address.signature_image_url} alt="Signature" style={{ maxHeight: 38, mixBlendMode: 'multiply', objectFit: 'contain' }} />
                      ) : org.address.signature_type === 'font' && org.address.signature_name ? (
-                       <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 28, lineHeight: 1, color: '#1e293b' }}>
+                       <div style={{ fontFamily: org.address.signature_font || 'Caveat', fontSize: 24, lineHeight: 1, color: '#1e293b' }}>
                          {org.address.signature_name}
                        </div>
                      ) : null}
@@ -342,8 +351,8 @@ export function ModernNavyInvoiceTemplate({
 
       </div>
 
-      <div className="mt-8 text-center text-[10px] flex justify-center items-center gap-1 font-semibold border-t border-gray-200 pt-4">
-         Powered by <img src="/logo.png" alt="Aassay Biz" style={{ height: "16px", objectFit: "contain", display: "inline-block", marginLeft: "4px" }} />
+      <div className="mt-4 text-center text-[9px] flex justify-center items-center gap-1 font-semibold border-t border-gray-200 pt-2.5">
+         Powered by <img src="/logo.png" alt="Aassay Biz" style={{ height: "14px", objectFit: "contain", display: "inline-block", marginLeft: "4px" }} />
       </div>
     </div>
   );

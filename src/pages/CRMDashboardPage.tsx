@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO, isAfter, isBefore, addDays, startOfMonth, startOfDay, endOfDay, addMonths } from "date-fns";
 import { 
-  Users, Target, TrendingUp, DollarSign, Trophy, Percent, 
+  Users, Target, TrendingUp, IndianRupee, Trophy, Percent, 
   Phone, Mail, Calendar, Clock, AlertCircle, ArrowRight,
   Briefcase, Activity, BarChart3, PieChart, LineChart
 } from "lucide-react";
@@ -215,7 +215,7 @@ export default function CRMDashboardPage() {
   const kpis = [
     { label: "Total Leads", value: metrics.totalLeads.toLocaleString(), icon: Users, color: "from-blue-600/20 to-blue-900/10", textColor: "text-blue-500" },
     { label: "Open Deals", value: metrics.openDeals.toLocaleString(), icon: Target, color: "from-indigo-600/20 to-indigo-900/10", textColor: "text-indigo-500" },
-    { label: "Pipeline Value", value: formatCurrency(metrics.pipelineValue, currencyCode), icon: DollarSign, color: "from-emerald-600/20 to-emerald-900/10", textColor: "text-emerald-500" },
+    { label: "Pipeline Value", value: formatCurrency(metrics.pipelineValue, currencyCode), icon: IndianRupee, color: "from-emerald-600/20 to-emerald-900/10", textColor: "text-emerald-500" },
     { label: "Weighted Rev", value: formatCurrency(metrics.weightedRevenue, currencyCode), icon: TrendingUp, color: "from-purple-600/20 to-purple-900/10", textColor: "text-purple-500" },
     { label: "Won This Month", value: metrics.wonThisMonth.toLocaleString(), icon: Trophy, color: "from-amber-600/20 to-amber-900/10", textColor: "text-amber-500" },
     { label: "Conversion Rate", value: `${metrics.conversionRate.toFixed(1)}%`, icon: Percent, color: "from-pink-600/20 to-pink-900/10", textColor: "text-pink-500" },
