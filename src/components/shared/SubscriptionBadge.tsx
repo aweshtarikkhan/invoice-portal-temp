@@ -10,6 +10,8 @@ export function SubscriptionBadge() {
   let label = subscriptionPlan.toUpperCase();
   if (subscriptionPlan.toLowerCase().includes("suite")) {
     label = "BUSINESS SUITE";
+  } else if (subscriptionPlan.toLowerCase() === "free") {
+    label = "FREE PLAN";
   } else if (subscriptionPlan.includes(" + ")) {
     label = subscriptionPlan.split(" + ").map(s => s.trim().toUpperCase()).join(" • ");
   }
