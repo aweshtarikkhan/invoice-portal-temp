@@ -54,6 +54,9 @@ import {
   Sparkles,
   HelpCircle,
   RotateCcw,
+  Zap,
+  Ticket,
+  Link2,
 } from "lucide-react";
 import { useAppStore } from "@/store/app-store";
 import { useFeatureStore, ADMIN_FEATURE_GROUPS } from "@/store/feature-store";
@@ -129,7 +132,11 @@ const crmItems = [
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Sales Team", url: "/crm-team", icon: Briefcase, addUrl: "/crm-team?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
+  { title: "Calendar", url: "/calendar", icon: Calendar, addUrl: null },
+  { title: "Automations", url: "/crm/automations", icon: Zap, addUrl: null },
+  { title: "Support Tickets", url: "/tickets", icon: Ticket, addUrl: "/tickets?add=1" },
   { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
+  { title: "Integrations & API", url: "/crm/integrations", icon: Link2, addUrl: null },
 ];
 
 const marketingItems = [
@@ -339,8 +346,8 @@ export function AppSidebar() {
     }
 
     // Business Integration (Official WhatsApp, Email, CRM integrations)
-    if (["/emails", "/chats", "/crm/integrations"].some(u => url === u || url.startsWith(u + "/"))) {
-      if (url === "/crm/integrations") {
+    if (["/emails", "/chats", "/crm/integrations", "/crm-integrations", "/integrations"].some(u => url === u || url.startsWith(u + "/"))) {
+      if (["/crm/integrations", "/crm-integrations", "/integrations"].some(u => url === u || url.startsWith(u + "/"))) {
         return !hasPlan("crm");
       }
       return isFreePlan;
@@ -357,7 +364,7 @@ export function AppSidebar() {
     }
 
     // Business CRM
-    if (["/crm-reports", "/pipeline"].some(u => url === u || url.startsWith(u + "/"))) {
+    if (["/crm-reports", "/pipeline", "/crm/automations", "/crm-automations", "/automations", "/tickets", "/support-tickets"].some(u => url === u || url.startsWith(u + "/"))) {
       return !hasPlan("crm");
     }
 
@@ -421,8 +428,11 @@ export function AppSidebar() {
           if (i.icon === "Image") itemIcon = ImageIcon;
           if (i.icon === "BrainCircuit") itemIcon = BrainCircuit;
           if (i.icon === "MessageSquareQuote") itemIcon = MessageSquareQuote;
+          if (i.icon === "Zap") itemIcon = Zap;
+          if (i.icon === "Ticket") itemIcon = Ticket;
+          if (i.icon === "Link2") itemIcon = Link2;
           
-          const hasAddBtn = ["/warehouses", "/crm-team", "/leads", "/vendors", "/accounts"].includes(i.url);
+          const hasAddBtn = ["/warehouses", "/crm-team", "/leads", "/vendors", "/accounts", "/tickets"].includes(i.url);
           let addUrl: string | null = i.addUrl !== undefined ? i.addUrl : null;
           if (addUrl === null) {
             if (i.url === "/vendor-payments") addUrl = "/vendor-payments/new";

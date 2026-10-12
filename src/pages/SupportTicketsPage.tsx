@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,6 +94,7 @@ const dispatchTicketNotification = async (ticket: any, status: string, note: str
 
 export default function SupportTicketsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const org = useAppStore((s) => s.organization);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -141,6 +142,15 @@ export default function SupportTicketsPage() {
       fetchTemplates();
     }
   }, [org?.id]);
+
+  useEffect(() => {
+    if (searchParams.get("add") === "1") {
+      setIsNewTicketOpen(true);
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete("add");
+      setSearchParams(newParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchTemplates = async () => {
     if (!org?.id) return;

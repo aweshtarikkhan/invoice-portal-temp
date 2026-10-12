@@ -58,13 +58,20 @@ export function getCurrentFinancialYear(refDate: Date = new Date()): FinancialYe
 /**
  * Build a FinancialYear object from a key like "2026-27" or startYear number.
  */
-export function getFinancialYearByKey(keyOrStartYear: string | number): FinancialYear {
+export function getFinancialYearByKey(keyOrStartYear: string | number | { key?: string }): FinancialYear {
   let startYear: number;
+  if (keyOrStartYear && typeof keyOrStartYear === "object") {
+    keyOrStartYear = (keyOrStartYear as any).key || (keyOrStartYear as any).startYear;
+  }
   if (typeof keyOrStartYear === "number") {
     startYear = keyOrStartYear;
-  } else {
+  } else if (typeof keyOrStartYear === "string" && keyOrStartYear.includes("-")) {
     const parts = keyOrStartYear.split("-");
     startYear = parseInt(parts[0], 10);
+  } else if (typeof keyOrStartYear === "string" && !isNaN(parseInt(keyOrStartYear, 10))) {
+    startYear = parseInt(keyOrStartYear, 10);
+  } else {
+    return getCurrentFinancialYear();
   }
 
   const endYear = startYear + 1;
@@ -165,11 +172,14 @@ export function getFinancialYearMonths(fyKey: string): FYMonth[] {
 /**
  * Checks if a date string/Date falls within a given Financial Year.
  */
-export function isDateInFinancialYear(dateVal: string | Date | null | undefined, fyKey: string): boolean {
+export function isDateInFinancialYear(dateVal: string | Date | null | undefined, fyKey: string | { key?: string }): boolean {
   if (!dateVal) return false;
+  if (!fyKey || fyKey === "all") return true;
+  const rawKey = typeof fyKey === "object" && (fyKey as any)?.key ? (fyKey as any).key : fyKey;
+  if (rawKey === "all") return true;
   const d = typeof dateVal === "string" ? new Date(dateVal.slice(0, 10)) : dateVal;
   if (isNaN(d.getTime())) return false;
-  const fy = getFinancialYearByKey(fyKey);
+  const fy = getFinancialYearByKey(rawKey);
   const start = new Date(`${fy.startDate}T00:00:00`);
   const end = new Date(`${fy.endDate}T23:59:59`);
   return d >= start && d <= end;

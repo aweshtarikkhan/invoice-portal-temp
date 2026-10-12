@@ -34,9 +34,10 @@ export default function VendorPaymentsPage() {
   const [payments, setPayments] = useState<any[]>([]);
   const [bills, setBills] = useState<any[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
+  const currentFY = useMemo(() => getCurrentFinancialYear(), []);
   const [search, setSearch] = useState("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState("all");
-  const [selectedFy, setSelectedFy] = useState<string>(() => getCurrentFinancialYear());
+  const [selectedFy, setSelectedFy] = useState<string>(() => currentFY.key);
   const [loading, setLoading] = useState(true);
 
   // Deletion state
@@ -98,9 +99,11 @@ export default function VendorPaymentsPage() {
       // Search Filter
       if (search.trim()) {
         const q = search.toLowerCase();
-        const vName = (p.vendors?.display_name || p.vendors?.name || "").toLowerCase();
+        const vObj = Array.isArray(p.vendors) ? p.vendors[0] : p.vendors;
+        const bObj = Array.isArray(p.bills) ? p.bills[0] : p.bills;
+        const vName = (vObj?.display_name || vObj?.name || "").toLowerCase();
         const ref = (p.reference || "").toLowerCase();
-        const billNum = (p.bills?.vendor_bill_number || p.bills?.bill_number || "").toLowerCase();
+        const billNum = (bObj?.vendor_bill_number || bObj?.bill_number || "").toLowerCase();
         const notes = (p.notes || "").toLowerCase();
         return vName.includes(q) || ref.includes(q) || billNum.includes(q) || notes.includes(q);
       }
@@ -167,15 +170,19 @@ export default function VendorPaymentsPage() {
   const handleExportCSV = () => {
     downloadCSV(
       "vendor-payments.csv",
-      filteredPayments.map((p) => ({
-        "Payment Date": p.payment_date || "",
-        "Vendor": p.vendors?.display_name || p.vendors?.name || "Unknown",
-        "Bill #": p.bills?.vendor_bill_number || p.bills?.bill_number || "On Account",
-        "Payment Method": (p.payment_method || "bank_transfer").replace(/_/g, " "),
-        "Reference #": p.reference || "",
-        "Amount": p.amount || 0,
-        "Notes": p.notes || "",
-      }))
+      filteredPayments.map((p) => {
+        const vObj = Array.isArray(p.vendors) ? p.vendors[0] : p.vendors;
+        const bObj = Array.isArray(p.bills) ? p.bills[0] : p.bills;
+        return {
+          "Payment Date": p.payment_date || "",
+          "Vendor": vObj?.display_name || vObj?.name || "Unknown",
+          "Bill #": bObj?.vendor_bill_number || bObj?.bill_number || "On Account",
+          "Payment Method": (p.payment_method || "bank_transfer").replace(/_/g, " "),
+          "Reference #": p.reference || "",
+          "Amount": p.amount || 0,
+          "Notes": p.notes || "",
+        };
+      })
     );
   };
 
@@ -214,7 +221,7 @@ export default function VendorPaymentsPage() {
       </div>
 
       {/* Summary Ribbon */}
-      <SummaryRibbon items={summaryMetrics} />
+      <SummaryRibbon label="Vendor Payments Summary" items={summaryMetrics} />
 
       {/* Search & Filter Toolbar */}
       <Card>
@@ -290,8 +297,10 @@ export default function VendorPaymentsPage() {
               </TableHeader>
               <TableBody>
                 {filteredPayments.map((p) => {
-                  const vendorName = p.vendors?.display_name || p.vendors?.name || "Unknown Vendor";
-                  const billLabel = p.bills?.vendor_bill_number || p.bills?.bill_number;
+                  const vObj = Array.isArray(p.vendors) ? p.vendors[0] : p.vendors;
+                  const bObj = Array.isArray(p.bills) ? p.bills[0] : p.bills;
+                  const vendorName = vObj?.display_name || vObj?.name || "Unknown Vendor";
+                  const billLabel = bObj?.vendor_bill_number || bObj?.bill_number;
                   return (
                     <TableRow key={p.id} className="hover:bg-muted/40">
                       <TableCell className="font-mono text-xs">
@@ -361,7 +370,10 @@ export default function VendorPaymentsPage() {
               <strong className="text-foreground">
                 {paymentToDelete ? fmt(paymentToDelete.amount) : ""}
               </strong>
-              {paymentToDelete?.vendors?.name ? ` to ${paymentToDelete.vendors.name}` : ""}.
+              {(() => {
+                const v = Array.isArray(paymentToDelete?.vendors) ? paymentToDelete?.vendors[0] : paymentToDelete?.vendors;
+                return v?.display_name || v?.name ? ` to ${v.display_name || v.name}` : "";
+              })()}.
               <br /><br />
               Any linked purchase bill balance and status will be restored, and the bank/cash account balance will be refunded.
             </AlertDialogDescription>

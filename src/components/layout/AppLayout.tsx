@@ -679,7 +679,9 @@ export function AppLayout() {
   const OUTREACH_ROUTES = [
     "/emails",
     "/chats",
-    "/crm/integrations"
+    "/crm/integrations",
+    "/crm-integrations",
+    "/integrations"
   ];
   
   let isRouteRestricted = false;

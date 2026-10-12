@@ -65,6 +65,9 @@ export const ROUTE_TITLE_MAP: Record<string, string> = {
   "/activities": "CRM Activities & Follow-ups",
   "/calendar": "Business Calendar & Meetings",
   "/crm/integrations": "CRM API Integrations & Webhooks",
+  "/crm-integrations": "CRM API Integrations & Webhooks",
+  "/crm/automations": "CRM Workflow Automations",
+  "/crm-automations": "CRM Workflow Automations",
   "/marketing/posters": "Brand & Festival Poster Studio",
   "/marketing/templates": "Marketing Creatives & Templates",
   "/campaigns": "Marketing Campaigns & Outreach",
@@ -77,6 +80,7 @@ export const ROUTE_TITLE_MAP: Record<string, string> = {
   "/feedback": "Customer Feedback & Reviews",
   "/business-analysis": "AI Business Analytics & Forecasts",
   "/tickets": "Customer Support Tickets",
+  "/support-tickets": "Customer Support Tickets",
   "/platform-admin": "Platform Super Admin Console",
 };
 

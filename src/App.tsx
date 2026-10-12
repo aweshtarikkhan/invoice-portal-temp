@@ -309,9 +309,15 @@ const App = () => (
 
               <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
                 <Route path="/crm-dashboard" element={<CRMDashboardPage />} />
-                  <Route path="/crm/automations" element={<CRMAutomationsPage />} />
+                <Route path="/crm/automations" element={<CRMAutomationsPage />} />
+                <Route path="/crm-automations" element={<CRMAutomationsPage />} />
+                <Route path="/automations" element={<CRMAutomationsPage />} />
                   <Route path="/calendar" element={<CRMCalendarPage />} />
                 <Route path="/crm/integrations" element={<CrmIntegrationsPage />} />
+                <Route path="/crm-integrations" element={<CrmIntegrationsPage />} />
+                <Route path="/integrations" element={<CrmIntegrationsPage />} />
+                <Route path="/tickets" element={<SupportTicketsPage />} />
+                <Route path="/support-tickets" element={<SupportTicketsPage />} />
                   <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/leads/:id" element={<LeadDetailPage />} />
                   <Route path="/crm-team" element={<CRMTeamPage />} />
@@ -339,7 +345,7 @@ const App = () => (
                 <Route path="/feedback-assessment" element={<ComingSoonPage title="Feedback Assessment Form" />} />
                 <Route path="/business-analysis" element={<ComingSoonPage title="Business Analysis" description="AI-powered insights, predictive financial forecasting, and comprehensive business analytics." />} />
                 <Route path="/ai-bi-report" element={<ComingSoonPage title="Business Analysis" description="AI-powered insights, predictive financial forecasting, and comprehensive business analytics." />} />
-                <Route path="/tickets" element={<SupportTicketsPage />} />
+                {/* Customer support tickets accessible via /tickets under CRM */}
             </Route>
 
             {/* Public portal */}
