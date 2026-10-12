@@ -488,6 +488,23 @@ IMPORTANT CONTACT RULES:
   * The UPI Scan & Pay QR code is integrated directly inside the "BANK & PAYMENT DETAILS" block on the left (Bank details on the left, instant Scan & Pay QR badge on the right).
   * The Authorized Signatory section is positioned cleanly and exclusively on the bottom right with support for digital image signatures and dynamic signature font styling.
 
+23. DEDICATED CRM SALES & EMPLOYEE PORTAL (crm-portal)
+- Standalone Portal Directory: Separated into its own directory `/crm-portal` (similar to `/attendance-portal`) to prevent sales updates from mixing with core accounting commits.
+- Git Repository: Connected to `https://github.com/aweshtarikkhan/CRM-Employee-Portal.git` on branch main.
+- Unified Database: Seamlessly connects to the same enterprise Supabase instance (`https://api.aassaybiz.com`) with multi-tenant `org_id` isolation.
+- Dedicated Pages:
+  * Executive CRM Report & Analytics (/crm-report)
+  * Leads Management & Qualification (/leads)
+  * Lead Details, Activity Timeline & Deal Progression (/leads/:id)
+  * Interactive Deals Pipeline Kanban (/pipeline)
+  * Opportunity Details & Forecasting (/pipeline/:id)
+  * Scheduled Sales Calendar (/calendar)
+  * Activities, Calls & Tasks (/activities)
+  * Customer Support Tickets & Escalation (/tickets)
+  * Sales Team & Performance Leaderboard (/crm-team)
+  * Automated Sales Workflow Rules (/automations)
+  * Webhooks & Third-party Integrations (/integrations)
+
 --- END OF KNOWLEDGE BASE ---
 `;
 
