@@ -275,9 +275,7 @@ export default function LandingPage() {
     localStorage.setItem("satah-lang", lang);
   }, [lang]);
 
-  useEffect(() => {
-    if (!loading && session) navigate("/dashboard", { replace: true });
-  }, [session, loading, navigate]);
+  // Allow browsing landing page and pricing freely without forced redirect
 
   useEffect(() => {
     // Fetch global settings
@@ -943,15 +941,15 @@ export default function LandingPage() {
             // Calculate total based on fixed UI plan prices
             let totalAmount = 0;
             if (finalSelected.has("suite")) {
-              totalAmount = isYearly ? 14999 : 1499;
+              totalAmount = isYearly ? 20388 : 1999;
               if (platformExtra > 0) {
                 totalAmount += platformExtra * (isYearly ? Math.round(99 * 12 * 0.83) : 99);
               }
             } else {
-              if (finalSelected.has("accounting")) totalAmount += isYearly ? 5999 : 599;
-              if (finalSelected.has("hr")) totalAmount += isYearly ? 5999 : 599;
-              if (finalSelected.has("crm")) totalAmount += isYearly ? 3499 : 349;
-              if (finalSelected.has("promotion")) totalAmount += isYearly ? 3499 : 349;
+              if (finalSelected.has("accounting")) totalAmount += isYearly ? 5990 : 599;
+              if (finalSelected.has("hr")) totalAmount += isYearly ? 5990 : 599;
+              if (finalSelected.has("crm")) totalAmount += isYearly ? 5988 : 599;
+              if (finalSelected.has("promotion")) totalAmount += isYearly ? 5988 : 599;
               if (finalSelected.size > 0 && platformExtra > 0) {
                 totalAmount += platformExtra * (isYearly ? Math.round(99 * 12 * 0.83) : 99);
               }
@@ -1319,21 +1317,21 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(349, 3499)}`}</span>
+                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5988)}`}</span>
                               <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
                             {isYearly ? (
                               <div className="mt-1 flex flex-col gap-1">
                                 <span className="text-xs font-semibold text-slate-500">
-                                  Billed annually at ₹{getPlanYearlyTotal(3499)}/year upfront
+                                  Billed annually at ₹{getPlanYearlyTotal(5988)}/year upfront
                                 </span>
                                 <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                  Save 16% (Pay upfront)
+                                  Save 17% (Pay upfront)
                                 </span>
                               </div>
                             ) : (
                               <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                Save 16% yearly
+                                Save 17% yearly
                               </div>
                             )}
                           </div>
@@ -1432,21 +1430,21 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(349, 3499)}`}</span>
+                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5988)}`}</span>
                               <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
                             {isYearly ? (
                               <div className="mt-1 flex flex-col gap-1">
                                 <span className="text-xs font-semibold text-slate-500">
-                                  Billed annually at ₹{getPlanYearlyTotal(3499)}/year upfront
+                                  Billed annually at ₹{getPlanYearlyTotal(5988)}/year upfront
                                 </span>
                                 <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                  Save 16% (Pay upfront)
+                                  Save 17% (Pay upfront)
                                 </span>
                               </div>
                             ) : (
                               <div className="mt-1.5 inline-block text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                Save 16% yearly
+                                Save 17% yearly
                               </div>
                             )}
                           </div>
@@ -1647,21 +1645,21 @@ export default function LandingPage() {
                             </p>
                             <div className="flex items-center gap-2.5 mt-2 flex-wrap">
                               <div className="flex items-baseline gap-1">
-                                <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹1,249" : "₹1,499"}</span>
+                                <span className="text-2xl font-black text-[#e77817]">{isYearly ? "₹1,699" : "₹1,999"}</span>
                                 <span className="text-xs text-slate-500 font-semibold">/month</span>
                               </div>
                               {isYearly ? (
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span className="text-xs font-semibold text-slate-500">
-                                    (Billed ₹14,999/year upfront)
+                                    (Billed ₹20,388/year upfront)
                                   </span>
                                   <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                    Save ₹2,989 (17% OFF)
+                                    Save ₹3,600 (15% OFF)
                                   </span>
                                 </div>
                               ) : (
                                 <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
-                                  Save 17% yearly
+                                  Save 15% yearly
                                 </span>
                               )}
                             </div>

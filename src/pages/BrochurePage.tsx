@@ -467,14 +467,14 @@ export default function BrochurePage() {
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-slate-900">Business CRM</span>
-                    <span className="text-xs font-black text-cyan-600">₹349/mo</span>
+                    <span className="text-xs font-black text-cyan-600">₹599/mo</span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">Unlimited leads, IndiaMART & Meta API integrations, sales pipeline & deals.</p>
                 </div>
                 <div className="p-2.5 rounded-lg bg-white border border-slate-200">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-slate-900">Business Promotion</span>
-                    <span className="text-xs font-black text-orange-600">₹349/mo</span>
+                    <span className="text-xs font-black text-orange-600">₹599/mo</span>
                   </div>
                   <p className="text-[10px] text-slate-500 mt-1">All festival & business categories, WhatsApp & email broadcast campaigns.</p>
                 </div>

@@ -499,12 +499,12 @@ export default function PamphletPage() {
                     </div>
                     <div className="bg-white border border-slate-200 rounded p-2 text-center">
                       <span className="font-bold text-slate-800 block">Business CRM</span>
-                      <span className="text-indigo-600 font-extrabold text-xs">₹349/mo</span>
+                      <span className="text-indigo-600 font-extrabold text-xs">₹599/mo</span>
                       <span className="text-[10px] text-slate-500 block">Leads, pipelines & follow-ups</span>
                     </div>
                     <div className="bg-white border border-slate-200 rounded p-2 text-center">
                       <span className="font-bold text-slate-800 block">Business Promotion</span>
-                      <span className="text-indigo-600 font-extrabold text-xs">₹349/mo</span>
+                      <span className="text-indigo-600 font-extrabold text-xs">₹599/mo</span>
                       <span className="text-[10px] text-slate-500 block">Festival studio & WhatsApp</span>
                     </div>
                   </div>
@@ -695,9 +695,9 @@ export default function PamphletPage() {
                 <span className="font-bold text-slate-700">Modular Add-ons:</span>
                 <span className="text-slate-600"><strong>Business HR:</strong> ₹599/mo (25 staff)</span>
                 <span>•</span>
-                <span className="text-slate-600"><strong>Business CRM:</strong> ₹349/mo</span>
+                <span className="text-slate-600"><strong>Business CRM:</strong> ₹599/mo</span>
                 <span>•</span>
-                <span className="text-slate-600"><strong>Business Promotion:</strong> ₹349/mo</span>
+                <span className="text-slate-600"><strong>Business Promotion:</strong> ₹599/mo</span>
               </div>
             </div>
 

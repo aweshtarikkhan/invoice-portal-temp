@@ -64,7 +64,7 @@ IMPORTANT CONTACT RULES:
     - Shift Planning & Leave Management.
     - 500 WhatsApp Messages per month.
     - Add-on: Additional Platform Access available at ₹99/user/month.
-  * Business CRM (₹349/mo or ₹291/mo billed yearly - Save 16%):
+  * Business CRM (₹599/mo or ₹499/mo billed yearly at ₹5,988/yr - Save 17%):
     - Everything in Free Plan.
     - Unlimited Leads & Contacts.
     - Sales Pipeline & Deal Stages.
@@ -73,7 +73,7 @@ IMPORTANT CONTACT RULES:
     - WhatsApp & Email Outreach Integration.
     - CRM Analytics & Conversion Reports.
     - Add-on: Additional Platform Access available at ₹99/user/month.
-  * Business Promotion (₹349/mo or ₹291/mo billed yearly - Save 16%):
+  * Business Promotion (₹599/mo or ₹499/mo billed yearly at ₹5,988/yr - Save 17%):
     - Everything in Free Plan.
     - 5,000+ Festival & Event Posters.
     - Custom Brand Posters with Logo.
@@ -88,7 +88,7 @@ IMPORTANT CONTACT RULES:
   * Business Analysis (Coming Soon):
     - Revenue & Profitability Insights, Sales & Expenses Forecasting.
     - Product & Customer Performance, Cash Flow Analytics, Custom Reports & Export.
-  * Business Suite (₹1,499/mo or ₹1,249/mo billed yearly - Save 17% - Flagship):
+  * Business Suite (₹1,999/mo or ₹1,699/mo billed yearly at ₹20,388/yr - Save 15% - Flagship):
     - All-in-one suite combining Business Accounting, Business HR, Business CRM, and Business Promotion.
     - Platform access up to 5 employees included.
     - Unlimited Invoices, Quotations, Purchase Invoices, Purchase Orders, and Leads.
@@ -489,9 +489,9 @@ IMPORTANT CONTACT RULES:
   * The Authorized Signatory section is positioned cleanly and exclusively on the bottom right with support for digital image signatures and dynamic signature font styling.
 
 23. DEDICATED CRM SALES & EMPLOYEE PORTAL (crm-portal)
-- Standalone Portal Directory: Separated into its own directory `/crm-portal` (similar to `/attendance-portal`) to prevent sales updates from mixing with core accounting commits.
-- Git Repository: Connected to `https://github.com/aweshtarikkhan/CRM-Employee-Portal.git` on branch main.
-- Unified Database: Seamlessly connects to the same enterprise Supabase instance (`https://api.aassaybiz.com`) with multi-tenant `org_id` isolation.
+- Standalone Portal Directory: Separated into its own directory '/crm-portal' (similar to '/attendance-portal') to prevent sales updates from mixing with core accounting commits.
+- Git Repository: Connected to 'https://github.com/aweshtarikkhan/CRM-Employee-Portal.git' on branch main.
+- Unified Database: Seamlessly connects to the same enterprise Supabase instance ('https://api.aassaybiz.com') with multi-tenant 'org_id' isolation.
 - Dedicated Pages:
   * Executive CRM Report & Analytics (/crm-report)
   * Leads Management & Qualification (/leads)
