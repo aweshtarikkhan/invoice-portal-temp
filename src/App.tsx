@@ -12,7 +12,7 @@ const SalesReportsPage = lazy(() => import("./pages/SalesReportsPage"));
 const InventoryReportsPage = lazy(() => import("./pages/InventoryReportsPage"));
 const PurchaseAccountingReportsPage = lazy(() => import("./pages/PurchaseAccountingReportsPage"));
 const HRReportsPage = lazy(() => import("./pages/HRReportsPage"));
-const CRMReportsPage = lazy(() => import("./pages/CRMReportsPage"));
+
 const PromotionReportsPage = lazy(() => import("./pages/PromotionReportsPage"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
@@ -106,7 +106,7 @@ const EmailPage = lazy(() => import("./pages/EmailPage"));
 const AdminPanelPage = lazy(() => import("./pages/AdminPanelPage"));
 const PlatformAdminPage = lazy(() => import("./pages/PlatformAdminPage"));
 const DealDetailPage = lazy(() => import("./pages/DealDetailPage"));
-const CRMDashboardPage = lazy(() => import("./pages/CRMDashboardPage"));
+const CRMReportPage = lazy(() => import("./pages/CRMReportPage"));
 const CRMAutomationsPage = lazy(() => import("./pages/CRMAutomationsPage"));
 const CRMCalendarPage = lazy(() => import("./pages/CRMCalendarPage"));
 const BrochurePage = lazy(() => import("./pages/BrochurePage"));
@@ -308,7 +308,10 @@ const App = () => (
 
 
               <Route element={<FeatureGuard featureKey="crm" featureName="CRM" />}>
-                <Route path="/crm-dashboard" element={<CRMDashboardPage />} />
+                <Route path="/crm-report" element={<CRMReportPage />} />
+                <Route path="/crm-dashboard" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm/dashboard" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm/report" element={<Navigate to="/crm-report" replace />} />
                 <Route path="/crm/automations" element={<CRMAutomationsPage />} />
                 <Route path="/crm-automations" element={<CRMAutomationsPage />} />
                 <Route path="/automations" element={<CRMAutomationsPage />} />
@@ -324,11 +327,11 @@ const App = () => (
                 <Route path="/pipeline" element={<PipelinePage />} />
                 <Route path="/pipeline/:id" element={<DealDetailPage />} />
                 <Route path="/activities" element={<ActivitiesPage />} />
-                <Route path="/crm-reports" element={<CRMReportsPage />} />
-                <Route path="/crm/reports" element={<Navigate to="/crm-reports" replace />} />
-                <Route path="/crm-marketing-reports" element={<Navigate to="/crm-reports" replace />} />
-                <Route path="/crm marketing reports" element={<Navigate to="/crm-reports" replace />} />
-                <Route path="/crm%20marketing%20reports" element={<Navigate to="/crm-reports" replace />} />
+                <Route path="/crm-reports" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm/reports" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm-marketing-reports" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm marketing reports" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/crm%20marketing%20reports" element={<Navigate to="/crm-report" replace />} />
               </Route>
               <Route element={<FeatureGuard featureKey="marketing" featureName="Business Promotion" />}>
                 <Route path="/marketing/posters" element={<MarketingPostersPage />} />

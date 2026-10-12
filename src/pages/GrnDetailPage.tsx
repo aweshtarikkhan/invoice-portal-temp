@@ -17,20 +17,22 @@ export default function GrnDetailPage() {
   useEffect(() => {
     (async () => {
       try {
-        const { data, error } = await (supabase as any).from("grns").select("*, vendors(name), purchase_orders(po_number), warehouses(name)").eq("id", id).maybeSingle();
+        const { data, error } = await (supabase as any).from("grns").select("*, vendors(name), purchase_orders(po_number), warehouses(name), branches(name)").eq("id", id).maybeSingle();
         if (error || !data) {
           const { data: rawG } = await (supabase as any).from("grns").select("*").eq("id", id).maybeSingle();
           if (rawG) {
-            const [v, p, w] = await Promise.all([
+            const [v, p, w, br] = await Promise.all([
               rawG.vendor_id ? (supabase as any).from("vendors").select("name").eq("id", rawG.vendor_id).maybeSingle() : { data: null },
               rawG.po_id ? (supabase as any).from("purchase_orders").select("po_number").eq("id", rawG.po_id).maybeSingle() : { data: null },
               rawG.warehouse_id ? (supabase as any).from("warehouses").select("name").eq("id", rawG.warehouse_id).maybeSingle() : { data: null },
+              rawG.branch_id ? (supabase as any).from("branches").select("name").eq("id", rawG.branch_id).maybeSingle() : { data: null },
             ]);
             setG({
               ...rawG,
               vendors: v.data,
               purchase_orders: p.data,
               warehouses: w.data,
+              branches: br.data,
             });
           }
         } else {
@@ -66,7 +68,7 @@ export default function GrnDetailPage() {
           <div><div className="text-muted-foreground">Vendor</div><div className="font-medium">{g.vendors?.name || "—"}</div></div>
           <div><div className="text-muted-foreground">PO #</div><div>{g.purchase_orders?.po_number || "—"}</div></div>
           <div><div className="text-muted-foreground">Date</div><div>{format(new Date(g.grn_date), "dd MMM yyyy")}</div></div>
-          <div><div className="text-muted-foreground">Branch (Warehouse)</div><div>{g.warehouses?.name || "—"}</div></div>
+          <div><div className="text-muted-foreground">Branch (Warehouse)</div><div>{g.branches?.name || g.warehouses?.name || "—"}</div></div>
           <div><div className="text-muted-foreground">Vehicle</div><div>{g.vehicle_number || "—"}</div></div>
           <div><div className="text-muted-foreground">Transporter</div><div>{g.transporter || "—"}</div></div>
         </CardContent>

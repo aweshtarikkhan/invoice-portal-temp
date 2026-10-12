@@ -106,7 +106,7 @@ export const ADMIN_FEATURE_GROUPS: FeatureGroup[] = [
     icon: "Users",
     description: "Leads, Pipeline & Sales Activities",
     items: [
-      { key: "crm-reports", title: "CRM Reports", description: "Analyze your leads and pipeline", icon: "BarChart3", url: "/crm-reports" },
+      { key: "crm-reports", title: "CRM Report", description: "Executive overview of leads, pipeline, and tickets", icon: "BarChart3", url: "/crm-report" },
       { key: "leads", title: "Leads", description: "Manage sales leads", icon: "Users", url: "/leads" },
       { key: "crm-team", title: "Sales Team", description: "Manage CRM executives", icon: "Briefcase", url: "/crm-team" },
       { key: "pipeline", title: "Pipeline", description: "Sales pipeline view", icon: "BarChart3", url: "/pipeline" },

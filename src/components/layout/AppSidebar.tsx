@@ -127,8 +127,7 @@ const peopleItems = [
 ];
 
 const crmItems = [
-  { title: "CRM Dashboard", url: "/crm-dashboard", icon: BarChart3, addUrl: null },
-  { title: "CRM Reports", url: "/crm-reports", icon: BarChart3, addUrl: null },
+  { title: "CRM Report", url: "/crm-report", icon: BarChart3, addUrl: null },
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Sales Team", url: "/crm-team", icon: Briefcase, addUrl: "/crm-team?add=1" },
   { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },

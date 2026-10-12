@@ -15,7 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Plus, Trash2, ArrowLeft } from "lucide-react";
 import { format } from "date-fns";
 import { logStockMovements } from "@/lib/stock";
-import { AddWarehouseDialog } from "@/components/shared/AddWarehouseDialog";
 
 interface Line {
   item_id: string;
@@ -306,33 +305,8 @@ export default function GrnBuilderPage() {
           </div>
           <div>
             <Label>Branch (Warehouse)</Label>
-            <div className="flex gap-2">
-              <Select value={warehouseId || undefined} onValueChange={setWarehouseId}>
-                <SelectTrigger><SelectValue placeholder="Select branch (warehouse)" /></SelectTrigger>
-                <SelectContent className="z-50 max-h-60">
-                  {warehouses.length === 0 ? (
-                    <SelectItem value="none" disabled>No branch/warehouse found</SelectItem>
-                  ) : (
-                    warehouses.map(w => <SelectItem key={w.id} value={w.id}>{w.name} {w.is_default ? "(Default)" : ""}</SelectItem>)
-                  )}
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setAddWarehouseOpen(true)}
-                title="Add new branch (warehouse)"
-                className="shrink-0"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div>
-            <Label>Branch</Label>
             <Select value={branchId || undefined} onValueChange={setBranchId}>
-              <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Select branch (warehouse)" /></SelectTrigger>
               <SelectContent className="z-50 max-h-60">
                 {branches.length === 0 ? (
                   <SelectItem value="none" disabled>No branches found</SelectItem>
@@ -523,14 +497,6 @@ export default function GrnBuilderPage() {
 
       <Card><CardContent className="pt-5"><Label>Notes</Label><Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2} /></CardContent></Card>
 
-      <AddWarehouseDialog
-        open={addWarehouseOpen}
-        onOpenChange={setAddWarehouseOpen}
-        onWarehouseAdded={(w) => {
-          setWarehouses(prev => [...prev, w]);
-          setWarehouseId(w.id);
-        }}
-      />
     </div>
   );
 }

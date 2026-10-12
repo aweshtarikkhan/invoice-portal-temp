@@ -160,23 +160,97 @@ export default function AttendancePage() {
     } catch (e) {
       console.warn("RPC auto_clock_out_expired_punches failed:", e);
     }
-    const { data } = await (supabase as any)
-      .from("attendances")
-      .select("*")
-      .eq("org_id", org.id)
-      .eq("date", dateStr);
 
-    const map: Record<string, any> = {};
-    (data || []).forEach((r: any) => { map[r.employee_id] = r; });
-    setDailyLogs(map);
-    setLoadingDaily(false);
+    try {
+      // Query both attendances (plural) and attendance (singular) for 100% complete data
+      const [pluralRes, singularRes] = await Promise.all([
+        (supabase as any).from("attendances").select("*").eq("org_id", org.id).eq("date", dateStr),
+        (supabase as any).from("attendance").select("*").eq("org_id", org.id).eq("attendance_date", dateStr)
+      ]);
+
+      const map: Record<string, any> = {};
+
+      // 1. Process plural attendances records
+      (pluralRes?.data || []).forEach((r: any) => {
+        if (r.employee_id) {
+          map[r.employee_id] = r;
+        }
+        // Match against employees list (by id or auth_user_id)
+        const empMatch = employees.find((e: any) => e.id === r.employee_id || e.auth_user_id === r.employee_id);
+        if (empMatch) {
+          map[empMatch.id] = r;
+        }
+      });
+
+      // 2. Process singular attendance records as fallback / merge
+      (singularRes?.data || []).forEach((r: any) => {
+        const empMatch = employees.find((e: any) => e.id === r.employee_id || e.auth_user_id === r.employee_id);
+        const targetEmpId = empMatch?.id || r.employee_id;
+        if (targetEmpId) {
+          const existing = map[targetEmpId] || {};
+          map[targetEmpId] = {
+            ...existing,
+            id: existing.id || r.id,
+            employee_id: targetEmpId,
+            org_id: r.org_id,
+            date: dateStr,
+            clock_in_time: existing.clock_in_time || r.clock_in_time,
+            clock_in_location: existing.clock_in_location || r.clock_in_location,
+            clock_out_time: existing.clock_out_time || r.clock_out_time,
+            clock_out_location: existing.clock_out_location || r.clock_out_location,
+            status: existing.status || r.status || r.computed_status,
+            is_auto_clock_out: existing.is_auto_clock_out ?? r.is_auto_clock_out,
+          };
+        }
+      });
+
+      setDailyLogs(map);
+    } catch (fetchErr) {
+      console.error("Error fetching daily logs:", fetchErr);
+    } finally {
+      setLoadingDaily(false);
+    }
   };
 
   useEffect(() => {
     if (org?.id && dailyDate) {
       fetchDailyLogs(dailyDate);
     }
-  }, [org?.id, dailyDate]);
+  }, [org?.id, dailyDate, employees]);
+
+  // Realtime subscription + auto poll for Daily Attendance Logs
+  useEffect(() => {
+    if (!org?.id) return;
+    const channel = supabase
+      .channel(`daily-logs-live-${org.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendances", filter: `org_id=eq.${org.id}` },
+        () => {
+          if (dailyDate) fetchDailyLogs(dailyDate);
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "attendance", filter: `org_id=eq.${org.id}` },
+        () => {
+          if (dailyDate) fetchDailyLogs(dailyDate);
+        }
+      )
+      .subscribe();
+
+    const pollInterval = setInterval(() => {
+      if (activeTab === "daily" && dailyDate) {
+        fetchDailyLogs(dailyDate);
+      }
+    }, 8000);
+
+    return () => {
+      supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+    };
+  }, [org?.id, dailyDate, activeTab, employees]);
+
 
   useEffect(() => {
     if (org) {
@@ -1353,6 +1427,21 @@ export default function AttendancePage() {
         });
         if (error) throw error;
       }
+
+      // Also sync to attendance (singular) table
+      try {
+        await (supabase as any).from("attendance").upsert({
+          org_id: org.id,
+          employee_id: manualPunchEmp.id,
+          attendance_date: dailyDate,
+          clock_in_time: clockInIso,
+          clock_out_time: clockOutIso,
+          status: "present",
+        }, { onConflict: "employee_id,attendance_date" });
+      } catch (e) {
+        console.warn("Manual punch sync to attendance singular failed:", e);
+      }
+
       toast({ title: "Punch Recorded", description: `Saved check-in / check-out time for ${manualPunchEmp.name}` });
       setManualPunchEmp(null);
       fetchDailyLogs(dailyDate);
@@ -1408,7 +1497,18 @@ export default function AttendancePage() {
 
   const renderLocation = (loc: any) => {
     if (!loc) return <span className="text-xs text-muted-foreground">-</span>;
-    if (loc?.auto || loc?.is_auto_clock_out) {
+    let parsed = loc;
+    if (typeof loc === "string") {
+      try {
+        parsed = JSON.parse(loc);
+      } catch {
+        parsed = { address: loc };
+      }
+    }
+    if (!parsed || (typeof parsed !== "object" && typeof parsed !== "string")) {
+      return <span className="text-xs text-muted-foreground">-</span>;
+    }
+    if (parsed?.auto || parsed?.is_auto_clock_out) {
       return (
         <div className="flex flex-col text-xs space-y-0.5">
           <span className="font-semibold text-amber-700 flex items-center gap-1">
@@ -1416,14 +1516,23 @@ export default function AttendancePage() {
             Auto Logout (System)
           </span>
           <span className="text-[11px] text-muted-foreground">
-            {loc.reason || "Shift timed out at 08:59 AM"}
+            {parsed.reason || "Shift timed out"}
           </span>
         </div>
       );
     }
-    const addressText = loc.address || loc.name || (loc.lat && loc.lng ? `${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}` : null);
-    const mapUrl = loc.lat && loc.lng ? `https://maps.google.com/?q=${loc.lat},${loc.lng}` : null;
-    
+
+    const lat = parsed.lat != null ? Number(parsed.lat) : null;
+    const lng = parsed.lng != null ? Number(parsed.lng) : null;
+    const hasCoords = lat != null && lng != null && !isNaN(lat) && !isNaN(lng);
+
+    const addressText = parsed.address || parsed.name || parsed.formatted_address || (hasCoords ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : null);
+    const mapUrl = hasCoords ? `https://maps.google.com/?q=${lat},${lng}` : null;
+
+    if (!addressText && !mapUrl) {
+      return <span className="text-xs text-muted-foreground">-</span>;
+    }
+
     return (
       <div className="flex flex-col text-xs space-y-0.5">
         <span className="font-medium text-slate-700 text-wrap leading-tight max-w-[250px]" title={addressText || "Location Captured"}>
@@ -2012,7 +2121,7 @@ export default function AttendancePage() {
                           if (clockInMins <= graceEnd) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
                           if (clockInMins <= lateEnd) return { label: "Late", cls: "bg-amber-100 text-amber-800 border-amber-300" };
                           if (clockInMins <= halfDayEnd) return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
-                          return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
+                          return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
                         };
 
                         const statusInfo = computeStatus();

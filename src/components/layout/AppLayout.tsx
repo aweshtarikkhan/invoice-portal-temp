@@ -664,8 +664,7 @@ export function AppLayout() {
     "/inventory-valuation",
     "/aging-details",
     "/statements",
-    "/hr-reports",
-    "/crm-reports"
+    "/hr-reports"
   ];
   
   const MARKETING_ROUTES = [

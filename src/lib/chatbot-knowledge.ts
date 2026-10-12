@@ -144,7 +144,7 @@ IMPORTANT CONTACT RULES:
   - You can add Bank Account Details (either type them or select from saved accounts via a dropdown).
   - Can also be used for non-GST billing if no GST number is configured.
 - Purchase Orders: Go to Purchases -> Purchase Orders to create POs for vendors. The Purchase Order Builder supports vendor selection, item lines, GST tax calculations, TDS/TCS configuration, document-level discounts, shipping charges, adjustments, and "Display Options" (Auto Round Off Total, Show Bank/UPI Details, Show Terms & Conditions, Show Notes).
-- Goods Receipt Notes (GRN): Go to Purchases -> Goods Receipt (GRN) ('/grns'). Used to record incoming materials against Purchase Orders or direct vendor deliveries, adding quantities to stock inventory. Location selection uses 'Branch (Warehouse)'.
+- Goods Receipt Notes (GRN): Go to Purchases -> Goods Receipt (GRN) ('/grns'). Used to record incoming materials against Purchase Orders or direct vendor deliveries, adding quantities to stock inventory. Location selection uses a single unified 'Branch (Warehouse)' dropdown representing the receiving company branch/warehouse location.
 - Purchase Invoices / Bills: Go to Purchases -> Purchase Invoices to track bills. Similar to Purchase Orders, the Bill Builder also supports "Display Options" (Auto Round-off, Bank Details, Terms, Notes), shipping charges, discounts, and fixed costs. When a purchase bill is created from a Goods Receipt (GRN), stock addition is automatically locked with an informative banner to prevent duplicate stock inflation since stock was already received in the GRN.
 - Vendor Payments: Go to Purchases -> Vendor Payments ('/vendor-payments') or click 'Record Payment' ('/vendor-payments/new').
   * Record and track payments made to vendors against outstanding purchase bills or on-account.
@@ -215,9 +215,40 @@ IMPORTANT CONTACT RULES:
 - HR Reports (/hr-reports): Real-time analytics and HR KPI dashboards. Displays a 6-metric Today's Attendance overview: Total Employees, Present, Absent, Late (arrived after grace period), Half Day (arrived after late cutoff or half-day leave), and On Leave (approved leaves). Automatically resolves attendance statuses against assigned shift rules and Indian Standard Time (IST). The "Recent Attendance & Punch Logs" table provides detailed Clock In time, Clock Out time (with "Auto Logout" indicator for automatically closed punches), and total Working Hours for every employee record, complete with one-click CSV and PDF export.
 
 5. BUSINESS CRM
-- Sidebar Navigation Items: The "Business CRM" accordion in the left sidebar includes 10 dedicated sections: CRM Dashboard (/crm-dashboard), CRM Reports (/crm-reports), Leads (/leads with quick-add button), Sales Team (/crm-team with quick-add button), Pipeline (/pipeline), Calendar (/calendar), Automations (/crm/automations), Support Tickets (/tickets with quick-add button), Activities (/activities), and Integrations & API (/crm/integrations).
-- CRM Dashboard (/crm-dashboard): Unified executive dashboard for CRM performance, conversion funnel, upcoming activities, top deals, and monthly sales forecast.
-- CRM Reports (/crm-reports): Detailed analytics on leads conversion, sales rep performance, and pipeline health.
+- Sidebar Navigation Items: The "Business CRM" accordion in the left sidebar includes 9 dedicated sections: CRM Report (/crm-report), Leads (/leads with quick-add button), Sales Team (/crm-team with quick-add button), Pipeline (/pipeline), Calendar (/calendar), Automations (/crm/automations), Support Tickets (/tickets with quick-add button), Activities (/activities), and Integrations & API (/crm/integrations).
+- CRM Report (/crm-report): Unified executive management & analytics report matching the Shadcn design system. It seamlessly consolidates all CRM reporting and operational metrics into one powerful, real-time screen:
+  * 8 Core Management Overview Indicators:
+    1. Total Leads: All registered prospects in the CRM database (1-click jump to /leads).
+    2. New Leads: Fresh inquiries awaiting initial qualification.
+    3. Follow-ups Due: Activities and scheduled follow-ups due today or overdue requiring immediate action.
+    4. Converted Leads: Successfully converted leads along with the overall Lead Conversion Rate %.
+    5. Open Tickets: Active client and lead support tickets awaiting resolution (1-click jump to /tickets).
+    6. Closed Tickets: Successfully resolved and closed customer support cases.
+    7. Pending Tasks: Active CRM tasks and sales activities currently pending or in progress.
+    8. Completed Tasks: Total finished sales actions and logged activities.
+  * Financial & Deal Velocity Metrics:
+    - Active Pipeline Value: Total monetary value of open deals in funnel.
+    - Weighted Forecast Revenue: Probability-adjusted expected revenue.
+    - Won Deals Revenue: Total closed won earnings and won deal count.
+    - Win Rate: Percentage of successfully closed won deals against total closed deals.
+    - Lead Conversion Rate: Percentage of registered leads converted into paying clients.
+  * Interactive Pipeline Visualizations (Consolidated from CRM Reports):
+    - Pipeline Stages Interactive Bar Chart: Recharts distribution bar chart with hover tooltips showing deal volume and stage monetary value.
+    - Stage Value Breakdown: Detailed cards for every pipeline stage displaying deal count, total amount, and win probability %.
+    - Sales Forecasting: Probability-weighted projected revenue for "Expected This Month" and "Expected Next Month".
+  * Top Open Opportunities Table with One-Click Exports:
+    - Detailed table of high-value active opportunities showing Opportunity Name, Client/Lead contact, Pipeline Stage badge, Deal Value, Win Probability (with graphical progress bar), and Expected Close Date.
+    - Export to CSV: Instant download of active deals in CSV format.
+    - Export to PDF: Instant download of active deals in formatted tabular PDF.
+  * Full Page Report Export (PDF):
+    - Header button "Export Report (PDF)" generates and downloads a branded PDF of the complete executive CRM dashboard.
+  * Operational Activity Feeds:
+    - Follow-ups & Due Tasks Queue: Actionable priority list with Overdue and Today status indicators.
+    - Support Tickets Queue: Real-time feed of latest support tickets with custom ticket numbers ([DB1234]) and statuses.
+    - Recent Leads Feed: Latest captured prospects with contact details and current lead status.
+  * Sales Team Leaderboard & Lead Sources:
+    - Sales Team Productivity: Leaderboard tracking leads assigned, tasks executed, deals won, and revenue generated per sales executive.
+    - Lead Generation Sources: Channel distribution cards and percentages.
 - Leads: Go to Business CRM -> Leads (/leads). Click "New Lead" button to add a new customer inquiry or lead. Supports assigning leads directly to sales executives or CRM team members in both Add/Edit dialogs (with inline Quick Add for new executives), direct inline 1-click reassignment from the "Assigned To" dropdown in the main leads table, and filtering leads by specific assignee or unassigned status. (Requires CRM plan).
 - Activities & Tasks (/activities): Go to Business CRM -> Activities. Schedule, log, and track sales activities and team tasks.
   * "Log Activity" / "New Task" Form: Overhauled with 10 structured fields:

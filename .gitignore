@@ -31,5 +31,10 @@ backend/node_modules
 *.tar.gz
 *.cjs
 *.py
+*.mjs
+test_*
+test.*
+all_dollars.txt
+combined_patch.sql
 docker-compose-ec2.yml
 update-compose.sh
