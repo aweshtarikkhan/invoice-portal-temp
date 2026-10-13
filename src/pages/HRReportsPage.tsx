@@ -261,8 +261,8 @@ export default function HRReportsPage() {
         })));
       }
 
-      // Attendance: Fetch from both 'attendances' (clock-in/out) and 'attendance' (HR status), plus shifts
-      const [clockinRes, hrAttRes, shiftsRes, empShiftsRes] = await Promise.all([
+      // Attendance: Fetch from both 'attendances' (clock-in/out) and 'attendance' (HR status), plus shifts and regularizations
+      const [clockinRes, hrAttRes, shiftsRes, empShiftsRes, regRes] = await Promise.all([
         (supabase as any)
           .from("attendances")
           .select("*")
@@ -284,6 +284,12 @@ export default function HRReportsPage() {
           .from("employee_shifts")
           .select("*")
           .eq("org_id", org.id),
+        (supabase as any)
+          .from("attendance_regularizations")
+          .select("*")
+          .eq("org_id", org.id)
+          .eq("status", "approved")
+          .limit(500),
       ]);
 
       const orgDefaultShift = (shiftsRes?.data || []).find((s: any) => s.is_default) || shiftsRes?.data?.[0] || null;
@@ -323,7 +329,7 @@ export default function HRReportsPage() {
       const hrOverriddenKeys = new Set<string>();
       const mergedMap: Record<string, any> = {};
 
-      // 1. Process HR manual attendance records (SUPREME: HR manual overrides take highest priority)
+      // 1. Process HR manual attendance records
       (hrAttRes?.data || []).forEach((r: any) => {
         const rawDate = r.attendance_date;
         if (!rawDate || !r.employee_id) return;
@@ -331,6 +337,7 @@ export default function HRReportsPage() {
         const key = `${r.employee_id}|${dateStr}`;
         const emp = empMap[r.employee_id];
         const statusVal = (r.override_status || r.status || "present").toLowerCase().replace("-", "_");
+        const isExplicitHrOverride = r.hr_note === "hr_override" || r.notes === "hr_override";
 
         mergedMap[key] = {
           id: r.id,
@@ -344,6 +351,37 @@ export default function HRReportsPage() {
           is_auto_clock_out: !!r.is_auto_clock_out,
           created_at: r.created_at || dateStr,
           hr_note: r.hr_note || r.notes || null,
+          is_hr_override: isExplicitHrOverride,
+        };
+        if (isExplicitHrOverride) {
+          hrOverriddenKeys.add(key);
+        }
+      });
+
+      // 1.5. Process approved regularizations
+      (regRes?.data || []).forEach((r: any) => {
+        const regDate = r.date || r.attendance_date;
+        if (!regDate || !r.employee_id) return;
+        const key = `${r.employee_id}|${regDate}`;
+        const emp = empMap[r.employee_id];
+        const clkIn = r.requested_clock_in 
+          ? (r.requested_clock_in.includes('T') ? r.requested_clock_in : `${regDate}T${r.requested_clock_in}`)
+          : `${regDate}T09:30:00`;
+        const clkOut = r.requested_clock_out 
+          ? (r.requested_clock_out.includes('T') ? r.requested_clock_out : `${regDate}T${r.requested_clock_out}`)
+          : `${regDate}T18:30:00`;
+
+        mergedMap[key] = {
+          ...(mergedMap[key] || {}),
+          id: r.id,
+          date: regDate,
+          employee_id: r.employee_id,
+          employeeName: emp?.name || mergedMap[key]?.employeeName || "—",
+          designation: emp?.designation || mergedMap[key]?.designation || "",
+          status: "present",
+          clock_in_time: clkIn,
+          clock_out_time: clkOut,
+          is_regularized: true,
           is_hr_override: true,
         };
         hrOverriddenKeys.add(key);
@@ -378,14 +416,13 @@ export default function HRReportsPage() {
             existing.designation = emp.designation || "";
           }
 
-          // If HR did NOT explicitly override this record, punch status reflects attendance
-          if (!existing.is_hr_override) {
+          if (r.clock_in_time && (!existing.status || existing.status === "absent")) {
+            existing.status = calculatedStatus || "present";
+          } else if (!existing.is_hr_override) {
             if (calculatedStatus === "late" || calculatedStatus === "half_day") {
               existing.status = calculatedStatus;
             } else if (r.status === "late" || r.status === "half_day" || r.status === "half-day") {
               existing.status = r.status.toLowerCase().replace("-", "_");
-            } else if (r.clock_in_time && (!existing.status || existing.status === "absent")) {
-              existing.status = calculatedStatus || "present";
             }
           }
         } else {

@@ -204,6 +204,37 @@ export default function AttendancePage() {
         }
       });
 
+      // 3. Process approved regularizations for the selected date
+      try {
+        const { data: regRes } = await (supabase as any)
+          .from("attendance_regularizations")
+          .select("*")
+          .eq("org_id", org.id)
+          .eq("status", "approved")
+          .eq("date", dateStr);
+
+        (regRes || []).forEach((r: any) => {
+          const empMatch = employees.find((e: any) => e.id === r.employee_id || e.auth_user_id === r.employee_id);
+          const targetEmpId = empMatch?.id || r.employee_id;
+          if (targetEmpId) {
+            const existing = map[targetEmpId] || {};
+            map[targetEmpId] = {
+              ...existing,
+              id: existing.id || r.id,
+              employee_id: targetEmpId,
+              org_id: r.org_id,
+              date: dateStr,
+              clock_in_time: existing.clock_in_time || (r.requested_clock_in ? `${dateStr}T${r.requested_clock_in}` : `${dateStr}T09:30:00`),
+              clock_out_time: existing.clock_out_time || (r.requested_clock_out ? `${dateStr}T${r.requested_clock_out}` : `${dateStr}T18:30:00`),
+              status: "present",
+              is_regularized: true,
+            };
+          }
+        });
+      } catch (regErr) {
+        console.warn("fetchDailyLogs regularizations query error:", regErr);
+      }
+
       setDailyLogs(map);
     } catch (fetchErr) {
       console.error("Error fetching daily logs:", fetchErr);
@@ -295,7 +326,13 @@ export default function AttendancePage() {
     try {
       const d = new Date(clockInTime);
       if (!isNaN(d.getTime())) {
-        clockInMins = d.getHours() * 60 + d.getMinutes();
+        const istTimeStr = d.toLocaleTimeString("en-US", { timeZone: "Asia/Kolkata", hour12: false, hour: "2-digit", minute: "2-digit" });
+        const [ih, im] = istTimeStr.split(":").map(Number);
+        if (!isNaN(ih) && !isNaN(im)) {
+          clockInMins = ih * 60 + im;
+        } else {
+          clockInMins = d.getHours() * 60 + d.getMinutes();
+        }
       }
     } catch {}
 
@@ -333,7 +370,7 @@ export default function AttendancePage() {
     if (clockInMins <= graceEnd) return "present";
     if (clockInMins <= lateEnd)  return "late";
     if (clockInMins <= halfEnd)  return "half_day";
-    return "absent";
+    return "half_day";
   };
 
   const load = async () => {
@@ -381,8 +418,31 @@ export default function AttendancePage() {
     }));
     setRegularizations(resolvedRegs);
 
+    const approvedRegMap: Record<string, any> = {};
+    resolvedRegs.filter((r: any) => r.status === "approved").forEach((r: any) => {
+      const regDate = r.date || r.attendance_date;
+      if (regDate) {
+        approvedRegMap[`${r.employee_id}|${regDate}`] = r;
+      }
+    });
+
     const orgShiftsList = allShiftsRes?.data || [];
     const orgDefaultShift = orgShiftsList.find((s: any) => s.is_default) || orgShiftsList[0] || null;
+
+    const clkMap: Record<string, any> = {};
+    (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
+    Object.entries(approvedRegMap).forEach(([k, reg]) => {
+      if (!clkMap[k]) {
+        clkMap[k] = {
+          employee_id: reg.employee_id,
+          date: reg.date || reg.attendance_date,
+          clock_in_time: reg.requested_clock_in ? `${reg.date}T${reg.requested_clock_in}` : `${reg.date}T09:30:00`,
+          clock_out_time: reg.requested_clock_out ? `${reg.date}T${reg.requested_clock_out}` : `${reg.date}T18:30:00`,
+          status: 'present',
+          is_regularized: true,
+        };
+      }
+    });
 
     // HR manually set records
     const map: Record<string, Status> = {};
@@ -391,6 +451,18 @@ export default function AttendancePage() {
       const key = `${r.employee_id}|${r.attendance_date}`;
       const statusVal = r.override_status || r.status;
       map[key] = statusVal;
+
+      // If approved regularization exists, it is Present - NEVER treat as absent!
+      if (approvedRegMap[key]) {
+        map[key] = "present";
+        return;
+      }
+
+      // If employee has a clock-in, but old record was absent, do NOT treat as HR override
+      if (statusVal === "absent" && clkMap[key]?.clock_in_time) {
+        return;
+      }
+
       // If HR explicitly marked or saved an override, track it
       if (
         r.hr_note === "hr_override" || 
@@ -407,9 +479,6 @@ export default function AttendancePage() {
         }
       }
     });
-    
-    const clkMap: Record<string, any> = {};
-    (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
 
     // Build approved leave map: empId|date -> leaveType
     const approvedLeaves = (leavesData?.data || []).filter((l: any) => l.status === "approved");
@@ -444,9 +513,20 @@ export default function AttendancePage() {
         const ds = format(d, "yyyy-MM-dd");
         const key = `${emp.id}|${ds}`;
 
-        // 1. HR Manual Override is supreme: If HR explicitly marked attendance for this day, keep it!
-        if (hrOverriddenKeys.has(key)) {
+        // 0. Approved Regularization is supreme: always mark Present
+        if (approvedRegMap[key]) {
+          map[key] = "present";
           return;
+        }
+
+        // 1. HR Manual Override is supreme: If HR explicitly marked attendance for this day, keep it!
+        // (Unless employee has clocked in and status was stale absent)
+        if (hrOverriddenKeys.has(key)) {
+          if (map[key] === "absent" && clkMap[key]?.clock_in_time) {
+            // fall through to actual clock-in computation
+          } else {
+            return;
+          }
         }
 
         // 2. Approved Leave: If not manually overridden by HR, apply approved leave
@@ -461,8 +541,8 @@ export default function AttendancePage() {
           return;
         }
 
-        // 3. If HR already manually set an explicit status in map, keep it
-        if (map[key]) return;
+        // 3. If HR already manually set an explicit status in map, keep it (unless stale absent with clock in)
+        if (map[key] && !(map[key] === "absent" && clkMap[key]?.clock_in_time)) return;
 
         // 3. Weekly offs and holidays
         const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
@@ -941,7 +1021,7 @@ export default function AttendancePage() {
       if (!selectedEmpDetail || !org?.id || !detailFrom || !detailTo) return;
       setLoadingDetail(true);
       
-      const [atts, clockins] = await Promise.all([
+      const [atts, clockins, regData] = await Promise.all([
         (supabase as any).from("attendance").select("*")
           .eq("org_id", org.id)
           .eq("employee_id", selectedEmpDetail.id)
@@ -951,7 +1031,13 @@ export default function AttendancePage() {
           .eq("org_id", org.id)
           .eq("employee_id", selectedEmpDetail.id)
           .gte("date", detailFrom)
-          .lte("date", detailTo)
+          .lte("date", detailTo),
+        (supabase as any).from("attendance_regularizations").select("*")
+          .eq("org_id", org.id)
+          .eq("employee_id", selectedEmpDetail.id)
+          .eq("status", "approved")
+          .gte("date", detailFrom)
+          .lte("date", detailTo),
       ]);
       
       const rangeDays = eachDayOfInterval({ start: parseISO(detailFrom), end: parseISO(detailTo) });
@@ -959,6 +1045,9 @@ export default function AttendancePage() {
       (atts.data || []).forEach((r: any) => { attMap[r.attendance_date] = r.override_status || r.status; });
       const clkMap: Record<string, any> = {};
       (clockins.data || []).forEach((r: any) => { clkMap[r.date] = r; });
+      const regMap: Record<string, any> = {};
+      (regData.data || []).forEach((r: any) => { regMap[r.date] = r; });
+
       const shift = empShiftMap[selectedEmpDetail.id];
       const orgWeeklyOffs = org?.weekly_offs || [0];
       
@@ -972,19 +1061,22 @@ export default function AttendancePage() {
         const approvedLeave = approvedLeaveMap[`${selectedEmpDetail.id}|${ds}`];
         const clk = clkMap[ds];
         const hrStatus = attMap[ds];
+        const approvedReg = regMap[ds];
         
         let finalStatus = "—";
         let isAuto = false;
         
-        if (hrStatus) {
+        if (approvedReg) {
+          finalStatus = "present";
+        } else if (clk?.clock_in_time) {
+          finalStatus = computeShiftStatus(clk.clock_in_time, shift);
+          isAuto = true;
+        } else if (hrStatus) {
           finalStatus = hrStatus;
         } else if (approvedLeave && !clk?.clock_in_time) {
           finalStatus = "approved_leave";
         } else if (isHoliday || isOff) {
           finalStatus = "holiday";
-        } else if (clk?.clock_in_time) {
-          finalStatus = computeShiftStatus(clk.clock_in_time, shift);
-          isAuto = true;
         } else if (ds <= format(new Date(), "yyyy-MM-dd")) {
           // past day without clock-in or HR record
           finalStatus = "absent";
@@ -1076,18 +1168,24 @@ export default function AttendancePage() {
       const [employee_id, attendance_date] = k.split("|");
       // Skip future dates - never save attendance for future
       if (attendance_date > todayStr) return;
+      // Do not save auto-computed absent records for today so employee can still clock in
+      if (attendance_date === todayStr && status === "absent" && autoAttKeys.has(k)) return;
+
       if (employees.find((e) => e.id === employee_id)) {
         const opt = STATUS_OPTIONS.find((o) => o.value === status) || STATUS_OPTIONS[0]; 
+        const isAuto = autoAttKeys.has(k);
         rows.push({ 
           org_id: org.id, 
           employee_id, 
           attendance_date, 
           status: opt.baseStatus, 
           override_status: opt.value,
-          hr_note: "hr_override",
-          notes: "hr_override"
+          hr_note: isAuto ? null : "hr_override",
+          notes: isAuto ? null : "hr_override"
         });
-        clkRows.push({ org_id: org.id, employee_id, date: attendance_date, status: opt.value });
+        if (!isAuto) {
+          clkRows.push({ org_id: org.id, employee_id, date: attendance_date, status: opt.value });
+        }
       }
     });
     if (rows.length === 0) { setSaving(false); toast({ title: "Nothing to save" }); return; }
@@ -1097,7 +1195,9 @@ export default function AttendancePage() {
       toast({ title: "Save failed", description: error.message, variant: "destructive" });
       return;
     }
-    await (supabase as any).from("attendances").upsert(clkRows, { onConflict: "employee_id,date" });
+    if (clkRows.length > 0) {
+      await (supabase as any).from("attendances").upsert(clkRows, { onConflict: "employee_id,date" });
+    }
 
     setSaving(false);
     toast({ title: "Attendance saved", description: `${rows.length} record(s) saved.` });
@@ -1306,13 +1406,21 @@ export default function AttendancePage() {
       if (error) throw error;
 
       if (newStatus === 'approved') {
+        const regDate = reg.date || reg.attendance_date;
+        const clkIn = reg.requested_clock_in 
+          ? (reg.requested_clock_in.includes('T') ? reg.requested_clock_in : `${regDate}T${reg.requested_clock_in}`)
+          : `${regDate}T09:30:00`;
+        const clkOut = reg.requested_clock_out 
+          ? (reg.requested_clock_out.includes('T') ? reg.requested_clock_out : `${regDate}T${reg.requested_clock_out}`)
+          : `${regDate}T18:30:00`;
+
         // Upsert attendances table (daily clock records)
         await (supabase as any).from("attendances").upsert({
           org_id: org.id,
           employee_id: reg.employee_id,
-          date: reg.date,
-          clock_in_time: reg.requested_clock_in,
-          clock_out_time: reg.requested_clock_out,
+          date: regDate,
+          clock_in_time: clkIn,
+          clock_out_time: clkOut,
           status: 'present'
         }, { onConflict: 'employee_id,date' });
 
@@ -1320,8 +1428,13 @@ export default function AttendancePage() {
         await (supabase as any).from("attendance").upsert({
           org_id: org.id,
           employee_id: reg.employee_id,
-          attendance_date: reg.date,
-          status: 'present'
+          attendance_date: regDate,
+          status: 'present',
+          override_status: 'present',
+          clock_in_time: clkIn,
+          clock_out_time: clkOut,
+          hr_note: null,
+          notes: null,
         }, { onConflict: 'employee_id,attendance_date' });
       }
 
@@ -2095,16 +2208,25 @@ export default function AttendancePage() {
                         const shift = empShiftMap[emp.id];
 
                         const computeStatus = (): { label: string; cls: string } => {
+                          if (log?.is_regularized) {
+                            return { label: "Present (Regularized)", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+                          }
                           const isHolidayDay = holidays.some((h) => h.date === dailyDate);
-                          if (isHolidayDay) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
+                          if (isHolidayDay && !hasClockIn) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
+                          
+                          const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
+                          if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
+
                           const hrDailyStatus = att[`${emp.id}|${dailyDate}`];
-                          if (hrDailyStatus && !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(hrDailyStatus)) {
+                          if (hrDailyStatus && hrDailyStatus !== "absent" && !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(hrDailyStatus)) {
                             const opt = STATUS_OPTIONS.find(o => o.value === hrDailyStatus);
                             if (opt) return { label: opt.label, cls: opt.cls };
                           }
-                          const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
-                          if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
-                          if (!hasClockIn) return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
+
+                          if (!hasClockIn) {
+                            return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
+                          }
+
                           if (!shift) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
                           const clockInDate = new Date(log.clock_in_time);
                           const hh = clockInDate.getHours();
@@ -2120,7 +2242,6 @@ export default function AttendancePage() {
                           const halfDayEnd = toMins(shift.half_day_end || "14:00");
                           if (clockInMins <= graceEnd) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
                           if (clockInMins <= lateEnd) return { label: "Late", cls: "bg-amber-100 text-amber-800 border-amber-300" };
-                          if (clockInMins <= halfDayEnd) return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
                           return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
                         };
 
