@@ -116,11 +116,11 @@ const PLAN_DISPLAY_NAMES: Record<string, string> = {
 };
 
 const PLAN_FEATURES_MAPPING: Record<string, string[]> = {
-  free: ["sales", "catalog", "outreach"],
-  accounting: ["sales", "catalog", "purchases", "accounting", "reports", "outreach"],
-  hr: ["people", "outreach"],
-  crm: ["crm", "outreach"],
-  promotion: ["marketing", "outreach"],
+  free: ["sales", "catalog", "people", "crm", "marketing"],
+  accounting: ["sales", "catalog", "purchases", "accounting", "reports", "people", "crm", "marketing", "outreach"],
+  hr: ["sales", "catalog", "people", "crm", "marketing", "outreach"],
+  crm: ["sales", "catalog", "people", "crm", "marketing", "outreach"],
+  promotion: ["sales", "catalog", "people", "crm", "marketing", "outreach"],
   suite: ["sales", "catalog", "purchases", "accounting", "reports", "people", "crm", "marketing", "outreach"]
 };
 
@@ -128,9 +128,9 @@ function computeFeaturesForPlans(plans: string[]): string[] {
   if (plans.includes("suite") || plans.includes("plan_3")) {
     return ADMIN_FEATURE_GROUPS.map(g => g.key);
   }
-  const featureSet = new Set<string>();
+  const featureSet = new Set<string>(["sales", "catalog", "people", "crm", "marketing"]);
   for (const p of plans) {
-    const feats = PLAN_FEATURES_MAPPING[p] || ["sales", "catalog", "outreach"];
+    const feats = PLAN_FEATURES_MAPPING[p] || ["sales", "catalog", "people", "crm", "marketing"];
     feats.forEach(f => featureSet.add(f));
   }
   return Array.from(featureSet);
@@ -679,10 +679,12 @@ export default function PlatformAdminPage() {
   };
 
   const getUserPlans = (user: UserData): string[] => {
-    if (!user.org_id) return [];
+    if (!user.org_id) return ['free'];
     const org = dashData?.organizations.find(o => o.id === user.org_id);
-    if (!org) return [];
-    return (org as any).subscription_plan_names || (org.subscription?.plan_name ? [org.subscription.plan_name] : ['free']);
+    if (!org) return ['free'];
+    const rawPlans: string[] = (org as any).subscription_plan_names || (org.subscription?.plan_name ? String(org.subscription.plan_name).split('+') : ['free']);
+    const withFree = rawPlans.includes('free') ? rawPlans : ['free', ...rawPlans];
+    return Array.from(new Set(withFree.filter(Boolean)));
   };
 
   const getUserOrg = (user: UserData): OrgData | undefined => {
@@ -692,11 +694,19 @@ export default function PlatformAdminPage() {
 
   const handleUserPlanToggle = async (user: UserData, toggledPlan: string) => {
     const currentPlans = getUserPlans(user);
-    let newPlans = currentPlans.includes(toggledPlan)
-      ? currentPlans.filter(p => p !== toggledPlan)
-      : [...currentPlans, toggledPlan];
-    if (newPlans.length === 0) newPlans = ['free'];
+    let newPlans: string[];
+    if (toggledPlan === 'free') {
+      // Free plan is mandatory base plan; clicking it keeps 'free' active alongside any paid plans
+      newPlans = currentPlans.includes('free') ? currentPlans : ['free', ...currentPlans];
+    } else {
+      newPlans = currentPlans.includes(toggledPlan)
+        ? currentPlans.filter(p => p !== toggledPlan)
+        : [...currentPlans, toggledPlan];
+    }
+    if (!newPlans.includes('free')) newPlans = ['free', ...newPlans];
 
+    const paidPlans = newPlans.filter(p => p !== 'free');
+    const primaryPlan = paidPlans.includes('suite') ? 'suite' : (paidPlans.length > 0 ? paidPlans[0] : 'free');
     const calculatedFeatures = computeFeaturesForPlans(newPlans);
 
     // Instant optimistic update for immediate tick mark [✓] feedback
@@ -726,8 +736,8 @@ export default function PlatformAdminPage() {
             subscription_plan_names: newPlans,
             subscription: {
               ...o.subscription,
-              plan_name: newPlans[0],
-              plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
+              plan_name: primaryPlan,
+              plan_display_name: PLAN_DISPLAY_NAMES[primaryPlan] || primaryPlan,
               enabled_features: calculatedFeatures
             },
             enabled_features: calculatedFeatures
@@ -978,22 +988,21 @@ export default function PlatformAdminPage() {
       return p;
     };
 
-    const normalizedCurrent = (currentPlans || []).map(normalizePlanKey);
+    const normalizedCurrent = Array.from(new Set(['free', ...(currentPlans || []).map(normalizePlanKey)]));
 
-    let newPlans = normalizedCurrent.includes(toggledPlan) 
-      ? normalizedCurrent.filter(p => p !== toggledPlan)
-      : [...normalizedCurrent, toggledPlan];
-      
-    // If user checks a paid plan, remove 'free'
-    if (newPlans.length > 1 && newPlans.includes('free') && toggledPlan !== 'free') {
-      newPlans = newPlans.filter(p => p !== 'free');
+    let newPlans: string[];
+    if (toggledPlan === 'free') {
+      // Free plan is mandatory base plan; always remains active
+      newPlans = normalizedCurrent;
+    } else {
+      newPlans = normalizedCurrent.includes(toggledPlan) 
+        ? normalizedCurrent.filter(p => p !== toggledPlan)
+        : [...normalizedCurrent, toggledPlan];
     }
-    // If user checks 'free', reset to only 'free'
-    if (toggledPlan === 'free' && newPlans.includes('free')) {
-      newPlans = ['free'];
-    }
-    if (newPlans.length === 0) newPlans = ['free'];
+    if (!newPlans.includes('free')) newPlans = ['free', ...newPlans];
 
+    const paidPlans = newPlans.filter(p => p !== 'free');
+    const primaryPlan = paidPlans.includes('suite') ? 'suite' : (paidPlans.length > 0 ? paidPlans[0] : 'free');
     const calculatedFeatures = computeFeaturesForPlans(newPlans);
 
     setDashData(prev => {
@@ -1007,8 +1016,8 @@ export default function PlatformAdminPage() {
               subscription_plan_names: newPlans,
               subscription: {
                 ...o.subscription,
-                plan_name: newPlans[0],
-                plan_display_name: PLAN_DISPLAY_NAMES[newPlans[0]] || newPlans[0],
+                plan_name: primaryPlan,
+                plan_display_name: PLAN_DISPLAY_NAMES[primaryPlan] || primaryPlan,
                 enabled_features: calculatedFeatures
               },
               enabled_features: calculatedFeatures
@@ -1031,7 +1040,7 @@ export default function PlatformAdminPage() {
       return;
     }
 
-    const effPlan = newPlans.includes('suite') || newPlans.includes('plan_3') ? 'suite' : (newPlans.length > 0 ? newPlans.join('+') : 'free');
+    const effPlan = paidPlans.includes('suite') || paidPlans.includes('plan_3') ? 'suite' : (paidPlans.length > 0 ? paidPlans.join('+') : 'free');
     await supabase.from("organizations").update({ enabled_features: calculatedFeatures as any, subscription_plan: effPlan }).eq("id", orgId);
 
     toast({ 
@@ -1042,12 +1051,12 @@ export default function PlatformAdminPage() {
   };
   
   const availablePlans = [
-    { id: "free", label: "🆓 Business Starter (Free)" },
+    { id: "free", label: "🆓 Business Starter (Free Base Plan)" },
     { id: "accounting", label: "📦 Business Accounting (₹599)" },
     { id: "hr", label: "👥 Business HR (₹599)" },
-    { id: "crm", label: "🎯 Business CRM (₹349)" },
-    { id: "promotion", label: "📢 Business Promotion (₹349)" },
-    { id: "suite", label: "🏢 Business Suite (₹1,499)" }
+    { id: "crm", label: "🎯 Business CRM (₹599)" },
+    { id: "promotion", label: "📢 Business Promotion (₹599)" },
+    { id: "suite", label: "🏢 Business Suite (₹1,999)" }
   ];
 
   const handleUpdateFeatureRequest = async (reqId: string, status: string) => {
@@ -3626,7 +3635,7 @@ export default function PlatformAdminPage() {
                     onClick={() => handleSetUserDirectPlan(selectedUserForModal, "suite")}
                     className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black shadow-md py-2"
                   >
-                    🏢 Business Suite (₹1,499)
+                    🏢 Business Suite (₹1,999)
                   </Button>
                 </div>
 

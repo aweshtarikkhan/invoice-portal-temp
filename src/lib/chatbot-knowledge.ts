@@ -37,7 +37,8 @@ IMPORTANT CONTACT RULES:
 - Plans & Signup: New users automatically get the Free Plan for 6 Months (180 days) upon signing up, without any forced upgrade popups. After 6 months, the plan expires. Users can upgrade anytime by clicking the "Upgrade Plan" button.
 - Account Registration & Email OTP: During account registration at '/register', a 6-digit verification code is dispatched to the user's email address. The OTP code is valid for 5 minutes. If needed, users can click "Resend OTP" directly on the verification step to request a fresh code without re-entering their details.
 - Plans & Limits Matrix:
-  * Free Plan (₹0 for 6 months - Free for 6 Months):
+  * Free Plan (₹0 for 6 months - Free for 6 Months - Mandatory Active Base Plan for ALL Organizations):
+    - Always remains active as the foundational base plan for every organization (new and existing). Any purchased modular plan (such as Business HR, Business CRM, Business Promotion, or Business Accounting) acts as an additional benefit on top of the Free Plan, so Free Plan benefits never get locked when buying a single module.
     - 100 Invoices Free (also 100 Quotations, 100 Purchase Invoices, 100 Purchase Orders).
     - 3 Employee Attendance.
     - Festive Posts.

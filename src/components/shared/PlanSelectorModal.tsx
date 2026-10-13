@@ -210,13 +210,14 @@ export function PlanSelectorModal({
   // Status checks for plans
   const isSuiteActive = activePlanNames.includes("suite");
   const hasPaidPlanActive = isSuiteActive || activePlanNames.some(p => p !== "free");
-  const isFreeActive = !hasPaidPlanActive;
+  const isFreeActive = true; // Free plan is always active as the base plan for every organization
 
   const isPlanActive = (planName: string) => {
-    if (planName === "free") return isFreeActive;
-    if (planName === "suite") return isSuiteActive;
+    const key = normalizePlanKey(planName);
+    if (key === "free") return true;
+    if (key === "suite") return isSuiteActive;
     if (isSuiteActive) return true; // Suite includes all modular plans
-    return activePlanNames.includes(planName);
+    return activePlanNames.includes(key);
   };
 
   const isHrActive = isPlanActive("hr") || isPlanActive("suite");
@@ -1068,7 +1069,9 @@ export function PlanSelectorModal({
                               Free for 6 Months
                             </span>
                             {active ? (
-                              <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Current Plan</span>
+                              <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">
+                                {hasPaidPlanActive ? "Active Base Plan" : "Current Plan"}
+                              </span>
                             ) : isSelected ? (
                               <span className="text-xs font-bold text-[#e77817] bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-full">Selected</span>
                             ) : null}

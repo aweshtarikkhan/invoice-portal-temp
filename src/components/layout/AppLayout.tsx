@@ -359,23 +359,30 @@ export function AppLayout() {
           if (subData) {
             let features = Array.isArray(subData.enabled_features) ? [...subData.enabled_features] : [];
             
+            if (!features.includes('sales')) features.push('sales');
+            if (!features.includes('catalog')) features.push('catalog');
             if (!features.includes('people')) features.push('people');
             if (!features.includes('crm')) features.push('crm');
             if (!features.includes('marketing')) features.push('marketing');
             
-            let resolvedPlanName = normalizePlanKey(subData.plan_name || (activeOrg as any)?.subscription_plan || '');
+            const rawPlanName = subData.plan_name || (activeOrg as any)?.subscription_plan || 'free';
+            const parsedPlans = String(rawPlanName)
+              .split('+')
+              .map((p: string) => normalizePlanKey(p))
+              .filter(Boolean);
+            const paidPlans = Array.from(new Set(parsedPlans.filter((p: string) => p !== 'free')));
+            const resolvedPlanName = parsedPlans.includes('suite')
+              ? 'suite'
+              : paidPlans.length > 0
+              ? paidPlans.join('+')
+              : 'free';
+
             let resolvedEmpLimit = 3;
 
-            if (resolvedPlanName === 'suite') {
-              resolvedEmpLimit = 5;
+            if (parsedPlans.includes('suite') || parsedPlans.includes('hr')) {
+              resolvedEmpLimit = 25;
               const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
-              if (extraOrPurchased > 5) {
-                resolvedEmpLimit = extraOrPurchased;
-              }
-            } else if (resolvedPlanName === 'hr') {
-              resolvedEmpLimit = 5;
-              const extraOrPurchased = Math.max(subData.employee_limit || 0, subData.employee_count || 0);
-              if (extraOrPurchased > 5) {
+              if (extraOrPurchased > 25) {
                 resolvedEmpLimit = extraOrPurchased;
               }
             } else {
@@ -386,10 +393,10 @@ export function AppLayout() {
               }
             }
 
-            if (resolvedPlanName === 'suite') {
+            if (parsedPlans.includes('suite')) {
               features = ADMIN_FEATURE_GROUPS.map(g => g.key);
             } else if (resolvedPlanName === 'free') {
-              features = features.filter(f => f !== 'reports' && f !== 'outreach' && f !== 'marketing');
+              features = features.filter(f => f !== 'reports' && f !== 'outreach');
             }
             useFeatureStore.getState().setPlatformFeatures(features);
             useFeatureStore.getState().setOrgFeatures(activeOrgId, features);
