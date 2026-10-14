@@ -347,6 +347,14 @@ IMPORTANT CONTACT RULES:
 - Preferences: General portal settings under Invoices.
 - Defaults & Numbering: Set default invoice prefixes, numbering, and terms under Invoices.
 - Bank Accounts: Go to Settings -> Invoices -> Bank Accounts tab. Here you can add, edit, or delete saved bank accounts (Bank Name, Account Holder Name, Account Number, IFSC, Branch, UPI).
+- Email Settings (/settings?tab=email): Configure how invoices, quotations, receipts, and custom emails are delivered to clients:
+  * Platform Default: Instant out-of-the-box delivery using platform verified domain (no-reply@aassaybiz.com). Zero setup required.
+  * Custom Domain (AWS SES): Connect your personal company domain (e.g. yourcompany.com) with 100% inbox delivery using AWS SES:
+    - Generates 6 authentication records: 1 AWS SES Verification Token (TXT), 3 DKIM tokens (CNAME), 1 SPF Deliverability record (TXT), and 1 DMARC Anti-Spoofing record (TXT).
+    - Provider Host Prefix Guidance: For domain registrars like Namecheap, GoDaddy, and Hostinger, enter ONLY the Host Prefix (e.g. '_amazonses', 'token._domainkey', '@', '_dmarc') without appending the root domain, as the registrar adds the root domain automatically.
+    - Real-time Check Verification button checks AWS SES domain identity and DKIM status directly. Once verified, emails dispatch from 'no-reply@yourcompany.com'.
+  * SMTP / Gmail: Connect personal Gmail (via 16-character Google App Password) or private corporate SMTP servers directly with customizable host, port, credentials, and SSL/TLS toggle.
+  * Send Test Email: One-click test button dispatches a branded test email to verify end-to-end SMTP/SES delivery.
 
 9. PLATFORM ADMIN (Super Admin Only)
 - Location: Go to /platform-admin or click "Platform Admin" in the top header or "Platform Admin Panel" in the user profile menu. Platform Admins can seamlessly switch between the App Dashboard (invoicing & business software) and the Platform Admin panel with a single login ID without logging out. From the Platform Admin navbar, clicking "App Dashboard" instantly returns to invoicing.
