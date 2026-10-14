@@ -586,8 +586,14 @@ export function EmailSettingsTab() {
               {/* DNS Records Table */}
               {dnsRecords && dnsRecords.length > 0 && (
                 <div className="space-y-3 pt-2">
-                  <div className="text-xs font-semibold text-muted-foreground flex items-center justify-between">
-                    <span>Add these DNS records to your domain provider (Cloudflare, GoDaddy, Hostinger, etc.):</span>
+                  <div className="p-3.5 rounded-lg border border-blue-200 bg-blue-50/70 dark:bg-blue-950/40 text-xs text-blue-900 dark:text-blue-200 flex items-start gap-2.5">
+                    <AlertCircle className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-semibold text-blue-950 dark:text-blue-100">Important DNS Entry Instructions (Namecheap, GoDaddy, Hostinger):</p>
+                      <p>
+                        Most domain providers (like <strong>Namecheap, GoDaddy, Hostinger</strong>) automatically append your domain name. In the <strong>"Host"</strong> field, copy and enter ONLY the <strong>Host Prefix</strong> (e.g. <code className="bg-white/90 dark:bg-black/50 px-1.5 py-0.5 rounded font-mono font-semibold">_amazonses</code> or <code className="bg-white/90 dark:bg-black/50 px-1.5 py-0.5 rounded font-mono font-semibold">@</code>). If you enter the full domain, it will duplicate and fail verification!
+                      </p>
+                    </div>
                   </div>
 
                   <div className="overflow-x-auto border rounded-lg bg-white dark:bg-slate-950">
@@ -596,63 +602,86 @@ export function EmailSettingsTab() {
                         <tr className="border-b bg-slate-50 dark:bg-slate-900 text-muted-foreground font-medium">
                           <th className="p-2.5 text-left">Type</th>
                           <th className="p-2.5 text-left">Record / Purpose</th>
-                          <th className="p-2.5 text-left">Host / Name</th>
-                          <th className="p-2.5 text-left">Value / Points to</th>
+                          <th className="p-2.5 text-left">Host Prefix <span className="font-normal text-muted-foreground">(Namecheap / GoDaddy)</span></th>
+                          <th className="p-2.5 text-left">Value / Target</th>
                           <th className="p-2.5 text-left">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y font-mono">
-                        {dnsRecords.map((r, i) => (
-                          <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                            <td className="p-3 font-semibold text-blue-600 whitespace-nowrap">{r.type}</td>
-                            <td className="p-3 font-sans text-muted-foreground whitespace-nowrap">{r.record || "DKIM / TXT"}</td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-2 group">
-                                <span className="select-all text-[12px] font-mono break-all text-foreground" title={r.name}>{r.name}</span>
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                                  onClick={() => copyToClipboard(r.name, `name-${i}`, "Host / Name")}
-                                  title="Copy Host"
-                                >
-                                  {copiedKey === `name-${i}` ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                  ) : (
-                                    <Copy className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                              </div>
-                            </td>
-                            <td className="p-3">
-                              <div className="flex items-center gap-2 group">
-                                <span className="select-all text-[12px] font-mono break-all text-foreground" title={r.value}>{r.value}</span>
-                                <Button
-                                  type="button"
-                                  size="icon"
-                                  variant="outline"
-                                  className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
-                                  onClick={() => copyToClipboard(r.value, `val-${i}`, "Value / Target")}
-                                  title="Copy Value"
-                                >
-                                  {copiedKey === `val-${i}` ? (
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                                  ) : (
-                                    <Copy className="h-3.5 w-3.5" />
-                                  )}
-                                </Button>
-                              </div>
-                            </td>
-                            <td className="p-3 font-sans whitespace-nowrap">
-                              {r.status === "verified" || domainStatus === "verified" ? (
-                                <span className="text-emerald-600 font-semibold">✓ Verified</span>
-                              ) : (
-                                <span className="text-amber-600 font-medium">Pending</span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
+                        {dnsRecords.map((r, i) => {
+                          const cleanDomain = domainName.trim().toLowerCase();
+                          const hostPrefix = r.hostPrefix || (
+                            r.record === "Verification Token" ? "_amazonses" :
+                            r.record?.startsWith("DKIM") ? (r.name ? r.name.replace(`.${cleanDomain}`, "") : "") :
+                            r.record?.includes("SPF") ? "@" :
+                            r.record?.includes("DMARC") ? "_dmarc" : r.name
+                          );
+
+                          return (
+                            <tr key={i} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                              <td className="p-3 font-semibold text-blue-600 whitespace-nowrap">{r.type}</td>
+                              <td className="p-3 font-sans text-muted-foreground whitespace-nowrap font-medium">{r.record || "DKIM / TXT"}</td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2 group">
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="select-all text-[12px] font-mono font-semibold text-foreground bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
+                                        {hostPrefix}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        size="icon"
+                                        variant="outline"
+                                        className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                                        onClick={() => copyToClipboard(hostPrefix, `prefix-${i}`, "Host Prefix")}
+                                        title="Copy Host Prefix"
+                                      >
+                                        {copiedKey === `prefix-${i}` ? (
+                                          <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                        ) : (
+                                          <Copy className="h-3 w-3" />
+                                        )}
+                                      </Button>
+                                    </div>
+                                    <div className="text-[10px] text-muted-foreground mt-0.5 select-all font-mono" title="Full DNS Name">
+                                      Full: {r.name}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="p-3">
+                                <div className="flex items-center gap-2 group max-w-[280px]">
+                                  <span className="select-all text-[12px] font-mono break-all text-foreground" title={r.value}>{r.value}</span>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="outline"
+                                    className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                                    onClick={() => copyToClipboard(r.value, `val-${i}`, "Value / Target")}
+                                    title="Copy Value"
+                                  >
+                                    {copiedKey === `val-${i}` ? (
+                                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                    ) : (
+                                      <Copy className="h-3.5 w-3.5" />
+                                    )}
+                                  </Button>
+                                </div>
+                              </td>
+                              <td className="p-3 font-sans whitespace-nowrap">
+                                {r.status === "verified" || domainStatus === "verified" ? (
+                                  <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> Verified
+                                  </span>
+                                ) : (
+                                  <span className="text-amber-600 font-medium flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5 text-amber-500" /> Pending
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
