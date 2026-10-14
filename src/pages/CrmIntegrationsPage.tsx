@@ -44,6 +44,17 @@ export default function CRMIntegrationsPage() {
   const [imActive, setImActive] = useState(false);
   const [imLoading, setImLoading] = useState(false);
   const [jdActive, setJdActive] = useState(false);
+
+  // Meta (Facebook & Instagram) Integration State
+  const [metaPages, setMetaPages] = useState<any[]>([]);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaModalOpen, setMetaModalOpen] = useState(false);
+  const [metaPageId, setMetaPageId] = useState("");
+  const [metaPageName, setMetaPageName] = useState("");
+  const [metaAccessToken, setMetaAccessToken] = useState("");
+  const [metaConnecting, setMetaConnecting] = useState(false);
+  const [metaTestingLead, setMetaTestingLead] = useState(false);
+  const [showMetaToken, setShowMetaToken] = useState(false);
   const [guideOpen, setGuideOpen] = useState<"indiamart" | "justdial" | "meta" | null>(null);
 
   // API Key Modal State
@@ -79,6 +90,7 @@ export default function CRMIntegrationsPage() {
       loadKeys();
       loadWebhooks();
       loadLeadIntegrations();
+      loadMetaIntegrations();
     }
   }, [org?.id, isFreePlan]);
 
@@ -147,6 +159,98 @@ export default function CRMIntegrationsPage() {
       is_active: active
     }, { onConflict: 'org_id, provider' });
     if (active) toast.success("Justdial Webhook activated");
+  };
+
+  // --- META (FACEBOOK & INSTAGRAM) ACTIONS ---
+  const loadMetaIntegrations = async () => {
+    if (!org?.id) return;
+    try {
+      setMetaLoading(true);
+      const res = await fetch(`https://aassaybiz.com/api/meta/status?org_id=${org.id}`);
+      const json = await res.json();
+      if (json.success && Array.isArray(json.pages)) {
+        setMetaPages(json.pages);
+      }
+    } catch (e) {
+      console.error("Failed to load Meta integrations:", e);
+    } finally {
+      setMetaLoading(false);
+    }
+  };
+
+  const handleConnectMetaPage = async () => {
+    if (!metaPageId.trim() || !metaAccessToken.trim()) {
+      toast.error("Please provide both Facebook Page ID and Page Access Token");
+      return;
+    }
+    setMetaConnecting(true);
+    try {
+      const res = await fetch("https://aassaybiz.com/api/meta/connect-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          orgId: org!.id,
+          pageId: metaPageId.trim(),
+          pageName: metaPageName.trim() || undefined,
+          accessToken: metaAccessToken.trim()
+        })
+      });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        throw new Error(json.error || "Failed to connect Facebook Page");
+      }
+      toast.success(json.message || "Facebook Page connected successfully!");
+      setMetaModalOpen(false);
+      setMetaPageId("");
+      setMetaPageName("");
+      setMetaAccessToken("");
+      loadMetaIntegrations();
+    } catch (e: any) {
+      toast.error(e.message || "Failed to connect Facebook Page");
+    } finally {
+      setMetaConnecting(false);
+    }
+  };
+
+  const handleDisconnectMetaPage = async (pageId: string) => {
+    if (!confirm("Are you sure you want to disconnect this Facebook Page from syncing leads?")) return;
+    try {
+      const res = await fetch("https://aassaybiz.com/api/meta/disconnect-page", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: org!.id, pageId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success("Facebook Page disconnected");
+        loadMetaIntegrations();
+      } else {
+        toast.error(json.error || "Failed to disconnect page");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Failed to disconnect page");
+    }
+  };
+
+  const handleTestMetaLead = async (pageId?: string) => {
+    setMetaTestingLead(true);
+    try {
+      const res = await fetch("https://aassaybiz.com/api/meta/test-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId: org!.id, pageId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        toast.success(`Test lead generated! Assigned to ${json.assignedTo || "sales executive"}. Check Leads page.`);
+      } else {
+        toast.error(json.error || "Failed to generate test lead");
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Test lead generation failed");
+    } finally {
+      setMetaTestingLead(false);
+    }
   };
 
   // --- API KEY ACTIONS ---
@@ -515,25 +619,102 @@ app.post("/webhook/assaybiz", express.raw({ type: "application/json" }), (req, r
               </CardContent>
             </Card>
 
-            {/* Meta (Facebook) */}
-            <Card className="border-indigo-200 bg-indigo-50/30 shadow-sm md:col-span-2 rounded-2xl">
+            {/* Meta (Facebook & Instagram) Leads */}
+            <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/40 via-white to-blue-50/30 shadow-sm md:col-span-2 rounded-2xl overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
                 <div className="space-y-1">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Facebook className="w-5 h-5 text-indigo-600" /> Meta (Facebook & Instagram) Leads
-                  </CardTitle>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs text-indigo-700 hover:text-indigo-800 hover:bg-indigo-100 px-2 mt-1" onClick={() => setGuideOpen("meta")}>
-                    <BookOpen className="w-3 h-3 mr-1" /> Connection Guide
-                  </Button>
-                  <CardDescription className="text-xs">Connect your Facebook Page to sync Lead Ads directly into your sales pipeline.</CardDescription>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-slate-900 font-bold">
+                      <Facebook className="w-5 h-5 text-indigo-600" /> Meta (Facebook & Instagram) Leads
+                    </CardTitle>
+                    {metaPages.length > 0 ? (
+                      <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300 font-medium text-xs flex items-center gap-1.5 py-0.5 px-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live & Synced ({metaPages.length})
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-slate-100 text-slate-600 border-slate-300 font-medium text-xs">
+                        Ready to Connect
+                      </Badge>
+                    )}
+                  </div>
+                  <CardDescription className="text-xs text-slate-600">
+                    Connect your Facebook Business Page to auto-sync Lead Ads and Instagram inquiries directly into your CRM pipeline in real-time.
+                  </CardDescription>
                 </div>
-                <Badge variant="outline" className="bg-indigo-100 text-indigo-700 shrink-0 ml-2 font-medium">Coming Soon</Badge>
-              </CardHeader>
-              <CardContent className="pt-4">
-                <Button disabled variant="outline" className="w-full sm:w-auto border-indigo-200 text-indigo-700 bg-white">
-                  <Facebook className="w-4 h-4 mr-2" /> Connect Facebook Account
+
+                <Button variant="ghost" size="sm" className="h-7 text-xs text-indigo-700 hover:text-indigo-800 hover:bg-indigo-100/70 px-2.5 rounded-lg shrink-0" onClick={() => setGuideOpen("meta")}>
+                  <BookOpen className="w-3.5 h-3.5 mr-1" /> Webhook Setup Guide
                 </Button>
-                <p className="text-xs text-slate-500 mt-2">Direct OAuth authentication flow will be available once Facebook App Review is finalized.</p>
+              </CardHeader>
+
+              <CardContent className="pt-3">
+                {metaPages.length === 0 ? (
+                  <div className="p-4 rounded-xl border border-indigo-100 bg-white/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-semibold text-slate-800">No Facebook Page connected yet</p>
+                      <p className="text-xs text-slate-500">Connect using your Page ID & Page Access Token, or via Facebook Login.</p>
+                    </div>
+                    <Button onClick={() => setMetaModalOpen(true)} className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shrink-0 text-xs h-9 px-4 rounded-xl">
+                      <Facebook className="w-4 h-4 mr-1.5" /> Connect Facebook Page
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {metaPages.map((page: any) => (
+                      <div key={page.id} className="p-3.5 rounded-xl border border-emerald-200/80 bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-slate-900">{page.page_name || `Facebook Page ${page.page_id}`}</span>
+                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5">
+                              Active Sync
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <span>Page ID:</span>
+                            <code className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">{page.page_id}</code>
+                            <button onClick={() => copyToClipboard(page.page_id, "Page ID copied")} className="text-slate-400 hover:text-slate-700 cursor-pointer">
+                              <Copy className="w-3 h-3" />
+                            </button>
+                            <span className="text-slate-300">•</span>
+                            <span className="text-[11px] text-slate-400">Connected {new Date(page.created_at).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={metaTestingLead}
+                            onClick={() => handleTestMetaLead(page.page_id)}
+                            className="h-8 text-xs border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                          >
+                            {metaTestingLead ? <RefreshCcw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" />}
+                            Send Test Lead
+                          </Button>
+
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDisconnectMetaPage(page.page_id)}
+                            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            title="Disconnect Page"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+
+                    <div className="pt-1 flex items-center justify-between">
+                      <p className="text-[11px] text-slate-500">
+                        ⚡ Webhook is active at <code className="font-mono text-slate-700 bg-slate-100 px-1 rounded">https://aassaybiz.com/api/webhooks/meta</code>. Incoming leads are automatically assigned to sales reps and piped into CRM.
+                      </p>
+                      <Button variant="ghost" size="sm" onClick={() => setMetaModalOpen(true)} className="h-7 text-xs text-indigo-700 hover:bg-indigo-50 px-2 shrink-0">
+                        + Connect Another Page
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1338,19 +1519,144 @@ app.post("/webhook/assaybiz", express.raw({ type: "application/json" }), (req, r
             )}
 
             {guideOpen === "meta" && (
-              <ol className="list-decimal pl-5 space-y-2.5 text-xs">
-                <li>Click the <strong>Connect Facebook Account</strong> button (Feature coming soon).</li>
-                <li>Authorize the application to access your Facebook profile.</li>
-                <li>Select the specific <strong>Facebook Page(s)</strong> you are running Lead Generation Ads for.</li>
-                <li>Choose the specific <strong>Lead Forms</strong> you want to sync.</li>
-                <li><em>Once connected, whenever a user submits a lead form on Facebook or Instagram, it will instantly appear in your CRM Pipeline.</em></li>
-                <li className="text-xs text-slate-500 mt-2 list-none bg-slate-50 p-2 rounded">Note: Ensure your Facebook account has Admin access to the selected page.</li>
-              </ol>
+              <div className="space-y-3 text-xs">
+                <div className="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200/80 space-y-2">
+                  <span className="font-semibold text-indigo-950 block text-xs">Meta Webhook Configuration Details:</span>
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Callback URL:</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <code className="font-mono text-slate-800 bg-white px-2 py-1 rounded border border-slate-200 select-all block flex-1 truncate text-[11px]">
+                        https://aassaybiz.com/api/webhooks/meta
+                      </code>
+                      <Button size="icon" variant="outline" className="h-7 w-7 shrink-0 bg-white" onClick={() => copyToClipboard("https://aassaybiz.com/api/webhooks/meta", "Callback URL copied")}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-slate-500 block text-[10px] uppercase font-bold">Verify Token:</span>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <code className="font-mono text-slate-800 bg-white px-2 py-1 rounded border border-slate-200 select-all block flex-1 text-[11px]">
+                        assaybiz_meta_leadgen_2026
+                      </code>
+                      <Button size="icon" variant="outline" className="h-7 w-7 shrink-0 bg-white" onClick={() => copyToClipboard("assaybiz_meta_leadgen_2026", "Verify Token copied")}>
+                        <Copy className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <ol className="list-decimal pl-5 space-y-2 text-slate-700">
+                  <li>In your <strong>Meta Developer Console</strong>, go to <strong>Webhooks</strong>.</li>
+                  <li>Select <strong>Page</strong> in the dropdown and click <strong>Subscribe to this object</strong>.</li>
+                  <li>Paste the <strong>Callback URL</strong> and <strong>Verify Token</strong> above, then click <em>Verify and Save</em>.</li>
+                  <li>Under the Page webhook subscription table, locate <strong>leadgen</strong> and click <strong>Subscribe</strong>.</li>
+                  <li>In this CRM portal, click <strong>Connect Facebook Page</strong> and enter your Page ID & Page Access Token.</li>
+                  <li><em>Whenever a customer submits a lead form on Facebook or Instagram, it will instantly appear in your CRM Pipeline and trigger auto-assignment!</em></li>
+                </ol>
+              </div>
             )}
           </div>
           
           <DialogFooter>
             <Button onClick={() => setGuideOpen(null)} className="w-full sm:w-auto">Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ======================================================== */}
+      {/* 5. MODAL: CONNECT FACEBOOK PAGE (META LEAD ADS)          */}
+      {/* ======================================================== */}
+      <Dialog open={metaModalOpen} onOpenChange={setMetaModalOpen}>
+        <DialogContent className="sm:max-w-lg bg-white rounded-2xl p-6 shadow-2xl border-slate-200 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-1">
+              <Facebook className="w-5 h-5" />
+            </div>
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              Connect Facebook Page
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
+              Connect your Facebook Business Page running Lead Ads to automatically capture inquiries into AssayBiz CRM.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="meta-page-id" className="text-xs font-semibold text-slate-700">
+                Facebook Page ID <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="meta-page-id"
+                placeholder="e.g. 102938475612345"
+                value={metaPageId}
+                onChange={(e) => setMetaPageId(e.target.value)}
+                className="mt-1 bg-white font-mono text-xs"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">Found in your Facebook Page &gt; About &gt; Page Transparency / Details.</p>
+            </div>
+
+            <div>
+              <Label htmlFor="meta-page-name" className="text-xs font-semibold text-slate-700">
+                Page Display Name (Optional)
+              </Label>
+              <Input
+                id="meta-page-name"
+                placeholder="e.g. My Business Brand"
+                value={metaPageName}
+                onChange={(e) => setMetaPageName(e.target.value)}
+                className="mt-1 bg-white text-xs"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="meta-token" className="text-xs font-semibold text-slate-700">
+                Page Access Token (Permanent / Long-Lived) <span className="text-red-500">*</span>
+              </Label>
+              <div className="relative mt-1">
+                <Input
+                  id="meta-token"
+                  type={showMetaToken ? "text" : "password"}
+                  placeholder="EAA..."
+                  value={metaAccessToken}
+                  onChange={(e) => setMetaAccessToken(e.target.value)}
+                  className="bg-white font-mono text-xs pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowMetaToken(!showMetaToken)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  {showMetaToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-400 mt-1">Generated via Meta Business Suite System Users or Graph API Explorer.</p>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1.5">
+              <span className="font-semibold text-slate-800 block text-[11px]">💡 Where to get your Page Access Token?</span>
+              <ol className="list-decimal pl-4 space-y-1 text-[11px] text-slate-500">
+                <li>Go to <strong>developers.facebook.com/tools/explorer</strong>.</li>
+                <li>Select your App, then under <em>User or Page</em> select your <strong>Facebook Page</strong>.</li>
+                <li>Ensure permissions <code>leads_retrieval</code> and <code>pages_manage_ads</code> are added.</li>
+                <li>Click <strong>Generate Access Token</strong> and copy the token here.</li>
+              </ol>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button variant="outline" onClick={() => setMetaModalOpen(false)} disabled={metaConnecting}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConnectMetaPage}
+              disabled={metaConnecting || !metaPageId.trim() || !metaAccessToken.trim()}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
+              {metaConnecting ? <RefreshCcw className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Verify & Connect Page
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

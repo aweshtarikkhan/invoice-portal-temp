@@ -309,7 +309,17 @@ IMPORTANT CONTACT RULES:
   * Split Reply Channels: Inside the ticket threaded discussion view, agents can explicitly choose to dispatch replies using the "Reply on WhatsApp" or "Reply on Email" split buttons, ensuring notifications route via the exact desired communication channel.
   * Tickets display priority, real-time status badges, two-way threaded discussion messages, and search filtering across both customer and lead names.
 - Integrations & Custom API (/crm/integrations): Connect your CRM with third-party lead sources, website forms, and external software:
-  * Lead Sources Tab: Integrates with IndiaMart (auto-fetches leads every 15 minutes using CRM key & registered mobile) and Justdial (unique webhook URL for real-time lead capture).
+  * Lead Sources Tab: 
+    - Meta (Facebook & Instagram) Lead Ads Integration:
+      * Direct real-time multi-tenant lead capture from Facebook and Instagram Instant Lead Forms.
+      * Live Status Badge: Displays "Live & Synced" with active connected Page Name & Page ID, or "Ready to Connect".
+      * Seamless Setup: Click "Connect Page" to link your Facebook Business Page by providing your Page ID and Page Access Token. AssayBiz validates the token with Meta Graph API and automatically subscribes your page to incoming lead webhooks.
+      * Instant Auto-Assignment: Incoming Meta leads are automatically captured within seconds, mapped with prospect name, phone, email, city, and form responses, and assigned to an active Sales Executive in your CRM team with priority set to "hot" or "warm".
+      * Send Test Lead: A dedicated "Send Test Lead" button allows instant verification of the end-to-end pipeline and team auto-assignment without needing live ads.
+      * Disconnect Option: Easily disconnect or switch pages at any time.
+      * Meta Developer Webhook Details: Callback URL is https://aassaybiz.com/api/webhooks/meta and Verify Token is 'assaybiz_meta_leadgen_2026' under Page > leadgen.
+    - IndiaMart Integration: Auto-fetches leads every 15 minutes using CRM key & registered mobile.
+    - Justdial Integration: Unique webhook URL for real-time lead capture.
   * Custom API & Webhooks Tab:
     - Custom API Keys: Users can generate secret API keys (sk_live_...) to authenticate external applications, scripts, Zapier, Make, or custom website forms with the CRM. Clicking "+ Generate Key" opens a centered modal dialog with key name and permission scope. Once generated, a secure modal reveals the full secret key with a 1-click Copy button and security reminder.
     - Outgoing Webhooks: Users can register public HTTPS webhook endpoints to receive real-time HTTP POST payloads when CRM events happen (lead.created, lead.updated, deal.won, contact.created, or all events). Clicking "+ Add Endpoint" opens a centered modal with URL, event checkboxes, auto-generated HMAC-SHA256 signing secret, and active toggle. Each webhook card provides an on/off switch, secret copy button, test ping button, and delete confirmation.
