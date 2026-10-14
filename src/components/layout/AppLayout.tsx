@@ -64,30 +64,20 @@ function OrgSetup({ onComplete, onDeleteAccount }: { onComplete: () => void; onD
       return;
     }
 
-    // Handle initial plan and trial - default Free plan for 6 months (180 days)
+    // All newly created organizations strictly start on Free Plan for 6 months (180 days)
+    // Paid plans (HR, Suite, CRM, etc.) must be purchased via Razorpay in the plan modal.
     try {
-      const planName = sessionStorage.getItem("onboarding_plan") || "free";
-      const { data: settingsData } = await supabase
-        .from("platform_settings")
-        .select("value")
-        .eq("key", "trial_days")
-        .maybeSingle();
-
-      // Default to 180 days (6 months) for free plan
-      const trialDays = settingsData ? parseInt(settingsData.value) : 180;
-
-      if (trialDays > 0) {
-        // We need to fetch the org_id to start the trial. 
-        // create_organization_for_current_user returns the org row.
-        const orgId = orgData?.id;
-        
-        if (orgId) {
-          await supabase.rpc("start_org_trial", {
-            p_org_id: orgId,
-            p_plan_name: planName
-          });
-        }
+      const orgId = orgData?.id;
+      if (orgId) {
+        await supabase.rpc("start_org_trial", {
+          p_org_id: orgId,
+          p_plan_name: "free"
+        });
       }
+      sessionStorage.removeItem("onboarding_plan");
+      sessionStorage.removeItem("onboarding_hr");
+      sessionStorage.removeItem("onboarding_plat");
+      sessionStorage.removeItem("onboarding_billing");
     } catch (err) {
       console.error("Failed to start trial:", err);
     }

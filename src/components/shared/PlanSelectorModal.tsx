@@ -87,8 +87,7 @@ export function PlanSelectorModal({
     const p = sessionStorage.getItem("onboarding_plat");
     return p ? parseInt(p) || 0 : 0;
   });
-  // When HR is NOT active and being purchased: total employees desired (default 5 base)
-  const [newHrEmployeeCount, setNewHrEmployeeCount] = useState<number>(5);
+
 
   const { toast } = useToast();
   const { user } = useAuth();
@@ -198,7 +197,6 @@ export function PlanSelectorModal({
       setActivePlanNames(fetchedActivePlans);
       setActiveEmployeeLimit(empLimit);
       setExtraEmployeesToAdd(0);
-      setNewHrEmployeeCount(Math.max(empLimit, 25));
       setSelectedPlanIds([]);
 
     } catch (error) {
@@ -427,17 +425,11 @@ export function PlanSelectorModal({
 
     const rawBase = billingCycle === "yearly" ? plan.price_yearly : plan.price_monthly;
     let base = normalizePriceToRupees(rawBase, billingCycle === "yearly");
-
-    // If purchasing HR anew and adding extra employees over base 5
-    if ((plan.name === "hr" || plan.name === "suite") && newHrEmployeeCount > 5) {
-      base += getExtraEmployeeCost(newHrEmployeeCount - 5);
-    }
-
     totalAmountRupees += base;
   });
 
-  // 2. If HR is ALREADY active, add cost of extra employees requested
-  if (isHrActive && extraEmployeesToAdd > 0) {
+  // 2. Add cost of extra employees only if user explicitly requested additional slots via counter
+  if (extraEmployeesToAdd > 0) {
     totalAmountRupees += getExtraEmployeeCost(extraEmployeesToAdd);
   }
   if (extraPlatformEmployeesToAdd > 0) {
@@ -554,8 +546,6 @@ export function PlanSelectorModal({
         // Purchasing / upgrading to a new plan
         if (extraEmployeesToAdd > 0) {
           totalEmployeesToSend = targetBaseLimit + extraEmployeesToAdd;
-        } else if (isSuiteOrHrTarget && newHrEmployeeCount > 25) {
-          totalEmployeesToSend = newHrEmployeeCount;
         } else if (isSuiteOrHrTarget && activeEmployeeLimit > 25) {
           // If already on Suite/HR and had purchased extra capacity, preserve it
           totalEmployeesToSend = activeEmployeeLimit;
@@ -564,19 +554,32 @@ export function PlanSelectorModal({
         }
       }
 
-      // If total amount is 0 (e.g. Free plan selected or 100% coupon)
+      // If total amount is 0 (Free plan selected or 100% coupon)
       if (finalAmountPaise <= 0) {
-        const plansToActivate = targetPlanNames.length > 0 ? targetPlanNames : ["free"];
-        const appliedCode = validCoupon && promoCode.trim() ? promoCode.trim().toUpperCase() : null;
+        // SECURITY CHECK: If there is no valid 100% discount coupon, users can ONLY activate 'free' plan!
+        // Never allow paid plans (hr, suite, crm, accounting, promotion) to be activated for zero payment without a verified coupon!
+        const isLegit100PercentCoupon = validCoupon && (
+          (validCoupon.type === "percentage" && validCoupon.amount >= 100) ||
+          (validCoupon.type === "fixed" && validCoupon.amount >= totalAmountRupees && totalAmountRupees > 0)
+        );
+
+        let plansToActivate = ["free"];
+        if (isLegit100PercentCoupon) {
+          plansToActivate = targetPlanNames.filter(p => p !== "free");
+          if (plansToActivate.length === 0) plansToActivate = ["free"];
+        }
+
+        const appliedCode = isLegit100PercentCoupon && promoCode.trim() ? promoCode.trim().toUpperCase() : null;
         const zeroOrderId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
         const zeroPaymentId = appliedCode ? `COUPON_FREE_${Date.now()}` : "FREE_PLAN";
+        const finalEmpCountToSend = plansToActivate.includes("free") && plansToActivate.length === 1 ? 3 : totalEmployeesToSend;
 
         try {
           await supabase.rpc("activate_org_plans", {
             p_org_id: orgId,
             p_plan_names: plansToActivate,
             p_billing_cycle: billingCycle,
-            p_employee_count: totalEmployeesToSend,
+            p_employee_count: finalEmpCountToSend,
             p_razorpay_order_id: zeroOrderId,
             p_razorpay_payment_id: zeroPaymentId,
             p_coupon_code: appliedCode
