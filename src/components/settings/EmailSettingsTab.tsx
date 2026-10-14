@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Mail, Globe, Server, CheckCircle2, AlertCircle, Copy, Send, HelpCircle, ExternalLink } from "lucide-react";
+import { Loader2, Mail, Globe, Server, CheckCircle2, AlertCircle, Copy, Send, HelpCircle, ExternalLink, Clock } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
@@ -114,6 +114,38 @@ export function EmailSettingsTab() {
     });
   };
 
+  const getApiUrl = (endpoint: string) => {
+    if (typeof window !== "undefined") {
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") {
+        return `https://aassaybiz.com${endpoint}`;
+      }
+    }
+    return endpoint;
+  };
+
+  const callApiJson = async (endpoint: string, body: any) => {
+    const url = getApiUrl(endpoint);
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const text = await resp.text();
+    let resData: any = {};
+    try {
+      resData = JSON.parse(text);
+    } catch {
+      throw new Error(text && text.length < 200 ? text : `Server returned invalid response (Status ${resp.status})`);
+    }
+
+    if (!resp.ok || resData.error) {
+      throw new Error(resData.error || `Request failed with status ${resp.status}`);
+    }
+
+    return resData;
+  };
+
   // Save Settings
   const handleSave = async () => {
     if (!org?.id) return;
@@ -152,20 +184,16 @@ export function EmailSettingsTab() {
 
       // Also ensure backend PostgreSQL receives updated configuration
       try {
-        await fetch("/api/domain/save-settings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orgId: org.id,
-            providerType,
-            fromName,
-            domainName,
-            smtpHost,
-            smtpPort: Number(smtpPort),
-            smtpUser,
-            smtpPass,
-            smtpSecure,
-          }),
+        await callApiJson("/api/domain/save-settings", {
+          orgId: org.id,
+          providerType,
+          fromName,
+          domainName,
+          smtpHost,
+          smtpPort: Number(smtpPort),
+          smtpUser,
+          smtpPass,
+          smtpSecure,
         });
       } catch (backendErr) {
         console.warn("Direct backend save warning:", backendErr);
@@ -197,17 +225,10 @@ export function EmailSettingsTab() {
 
     setIsRegisteringDomain(true);
     try {
-      const resp = await fetch("/api/domain/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domainName: domainName.trim(),
-          orgId: org.id,
-        }),
+      const resData = await callApiJson("/api/domain/register", {
+        domainName: domainName.trim(),
+        orgId: org.id,
       });
-
-      const resData = await resp.json();
-      if (!resp.ok || resData.error) throw new Error(resData.error || "Failed to register domain in AWS SES");
 
       setResendDomainId(resData.data.id);
       setDnsRecords(resData.data.records || []);
@@ -215,7 +236,7 @@ export function EmailSettingsTab() {
 
       toast({
         title: "Domain Registered in AWS SES",
-        description: "DKIM & Verification DNS records generated! Add them to your domain provider.",
+        description: "DKIM, TXT & Deliverability records generated! Add them to your domain provider.",
       });
 
       queryClient.invalidateQueries({ queryKey: ["org-email-settings"] });
@@ -232,17 +253,10 @@ export function EmailSettingsTab() {
 
     setIsVerifyingDomain(true);
     try {
-      const resp = await fetch("/api/domain/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          domainName: domainName.trim(),
-          orgId: org.id,
-        }),
+      const resData = await callApiJson("/api/domain/verify", {
+        domainName: domainName.trim(),
+        orgId: org.id,
       });
-
-      const resData = await resp.json();
-      if (!resp.ok || resData.error) throw new Error(resData.error || "Failed to check verification");
 
       setDomainStatus(resData.status);
       if (resData.data?.records) {
@@ -251,7 +265,7 @@ export function EmailSettingsTab() {
 
       if (resData.status === "verified") {
         toast({
-          title: "Domain 100% Verified!",
+          title: "Domain 100% Verified! 🎉",
           description: "Your custom domain is authenticated via AWS SES DKIM and ready to send emails.",
         });
       } else {
@@ -309,23 +323,16 @@ export function EmailSettingsTab() {
       // Try EC2 native email dispatcher first (supports AWS SES & Custom SMTP reliably)
       let sentSuccessfully = false;
       try {
-        const resp = await fetch("/api/email/send", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            orgId: org.id,
-            fromEmail: effectiveFromEmail,
-            fromName: effectiveFromName,
-            to: testEmailAddress.trim(),
-            subject: "Test Email from Aassay Biz",
-            html: testEmailHtml,
-          }),
+        const respData = await callApiJson("/api/email/send", {
+          orgId: org.id,
+          fromEmail: effectiveFromEmail,
+          fromName: effectiveFromName,
+          to: testEmailAddress.trim(),
+          subject: "Test Email from Aassay Biz",
+          html: testEmailHtml,
         });
-        const respData = await resp.json();
-        if (resp.ok && respData.success) {
+        if (respData.success) {
           sentSuccessfully = true;
-        } else if (!resp.ok && respData.error) {
-          throw new Error(respData.error);
         }
       } catch (err: any) {
         console.warn("EC2 mailer failed or unavailable, trying cloud function:", err);

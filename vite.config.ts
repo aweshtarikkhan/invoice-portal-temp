@@ -13,6 +13,13 @@ export default defineConfig(({ mode }) => ({
     hmr: {
       overlay: false,
     },
+    proxy: {
+      '/api': {
+        target: 'https://aassaybiz.com',
+        changeOrigin: true,
+        secure: false,
+      },
+    },
   },
   build: {
     rollupOptions: {
