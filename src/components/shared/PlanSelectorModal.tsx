@@ -436,6 +436,8 @@ export function PlanSelectorModal({
     totalAmountRupees += getExtraPlatformEmployeeCost(extraPlatformEmployeesToAdd);
   }
 
+  const subtotalBeforeDiscountRupees = totalAmountRupees;
+
   // 3. Apply discount coupon if valid
   if (validCoupon) {
     if (validCoupon.type === "percentage") {
@@ -558,9 +560,11 @@ export function PlanSelectorModal({
       if (finalAmountPaise <= 0) {
         // SECURITY CHECK: If there is no valid 100% discount coupon, users can ONLY activate 'free' plan!
         // Never allow paid plans (hr, suite, crm, accounting, promotion) to be activated for zero payment without a verified coupon!
-        const isLegit100PercentCoupon = validCoupon && (
-          (validCoupon.type === "percentage" && validCoupon.amount >= 100) ||
-          (validCoupon.type === "fixed" && validCoupon.amount >= totalAmountRupees && totalAmountRupees > 0)
+        const isLegit100PercentCoupon = Boolean(
+          validCoupon && (
+            (validCoupon.type === "percentage" && validCoupon.amount >= 100) ||
+            ((validCoupon.type === "fixed" || validCoupon.type === "flat") && subtotalBeforeDiscountRupees > 0 && validCoupon.amount >= subtotalBeforeDiscountRupees)
+          )
         );
 
         let plansToActivate = ["free"];
@@ -575,7 +579,7 @@ export function PlanSelectorModal({
         const finalEmpCountToSend = plansToActivate.includes("free") && plansToActivate.length === 1 ? 3 : totalEmployeesToSend;
 
         try {
-          await supabase.rpc("activate_org_plans", {
+          const { data: actResult, error: actError } = await supabase.rpc("activate_org_plans", {
             p_org_id: orgId,
             p_plan_names: plansToActivate,
             p_billing_cycle: billingCycle,
@@ -584,6 +588,10 @@ export function PlanSelectorModal({
             p_razorpay_payment_id: zeroPaymentId,
             p_coupon_code: appliedCode
           });
+          if (actError) console.warn("activate_org_plans notice:", actError);
+          if (actResult?.features && Array.isArray(actResult.features)) {
+            useFeatureStore.getState().setOrgFeatures(orgId, actResult.features);
+          }
         } catch (rpcErr) {
           console.warn("activate_org_plans notice:", rpcErr);
         }
@@ -762,6 +770,10 @@ export function PlanSelectorModal({
 
             if (verifyError || verifyData?.error) {
               throw new Error(verifyError?.message || verifyData?.error || "Payment verification failed");
+            }
+
+            if (verifyData?.result?.features && Array.isArray(verifyData.result.features)) {
+              useFeatureStore.getState().setOrgFeatures(orgId, verifyData.result.features);
             }
 
             // Guaranteed client-side redemption logging if coupon was used
