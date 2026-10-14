@@ -38,6 +38,7 @@ import { recordPaymentBankingTransaction, getOrCreateCashAccount } from "@/lib/b
 import html2canvas from "html2canvas";
 import { jsPDF } from "jspdf";
 import { StyledInvoiceTemplate } from "@/components/invoice/StyledInvoiceTemplate";
+import { dispatchEmail } from "@/lib/dispatch-email";
 import { calculateTaxBreakdown, stateCodeFromGstin } from "@/lib/gst";
 import { useAutoEmailPDF } from "@/hooks/useAutoEmailPDF";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
@@ -765,37 +766,28 @@ export default function InvoiceDetailPage() {
         attachmentNote: `${hasGst ? "Official GST Tax Invoice" : "Official Invoice"} (${invoice.invoice_number}.pdf) is attached to this email.`,
       });
 
-      const { data, error } = await supabase.functions.invoke("send-custom-email", {
-        body: {
-          to: recipientEmail,
-          subject,
-          html,
-          orgId: activeOrg.id,
-          attachments: [
-            {
-              filename: `${invoice.invoice_number}.pdf`,
-              content: base64data,
-              content_type: "application/pdf",
-            },
-          ],
-        },
+      const result = await dispatchEmail({
+        to: recipientEmail,
+        subject,
+        html,
+        orgId: activeOrg.id,
+        attachments: [
+          {
+            filename: `${invoice.invoice_number}.pdf`,
+            content: base64data,
+            content_type: "application/pdf",
+          },
+        ],
       });
 
-      if (error || data?.error) {
-        if (error?.message?.includes("Failed to send a request")) {
-          toast({
-            title: "Email Queued ✉️",
-            description: `Invoice PDF is being sent to ${recipientEmail} and will arrive shortly.`,
-          });
-        } else {
-          throw new Error(error?.message || data?.error || "Failed to dispatch email");
-        }
-      } else {
-        toast({
-          title: "Email Sent Successfully! ✉️",
-          description: `Invoice PDF was successfully sent to ${recipientEmail}.`,
-        });
+      if (!result.success) {
+        throw new Error(result.error || "Failed to dispatch email");
       }
+
+      toast({
+        title: "Email Sent Successfully! ✉️",
+        description: `Invoice PDF was successfully sent to ${recipientEmail}.`,
+      });
 
       if (invoice.status === "draft") {
         await supabase.from("invoices").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", invoice.id);

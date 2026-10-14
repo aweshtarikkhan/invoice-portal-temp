@@ -23,6 +23,7 @@ import { jsPDF } from "jspdf";
 import { useSubscription } from "@/hooks/use-subscription";
 import { normalizePlanKey, canSendDirectEmailOrWhatsApp } from "@/lib/subscription";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { dispatchEmail } from "@/lib/dispatch-email";
 
 const statusVariants: Record<string, "default" | "info" | "success" | "warning" | "danger" | "muted"> = {
   draft: "muted", sent: "info", viewed: "default", accepted: "success",
@@ -313,23 +314,23 @@ export default function EstimateDetailPage() {
         attachmentNote: `Official Quotation PDF (${estimate.estimate_number}.pdf) is attached to this email.`,
       });
 
-      const { data, error } = await supabase.functions.invoke("send-custom-email", {
-        body: {
-          to: recipientEmail,
-          subject,
-          html,
-          orgId: org.id,
-          attachments: [
-            {
-              filename: `${estimate.estimate_number}.pdf`,
-              content: base64data,
-              content_type: "application/pdf",
-            },
-          ],
-        },
+      const result = await dispatchEmail({
+        to: recipientEmail,
+        subject,
+        html,
+        orgId: org.id,
+        attachments: [
+          {
+            filename: `${estimate.estimate_number}.pdf`,
+            content: base64data,
+            content_type: "application/pdf",
+          },
+        ],
       });
 
-      if (error || data?.error) throw new Error(error?.message || data?.error || "Failed to dispatch email");
+      if (!result.success) {
+        throw new Error(result.error || "Failed to dispatch email");
+      }
 
       if (estimate.status === "draft") {
         await updateStatus("sent", { sent_at: new Date().toISOString() });
