@@ -946,8 +946,8 @@ export default function LandingPage() {
                 totalAmount += platformExtra * (isYearly ? Math.round(99 * 12 * 0.83) : 99);
               }
             } else {
-              if (finalSelected.has("accounting")) totalAmount += isYearly ? 5990 : 599;
-              if (finalSelected.has("hr")) totalAmount += isYearly ? 5990 : 599;
+              if (finalSelected.has("accounting")) totalAmount += isYearly ? 5988 : 599;
+              if (finalSelected.has("hr")) totalAmount += isYearly ? 5988 : 599;
               if (finalSelected.has("crm")) totalAmount += isYearly ? 5988 : 599;
               if (finalSelected.has("promotion")) totalAmount += isYearly ? 5988 : 599;
               if (finalSelected.size > 0 && platformExtra > 0) {
@@ -1075,13 +1075,13 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5999)}`}</span>
+                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5988)}`}</span>
                               <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
                             {isYearly ? (
                               <div className="mt-1 flex flex-col gap-1">
                                 <span className="text-xs font-semibold text-slate-500">
-                                  Billed annually at ₹{getPlanYearlyTotal(5999)}/year upfront
+                                  Billed annually at ₹{getPlanYearlyTotal(5988)}/year upfront
                                 </span>
                                 <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
                                   Save 17% (Pay upfront)
@@ -1192,13 +1192,13 @@ export default function LandingPage() {
                           {/* Price */}
                           <div className="mb-5">
                             <div className="flex items-baseline gap-1">
-                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5999, true)}`}</span>
+                              <span className="text-3xl font-black text-slate-900">{`₹${getPlanPrice(599, 5988, true)}`}</span>
                               <span className="text-xs text-slate-500 font-semibold">/month</span>
                             </div>
                             {isYearly ? (
                               <div className="mt-1 flex flex-col gap-1">
                                 <span className="text-xs font-semibold text-slate-500">
-                                  Billed annually at ₹{getPlanYearlyTotal(5999, true)}/year upfront
+                                  Billed annually at ₹{getPlanYearlyTotal(5988, true)}/year upfront
                                 </span>
                                 <span className="inline-block w-fit text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/70 px-2.5 py-0.5 rounded-full">
                                   Save 17% (Pay upfront)
