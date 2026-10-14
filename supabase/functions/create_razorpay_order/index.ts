@@ -37,9 +37,9 @@ serve(async (req) => {
       }
     }
 
-    // Default to verified test keys if not present
-    if (!keyId) keyId = "rzp_test_TNxuYUOdjOiviO";
-    if (!keySecret) keySecret = "aubnSJ1cPmrxKI4bkb1PZ2E1";
+    // Live Razorpay keys
+    if (!keyId) keyId = "rzp_live_TnlfuqkSig5UQO";
+    if (!keySecret) keySecret = "LQZdJbUSZBhgdLaki9U9tpoz";
 
     // ==========================================
     // ACTION: CREATE ORDER
