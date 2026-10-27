@@ -52,7 +52,7 @@ interface Employee {
 const empty = {
   name: "", employee_code: "", designation: "", phone: "", email: "",
   joining_date: "", monthly_salary: "0", paid_leaves_per_month: "2",
-  wage_type: "monthly", daily_rate: "500", hourly_rate: "75",
+  wage_type: "monthly", daily_rate: "500", hourly_rate: "75", 
   is_active: true, notes: "",
   pan: "", bank_account: "", bank_ifsc: "", address: "",
   basic_percent: "50", hra_percent: "20",
@@ -426,6 +426,7 @@ export default function EmployeesPage() {
       salary_structure: {
         ...existingStructure,
         monthly_gross: wageType === "monthly" ? (Number(form.monthly_salary) || 0) : existingStructure.monthly_gross,
+        overtime_rate_per_hour: existingStructure.overtime_rate_per_hour ? Number(existingStructure.overtime_rate_per_hour) : 0,
         basic_percent: Number(form.basic_percent) || 50,
         hra_percent: Number(form.hra_percent) || 20,
         pf_applicable: !!form.pf_applicable,

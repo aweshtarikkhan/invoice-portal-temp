@@ -31,7 +31,8 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: any) {
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("CRITICAL ERROR CAUGHT BY ROOT BOUNDARY:", error, errorInfo);
     const errorStr = (error?.toString() || error?.message || "").toLowerCase();
     const isChunkOrScriptError =
       errorStr.includes("dynamically imported module") ||
@@ -127,9 +128,14 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
             <h2 style={{ fontSize: '20px', fontWeight: 700, margin: '0 0 8px', color: '#0f172a' }}>
               Something went wrong
             </h2>
-            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 24px', lineHeight: 1.5 }}>
+            <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 12px', lineHeight: 1.5 }}>
               An unexpected error occurred while loading this page.
             </p>
+            {this.state.error && (
+              <pre style={{ fontSize: '12px', color: '#b91c1c', background: '#fef2f2', padding: '12px', borderRadius: '8px', textAlign: 'left', overflowX: 'auto', marginBottom: '20px', maxHeight: '180px', whiteSpace: 'pre-wrap' }}>
+                {String(this.state.error?.stack || this.state.error?.message || this.state.error)}
+              </pre>
+            )}
             <button
               onClick={() => {
                 sessionStorage.clear();

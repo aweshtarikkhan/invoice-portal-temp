@@ -309,17 +309,49 @@ export default function LeavesPage() {
     if (!org?.id) return;
     setSavingPolicy(true);
     try {
-      const upserts = ["casual", "sick", "el_pl", "comp_off"].map((t) => ({
-        org_id: org.id,
-        leave_type: t,
-        annual_limit: policyForm[t]?.annual_limit ?? 0,
-        monthly_accrual: policyForm[t]?.monthly_accrual ?? 0,
-        updated_at: new Date().toISOString(),
-      }));
-      const { error } = await (supabase as any)
+      const types = ["casual", "sick", "el_pl", "comp_off"];
+
+      // Fetch existing policies for this organization to get their record IDs
+      const { data: currentPolicies, error: fetchErr } = await (supabase as any)
         .from("leave_policies")
-        .upsert(upserts, { onConflict: "org_id,leave_type" });
-      if (error) throw error;
+        .select("id, leave_type")
+        .eq("org_id", org.id);
+
+      if (fetchErr) throw fetchErr;
+
+      const existingMap = new Map<string, string>(
+        (currentPolicies || []).map((p: any) => [p.leave_type, p.id])
+      );
+
+      for (const t of types) {
+        const annual_limit = Number(policyForm[t]?.annual_limit ?? 0);
+        const monthly_accrual = Number(policyForm[t]?.monthly_accrual ?? 0);
+        const existingId = existingMap.get(t);
+
+        if (existingId) {
+          const { error } = await (supabase as any)
+            .from("leave_policies")
+            .update({
+              annual_limit,
+              monthly_accrual,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingId);
+          if (error) throw error;
+        } else {
+          const { error } = await (supabase as any)
+            .from("leave_policies")
+            .insert({
+              org_id: org.id,
+              leave_type: t,
+              annual_limit,
+              monthly_accrual,
+              updated_at: new Date().toISOString(),
+            });
+          if (error) throw error;
+        }
+      }
+
       toast({ title: "Leave policies saved!" });
       load();
     } catch (err: any) {

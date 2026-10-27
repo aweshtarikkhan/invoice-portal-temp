@@ -22,6 +22,7 @@ import { formatCurrency } from "@/lib/currency";
 import { ChevronLeft, ChevronRight, Save, Send, MapPin, Clock, MessageSquare, UserCircle2, Calculator, Edit3, Sparkles, HardHat } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { SalariesTab } from "@/components/payroll/SalariesTab";
+import { calculateHoursLoginToShiftEnd, isAutoClockOut } from "@/lib/salary-calculator";
 import { safeFormatTime, safeFormatDate, toHHmm } from "@/lib/utils";
 
 type Status = string;
@@ -104,6 +105,8 @@ export default function AttendancePage() {
   const [approvedLeaveMap, setApprovedLeaveMap] = useState<Record<string, string>>({});
   // employee shifts: empId -> shift
   const [empShiftMap, setEmpShiftMap] = useState<Record<string, any>>({});
+  // organization default shift
+  const [orgDefaultShift, setOrgDefaultShift] = useState<any>(null);
   // auto-computed att keys (not manually set by HR)
   const [autoAttKeys, setAutoAttKeys] = useState<Set<string>>(new Set());
 
@@ -427,7 +430,9 @@ export default function AttendancePage() {
     });
 
     const orgShiftsList = allShiftsRes?.data || [];
-    const orgDefaultShift = orgShiftsList.find((s: any) => s.is_default) || orgShiftsList[0] || null;
+    const defaultShift = orgShiftsList.find((s: any) => s.is_default) || orgShiftsList[0] || null;
+    setOrgDefaultShift(defaultShift);
+    const orgDefaultShift = defaultShift;
 
     const clkMap: Record<string, any> = {};
     (clockins?.data || []).forEach((r: any) => { clkMap[`${r.employee_id}|${r.date}`] = r; });
@@ -464,19 +469,8 @@ export default function AttendancePage() {
       }
 
       // If HR explicitly marked or saved an override, track it
-      if (
-        r.hr_note === "hr_override" || 
-        r.notes === "hr_override" ||
-        statusVal === "present" ||
-        statusVal === "late" ||
-        statusVal === "half_day" ||
-        statusVal === "wfh" ||
-        statusVal === "od" ||
-        statusVal === "absent"
-      ) {
-        if (r.hr_note === "hr_override" || r.notes === "hr_override" || !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(statusVal)) {
-          hrOverriddenKeys.add(key);
-        }
+      if (r.hr_note === "hr_override" || r.notes === "hr_override" || r.override_status) {
+        hrOverriddenKeys.add(key);
       }
     });
 
@@ -513,14 +507,16 @@ export default function AttendancePage() {
         const ds = format(d, "yyyy-MM-dd");
         const key = `${emp.id}|${ds}`;
 
-        // 0. Approved Regularization is supreme: always mark Present
+        // 0. Approved Regularization
         if (approvedRegMap[key]) {
-          map[key] = "present";
+          const reg = approvedRegMap[key];
+          const shift = shiftMap[emp.id] || orgDefaultShift;
+          const clkIn = reg.requested_clock_in || clkMap[key]?.clock_in_time;
+          map[key] = clkIn ? computeShiftStatus(clkIn, shift, orgDefaultShift) : "present";
           return;
         }
 
         // 1. HR Manual Override is supreme: If HR explicitly marked attendance for this day, keep it!
-        // (Unless employee has clocked in and status was stale absent)
         if (hrOverriddenKeys.has(key)) {
           if (map[key] === "absent" && clkMap[key]?.clock_in_time) {
             // fall through to actual clock-in computation
@@ -541,29 +537,32 @@ export default function AttendancePage() {
           return;
         }
 
-        // 3. If HR already manually set an explicit status in map, keep it (unless stale absent with clock in)
-        if (map[key] && !(map[key] === "absent" && clkMap[key]?.clock_in_time)) return;
+        // 3. Actual clock-in from attendances table (daily clock records)
+        const clk = clkMap[key];
+        if (clk) {
+          if (clk.clock_in_time) {
+            const shift = shiftMap[emp.id] || orgDefaultShift;
+            const computedSt = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
+            map[key] = (clk.status === "half_day" || clk.status === "late") ? clk.status : computedSt;
+            newAutoKeys.add(key);
+            return;
+          } else if (clk.status) {
+            map[key] = clk.status;
+            newAutoKeys.add(key);
+            return;
+          }
+        }
 
-        // 3. Weekly offs and holidays
+        // 4. If HR already manually set an explicit status in map, keep it
+        if (map[key] && !newAutoKeys.has(key)) return;
+
+        // 5. Weekly offs and holidays
         const effectiveWeeklyOffs = ((org as any)?.enable_individual_week_offs && Array.isArray(emp.weekly_offs) && emp.weekly_offs.length > 0)
           ? emp.weekly_offs
           : orgWeeklyOffs;
         const isOff = effectiveWeeklyOffs.includes(d.getDay());
         const isHoliday = holsList.some((h: any) => h.date === ds);
-        if (isOff || isHoliday) { map[key] = "holiday"; return; }
-
-        // 4. Actual clock-in from attendances table (daily clock records)
-        const clk = clkMap[key];
-        if (clk) {
-          if (clk.clock_in_time) {
-            const shift = shiftMap[emp.id] || orgDefaultShift;
-            map[key] = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
-            newAutoKeys.add(key);
-          } else if (clk.status) {
-            map[key] = clk.status;
-            newAutoKeys.add(key);
-          }
-        } else if (ds < todayStr) {
+        if (isOff || isHoliday) { map[key] = "holiday"; return; } else if (ds < todayStr) {
           // Past day without attendance -> auto mark absent
           map[key] = "absent";
           newAutoKeys.add(key);
@@ -1067,9 +1066,13 @@ export default function AttendancePage() {
         let isAuto = false;
         
         if (approvedReg) {
-          finalStatus = "present";
+          const clkIn = approvedReg.requested_clock_in || clk?.clock_in_time;
+          finalStatus = clkIn ? computeShiftStatus(clkIn, shift, orgDefaultShift) : "present";
+        } else if (approvedLeave === "half_day") {
+          finalStatus = "half_day";
         } else if (clk?.clock_in_time) {
-          finalStatus = computeShiftStatus(clk.clock_in_time, shift);
+          const shiftComputed = computeShiftStatus(clk.clock_in_time, shift, orgDefaultShift);
+          finalStatus = (clk.status === "half_day" || clk.status === "late") ? clk.status : shiftComputed;
           isAuto = true;
         } else if (hrStatus) {
           finalStatus = hrStatus;
@@ -1078,7 +1081,6 @@ export default function AttendancePage() {
         } else if (isHoliday || isOff) {
           finalStatus = "holiday";
         } else if (ds <= format(new Date(), "yyyy-MM-dd")) {
-          // past day without clock-in or HR record
           finalStatus = "absent";
           isAuto = true;
         }
@@ -1567,8 +1569,17 @@ export default function AttendancePage() {
 
   const formatTime = (isoOrTime: any) => safeFormatTime(isoOrTime);
 
-  const calculateHours = (inTime: string, outTime: string) => {
+  const calculateHours = (inTime: string, outTime: string, isAuto?: boolean, shiftObj?: any) => {
     try {
+      if (isAuto) {
+        const stdHours = 9;
+        const shiftStart = shiftObj?.start_time || "09:00:00";
+        const shiftEnd = shiftObj?.end_time || "18:00:00";
+        const worked = calculateHoursLoginToShiftEnd(inTime, "", stdHours, shiftStart, shiftEnd);
+        const hrs = Math.floor(worked);
+        const mins = Math.round((worked - hrs) * 60);
+        return `${hrs}h ${mins}m`;
+      }
       const sMins = (() => {
         const str = String(inTime).trim();
         const m = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
@@ -1635,11 +1646,19 @@ export default function AttendancePage() {
       );
     }
 
-    const lat = parsed.lat != null ? Number(parsed.lat) : null;
-    const lng = parsed.lng != null ? Number(parsed.lng) : null;
+    const rawAddress = parsed.address || parsed.name || parsed.formatted_address;
+    const isErroneousForeign = rawAddress && (
+      rawAddress.toLowerCase().includes("russia") ||
+      rawAddress.toLowerCase().includes("moscow")
+    );
+
+    const lat = (!isErroneousForeign && parsed.lat != null) ? Number(parsed.lat) : null;
+    const lng = (!isErroneousForeign && parsed.lng != null) ? Number(parsed.lng) : null;
     const hasCoords = lat != null && lng != null && !isNaN(lat) && !isNaN(lng);
 
-    const addressText = parsed.address || parsed.name || parsed.formatted_address || (hasCoords ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : null);
+    const addressText = isErroneousForeign
+      ? "Office Network / Web Check-In"
+      : (rawAddress || (hasCoords ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : null));
     const mapUrl = hasCoords ? `https://maps.google.com/?q=${lat},${lng}` : null;
 
     if (!addressText && !mapUrl) {
@@ -1691,7 +1710,7 @@ export default function AttendancePage() {
                   {selectedClockInfo.clock_in_time ? (
                     <>
                       <p className="text-sm">{formatTime(selectedClockInfo.clock_in_time)}</p>
-                      {selectedClockInfo.clock_in_location && (
+                      {selectedClockInfo.clock_in_location && selectedClockInfo.clock_in_location.lat && selectedClockInfo.clock_in_location.lng && !JSON.stringify(selectedClockInfo.clock_in_location).toLowerCase().includes("russia") && (
                         <a href={`https://maps.google.com/?q=${selectedClockInfo.clock_in_location.lat},${selectedClockInfo.clock_in_location.lng}`} target="_blank" rel="noreferrer" className="text-xs text-blue-600 flex items-center hover:underline mt-1">
                           <MapPin className="w-3 h-3 mr-1" /> View on Map
                         </a>
@@ -2205,20 +2224,31 @@ export default function AttendancePage() {
                         const log = dailyLogs[emp.id];
                         const hasClockIn = !!log?.clock_in_time;
                         const hasClockOut = !!log?.clock_out_time;
-                        const shift = empShiftMap[emp.id];
+                        const shift = empShiftMap[emp.id] || orgDefaultShift || null;
 
                         const computeStatus = (): { label: string; cls: string } => {
                           if (log?.is_regularized) {
+                            const computed = log.clock_in_time ? computeShiftStatus(log.clock_in_time, shift, orgDefaultShift) : "present";
+                            if (computed === "late") return { label: "Late (Regularized)", cls: "bg-amber-100 text-amber-800 border-amber-300" };
+                            if (computed === "half_day") return { label: "Half Day (Regularized)", cls: "bg-orange-100 text-orange-800 border-orange-300" };
                             return { label: "Present (Regularized)", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
                           }
+
+                          const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
+                          if (approvedLeave === "half_day") {
+                            return { label: "Half Day Leave", cls: "bg-orange-100 text-orange-800 border-orange-300" };
+                          }
+
                           const isHolidayDay = holidays.some((h) => h.date === dailyDate);
                           if (isHolidayDay && !hasClockIn) return { label: "Holiday", cls: "bg-slate-100 text-slate-600 border" };
                           
-                          const approvedLeave = approvedLeaveMap[`${emp.id}|${dailyDate}`];
-                          if (approvedLeave && !hasClockIn) return { label: "Approved Leave", cls: "bg-purple-100 text-purple-700 border-purple-300" };
+                          if (approvedLeave && !hasClockIn) {
+                            const opt = STATUS_OPTIONS.find(o => o.value === approvedLeave);
+                            return { label: opt?.label || "Approved Leave", cls: opt?.cls || "bg-purple-100 text-purple-700 border-purple-300" };
+                          }
 
                           const hrDailyStatus = att[`${emp.id}|${dailyDate}`];
-                          if (hrDailyStatus && hrDailyStatus !== "absent" && !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(hrDailyStatus)) {
+                          if (hrDailyStatus && hrDailyStatus !== "absent" && hrDailyStatus !== "present" && !["casual", "sick", "el_pl", "comp_off", "maternity", "paternity", "approved_leave", "paid_leave"].includes(hrDailyStatus)) {
                             const opt = STATUS_OPTIONS.find(o => o.value === hrDailyStatus);
                             if (opt) return { label: opt.label, cls: opt.cls };
                           }
@@ -2227,22 +2257,12 @@ export default function AttendancePage() {
                             return { label: "Absent", cls: "bg-red-100 text-red-700 border-red-300" };
                           }
 
-                          if (!shift) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-                          const clockInDate = new Date(log.clock_in_time);
-                          const hh = clockInDate.getHours();
-                          const mm = clockInDate.getMinutes();
-                          const clockInMins = hh * 60 + mm;
-                          const toMins = (t: string) => {
-                            if (!t) return 0;
-                            const [h, m] = t.slice(0, 5).split(":").map(Number);
-                            return h * 60 + m;
-                          };
-                          const graceEnd = toMins(shift.start_time) + (shift.grace_minutes ?? 15);
-                          const lateEnd = toMins(shift.late_end || "10:30");
-                          const halfDayEnd = toMins(shift.half_day_end || "14:00");
-                          if (clockInMins <= graceEnd) return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-                          if (clockInMins <= lateEnd) return { label: "Late", cls: "bg-amber-100 text-amber-800 border-amber-300" };
-                          return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
+                          const shiftStatus = computeShiftStatus(log.clock_in_time, shift, orgDefaultShift);
+                          const finalSt = (log.status === "half_day" || log.status === "late") ? log.status : shiftStatus;
+
+                          if (finalSt === "late") return { label: "Late Coming", cls: "bg-amber-100 text-amber-800 border-amber-300" };
+                          if (finalSt === "half_day") return { label: "Half Day", cls: "bg-orange-100 text-orange-800 border-orange-300" };
+                          return { label: "Present", cls: "bg-emerald-100 text-emerald-800 border-emerald-300" };
                         };
 
                         const statusInfo = computeStatus();
@@ -2307,7 +2327,7 @@ export default function AttendancePage() {
                             </TableCell>
                             <TableCell>{renderLocation(log?.clock_out_location)}</TableCell>
                             <TableCell className="text-right font-medium text-sm">
-                              {hasClockIn && hasClockOut ? calculateHours(log.clock_in_time, log.clock_out_time) : "-"}
+                              {hasClockIn && hasClockOut ? calculateHours(log.clock_in_time, log.clock_out_time, !!(log?.is_auto_clock_out || log?.clock_out_location?.auto || isAutoClockOut(log)), shift) : "-"}
                             </TableCell>
                             <TableCell className="text-right">
                               <Button

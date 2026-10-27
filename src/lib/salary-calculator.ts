@@ -35,6 +35,8 @@ export interface SalaryStructure {
   other_deductions_label?: string; // Custom name for other deductions (e.g. "Uniform Charge", "Mess Fee")
   
   payment_mode?: 'bank_transfer' | 'cheque' | 'cash' | 'upi';
+  signature_url?: string; // Digital signature image / data URL
+  signature_date?: string;
 }
 
 export const DEFAULT_SALARY_STRUCTURE: SalaryStructure = {
@@ -148,17 +150,24 @@ export function parseEmployeeSalaryStructure(emp: any): SalaryStructure {
   const g = Number(emp.monthly_salary) || 0;
   const custom = emp.salary_structure && typeof emp.salary_structure === 'object' ? emp.salary_structure : {};
 
-  if (Object.keys(custom).length > 0 && custom.monthly_gross !== undefined) {
-    const stdHours = Number(custom.standard_shift_hours || 9);
-    const autoOt = g > 0 ? Math.round(g / (26 * stdHours)) : 0;
+  const stdHours = Number(custom.standard_shift_hours ?? emp.standard_shift_hours ?? 9);
+  const autoOt = g > 0 ? Math.round(g / (26 * stdHours)) : 0;
+  const customOtRate = custom.overtime_rate_per_hour !== undefined ? Number(custom.overtime_rate_per_hour) : undefined;
+  const empOtRate = emp.overtime_rate_per_hour !== undefined 
+    ? Number(emp.overtime_rate_per_hour) 
+    : (emp.overtime_hourly_rate !== undefined ? Number(emp.overtime_hourly_rate) : undefined);
+  const effectiveOtRate = customOtRate !== undefined && customOtRate > 0
+    ? customOtRate
+    : (empOtRate !== undefined && empOtRate > 0 ? empOtRate : (customOtRate !== undefined ? customOtRate : autoOt));
 
+  if (Object.keys(custom).length > 0 && (custom.monthly_gross !== undefined || custom.basic !== undefined || custom.overtime_rate_per_hour !== undefined)) {
     return {
       ...DEFAULT_SALARY_STRUCTURE,
       ...custom,
-      monthly_gross: Number(custom.monthly_gross || g),
+      monthly_gross: Number(custom.monthly_gross ?? g),
       basic: Number(custom.basic ?? +(g * (Number(emp.basic_percent || 50) / 100)).toFixed(2)),
       hra: Number(custom.hra ?? +(g * (Number(emp.hra_percent || 20) / 100)).toFixed(2)),
-      overtime_rate_per_hour: Number(custom.overtime_rate_per_hour !== undefined ? custom.overtime_rate_per_hour : autoOt),
+      overtime_rate_per_hour: effectiveOtRate,
       standard_shift_hours: stdHours,
       pf_applicable: custom.pf_applicable !== undefined ? !!custom.pf_applicable : !!emp.pf_applicable,
       pf_percent: custom.pf_percent !== undefined ? Number(custom.pf_percent) : 12,
@@ -178,6 +187,8 @@ export function parseEmployeeSalaryStructure(emp: any): SalaryStructure {
     hra_percent: Number(emp.hra_percent || 20),
     pf_applicable: !!emp.pf_applicable,
     esic_applicable: !!emp.esic_applicable,
+    overtime_rate_per_hour: effectiveOtRate,
+    standard_shift_hours: stdHours,
   });
 }
 
@@ -278,9 +289,96 @@ export interface EmployeeCalculatedSalary {
   // Net
   net_pay: number;
   payment_status: 'unpaid' | 'paid';
+  employee_signature_url?: string;
   
   // Details JSON to save in payslip
   details: any;
+}
+
+// Check if punch record was closed automatically by system (Auto Logout at 08:59 AM)
+export function isAutoClockOut(log: any): boolean {
+  if (!log) return false;
+  if (log.is_auto_clock_out === true || log.isAutoClockOut === true) return true;
+
+  // Check clock_out_location
+  let loc = log.clock_out_location;
+  if (typeof loc === "string") {
+    try {
+      loc = JSON.parse(loc);
+    } catch {
+      const lower = loc.toLowerCase();
+      if (
+        lower.includes('"auto":true') ||
+        lower.includes('"is_auto_clock_out":true') ||
+        lower.includes("auto clock out") ||
+        lower.includes("auto logout")
+      ) {
+        return true;
+      }
+    }
+  }
+  if (loc && typeof loc === "object") {
+    if (loc.auto === true || loc.is_auto_clock_out === true) return true;
+    if (typeof loc.reason === "string" && loc.reason.toLowerCase().includes("auto clock out")) return true;
+  }
+
+  // Check hr_note or notes
+  if (typeof log.hr_note === "string" && log.hr_note.includes("[Auto Logout]")) return true;
+  if (typeof log.notes === "string" && log.notes.includes("[Auto Logout]")) return true;
+
+  // Check if clock_out_time is stale / overnight (> 15 hours difference from check-in)
+  if (log.clock_in_time && log.clock_out_time) {
+    try {
+      const inTime = new Date(log.clock_in_time).getTime();
+      const outTime = new Date(log.clock_out_time).getTime();
+      const diffHours = (outTime - inTime) / (1000 * 60 * 60);
+      if (diffHours >= 15) {
+        return true;
+      }
+    } catch {}
+  }
+
+  return false;
+}
+
+// Calculate hours from employee login time up to shift end time (used on Auto Logout days)
+export function calculateHoursLoginToShiftEnd(
+  clockInTime: string,
+  dateStr?: string,
+  shiftDurationHours: number = 9,
+  shiftStartTimeStr?: string,
+  shiftEndTimeStr?: string
+): number {
+  try {
+    const inDate = new Date(clockInTime);
+    if (isNaN(inDate.getTime())) return shiftDurationHours;
+
+    if (shiftStartTimeStr && shiftEndTimeStr) {
+      const [sh, sm] = shiftStartTimeStr.slice(0, 5).split(":").map(Number);
+      const [eh, em] = shiftEndTimeStr.slice(0, 5).split(":").map(Number);
+
+      const shiftStart = new Date(inDate);
+      shiftStart.setHours(sh, sm, 0, 0);
+
+      const shiftEnd = new Date(inDate);
+      shiftEnd.setHours(eh, em, 0, 0);
+
+      // If clocked in on or before shift start, full standard shift hours
+      if (inDate.getTime() <= shiftStart.getTime()) {
+        return shiftDurationHours;
+      }
+
+      // If arrived late, calculate strictly from login time to shift end
+      const workedMs = shiftEnd.getTime() - inDate.getTime();
+      if (workedMs <= 0) return 0;
+      const workedHrs = +(workedMs / (1000 * 60 * 60)).toFixed(2);
+      return Math.min(shiftDurationHours, workedHrs);
+    }
+
+    return shiftDurationHours;
+  } catch {
+    return shiftDurationHours;
+  }
 }
 
 export function calculateEmployeeSalaryForPeriod({
@@ -309,7 +407,10 @@ export function calculateEmployeeSalaryForPeriod({
       // If multiple records for same day, prioritize one with clock_out_time
       const key = `${a.employee_id}|${d}`;
       if (!attLogMap[key] || (!attLogMap[key].clock_out_time && a.clock_out_time)) {
-        attLogMap[key] = a;
+        attLogMap[key] = { ...attLogMap[key], ...a };
+      } else {
+        if (a.is_auto_clock_out) attLogMap[key].is_auto_clock_out = true;
+        if (a.clock_out_location) attLogMap[key].clock_out_location = a.clock_out_location;
       }
     }
   });
@@ -351,8 +452,12 @@ export function calculateEmployeeSalaryForPeriod({
     const empShiftId = employeeShifts[emp.id];
     const shift = (shifts || []).find((s: any) => s.id === empShiftId);
     let shiftDurationHours = struct.standard_shift_hours || 9;
+    let shiftStartTimeStr = "09:00:00";
+    let shiftEndTimeStr = "18:00:00";
 
     if (shift && shift.start_time && shift.end_time) {
+      shiftStartTimeStr = shift.start_time;
+      shiftEndTimeStr = shift.end_time;
       const [sh, sm] = shift.start_time.slice(0, 5).split(':').map(Number);
       const [eh, em] = shift.end_time.slice(0, 5).split(':').map(Number);
       const diffMins = (eh * 60 + em) - (sh * 60 + sm);
@@ -402,27 +507,38 @@ export function calculateEmployeeSalaryForPeriod({
       }
 
       // --- AUTOMATIC OVERTIME CALCULATION ---
-      // Check if employee checked in for more than standard shift hours (e.g. 9 hours)
+      // Rule: If system auto-logged out the employee (isAutoClockOut), OVERTIME IS NOT CALCULATED for that day!
+      // Only normal time from login time to shift end time is considered.
+      // If employee manually clocked out after shift end, overtime IS calculated.
       if (log?.clock_in_time && log?.clock_out_time) {
         try {
-          const inTime = new Date(log.clock_in_time).getTime();
-          const outTime = new Date(log.clock_out_time).getTime();
-          const durationHours = (outTime - inTime) / (1000 * 60 * 60);
+          const autoLogout = isAutoClockOut(log);
 
-          if (durationHours > shiftDurationHours) {
-            const extraHours = +(durationHours - shiftDurationHours).toFixed(2);
-            if (extraHours >= 0.25) { // At least 15 minutes
-              auto_overtime_hours += extraHours;
-              overtime_days_count++;
-              overtime_breakdown.push({
-                date: ds,
-                clock_in: log.clock_in_time,
-                clock_out: log.clock_out_time,
-                worked_hours: +durationHours.toFixed(2),
-                standard_hours: shiftDurationHours,
-                overtime_hours: extraHours,
-              });
+          if (!autoLogout) {
+            // Employee manually clocked out after shift
+            const inTime = new Date(log.clock_in_time).getTime();
+            const outTime = new Date(log.clock_out_time).getTime();
+            const durationHours = (outTime - inTime) / (1000 * 60 * 60);
+
+            if (durationHours > shiftDurationHours) {
+              const extraHours = +(durationHours - shiftDurationHours).toFixed(2);
+              if (extraHours >= 0.25) { // At least 15 minutes
+                auto_overtime_hours += extraHours;
+                overtime_days_count++;
+                overtime_breakdown.push({
+                  date: ds,
+                  clock_in: log.clock_in_time,
+                  clock_out: log.clock_out_time,
+                  worked_hours: +durationHours.toFixed(2),
+                  standard_hours: shiftDurationHours,
+                  overtime_hours: extraHours,
+                });
+              }
             }
+          } else {
+            // System Auto-Logout at 08:59 AM next morning:
+            // Employee forgot to clock out -> NO OVERTIME for this day.
+            // Working hours are strictly from login time to shift end time.
           }
         } catch {}
       }
@@ -450,7 +566,7 @@ export function calculateEmployeeSalaryForPeriod({
       ? struct.overtime_rate_per_hour
       : (baseMonthlyGross > 0 ? Math.round(baseMonthlyGross / (26 * shiftDurationHours)) : 0);
 
-    const overtime_hourly_rate = Number(empOverrides.overtime_rate ?? defaultHourlyRate);
+    const overtime_hourly_rate = Number(empOverrides.overtime_rate !== undefined && empOverrides.overtime_rate !== null ? empOverrides.overtime_rate : defaultHourlyRate);
     const overtime_hours = Number(empOverrides.overtime_hours ?? +auto_overtime_hours.toFixed(2));
     
     // Total Overtime Pay
@@ -623,6 +739,7 @@ export function calculateEmployeeSalaryForPeriod({
       
       net_pay,
       payment_status: 'unpaid',
+      employee_signature_url: struct.signature_url || (emp as any).signature_url || (emp as any).salary_structure?.signature_url || '',
       details,
     };
   });
@@ -707,7 +824,10 @@ export function calculateWagerSalaryForPeriod({
     if (d && a.employee_id) {
       const key = `${a.employee_id}|${d}`;
       if (!attLogMap[key] || (!attLogMap[key].clock_out_time && a.clock_out_time)) {
-        attLogMap[key] = a;
+        attLogMap[key] = { ...attLogMap[key], ...a };
+      } else {
+        if (a.is_auto_clock_out) attLogMap[key].is_auto_clock_out = true;
+        if (a.clock_out_location) attLogMap[key].clock_out_location = a.clock_out_location;
       }
     }
   });
@@ -763,12 +883,24 @@ export function calculateWagerSalaryForPeriod({
       let dayAmount = 0;
       let dayStatus = log?.status || 'absent';
 
+      const isAuto = isAutoClockOut(log);
       if (log?.clock_in_time && log?.clock_out_time) {
         try {
-          const inTime = new Date(log.clock_in_time).getTime();
-          const outTime = new Date(log.clock_out_time).getTime();
-          const diffHrs = Math.max(0, (outTime - inTime) / (1000 * 60 * 60));
-          hoursWorked = +diffHrs.toFixed(2);
+          if (isAuto) {
+            // System Auto Logout: calculate only from login time to shift end, NO overtime
+            hoursWorked = calculateHoursLoginToShiftEnd(
+              log.clock_in_time,
+              ds,
+              standardShiftHours,
+              shift?.start_time,
+              shift?.end_time
+            );
+          } else {
+            const inTime = new Date(log.clock_in_time).getTime();
+            const outTime = new Date(log.clock_out_time).getTime();
+            const diffHrs = Math.max(0, (outTime - inTime) / (1000 * 60 * 60));
+            hoursWorked = +diffHrs.toFixed(2);
+          }
         } catch {}
       } else if (log?.clock_in_time && !log?.clock_out_time) {
         // If checked in only, assume standard hours or 8 hours
@@ -787,7 +919,11 @@ export function calculateWagerSalaryForPeriod({
 
         totalHoursWorked += hoursWorked;
 
-        if (hoursWorked > standardShiftHours) {
+        if (isAuto) {
+          // On auto-logout days, overtime is NOT calculated
+          regularHours = hoursWorked;
+          overtimeHours = 0;
+        } else if (hoursWorked > standardShiftHours) {
           regularHours = standardShiftHours;
           overtimeHours = +(hoursWorked - standardShiftHours).toFixed(2);
         } else {

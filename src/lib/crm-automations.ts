@@ -710,4 +710,353 @@ export async function checkAndProcessDueTaskReminders(org: any) {
   }
 }
 
+export interface LeadStatusItem {
+  v: string;
+  l: string;
+  cls: string;
+  value?: string;
+  label?: string;
+  color?: string;
+  is_default?: boolean;
+}
+
+export function normalizeLeadStatus(s: any): LeadStatusItem {
+  const v = s?.v || s?.value || "";
+  const l = s?.l || s?.label || (v ? v.charAt(0).toUpperCase() + v.slice(1).replace(/_/g, " ") : "Status");
+  const cls = s?.cls || s?.color || "bg-slate-100 text-slate-800 border-slate-300";
+  return {
+    v,
+    l,
+    cls,
+    value: v,
+    label: l,
+    color: s?.color || cls,
+    is_default: Boolean(s?.is_default),
+  };
+}
+
+export const DEFAULT_LEAD_STATUSES: LeadStatusItem[] = [
+  { v: "new", l: "New", value: "new", label: "New", cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600", color: "#64748b", is_default: true },
+  { v: "contacted", l: "Contacted", value: "contacted", label: "Contacted", cls: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700", color: "#3b82f6", is_default: true },
+  { v: "follow_up", l: "Follow-up", value: "follow_up", label: "Follow-up", cls: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-700", color: "#f59e0b", is_default: true },
+  { v: "qualified", l: "Qualified", value: "qualified", label: "Qualified", cls: "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/50 dark:text-purple-200 dark:border-purple-700", color: "#8b5cf6", is_default: true },
+  { v: "converted", l: "Converted", value: "converted", label: "Converted", cls: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/50 dark:text-green-200 dark:border-green-700", color: "#10b981", is_default: true },
+  { v: "lost", l: "Lost", value: "lost", label: "Lost", cls: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/50 dark:text-red-200 dark:border-red-700", color: "#ef4444", is_default: true },
+];
+
+export async function fetchOrgLeadStatuses(orgId: string): Promise<LeadStatusItem[]> {
+  if (!orgId) return DEFAULT_LEAD_STATUSES;
+  try {
+    const { data } = await (supabase as any)
+      .from("crm_automations")
+      .select("config")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "lead_settings")
+      .eq("action_type", "custom_statuses")
+      .maybeSingle();
+
+    if (data?.config?.statuses && Array.isArray(data.config.statuses) && data.config.statuses.length > 0) {
+      return data.config.statuses.map(normalizeLeadStatus);
+    }
+  } catch (e) {
+    console.error("Error fetching lead statuses:", e);
+  }
+  return DEFAULT_LEAD_STATUSES;
+}
+
+export async function saveOrgLeadStatuses(orgId: string, statuses: LeadStatusItem[]): Promise<boolean> {
+  if (!orgId) return false;
+  try {
+    const normalized = statuses.map(normalizeLeadStatus);
+    const { data: existing } = await (supabase as any)
+      .from("crm_automations")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "lead_settings")
+      .eq("action_type", "custom_statuses")
+      .maybeSingle();
+
+    if (existing?.id) {
+      await (supabase as any)
+        .from("crm_automations")
+        .update({ config: { statuses: normalized } })
+        .eq("id", existing.id);
+    } else {
+      await (supabase as any)
+        .from("crm_automations")
+        .insert({
+          org_id: orgId,
+          name: "Custom Lead Statuses",
+          trigger_event: "lead_settings",
+          action_type: "custom_statuses",
+          config: { statuses: normalized },
+          is_active: true,
+        });
+    }
+    return true;
+  } catch (e) {
+    console.error("Error saving lead statuses:", e);
+    return false;
+  }
+}
+
+export async function triggerActionLoggedLeadStatusUpdate(orgId: string, leadId: string, currentLeadStatus?: string): Promise<string | null> {
+  if (!orgId || !leadId) return null;
+  try {
+    const { data } = await (supabase as any)
+      .from("crm_automations")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "action_logged_status_update")
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!data) return null;
+
+    const targetStatus = data.config?.target_status || "follow_up";
+    const triggerStatus = data.config?.from_status || "new";
+
+    if (!currentLeadStatus || currentLeadStatus === triggerStatus || currentLeadStatus === "new") {
+      await (supabase as any)
+        .from("leads")
+        .update({ status: targetStatus })
+        .eq("id", leadId);
+      return targetStatus;
+    }
+  } catch (e) {
+    console.error("Error updating lead status on action logged:", e);
+  }
+  return null;
+}
+
+export async function ensureAdminInCrmTeam(orgId: string, user?: any, fallbackEmail?: string): Promise<any> {
+  if (!orgId) return null;
+  try {
+    let currentUser = user;
+    if (!currentUser) {
+      const { data } = await supabase.auth.getUser();
+      currentUser = data?.user;
+    }
+    const adminEmail = currentUser?.email || fallbackEmail;
+    if (!adminEmail) return null;
+
+    const { data: existing } = await (supabase as any)
+      .from("crm_team")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("email", adminEmail)
+      .maybeSingle();
+
+    if (existing) return existing;
+
+    const name = currentUser?.user_metadata?.full_name || currentUser?.user_metadata?.first_name || adminEmail.split("@")[0] || "Admin";
+    const { data: created, error } = await (supabase as any)
+      .from("crm_team")
+      .insert({
+        org_id: orgId,
+        name: `${name} (Admin)`,
+        email: adminEmail,
+        phone: currentUser?.user_metadata?.phone || currentUser?.phone || null,
+        role: "Sales Manager",
+        is_active: true,
+      })
+      .select("*")
+      .single();
+
+    if (!error && created) return created;
+  } catch (e) {
+    console.error("Error ensuring admin in crm_team:", e);
+  }
+  return null;
+}
+
+export interface LeadSourcePriorityRule {
+  source: string;
+  priority: "hot" | "warm" | "cold";
+}
+
+export interface LeadSourceAssignmentRule {
+  source: string;
+  member_id: string;
+  member_name?: string;
+}
+
+export async function fetchLeadSourceRules(orgId: string): Promise<{
+  priorityActive: boolean;
+  priorityRules: LeadSourcePriorityRule[];
+  assignmentActive: boolean;
+  assignmentRules: LeadSourceAssignmentRule[];
+}> {
+  if (!orgId) return { priorityActive: false, priorityRules: [], assignmentActive: false, assignmentRules: [] };
+  try {
+    const { data } = await (supabase as any)
+      .from("crm_automations")
+      .select("*")
+      .eq("org_id", orgId)
+      .in("trigger_event", ["lead_source_priority", "lead_source_assignment"]);
+
+    const priRow = data?.find((r: any) => r.trigger_event === "lead_source_priority");
+    const assRow = data?.find((r: any) => r.trigger_event === "lead_source_assignment");
+
+    return {
+      priorityActive: priRow ? priRow.is_active : false,
+      priorityRules: priRow?.config?.rules || [],
+      assignmentActive: assRow ? assRow.is_active : false,
+      assignmentRules: assRow?.config?.rules || [],
+    };
+  } catch (e) {
+    console.error("Error fetching lead source rules:", e);
+    return { priorityActive: false, priorityRules: [], assignmentActive: false, assignmentRules: [] };
+  }
+}
+
+export async function saveLeadSourcePriorityRules(orgId: string, isActive: boolean, rules: LeadSourcePriorityRule[]): Promise<boolean> {
+  if (!orgId) return false;
+  try {
+    const { data: existing } = await (supabase as any)
+      .from("crm_automations")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "lead_source_priority")
+      .maybeSingle();
+
+    if (existing?.id) {
+      await (supabase as any)
+        .from("crm_automations")
+        .update({ is_active: isActive, config: { rules } })
+        .eq("id", existing.id);
+    } else {
+      await (supabase as any)
+        .from("crm_automations")
+        .insert({
+          org_id: orgId,
+          name: "Source-Based Lead Priority",
+          trigger_event: "lead_source_priority",
+          action_type: "set_priority",
+          config: { rules },
+          is_active: isActive,
+        });
+    }
+    return true;
+  } catch (e) {
+    console.error("Error saving lead source priority rules:", e);
+    return false;
+  }
+}
+
+export async function saveLeadSourceAssignmentRules(orgId: string, isActive: boolean, rules: LeadSourceAssignmentRule[]): Promise<boolean> {
+  if (!orgId) return false;
+  try {
+    const { data: existing } = await (supabase as any)
+      .from("crm_automations")
+      .select("id")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "lead_source_assignment")
+      .maybeSingle();
+
+    if (existing?.id) {
+      await (supabase as any)
+        .from("crm_automations")
+        .update({ is_active: isActive, config: { rules } })
+        .eq("id", existing.id);
+    } else {
+      await (supabase as any)
+        .from("crm_automations")
+        .insert({
+          org_id: orgId,
+          name: "Source-Based Lead Auto-Assignment",
+          trigger_event: "lead_source_assignment",
+          action_type: "assign_rep",
+          config: { rules },
+          is_active: isActive,
+        });
+    }
+    return true;
+  } catch (e) {
+    console.error("Error saving lead source assignment rules:", e);
+    return false;
+  }
+}
+
+export const DEFAULT_ACTIVITY_TYPES = [
+  "Call",
+  "Meeting",
+  "Email",
+  "Follow-up",
+  "Demo",
+  "Site Visit",
+  "Note",
+  "Support Ticket",
+];
+
+export async function fetchCustomActivityTypes(orgId: string): Promise<string[]> {
+  try {
+    const cached = localStorage.getItem(`crm_custom_act_types_${orgId}`);
+    if (cached) {
+      const parsed = JSON.parse(cached);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (_) {}
+
+  try {
+    const { data } = await (supabase as any)
+      .from("crm_automations")
+      .select("config")
+      .eq("org_id", orgId)
+      .eq("trigger_event", "lead_settings")
+      .eq("action_type", "custom_activity_types")
+      .maybeSingle();
+
+    if (data?.config?.types && Array.isArray(data.config.types)) {
+      const merged = Array.from(new Set([...DEFAULT_ACTIVITY_TYPES, ...data.config.types]));
+      try { localStorage.setItem(`crm_custom_act_types_${orgId}`, JSON.stringify(merged)); } catch (_) {}
+      return merged;
+    }
+  } catch (e) {
+    console.error("Error fetching custom activity types:", e);
+  }
+  return DEFAULT_ACTIVITY_TYPES;
+}
+
+export async function saveCustomActivityType(orgId: string, newType: string): Promise<string[]> {
+  const trimmed = newType.trim();
+  if (!trimmed) return DEFAULT_ACTIVITY_TYPES;
+  const current = await fetchCustomActivityTypes(orgId);
+  if (!current.includes(trimmed)) {
+    const updated = [...current, trimmed];
+    try {
+      localStorage.setItem(`crm_custom_act_types_${orgId}`, JSON.stringify(updated));
+      const { data: existing } = await (supabase as any)
+        .from("crm_automations")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("trigger_event", "lead_settings")
+        .eq("action_type", "custom_activity_types")
+        .maybeSingle();
+
+      if (existing?.id) {
+        await (supabase as any)
+          .from("crm_automations")
+          .update({ config: { types: updated } })
+          .eq("id", existing.id);
+      } else {
+        await (supabase as any)
+          .from("crm_automations")
+          .insert({
+            org_id: orgId,
+            name: "Custom Activity Types",
+            trigger_event: "lead_settings",
+            action_type: "custom_activity_types",
+            config: { types: updated },
+            is_active: true,
+          });
+      }
+    } catch (e) {
+      console.error("Error saving custom activity type:", e);
+    }
+    return updated;
+  }
+  return current;
+}
+
 

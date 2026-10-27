@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -6,13 +6,14 @@ import { format, parseISO } from "date-fns";
 import { formatCurrency } from "@/lib/currency";
 import { numberToWords } from "@/lib/number-to-words";
 import { EmployeeCalculatedSalary } from "@/lib/salary-calculator";
-import { Download, Printer, Building2, Calendar, FileText, CheckCircle2 } from "lucide-react";
+import { Download, Printer, Building2, Calendar, FileText, CheckCircle2, Loader2 } from "lucide-react";
 import jsPDF from "jspdf";
 
 interface PayslipModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  slip: EmployeeCalculatedSalary | null;
+  slip?: EmployeeCalculatedSalary | null;
+  salary?: EmployeeCalculatedSalary | null;
   organization: any;
   currency?: string;
 }
@@ -20,10 +21,12 @@ interface PayslipModalProps {
 export function PayslipModal({
   open,
   onOpenChange,
-  slip,
+  slip: slipProp,
+  salary: salaryProp,
   organization,
   currency = "INR",
 }: PayslipModalProps) {
+  const slip = slipProp || salaryProp;
   if (!slip) return null;
 
   const orgName = organization?.name || "Company Name";
@@ -37,16 +40,60 @@ export function PayslipModal({
     return String(addr);
   })();
   const orgGst = organization?.gst_number || organization?.tax_id || "";
+  const [downloading, setDownloading] = useState(false);
+
+  // Digital Signatures
+  const employerSigUrl = organization?.address?.payroll_employer_signature || organization?.address?.signature_image_url || "";
+  const employerSignatoryName = organization?.address?.payroll_employer_signatory_name || "Authorized Signatory";
+  const employeeSigUrl = slip.employee_signature_url || slip.details?.employee_signature_url || "";
   
-  const formattedStart = format(parseISO(slip.start_date), "dd MMM yyyy");
-  const formattedEnd = format(parseISO(slip.end_date), "dd MMM yyyy");
-  const netInWords = `${numberToWords(Math.round(slip.net_pay))} Rupees Only`;
+  const formattedStart = (() => {
+    try {
+      return slip.start_date ? format(parseISO(slip.start_date), "dd MMM yyyy") : "-";
+    } catch {
+      return slip.start_date || "-";
+    }
+  })();
+  const formattedEnd = (() => {
+    try {
+      return slip.end_date ? format(parseISO(slip.end_date), "dd MMM yyyy") : "-";
+    } catch {
+      return slip.end_date || "-";
+    }
+  })();
+  const netInWords = `${numberToWords(Math.round(slip.net_pay || 0))} Rupees Only`;
 
   const handlePrint = () => {
     window.print();
   };
 
-  const handleDownloadPDF = () => {
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const cardEl = document.getElementById("printable-payslip");
+      if (cardEl) {
+        const html2canvas = (await import("html2canvas")).default;
+        const canvas = await html2canvas(cardEl, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#ffffff",
+          logging: false,
+        });
+
+        const imgData = canvas.toDataURL("image/png");
+        const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+        const pW = doc.internal.pageSize.getWidth();
+        const pH = (canvas.height * pW) / canvas.width;
+
+        doc.addImage(imgData, "PNG", 0, 0, pW, Math.min(pH, 297));
+        doc.save(`Payslip_${slip.employee_name.replace(/\s+/g, "_")}_${slip.start_date}_to_${slip.end_date}.pdf`);
+        setDownloading(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("html2canvas capture failed, using vector fallback", err);
+    }
+
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
@@ -168,6 +215,7 @@ export function PayslipModal({
     doc.text("Employee Signature", pageWidth - 14, y, { align: "right" });
 
     doc.save(`Payslip_${slip.employee_name.replace(/\s+/g, "_")}_${slip.start_date}_to_${slip.end_date}.pdf`);
+    setDownloading(false);
   };
 
   return (
@@ -184,9 +232,9 @@ export function PayslipModal({
                 <Printer className="w-4 h-4 mr-1.5" />
                 Print
               </Button>
-              <Button size="sm" onClick={handleDownloadPDF} className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Download className="w-4 h-4 mr-1.5" />
-                Download PDF
+              <Button size="sm" onClick={handleDownloadPDF} disabled={downloading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                {downloading ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Download className="w-4 h-4 mr-1.5" />}
+                {downloading ? "Generating PDF..." : "Download PDF"}
               </Button>
             </div>
           </div>
@@ -401,12 +449,43 @@ export function PayslipModal({
           </div>
 
           {/* Signatures */}
-          <div className="grid grid-cols-2 gap-8 pt-8 text-xs text-muted-foreground">
-            <div className="border-t pt-2 text-center">
-              Authorized Signatory (Employer)
+          <div className="grid grid-cols-2 gap-12 pt-8 text-xs text-muted-foreground">
+            {/* Left: Employer Signature & Seal */}
+            <div className="border-t pt-2 text-center flex flex-col items-center justify-end min-h-[90px]">
+              {employerSigUrl ? (
+                <div className="h-16 flex items-end justify-center mb-1.5">
+                  <img
+                    src={employerSigUrl}
+                    alt="Employer Signature"
+                    className="max-h-14 max-w-[170px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-12 flex items-center justify-center text-[11px] italic text-muted-foreground/60">
+                  (Authorized Signature / Seal)
+                </div>
+              )}
+              <span className="font-semibold text-foreground text-xs">{employerSignatoryName || "Authorized Signatory (Employer)"}</span>
+              <span className="text-[10px] text-muted-foreground">{orgName}</span>
             </div>
-            <div className="border-t pt-2 text-center">
-              Employee Signature
+
+            {/* Right: Employee Signature */}
+            <div className="border-t pt-2 text-center flex flex-col items-center justify-end min-h-[90px]">
+              {employeeSigUrl ? (
+                <div className="h-16 flex items-end justify-center mb-1.5">
+                  <img
+                    src={employeeSigUrl}
+                    alt="Employee Signature"
+                    className="max-h-14 max-w-[170px] object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="h-12 flex items-center justify-center text-[11px] italic text-muted-foreground/60">
+                  (Employee Signature)
+                </div>
+              )}
+              <span className="font-semibold text-foreground text-xs">Employee Signature</span>
+              <span className="text-[10px] text-muted-foreground">{slip.employee_name}</span>
             </div>
           </div>
 

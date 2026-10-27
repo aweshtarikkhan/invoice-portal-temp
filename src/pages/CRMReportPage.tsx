@@ -168,7 +168,7 @@ export default function CRMReportPage() {
         (supabase as any).from("opportunities").select("*").eq("org_id", org.id),
         (supabase as any).from("pipeline_stages").select("*").eq("org_id", org.id).order("sort_order", { ascending: true }),
         (supabase as any).from("activities").select("*, leads(name, company)").eq("org_id", org.id),
-        (supabase as any).from("tickets").select("*, clients(display_name, email, phone), leads(name, email, phone)").eq("org_id", org.id).order("created_at", { ascending: false }),
+        (supabase as any).from("tickets").select("*").eq("org_id", org.id).order("created_at", { ascending: false }),
         (supabase as any).from("clients").select("id, name, display_name").eq("org_id", org.id),
         (supabase as any).from("crm_team").select("*").eq("org_id", org.id).eq("is_active", true),
         supabase.from("organization_members").select("user_id, role").eq("org_id", org.id),
@@ -179,8 +179,15 @@ export default function CRMReportPage() {
       const opportunities = oppsData || [];
       const stages = stagesData || [];
       const activities = actsData || [];
-      const tickets = ticketsData || [];
       const clients = clientsData || [];
+      const rawTickets = ticketsData || [];
+      const clientMap = new Map((clients || []).map((cl: any) => [cl.id, cl]));
+      const leadMap = new Map((leads || []).map((ld: any) => [ld.id, ld]));
+      const tickets = rawTickets.map((t: any) => ({
+        ...t,
+        clients: t.client_id ? clientMap.get(t.client_id) : null,
+        leads: t.lead_id ? leadMap.get(t.lead_id) : null,
+      }));
       const crmTeam = crmTeamData || [];
       const members = membersData || [];
       const profiles = profilesData || [];
@@ -432,10 +439,11 @@ export default function CRMReportPage() {
         }
       });
 
+      const crmTeamIds = new Set(crmTeam.map((t: any) => t.id));
       const leaderboard = Array.from(teamMap.values())
-        .filter((t: any) => t.leads > 0 || t.activities > 0 || t.wonDeals > 0 || t.revenue > 0)
-        .sort((a: any, b: any) => b.revenue - a.revenue || b.wonDeals - a.wonDeals || b.leads - a.leads)
-        .slice(0, 6);
+        .filter((t: any) => crmTeamIds.has(t.id) || t.leads > 0 || t.activities > 0 || t.wonDeals > 0 || t.revenue > 0)
+        .sort((a: any, b: any) => b.revenue - a.revenue || b.wonDeals - a.wonDeals || b.leads - a.leads || (a.name || "").localeCompare(b.name || ""))
+        .slice(0, 10);
 
       setMetrics({
         totalLeads,
@@ -565,7 +573,7 @@ export default function CRMReportPage() {
       icon: Users,
       bgColor: "bg-blue-50/70 dark:bg-blue-950/40 border-blue-200/60 dark:border-blue-900/50",
       badgeColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
-      action: () => navigate("/leads"),
+      action: () => navigate("/leads?status=all"),
     },
     {
       title: "New Leads",
@@ -574,7 +582,7 @@ export default function CRMReportPage() {
       icon: UserPlus,
       bgColor: "bg-indigo-50/70 dark:bg-indigo-950/40 border-indigo-200/60 dark:border-indigo-900/50",
       badgeColor: "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300",
-      action: () => navigate("/leads"),
+      action: () => navigate("/leads?status=new"),
     },
     {
       title: "Follow-ups Due",
@@ -583,7 +591,7 @@ export default function CRMReportPage() {
       icon: Clock,
       bgColor: "bg-amber-50/70 dark:bg-amber-950/40 border-amber-200/60 dark:border-amber-900/50",
       badgeColor: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
-      action: () => navigate("/activities"),
+      action: () => navigate("/leads?view=followups"),
     },
     {
       title: "Converted Leads",
@@ -592,7 +600,7 @@ export default function CRMReportPage() {
       icon: CheckCircle2,
       bgColor: "bg-emerald-50/70 dark:bg-emerald-950/40 border-emerald-200/60 dark:border-emerald-900/50",
       badgeColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-      action: () => navigate("/leads"),
+      action: () => navigate("/leads?status=converted"),
     },
     {
       title: "Open Tickets",
@@ -601,7 +609,7 @@ export default function CRMReportPage() {
       icon: Ticket,
       bgColor: "bg-rose-50/70 dark:bg-rose-950/40 border-rose-200/60 dark:border-rose-900/50",
       badgeColor: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-      action: () => navigate("/tickets"),
+      action: () => navigate("/tickets?status=open"),
     },
     {
       title: "Closed Tickets",
@@ -610,7 +618,7 @@ export default function CRMReportPage() {
       icon: ShieldCheck,
       bgColor: "bg-teal-50/70 dark:bg-teal-950/40 border-teal-200/60 dark:border-teal-900/50",
       badgeColor: "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300",
-      action: () => navigate("/tickets"),
+      action: () => navigate("/tickets?status=closed"),
     },
     {
       title: "Pending Tasks",
@@ -619,7 +627,7 @@ export default function CRMReportPage() {
       icon: ListTodo,
       bgColor: "bg-purple-50/70 dark:bg-purple-950/40 border-purple-200/60 dark:border-purple-900/50",
       badgeColor: "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
-      action: () => navigate("/activities"),
+      action: () => navigate("/calendar?status=pending"),
     },
     {
       title: "Completed Tasks",
@@ -628,7 +636,7 @@ export default function CRMReportPage() {
       icon: CalendarCheck2,
       bgColor: "bg-sky-50/70 dark:bg-sky-950/40 border-sky-200/60 dark:border-sky-900/50",
       badgeColor: "bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300",
-      action: () => navigate("/activities"),
+      action: () => navigate("/calendar?status=completed"),
     },
   ];
 
@@ -666,28 +674,28 @@ export default function CRMReportPage() {
       className="p-6 space-y-6 max-w-[1600px] mx-auto min-h-screen bg-slate-50/50 dark:bg-slate-950/20"
     >
       {/* 1. Header with Title & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2.5">
-              <BarChart3 className="h-7 w-7 text-primary" />
-              CRM Report
+              <BarChart3 className="h-7 w-7 text-primary shrink-0" />
+              <span>CRM Report</span>
             </h1>
-            <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200">
+            <Badge variant="outline" className="text-xs bg-indigo-50 text-indigo-700 border-indigo-200 shrink-0">
               Live Pipeline
             </Badge>
           </div>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 max-w-2xl">
             Real-time management overview of leads, deal pipeline, client tickets, sales velocity, and team performance.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap overflow-x-auto pb-1 sm:pb-0 max-w-full">
           <Button
             variant="outline"
             size="sm"
             onClick={fetchDashboardData}
-            className="border-slate-200 dark:border-slate-800"
+            className="border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap"
           >
             <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
           </Button>
@@ -696,7 +704,7 @@ export default function CRMReportPage() {
             size="sm"
             onClick={handleExportFullPDF}
             disabled={isExporting}
-            className="border-slate-200 dark:border-slate-800"
+            className="border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap"
           >
             <Download className="h-4 w-4 mr-1.5 text-primary" />
             {isExporting ? "Exporting..." : "Export Report (PDF)"}
@@ -704,25 +712,17 @@ export default function CRMReportPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => navigate("/pipeline")}
-            className="border-slate-200 dark:border-slate-800"
-          >
-            <BarChart3 className="h-4 w-4 mr-1.5 text-indigo-500" /> Pipeline Kanban
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
             onClick={() => navigate("/tickets?add=1")}
-            className="border-slate-200 dark:border-slate-800"
+            className="border-slate-200 dark:border-slate-800 shrink-0 whitespace-nowrap"
           >
-            <Ticket className="h-4 w-4 mr-1.5 text-rose-500" /> + New Ticket
+            <Ticket className="h-4 w-4 mr-1.5 text-rose-500" /> New Ticket
           </Button>
           <Button
             size="sm"
             onClick={() => navigate("/leads?add=1")}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm shrink-0 whitespace-nowrap"
           >
-            <Plus className="h-4 w-4 mr-1.5" /> + New Lead
+            <Plus className="h-4 w-4 mr-1.5" /> New Lead
           </Button>
         </div>
       </div>
@@ -775,424 +775,11 @@ export default function CRMReportPage() {
         </div>
       </div>
 
-      {/* 3. Pipeline Financial & Performance Highlights */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-        <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Active Pipeline Value
-            </CardTitle>
-            <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400">
-              <IndianRupee className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100">
-              {formatCurrency(metrics.pipelineValue, currencyCode)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {metrics.openDeals} open deals in funnel
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Weighted Forecast
-            </CardTitle>
-            <div className="p-2 rounded-lg bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-400">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-              {formatCurrency(metrics.weightedRevenue, currencyCode)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Probability-adjusted revenue
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Won Deals Revenue
-            </CardTitle>
-            <div className="p-2 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
-              <Trophy className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-amber-600 dark:text-amber-400">
-              {formatCurrency(metrics.wonRevenue, currencyCode)}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {metrics.wonDealsCount} deals closed won
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Win Rate
-            </CardTitle>
-            <div className="p-2 rounded-lg bg-indigo-50 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400">
-              <Award className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-              {metrics.winRate.toFixed(1)}%
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Closed deals success rate
-            </p>
-          </CardContent>
-        </Card>
 
-        <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Lead Conversion
-            </CardTitle>
-            <div className="p-2 rounded-lg bg-pink-50 text-pink-600 dark:bg-pink-950/40 dark:text-pink-400">
-              <Percent className="w-4 h-4" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-pink-600 dark:text-pink-400">
-              {metrics.conversionRate.toFixed(1)}%
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              {metrics.convertedLeads} of {metrics.totalLeads} leads converted
-            </p>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* 4. Interactive Pipeline Stages: Recharts Distribution & Breakdown List */}
-      <div className="grid gap-6 lg:grid-cols-12">
-        {/* Pipeline Stages Interactive Bar Chart (8 cols) */}
-        <Card className="lg:col-span-8 bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div>
-              <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-primary" />
-                Pipeline Stages Distribution
-              </CardTitle>
-              <CardDescription>
-                Deal volume and monetary value moving through each sales stage
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/pipeline")}
-              className="text-xs text-primary font-medium"
-            >
-              Open Kanban <ExternalLink className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[280px] w-full pt-2">
-              {stageChartData.length === 0 ? (
-                <div className="text-center py-16 text-muted-foreground text-sm">
-                  No pipeline stages configured.
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stageChartData} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="name"
-                      stroke="#64748b"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={{ stroke: "#e2e8f0" }}
-                      angle={-15}
-                      textAnchor="end"
-                    />
-                    <YAxis
-                      stroke="#64748b"
-                      fontSize={11}
-                      tickLine={false}
-                      axisLine={false}
-                      allowDecimals={false}
-                    />
-                    <RechartsTooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-slate-900 text-white px-3 py-2 rounded-lg text-xs shadow-lg space-y-1">
-                              <p className="font-bold text-slate-100">{data.name}</p>
-                              <p className="text-slate-300">
-                                Deals: <span className="font-semibold text-white">{data.count}</span>
-                              </p>
-                              <p className="text-slate-300">
-                                Total Value:{" "}
-                                <span className="font-semibold text-emerald-400">
-                                  {formatCurrency(data.amount, currencyCode)}
-                                </span>
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                      {stageChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Stage Value Breakdown List (4 cols) */}
-        <Card className="lg:col-span-4 bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600" />
-              Stage Breakdown
-            </CardTitle>
-            <CardDescription>Deals and aggregate pipeline values</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-2.5">
-            {stageChartData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-10">No pipeline stages configured.</p>
-            ) : (
-              stageChartData.map((stage) => (
-                <div
-                  key={stage.id}
-                  className="p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 flex items-center justify-between"
-                >
-                  <div className="min-w-0 pr-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: stage.color }} />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{stage.name}</span>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-medium pl-4">
-                      {stage.count} {stage.count === 1 ? "Deal" : "Deals"}
-                    </span>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
-                      {formatCurrency(stage.amount, currencyCode)}
-                    </div>
-                    {stage.win_probability !== undefined && (
-                      <span className="text-[10px] text-muted-foreground font-medium">
-                        {stage.win_probability}% prob.
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 5. Sales Forecasting */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <LineChart className="w-4 h-4 text-emerald-500" />
-            Sales Forecasting
-          </CardTitle>
-          <CardDescription>
-            Probability-weighted projected revenue based on opportunity expected close dates
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-emerald-50/40 dark:bg-emerald-950/20">
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                Expected This Month
-              </div>
-              <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                {formatCurrency(forecast.expectedThisMonth, currencyCode)}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Scheduled close dates for {format(new Date(), "MMMM yyyy")}
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-blue-50/40 dark:bg-blue-950/20">
-              <div className="text-xs font-medium text-muted-foreground mb-1">
-                Expected Next Month
-              </div>
-              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
-                {formatCurrency(forecast.expectedNextMonth, currencyCode)}
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Scheduled close dates for {format(addMonths(new Date(), 1), "MMMM yyyy")}
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 6. Top Active Opportunities Table (Complete with CSV & PDF Export from CRM Reports) */}
-      <Card className="bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 shadow-sm">
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <CardTitle className="text-base font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Briefcase className="w-4 h-4 text-primary" />
-                Top Open Opportunities
-              </CardTitle>
-              <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-0 text-xs">
-                {openOpportunities.length} Active Deals
-              </Badge>
-            </div>
-            <CardDescription>
-              Highest value active opportunities progressing through your sales funnel
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs font-medium"
-              onClick={handleExportOppsCSV}
-            >
-              <Download className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-              Export CSV
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs font-medium"
-              onClick={handleExportOppsPDF}
-            >
-              <FileText className="w-3.5 h-3.5 mr-1 text-primary" />
-              Export PDF
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <Table>
-              <TableHeader className="bg-slate-50/80 dark:bg-slate-850">
-                <TableRow>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Opportunity / Deal</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Client / Lead</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Stage</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-right">Deal Value</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-center">Win Probability</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300">Expected Close</TableHead>
-                  <TableHead className="text-xs font-bold text-slate-700 dark:text-slate-300 text-right">Action</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {openOpportunities.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        <Briefcase className="w-8 h-8 text-slate-300" />
-                        <p className="font-semibold text-sm text-slate-700 dark:text-slate-300">No open opportunities found</p>
-                        <p className="text-xs text-muted-foreground">All opportunities are currently won, lost, or pending creation.</p>
-                        <Button size="sm" variant="outline" onClick={() => navigate("/pipeline")} className="mt-2 text-xs">
-                          Go to Pipeline Kanban
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  openOpportunities.slice(0, 8).map((opp: any) => {
-                    const stage = stageLookup.get(opp.stage_id);
-                    const contact = getContactInfo(opp);
-                    const prob =
-                      opp.probability !== undefined && opp.probability !== null
-                        ? opp.probability
-                        : stage?.win_probability || 0;
-
-                    return (
-                      <TableRow key={opp.id} className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition-colors">
-                        <TableCell className="font-semibold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                          <button
-                            onClick={() => navigate(`/pipeline`)}
-                            className="text-left hover:text-primary hover:underline font-bold text-slate-800 dark:text-slate-200"
-                          >
-                            {opp.title || "Untitled Deal"}
-                          </button>
-                        </TableCell>
-
-                        <TableCell className="text-xs">
-                          <span className="font-medium text-slate-800 dark:text-slate-200 block">{contact.name}</span>
-                          {contact.company && (
-                            <span className="text-[11px] text-muted-foreground">{contact.company}</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="text-[11px] font-semibold px-2 py-0.5"
-                            style={{
-                              backgroundColor: `${stage?.color || "#3b82f6"}15`,
-                              borderColor: `${stage?.color || "#3b82f6"}40`,
-                              color: stage?.color || "#3b82f6",
-                            }}
-                          >
-                            {stage?.name || "Unassigned"}
-                          </Badge>
-                        </TableCell>
-
-                        <TableCell className="text-right font-bold text-slate-900 dark:text-slate-100 text-xs sm:text-sm">
-                          {formatCurrency(Number(opp.amount) || 0, currencyCode)}
-                        </TableCell>
-
-                        <TableCell className="text-center">
-                          <div className="flex flex-col items-center justify-center gap-1">
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{prob}%</span>
-                            <div className="w-16 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-blue-600 rounded-full"
-                                style={{ width: `${Math.min(100, Math.max(0, prob))}%` }}
-                              />
-                            </div>
-                          </div>
-                        </TableCell>
-
-                        <TableCell className="text-xs text-muted-foreground">
-                          {opp.expected_close_date ? (
-                            <div className="flex items-center gap-1 text-slate-700 dark:text-slate-300">
-                              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                              <span>{format(parseISO(opp.expected_close_date), "MMM d, yyyy")}</span>
-                            </div>
-                          ) : (
-                            <span className="italic text-[11px]">Not scheduled</span>
-                          )}
-                        </TableCell>
-
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate(`/pipeline`)}
-                            className="h-8 px-2.5 text-xs text-primary"
-                          >
-                            View Deal
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* 7. Action Items Grid (Follow-ups Due, Support Tickets Queue, Recent Leads) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1222,14 +809,13 @@ export default function CRMReportPage() {
                   return (
                     <div
                       key={act.id}
-                      className={`p-2.5 rounded-lg border transition-all cursor-pointer ${
+                      className={`p-2.5 rounded-lg border transition-all ${
                         isOverdue
                           ? "bg-rose-50/40 border-rose-200/60 dark:bg-rose-950/20 dark:border-rose-900/40"
                           : isDueToday
                           ? "bg-amber-50/40 border-amber-200/60 dark:bg-amber-950/20 dark:border-amber-900/40"
                           : "bg-slate-50/60 border-slate-100 dark:bg-slate-800/40 dark:border-slate-800"
                       }`}
-                      onClick={() => navigate("/activities")}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="overflow-hidden">
@@ -1258,14 +844,6 @@ export default function CRMReportPage() {
                 })
               )}
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full mt-3 text-xs text-primary hover:bg-slate-100 dark:hover:bg-slate-800"
-              onClick={() => navigate("/activities")}
-            >
-              View All Activities <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
-            </Button>
           </CardContent>
         </Card>
 
@@ -1288,12 +866,18 @@ export default function CRMReportPage() {
                 </div>
               ) : (
                 recentTickets.map((ticket: any) => {
-                  const statusStr = (ticket.status || "open").toLowerCase();
-                  const isClosed = ["closed", "resolved"].includes(statusStr);
                   const clientName =
                     ticket.clients?.display_name ||
                     ticket.leads?.name ||
                     "Client";
+                  const statusStr = (ticket.status || "open").toLowerCase();
+                  const getStatusBadge = (s: string) => {
+                    const norm = (s || "open").toLowerCase();
+                    if (norm === "open") return "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200";
+                    if (norm === "in_progress" || norm === "pending") return "bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200";
+                    if (norm === "resolved") return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200";
+                    return "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200";
+                  };
 
                   return (
                     <div
@@ -1314,16 +898,12 @@ export default function CRMReportPage() {
                             </span>
                           </div>
                           <div className="text-[11px] text-muted-foreground truncate mt-1">
-                            {clientName} • {format(new Date(ticket.created_at), "MMM d")}
+                            {clientName} • {ticket.created_at ? format(new Date(ticket.created_at), "MMM d") : ""}
                           </div>
                         </div>
                         <Badge
-                          variant="secondary"
-                          className={`text-[10px] capitalize shrink-0 ${
-                            isClosed
-                              ? "bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300"
-                              : "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"
-                          }`}
+                          variant="outline"
+                          className={`text-[10px] capitalize shrink-0 font-medium ${getStatusBadge(ticket.status)}`}
                         >
                           {ticket.status || "open"}
                         </Badge>

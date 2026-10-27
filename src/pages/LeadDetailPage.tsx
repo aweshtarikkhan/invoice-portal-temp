@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
+import { LeadActivityModal } from "@/components/crm/LeadActivityModal";
+
 const STATUSES = [
   { v: "new", l: "New", cls: "bg-slate-100 text-slate-800 border-slate-300 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-600" },
   { v: "contacted", l: "Contacted", cls: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/50 dark:text-blue-200 dark:border-blue-700" },
@@ -57,20 +59,12 @@ export default function LeadDetailPage() {
   const [crmTeam, setCrmTeam] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Quick Activity Form
-  const [activityForm, setActivityForm] = useState({
-    type: "note", subject: "", notes: "", due_date: ""
-  });
+  // Add Action Modal
+  const [actionModalOpen, setActionModalOpen] = useState(false);
 
   // Notes edit
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesTemp, setNotesTemp] = useState("");
-
-  // Convert Dialog (or inline action) & Opp Dialog
-  const [oppDialogOpen, setOppDialogOpen] = useState(false);
-  const [oppForm, setOppForm] = useState({
-    name: "", amount: "", pipeline_stage_id: "", expected_close_date: "", notes: ""
-  });
 
   const loadData = async () => {
     if (!org?.id || !id) return;
@@ -101,30 +95,6 @@ export default function LeadDetailPage() {
     loadData();
   }, [org?.id, id]);
 
-  const saveActivity = async () => {
-    if (!org?.id || !id) return;
-    if (!activityForm.subject.trim() && activityForm.type !== "note") {
-      toast({ title: "Subject required", variant: "destructive" });
-      return;
-    }
-    const payload = {
-      org_id: org.id,
-      lead_id: id,
-      activity_type: activityForm.type,
-      subject: activityForm.subject || "Note",
-      body: activityForm.notes || null,
-      due_at: activityForm.due_date ? new Date(activityForm.due_date).toISOString() : null,
-    };
-    const { error } = await (supabase as any).from("activities").insert(payload);
-    if (error) {
-      toast({ title: "Failed to log activity", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Activity logged" });
-      setActivityForm({ type: "note", subject: "", notes: "", due_date: "" });
-      loadData();
-    }
-  };
-
   const saveNotes = async () => {
     if (!org?.id || !id) return;
     const { error } = await (supabase as any).from("leads").update({ notes: notesTemp }).eq("id", id);
@@ -153,10 +123,12 @@ export default function LeadDetailPage() {
     if (!confirm(`Convert "${lead.name}" into a Client?`)) return;
     const { data: client, error } = await (supabase as any).from("clients").insert({
       org_id: org.id,
-      display_name: lead.company || lead.name,
+      display_name: lead.name,
+      first_name: lead.name,
       company_name: lead.company || null,
       email: lead.email || null,
       phone: lead.phone || null,
+      mobile: lead.phone || null,
       notes: `Converted from lead. Contact: ${lead.name}`,
     }).select("*").single();
 
@@ -166,48 +138,6 @@ export default function LeadDetailPage() {
     }
     await (supabase as any).from("leads").update({ status: "converted", converted_client_id: client.id }).eq("id", lead.id);
     toast({ title: "Converted to Client", description: client.display_name });
-    loadData();
-  };
-
-  const openOppDialog = () => {
-    setOppForm({
-      name: `${lead.name} - Deal`,
-      amount: String(lead.estimated_value || 0),
-      pipeline_stage_id: stages.length > 0 ? stages[0].id : "",
-      expected_close_date: "",
-      notes: ""
-    });
-    setOppDialogOpen(true);
-  };
-
-  const saveOpportunity = async () => {
-    if (!org?.id || !lead) return;
-    if (!oppForm.name.trim() || !oppForm.pipeline_stage_id) {
-      toast({ title: "Name and Stage are required", variant: "destructive" });
-      return;
-    }
-    const { error } = await (supabase as any).from("opportunities").insert({
-      org_id: org.id,
-      lead_id: lead.id,
-      title: oppForm.name,
-      amount: Number(oppForm.amount) || 0,
-      stage_id: oppForm.pipeline_stage_id,
-      expected_close_date: oppForm.expected_close_date || null,
-      notes: oppForm.notes || null
-    });
-    
-    if (error) {
-      toast({ title: "Failed to create opportunity", description: error.message, variant: "destructive" });
-      return;
-    }
-    
-    // Update lead status to qualified if it was new or contacted
-    if (lead.status === "new" || lead.status === "contacted") {
-      await (supabase as any).from("leads").update({ status: "qualified" }).eq("id", lead.id);
-    }
-    
-    toast({ title: "Opportunity created" });
-    setOppDialogOpen(false);
     loadData();
   };
 
@@ -235,122 +165,88 @@ export default function LeadDetailPage() {
             {lead.company && <div className="text-muted-foreground flex items-center gap-1 mt-1"><Building2 className="h-4 w-4" /> {lead.company}</div>}
           </div>
         </div>
+
+        {/* Top Header Actions */}
+        <div className="flex items-center gap-2">
+          {lead.status === "converted" ? (
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="bg-green-100 text-green-700 border-green-300 dark:bg-green-900/40 dark:text-green-300">
+                Converted to Client
+              </Badge>
+              {lead.converted_client_id && (
+                <Button variant="outline" size="sm" onClick={() => navigate(`/clients/${lead.converted_client_id}`)}>
+                  View Client
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              className="border-green-600 text-green-700 hover:bg-green-50 dark:hover:bg-green-950 dark:text-green-400"
+              onClick={convertToClient}
+            >
+              <UserPlus className="h-4 w-4 mr-2" /> Convert to Client
+            </Button>
+          )}
+
+          <Button className="bg-primary text-white" onClick={() => setActionModalOpen(true)}>
+            <Plus className="h-4 w-4 mr-1.5" /> Add Action
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Column - 2/3 */}
+        {/* Left Column - 2/3: Activity History */}
         <div className="md:col-span-2 space-y-6">
-          {/* Quick Log Activity */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2"><Activity className="h-5 w-5" /> Log Activity</CardTitle>
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" /> Activity History
+              </CardTitle>
+              <Button size="sm" variant="outline" onClick={() => setActionModalOpen(true)}>
+                <Plus className="h-4 w-4 mr-1.5" /> Add Action
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="md:col-span-1">
-                    <Label>Type</Label>
-                    <Select value={activityForm.type} onValueChange={(v) => setActivityForm({ ...activityForm, type: v })}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="call">Call</SelectItem>
-                        <SelectItem value="meeting">Meeting</SelectItem>
-                        <SelectItem value="email">Email</SelectItem>
-                        <SelectItem value="task">Task</SelectItem>
-                        <SelectItem value="note">Note</SelectItem>
-                        <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="md:col-span-3">
-                    <Label>Subject</Label>
-                    <Input placeholder={activityForm.type === "note" ? "Optional subject..." : "E.g. Discovery call"} value={activityForm.subject} onChange={(e) => setActivityForm({ ...activityForm, subject: e.target.value })} />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="md:col-span-2">
-                    <Label>Notes (Optional)</Label>
-                    <Textarea className="h-9 min-h-0" placeholder="Activity details..." value={activityForm.notes} onChange={(e) => setActivityForm({ ...activityForm, notes: e.target.value })} />
-                  </div>
-                  <div className="md:col-span-1 space-y-3">
-                    <div>
-                      <Label>Due Date (Optional)</Label>
-                      <Input type="date" value={activityForm.due_date} onChange={(e) => setActivityForm({ ...activityForm, due_date: e.target.value })} min={new Date().toISOString().split("T")[0]} />
-                    </div>
-                    <Button className="w-full" onClick={saveActivity}>Log {activityForm.type}</Button>
-                  </div>
-                </div>
+              <div className="relative border-l border-muted pl-6 ml-2 py-2">
+                {activities.length === 0 ? (
+                  <div className="text-sm text-muted-foreground italic py-4">No activities logged yet. Click &quot;Add Action&quot; to log a task or call.</div>
+                ) : (
+                  activities.map((act) => {
+                    const Icon = ACTIVITY_ICONS[act.activity_type] || Activity;
+                    return (
+                      <div key={act.id} className="mb-6 last:mb-0 relative">
+                        <span className="absolute -left-[31px] flex h-6 w-6 items-center justify-center rounded-full bg-background border border-muted ring-4 ring-background">
+                          <Icon className="h-3 w-3 text-muted-foreground" />
+                        </span>
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm capitalize">{act.activity_type}</span>
+                              <span className="text-sm text-foreground">{act.subject && `- ${act.subject}`}</span>
+                              {act.completed_at ? (
+                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px] px-1 py-0 h-4">Done</Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] px-1 py-0 h-4">Pending</Badge>
+                              )}
+                            </div>
+                            {act.body && <p className="text-sm mt-1.5 text-muted-foreground bg-muted/30 p-2.5 rounded-md whitespace-pre-wrap">{act.body}</p>}
+                          </div>
+                          <div className="text-xs text-muted-foreground whitespace-nowrap">
+                            {formatDistanceToNow(parseISO(act.created_at), { addSuffix: true })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </CardContent>
           </Card>
-
-          {/* Activity Timeline */}
-          <div className="pl-4">
-            <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">Activity History</h3>
-            <div className="relative border-l border-muted pb-4">
-              {activities.length === 0 ? (
-                <div className="ml-6 text-sm text-muted-foreground italic">No activities logged yet.</div>
-              ) : (
-                activities.map((act) => {
-                  const Icon = ACTIVITY_ICONS[act.activity_type] || Activity;
-                  return (
-                    <div key={act.id} className="mb-8 ml-6 relative">
-                      <span className="absolute -left-9 flex h-6 w-6 items-center justify-center rounded-full bg-background border border-muted ring-4 ring-background">
-                        <Icon className="h-3 w-3 text-muted-foreground" />
-                      </span>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm capitalize">{act.activity_type}</span>
-                            <span className="text-sm text-muted-foreground">{act.subject && `- ${act.subject}`}</span>
-                            {act.completed_at ? (
-                              <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/20 text-[10px] px-1 py-0 h-4">Done</Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] px-1 py-0 h-4">Pending</Badge>
-                            )}
-                          </div>
-                          {act.body && <p className="text-sm mt-1 text-muted-foreground bg-muted/30 p-2 rounded-md">{act.body}</p>}
-                        </div>
-                        <div className="text-xs text-muted-foreground whitespace-nowrap">
-                          {formatDistanceToNow(parseISO(act.created_at), { addSuffix: true })}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
         </div>
 
         {/* Right Column - 1/3 */}
         <div className="space-y-6">
-          {/* Actions */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {lead.status === "converted" ? (
-                <div className="p-3 bg-green-500/10 text-green-600 border border-green-500/20 rounded-md text-sm text-center">
-                  This lead has been converted to a client.
-                  {lead.converted_client_id && (
-                    <Button variant="link" className="px-0 py-0 h-auto text-green-700 dark:text-green-400 block mx-auto mt-2" onClick={() => navigate(`/clients/${lead.converted_client_id}`)}>View Client</Button>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <Button className="w-full" variant="outline" onClick={openOppDialog}>
-                    <Target className="h-4 w-4 mr-2" /> Create Opportunity
-                  </Button>
-                  <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={convertToClient}>
-                    <UserPlus className="h-4 w-4 mr-2" /> Convert to Client
-                  </Button>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Details */}
           <Card>
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
@@ -444,47 +340,13 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      {/* Create Opportunity Dialog */}
-      <Dialog open={oppDialogOpen} onOpenChange={setOppDialogOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Create Opportunity</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-4">
-            <div>
-              <Label>Deal Name *</Label>
-              <Input value={oppForm.name} onChange={(e) => setOppForm({ ...oppForm, name: e.target.value })} />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Amount</Label>
-                <Input type="number" value={oppForm.amount} onChange={(e) => setOppForm({ ...oppForm, amount: e.target.value })} />
-              </div>
-              <div>
-                <Label>Pipeline Stage *</Label>
-                <Select value={oppForm.pipeline_stage_id} onValueChange={(v) => setOppForm({ ...oppForm, pipeline_stage_id: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select stage" /></SelectTrigger>
-                  <SelectContent>
-                    {stages.map((stg) => (
-                      <SelectItem key={stg.id} value={stg.id}>{stg.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label>Expected Close Date</Label>
-              <Input type="date" value={oppForm.expected_close_date} onChange={(e) => setOppForm({ ...oppForm, expected_close_date: e.target.value })} min={new Date().toISOString().split("T")[0]} />
-            </div>
-            <div>
-              <Label>Notes</Label>
-              <Textarea value={oppForm.notes} onChange={(e) => setOppForm({ ...oppForm, notes: e.target.value })} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setOppDialogOpen(false)}>Cancel</Button>
-            <Button onClick={saveOpportunity}>Create Opportunity</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* Activity / Action Modal */}
+      <LeadActivityModal
+        open={actionModalOpen}
+        onOpenChange={setActionModalOpen}
+        lead={lead}
+        onSaved={loadData}
+      />
     </div>
   );
 }

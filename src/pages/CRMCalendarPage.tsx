@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAppStore } from "@/store/app-store";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -301,7 +302,8 @@ export default function CRMCalendarPage() {
 
   // Filters for Daily Tracker
   const [selectedExecutive, setSelectedExecutive] = useState<string>("all");
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [searchParams] = useSearchParams();
+  const [selectedStatus, setSelectedStatus] = useState<string>(() => searchParams.get("status") || "all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -317,6 +319,14 @@ export default function CRMCalendarPage() {
     lead_id: "none",
   });
   const [savingTask, setSavingTask] = useState(false);
+
+  useEffect(() => {
+    const st = searchParams.get("status");
+    if (st && ["all", "pending", "completed"].includes(st)) {
+      setSelectedStatus(st);
+      setViewMode("day");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (org?.id) {

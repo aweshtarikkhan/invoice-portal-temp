@@ -118,7 +118,7 @@ export default function SupportTicketsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   // Status and detail state
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get("status") || "all");
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [ticketMessages, setTicketMessages] = useState<any[]>([]);
   const [loadingMessages, setLoadingMessages] = useState(false);
@@ -144,6 +144,11 @@ export default function SupportTicketsPage() {
   }, [org?.id]);
 
   useEffect(() => {
+    const st = searchParams.get("status");
+    if (st && ["all", "open", "in_progress", "resolved", "closed"].includes(st)) {
+      setStatusFilter(st);
+    }
+
     if (searchParams.get("add") === "1") {
       setIsNewTicketOpen(true);
       const newParams = new URLSearchParams(searchParams);

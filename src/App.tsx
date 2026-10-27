@@ -324,9 +324,9 @@ const App = () => (
                   <Route path="/leads" element={<LeadsPage />} />
                 <Route path="/leads/:id" element={<LeadDetailPage />} />
                   <Route path="/crm-team" element={<CRMTeamPage />} />
-                <Route path="/pipeline" element={<PipelinePage />} />
-                <Route path="/pipeline/:id" element={<DealDetailPage />} />
-                <Route path="/activities" element={<ActivitiesPage />} />
+                <Route path="/pipeline" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/pipeline/:id" element={<Navigate to="/crm-report" replace />} />
+                <Route path="/activities" element={<Navigate to="/crm-report" replace />} />
                 <Route path="/crm-reports" element={<Navigate to="/crm-report" replace />} />
                 <Route path="/crm/reports" element={<Navigate to="/crm-report" replace />} />
                 <Route path="/crm-marketing-reports" element={<Navigate to="/crm-report" replace />} />

@@ -88,9 +88,18 @@ function formatTime(timeStr: string | null | undefined): string {
   }
 }
 
-function calculateHours(clockIn?: string | null, clockOut?: string | null): string {
+function calculateHours(clockIn?: string | null, clockOut?: string | null, isAuto?: boolean, shiftObj?: any): string {
   if (!clockIn || !clockOut) return "—";
   try {
+    if (isAuto) {
+      const stdHours = 9;
+      const shiftStart = shiftObj?.start_time || "09:00:00";
+      const shiftEnd = shiftObj?.end_time || "18:00:00";
+      const worked = calculateHoursLoginToShiftEnd(clockIn, "", stdHours, shiftStart, shiftEnd);
+      const hrs = Math.floor(worked);
+      const mins = Math.round((worked - hrs) * 60);
+      return `${hrs}h ${mins}m`;
+    }
     const d1 = new Date(clockIn);
     const d2 = new Date(clockOut);
     const diffMs = d2.getTime() - d1.getTime();
@@ -711,7 +720,7 @@ export default function HRReportsPage() {
                     (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
                     formatTime(att.clock_in_time),
                     formatTime(att.clock_out_time) + (att.is_auto_clock_out ? ' (Auto Logout)' : ''),
-                    calculateHours(att.clock_in_time, att.clock_out_time),
+                    calculateHours(att.clock_in_time, att.clock_out_time, !!(att.is_auto_clock_out || isAutoClockOut(att))),
                   ]);
                   exportTableToCSV(headers, rows, "attendance_report");
                 }}
@@ -732,7 +741,7 @@ export default function HRReportsPage() {
                     (att.status === 'leave' && att.leaveType ? `Leave (${att.leaveType.toUpperCase()})` : (att.status || '')).replace('_', ' ').toUpperCase(),
                     formatTime(att.clock_in_time),
                     formatTime(att.clock_out_time) + (att.is_auto_clock_out ? ' (Auto Logout)' : ''),
-                    calculateHours(att.clock_in_time, att.clock_out_time),
+                    calculateHours(att.clock_in_time, att.clock_out_time, !!(att.is_auto_clock_out || isAutoClockOut(att))),
                   ]);
                   exportTableToPDF("Attendance Report", headers, rows, "attendance_report");
                 }}
@@ -764,7 +773,7 @@ export default function HRReportsPage() {
                     const clockIn = formatTime(record.clock_in_time || record.check_in || record.clock_in);
                     const clockOut = formatTime(record.clock_out_time || record.check_out || record.clock_out);
                     const status = record.status || "present";
-                    const hoursWorked = calculateHours(record.clock_in_time, record.clock_out_time);
+                    const hoursWorked = calculateHours(record.clock_in_time, record.clock_out_time, !!(record.is_auto_clock_out || isAutoClockOut(record)));
                     return (
                       <TableRow key={record.id || idx} className="border-gray-200 hover:bg-gray-50/50">
                         <TableCell className="text-gray-600 font-medium">

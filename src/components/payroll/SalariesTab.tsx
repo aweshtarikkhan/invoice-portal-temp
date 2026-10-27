@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription as DDesc } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
@@ -45,7 +46,10 @@ import {
   CalendarDays,
   Check,
   Edit3,
+  PenLine,
+  Trash2,
 } from "lucide-react";
+import { PayrollSignatureDialog } from "./PayrollSignatureDialog";
 import {
   SalaryStructure,
   EmployeeCalculatedSalary,
@@ -64,6 +68,15 @@ import { safeFormatTime, toHHmm, safeFormatDate } from "@/lib/utils";
 
 export function SalariesTab() {
   const org = useAppStore((s) => s.organization);
+  const setOrganization = useAppStore((s) => s.setOrganization);
+
+  // Digital Signatures State
+  const [employerSigModalOpen, setEmployerSigModalOpen] = useState(false);
+  const [selectedEmpForSig, setSelectedEmpForSig] = useState<any | null>(null);
+  const [empSigModalOpen, setEmpSigModalOpen] = useState(false);
+
+  const employerSigUrl = (org as any)?.address?.payroll_employer_signature || (org as any)?.address?.signature_image_url || "";
+  const employerSignatoryName = (org as any)?.address?.payroll_employer_signatory_name || "Authorized Signatory";
   const { toast } = useToast();
   const currency = (org as any)?.currency || "INR";
   const dailyWagesEnabled = !!(org as any)?.daily_wages_enabled;
@@ -105,6 +118,91 @@ export function SalariesTab() {
   const [selectedEmpForStructure, setSelectedEmpForStructure] = useState<any | null>(null);
   const [structureModalOpen, setStructureModalOpen] = useState(false);
 
+  const handleSaveEmployerSignature = async (url: string, signatoryName?: string) => {
+    if (!org?.id) return;
+    try {
+      const updatedAddress = {
+        ...((org as any).address || {}),
+        payroll_employer_signature: url,
+        payroll_employer_signatory_name: signatoryName || "Authorized Signatory",
+      };
+      const { error } = await (supabase as any)
+        .from("organizations")
+        .update({ address: updatedAddress })
+        .eq("id", org.id);
+
+      if (error) throw error;
+
+      setOrganization({ ...(org as any), address: updatedAddress });
+      toast({
+        title: "Employer Signature Saved",
+        description: "Company signature & seal will now automatically appear on all staff payslips.",
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to save employer signature", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveEmployerSignature = async () => {
+    if (!org?.id) return;
+    try {
+      const updatedAddress = {
+        ...((org as any).address || {}),
+        payroll_employer_signature: "",
+      };
+      const { error } = await (supabase as any)
+        .from("organizations")
+        .update({ address: updatedAddress })
+        .eq("id", org.id);
+
+      if (error) throw error;
+
+      setOrganization({ ...(org as any), address: updatedAddress });
+      toast({
+        title: "Employer Signature Removed",
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to remove signature", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleOpenEmployeeSignature = (emp: any) => {
+    setSelectedEmpForSig(emp);
+    setEmpSigModalOpen(true);
+  };
+
+  const handleSaveEmployeeSignature = async (url: string) => {
+    if (!selectedEmpForSig?.id) return;
+    try {
+      const struct = parseEmployeeSalaryStructure(selectedEmpForSig);
+      const updatedStruct = {
+        ...struct,
+        signature_url: url,
+        signature_date: new Date().toISOString(),
+      };
+
+      const { error } = await (supabase as any)
+        .from("employees")
+        .update({
+          salary_structure: updatedStruct,
+        })
+        .eq("id", selectedEmpForSig.id);
+
+      if (error) throw error;
+
+      setEmployees((prev) =>
+        prev.map((e) => (e.id === selectedEmpForSig.id ? { ...e, salary_structure: updatedStruct } : e))
+      );
+
+      toast({
+        title: "Employee Signature Saved",
+        description: `Digital signature saved for ${selectedEmpForSig.name}. It will automatically apply to every month's payslip.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Failed to save employee signature", description: err.message, variant: "destructive" });
+    }
+  };
+
   const [selectedSlipForView, setSelectedSlipForView] = useState<EmployeeCalculatedSalary | null>(null);
   const [slipModalOpen, setSlipModalOpen] = useState(false);
 
@@ -115,7 +213,7 @@ export function SalariesTab() {
   // Adjustments modal for monthly
   const [overrideModalEmp, setOverrideModalEmp] = useState<any | null>(null);
   const [overrideModalOpen, setOverrideModalOpen] = useState(false);
-  const [overrideForm, setOverrideForm] = useState({
+  const [overrideForm, setOverrideForm] = useState<any>({
     bonus: 0,
     overtime_rate: 0,
     overtime_hours: 0,
@@ -124,6 +222,7 @@ export function SalariesTab() {
     other_deductions: 0,
     notes: "",
   });
+  const [saveOtPermanently, setSaveOtPermanently] = useState(true);
 
   // Wager Time Punch Editor Modal
   const [selectedWagerForPunches, setSelectedWagerForPunches] = useState<any | null>(null);
@@ -357,9 +456,10 @@ export function SalariesTab() {
     if (!emp || !calc) return;
 
     const current = overrides[empId] || {};
-    const rate = current.overtime_rate !== undefined ? current.overtime_rate : calc.overtime_hourly_rate;
-    const hours = current.overtime_hours !== undefined ? current.overtime_hours : calc.auto_overtime_hours;
-    const otAmount = current.overtime !== undefined ? current.overtime : +(hours * rate).toFixed(2);
+    const defaultRate = (emp.salary_structure?.overtime_rate_per_hour) || (emp.overtime_rate_per_hour) || calc.overtime_hourly_rate || 0;
+    const rate = current.overtime_rate !== undefined ? current.overtime_rate : defaultRate;
+    const hours = current.overtime_hours !== undefined ? current.overtime_hours : (calc.overtime_hours ?? calc.auto_overtime_hours ?? 0);
+    const otAmount = current.overtime !== undefined ? current.overtime : +(Number(hours) * Number(rate)).toFixed(2);
 
     setOverrideForm({
       bonus: current.bonus !== undefined ? current.bonus : (calc.bonus_incentive || 0),
@@ -370,33 +470,75 @@ export function SalariesTab() {
       other_deductions: current.other_deductions !== undefined ? current.other_deductions : (calc.other_deductions || 0),
       notes: current.notes || "",
     });
+    setSaveOtPermanently(true);
     setOverrideModalEmp(emp);
     setOverrideModalOpen(true);
   };
 
-  const handleOverrideRateOrHoursChange = (field: "overtime_rate" | "overtime_hours", val: number) => {
-    const nextForm = { ...overrideForm, [field]: val };
-    const computedOt = +(Number(nextForm.overtime_hours || 0) * Number(nextForm.overtime_rate || 0)).toFixed(2);
+  const handleOverrideRateOrHoursChange = (field: "overtime_rate" | "overtime_hours", val: string | number) => {
+    const numVal = val === "" ? "" : Number(val);
+    const nextForm = { ...overrideForm, [field]: numVal };
+    const h = field === "overtime_hours" ? (val === "" ? 0 : Number(val)) : (Number(overrideForm.overtime_hours) || 0);
+    const r = field === "overtime_rate" ? (val === "" ? 0 : Number(val)) : (Number(overrideForm.overtime_rate) || 0);
+    const computedOt = +(h * r).toFixed(2);
     nextForm.overtime = computedOt;
     setOverrideForm(nextForm);
   };
 
-  const saveOverride = () => {
+  const saveOverride = async () => {
     if (!overrideModalEmp) return;
-    setOverrides({
-      ...overrides,
+    const rateNum = Number(overrideForm.overtime_rate) || 0;
+    const hoursNum = Number(overrideForm.overtime_hours) || 0;
+    const otAmountNum = Number(overrideForm.overtime) || +(rateNum * hoursNum).toFixed(2);
+
+    setOverrides(prev => ({
+      ...prev,
       [overrideModalEmp.id]: {
         bonus: Number(overrideForm.bonus) || 0,
-        overtime_rate: Number(overrideForm.overtime_rate) || 0,
-        overtime_hours: Number(overrideForm.overtime_hours) || 0,
-        overtime: Number(overrideForm.overtime) || 0,
+        overtime_rate: rateNum,
+        overtime_hours: hoursNum,
+        overtime: otAmountNum,
         tds: Number(overrideForm.tds) || 0,
         other_deductions: Number(overrideForm.other_deductions) || 0,
         notes: overrideForm.notes || "",
       },
-    });
+    }));
+
+    if (saveOtPermanently && rateNum >= 0) {
+      try {
+        const curStruct = (overrideModalEmp.salary_structure && typeof overrideModalEmp.salary_structure === "object")
+          ? overrideModalEmp.salary_structure
+          : {};
+        const updatedStruct = {
+          ...curStruct,
+          overtime_rate_per_hour: rateNum,
+        };
+
+        await (supabase as any)
+          .from("employees")
+          .update({
+            salary_structure: updatedStruct,
+            overtime_rate_per_hour: rateNum,
+          })
+          .eq("id", overrideModalEmp.id);
+
+        setEmployees((prev) =>
+          prev.map((e) =>
+            e.id === overrideModalEmp.id
+              ? { ...e, salary_structure: updatedStruct, overtime_rate_per_hour: rateNum }
+              : e
+          )
+        );
+      } catch (err: any) {
+        console.warn("Could not save overtime rate to employee profile:", err);
+      }
+    }
+
     setOverrideModalOpen(false);
-    toast({ title: "Adjustments Applied", description: `Updated calculations for ${overrideModalEmp.name}` });
+    toast({ 
+      title: "Adjustments Applied", 
+      description: `Overtime calculation updated for ${overrideModalEmp.name} (${hoursNum}h @ ₹${rateNum}/hr = ₹${otAmountNum}).` 
+    });
   };
 
   // Open Wager Adjust Dialog
@@ -1023,7 +1165,12 @@ export function SalariesTab() {
                                 variant="outline"
                                 className="h-7 text-xs px-2 gap-1"
                                 onClick={() => {
-                                  setSelectedSlipForView(s);
+                                  const emp = employees.find((e) => e.id === s.employee_id);
+                                  const struct = emp ? parseEmployeeSalaryStructure(emp) : null;
+                                  setSelectedSlipForView({
+                                    ...s,
+                                    employee_signature_url: struct?.signature_url || s.employee_signature_url || s.details?.employee_signature_url || "",
+                                  });
                                   setSlipModalOpen(true);
                                 }}
                               >
@@ -1299,8 +1446,70 @@ export function SalariesTab() {
           </TabsContent>
         )}
 
-        {/* TAB 3: Master Salary Structures */}
+        {/* TAB 3: Master Salary Structures & Digital Signatures */}
         <TabsContent value="master" className="space-y-4">
+
+          {/* Employer Digital Signature & Company Seal Card */}
+          <Card className="border-blue-200 dark:border-blue-900/60 bg-gradient-to-r from-blue-50/50 via-indigo-50/30 to-purple-50/30 dark:from-blue-950/20 dark:via-indigo-950/20 dark:to-purple-950/20">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-start gap-3">
+                  <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-sm mt-0.5">
+                    <Building2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-base font-bold flex items-center gap-2">
+                      Employer / Authorized Signatory Signature & Seal
+                      {employerSigUrl && (
+                        <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 text-[10px]">
+                          <Check className="w-3 h-3 mr-1" /> Active on All Payslips
+                        </Badge>
+                      )}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Upload company stamp or draw employer signature once. It will automatically apply to all monthly employee payslips across the organization.
+                    </CardDescription>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 gap-1.5 shadow-sm"
+                    onClick={() => setEmployerSigModalOpen(true)}
+                  >
+                    <PenLine className="w-3.5 h-3.5" />
+                    {employerSigUrl ? "Change Employer Signature" : "Upload / Draw Signature"}
+                  </Button>
+                  {employerSigUrl && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-xs h-8 text-red-600 hover:text-red-700 border-red-200 hover:bg-red-50"
+                      onClick={handleRemoveEmployerSignature}
+                      title="Remove employer signature"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            {employerSigUrl && (
+              <CardContent className="pt-0 pb-3">
+                <div className="flex items-center gap-4 p-3 bg-white dark:bg-slate-900 rounded-lg border max-w-md shadow-2xs">
+                  <div className="h-12 w-28 bg-slate-50 dark:bg-slate-950 rounded border p-1 flex items-center justify-center">
+                    <img src={employerSigUrl} alt="Employer Signature" className="max-h-full max-w-full object-contain" />
+                  </div>
+                  <div className="text-xs">
+                    <div className="font-semibold text-foreground">{employerSignatoryName || "Authorized Signatory"}</div>
+                    <div className="text-[11px] text-muted-foreground">{org?.name || "Company"} • Organization Wide</div>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+          </Card>
+
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -1324,6 +1533,7 @@ export function SalariesTab() {
                     <TableHead className="text-center">ESIC (0.75%)</TableHead>
                     <TableHead className="text-center">PT</TableHead>
                     <TableHead className="text-right">OT Rate (₹/h)</TableHead>
+                    <TableHead className="text-center">Signature</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -1383,6 +1593,37 @@ export function SalariesTab() {
 
                         <TableCell className="text-right font-mono font-medium text-amber-700">
                           {formatCurrency(struct.overtime_rate_per_hour, currency)}/h
+                        </TableCell>
+
+                        <TableCell className="text-center">
+                          {struct.signature_url ? (
+                            <div className="flex items-center justify-center gap-1.5">
+                              <div
+                                className="w-12 h-6 border rounded bg-white dark:bg-slate-950 p-0.5 flex items-center justify-center cursor-pointer hover:border-blue-400 shadow-2xs"
+                                onClick={() => handleOpenEmployeeSignature(emp)}
+                                title="Click to view or edit signature"
+                              >
+                                <img src={struct.signature_url} alt="Signature" className="max-h-full max-w-full object-contain" />
+                              </div>
+                              <Badge
+                                variant="outline"
+                                className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[10px] px-1 py-0 cursor-pointer"
+                                onClick={() => handleOpenEmployeeSignature(emp)}
+                              >
+                                Signed
+                              </Badge>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 text-[11px] text-muted-foreground hover:text-blue-600 px-1.5 gap-1"
+                              onClick={() => handleOpenEmployeeSignature(emp)}
+                            >
+                              <PenLine className="w-3 h-3" />
+                              Add Sign
+                            </Button>
+                          )}
                         </TableCell>
 
                         <TableCell className="text-right">
@@ -1494,11 +1735,42 @@ export function SalariesTab() {
         />
       )}
 
+      {/* Employer Signature Dialog */}
+      {employerSigModalOpen && (
+        <PayrollSignatureDialog
+          open={employerSigModalOpen}
+          onOpenChange={setEmployerSigModalOpen}
+          title="Organization Employer Signature & Seal"
+          subtitle="Draw signature or upload company seal image. Applies to all monthly employee payslips."
+          signatoryName={employerSignatoryName}
+          showSignatoryNameInput={true}
+          currentSignatureUrl={employerSigUrl}
+          orgId={org?.id}
+          storageFolder="employer-signatures"
+          onSave={handleSaveEmployerSignature}
+        />
+      )}
+
+      {/* Employee Quick Signature Dialog */}
+      {empSigModalOpen && selectedEmpForSig && (
+        <PayrollSignatureDialog
+          open={empSigModalOpen}
+          onOpenChange={setEmpSigModalOpen}
+          title={`Digital Signature: ${selectedEmpForSig.name}`}
+          subtitle={`Draw signature or upload transparent PNG for ${selectedEmpForSig.name}. Used for every month's payslip.`}
+          currentSignatureUrl={parseEmployeeSalaryStructure(selectedEmpForSig).signature_url}
+          orgId={org?.id}
+          storageFolder="employee-signatures"
+          onSave={handleSaveEmployeeSignature}
+        />
+      )}
+
       {/* Monthly Payslip Modal */}
       {slipModalOpen && selectedSlipForView && (
         <PayslipModal
           open={slipModalOpen}
           onOpenChange={setSlipModalOpen}
+          slip={selectedSlipForView}
           salary={selectedSlipForView}
           organization={org}
           currency={currency}
@@ -1588,41 +1860,93 @@ export function SalariesTab() {
               </CardDescription>
             </DialogHeader>
             <div className="space-y-3.5 py-2">
-              <div className="p-3 bg-amber-50/50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg space-y-2.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
-                  <Clock className="w-3.5 h-3.5 text-amber-600" />
-                  Overtime Calculation (Extra Hours & Hourly Price)
+              <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
+                    <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    Overtime Calculation (Extra Hours & Hourly Price)
+                  </div>
+                  {Number(overrideModalEmp.monthly_salary || 0) > 0 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] text-amber-700 hover:text-amber-900 px-1.5"
+                      onClick={() => {
+                        const autoR = Math.round(Number(overrideModalEmp.monthly_salary || 0) / (26 * 9));
+                        handleOverrideRateOrHoursChange("overtime_rate", autoR);
+                      }}
+                    >
+                      Auto (₹{Math.round(Number(overrideModalEmp.monthly_salary || 0) / (26 * 9))}/h)
+                    </Button>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="space-y-1">
                     <Label className="text-[11px] font-semibold">Overtime Hours</Label>
                     <Input
                       type="number"
-                      step="0.5"
-                      value={overrideForm.overtime_hours || ""}
-                      onChange={(e) => handleOverrideRateOrHoursChange("overtime_hours", Number(e.target.value))}
+                      step="0.1"
+                      min="0"
+                      value={overrideForm.overtime_hours === 0 ? "0" : (overrideForm.overtime_hours ?? "")}
+                      onChange={(e) => handleOverrideRateOrHoursChange("overtime_hours", e.target.value)}
                       placeholder="0"
                       className="h-8 text-xs bg-white dark:bg-slate-900 font-semibold text-amber-800"
                     />
                   </div>
                   <div className="space-y-1">
                     <Label className="text-[11px] font-semibold">Hourly Rate (₹ / hr)</Label>
-                    <Input
-                      type="number"
-                      step="10"
-                      value={overrideForm.overtime_rate || ""}
-                      onChange={(e) => handleOverrideRateOrHoursChange("overtime_rate", Number(e.target.value))}
-                      placeholder="0"
-                      className="h-8 text-xs bg-white dark:bg-slate-900 font-semibold"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-2.5 top-1.5 text-xs text-muted-foreground font-semibold">₹</span>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="0"
+                        value={overrideForm.overtime_rate === 0 ? "0" : (overrideForm.overtime_rate ?? "")}
+                        onChange={(e) => handleOverrideRateOrHoursChange("overtime_rate", e.target.value)}
+                        placeholder="e.g. 150"
+                        className="pl-6 h-8 text-xs bg-white dark:bg-slate-900 font-semibold text-emerald-700"
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="flex justify-between items-center pt-1 border-t border-amber-200/60 dark:border-amber-900/60 text-xs">
+
+                {/* Quick preset rates */}
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <span className="text-[10px] text-muted-foreground">Quick Rates:</span>
+                  {[100, 150, 200, 250].map((r) => (
+                    <Button
+                      key={r}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-5 px-1.5 text-[10px] bg-white dark:bg-slate-900 border-amber-300 text-amber-800 hover:bg-amber-100"
+                      onClick={() => handleOverrideRateOrHoursChange("overtime_rate", r)}
+                    >
+                      ₹{r}/h
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center pt-2 border-t border-amber-200/80 dark:border-amber-900/80 text-xs">
                   <span className="text-muted-foreground font-medium">Calculated Overtime Pay:</span>
-                  <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                  <span className="font-bold text-sm text-emerald-700 dark:text-emerald-400">
                     +{formatCurrency(overrideForm.overtime, currency)}
                   </span>
                 </div>
+              </div>
+
+              {/* Checkbox: Save permanently to employee profile */}
+              <div className="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/50 rounded border text-xs">
+                <Switch
+                  id="save-permanent-ot"
+                  checked={saveOtPermanently}
+                  onCheckedChange={setSaveOtPermanently}
+                />
+                <Label htmlFor="save-permanent-ot" className="text-xs cursor-pointer text-slate-700 dark:text-slate-300">
+                  Save Overtime Rate permanently in employee's profile
+                </Label>
               </div>
 
               <div className="space-y-1">

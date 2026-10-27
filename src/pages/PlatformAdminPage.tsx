@@ -20,7 +20,7 @@ import {
   SlidersHorizontal, UserCheck, RefreshCw, AlertCircle, ExternalLink,
   Layers, Lock, Unlock, HelpCircle, Database, Clock, Ticket, Send, Tag, Plus,
   LayoutDashboard, ArrowUpRight, ArrowDownRight, Zap, Bell, LogOut,
-  ChevronRight, Activity, UserPlus, Receipt
+  ChevronRight, Activity, UserPlus, Receipt, ArrowUp, ArrowDown
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
@@ -124,6 +124,14 @@ const PLAN_FEATURES_MAPPING: Record<string, string[]> = {
   suite: ["sales", "catalog", "purchases", "accounting", "reports", "people", "crm", "marketing", "outreach"]
 };
 
+function getOrgPlanDisplayName(org: OrgData): string {
+  if ((org as any).subscription_plan_names && (org as any).subscription_plan_names.length > 0) {
+    return (org as any).subscription_plan_names.map((p: string) => PLAN_DISPLAY_NAMES[p] || p).join(", ");
+  }
+  const raw = org.subscription?.plan_name || (org as any).subscription_plan || "free";
+  return PLAN_DISPLAY_NAMES[raw] || raw;
+}
+
 function computeFeaturesForPlans(plans: string[]): string[] {
   if (plans.includes("suite") || plans.includes("plan_3")) {
     return ADMIN_FEATURE_GROUPS.map(g => g.key);
@@ -177,6 +185,9 @@ export default function PlatformAdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [expandedOrg, setExpandedOrg] = useState<string | null>(null);
   const [orgSearch, setOrgSearch] = useState("");
+  const [orgSortBy, setOrgSortBy] = useState<"time" | "name" | "plan">("time");
+  const [orgSortOrder, setOrgSortOrder] = useState<"asc" | "desc">("desc");
+  const [orgPlanFilter, setOrgPlanFilter] = useState<string>("all");
   
   const [adsList, setAdsList] = useState<any[]>([]);
   const [adTitle, setAdTitle] = useState("");
@@ -1537,19 +1548,139 @@ export default function PlatformAdminPage() {
 
         {/* ── Businesses Tab ── */}
         {activeTab === "orgs" && (<div className="space-y-6">
-          {/* Search bar */}
-          <div className="flex items-center gap-3 bg-white border border-slate-200 rounded-xl px-4 py-2.5 shadow-sm">
-            <Search className="w-4 h-4 text-slate-400 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search by business name, email ID, or Account ID (#1XXXXX)..."
-              value={orgSearch}
-              onChange={e => setOrgSearch(e.target.value)}
-              className="flex-1 outline-none text-sm text-slate-800 placeholder:text-slate-400 bg-transparent"
-            />
-            {orgSearch && (
-              <button onClick={() => setOrgSearch("")} className="text-slate-400 hover:text-slate-600 text-xs">✕ Clear</button>
-            )}
+          {/* Controls Bar: Search, Plan Filter, Sort By, Asc/Desc Order */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+            <div className="flex flex-col lg:flex-row gap-3">
+              {/* Search bar */}
+              <div className="flex-1 flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
+                <Search className="w-4 h-4 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search by business name, email ID, or Account ID (#1XXXXX)..."
+                  value={orgSearch}
+                  onChange={e => setOrgSearch(e.target.value)}
+                  className="flex-1 outline-none text-sm text-slate-800 placeholder:text-slate-400 bg-transparent"
+                />
+                {orgSearch && (
+                  <button onClick={() => setOrgSearch("")} className="text-slate-400 hover:text-slate-600 text-xs font-semibold">✕ Clear</button>
+                )}
+              </div>
+
+              {/* Plan Filter */}
+              <div className="w-full sm:w-[220px]">
+                <Select value={orgPlanFilter} onValueChange={setOrgPlanFilter}>
+                  <SelectTrigger className="w-full h-11 bg-slate-50 border-slate-200 font-medium text-slate-700 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 truncate">
+                      <Filter className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span className="truncate">Plan: {
+                        orgPlanFilter === "all" ? "All Plans" :
+                        orgPlanFilter === "free" ? "Business Starter (Free)" :
+                        orgPlanFilter === "accounting" ? "Business Accounting" :
+                        orgPlanFilter === "hr" ? "Business HR" :
+                        orgPlanFilter === "crm" ? "Business CRM" :
+                        orgPlanFilter === "promotion" ? "Business Promotion" :
+                        orgPlanFilter === "suite" ? "Business Suite" : orgPlanFilter
+                      }</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    <SelectItem value="all">All Subscription Plans</SelectItem>
+                    <SelectItem value="free">Business Starter (Free)</SelectItem>
+                    <SelectItem value="accounting">Business Accounting</SelectItem>
+                    <SelectItem value="hr">Business HR</SelectItem>
+                    <SelectItem value="crm">Business CRM</SelectItem>
+                    <SelectItem value="promotion">Business Promotion</SelectItem>
+                    <SelectItem value="suite">Business Suite</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Sort By Select */}
+              <div className="w-full sm:w-[240px]">
+                <Select value={orgSortBy} onValueChange={(v: "time" | "name" | "plan") => setOrgSortBy(v)}>
+                  <SelectTrigger className="w-full h-11 bg-slate-50 border-slate-200 font-medium text-slate-700 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 truncate">
+                      <SlidersHorizontal className="w-4 h-4 text-indigo-600 shrink-0" />
+                      <span className="truncate">Sort: {
+                        orgSortBy === "time" ? "Account Creation Date" :
+                        orgSortBy === "name" ? "Business Name (A-Z)" :
+                        "Subscription Plan"
+                      }</span>
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    <SelectItem value="time">Account Creation Date / Time</SelectItem>
+                    <SelectItem value="name">Business Name (Alphabetical)</SelectItem>
+                    <SelectItem value="plan">Subscription Plan (Plan Wise)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Ascending / Descending Toggle Button */}
+              <Button
+                variant="outline"
+                onClick={() => setOrgSortOrder(prev => prev === "asc" ? "desc" : "asc")}
+                className="h-11 px-4 bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 flex items-center gap-2 shrink-0 font-medium text-xs sm:text-sm"
+                title={orgSortOrder === "asc" ? "Ascending Order" : "Descending Order"}
+              >
+                {orgSortOrder === "asc" ? (
+                  <>
+                    <ArrowUp className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>
+                      {orgSortBy === "time" ? "Oldest First (Asc)" : orgSortBy === "name" ? "A → Z (Asc)" : "Ascending (A → Z)"}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <ArrowDown className="w-4 h-4 text-indigo-600 shrink-0" />
+                    <span>
+                      {orgSortBy === "time" ? "Newest First (Desc)" : orgSortBy === "name" ? "Z → A (Desc)" : "Descending (Z → A)"}
+                    </span>
+                  </>
+                )}
+              </Button>
+            </div>
+
+            {/* Filter tags & results count */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pt-1 border-t border-slate-100 text-xs text-slate-500">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-medium text-slate-600">Active Sort:</span>
+                <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-semibold text-[11px] flex items-center gap-1">
+                  {orgSortBy === "time" && <Clock className="w-3 h-3 text-indigo-600" />}
+                  {orgSortBy === "name" && <Building2 className="w-3 h-3 text-indigo-600" />}
+                  {orgSortBy === "plan" && <Tag className="w-3 h-3 text-indigo-600" />}
+                  <span>
+                    {orgSortBy === "time" ? "Creation Time" : orgSortBy === "name" ? "Name" : "Plan"} ({orgSortOrder === "asc" ? "Ascending" : "Descending"})
+                  </span>
+                </Badge>
+
+                {orgPlanFilter !== "all" && (
+                  <Badge variant="secondary" className="bg-purple-50 text-purple-700 border border-purple-200/60 font-semibold text-[11px] flex items-center gap-1">
+                    <Filter className="w-3 h-3 text-purple-600" />
+                    <span>Plan: {orgPlanFilter}</span>
+                    <button onClick={() => setOrgPlanFilter("all")} className="ml-1 hover:text-purple-900 font-bold">×</button>
+                  </Badge>
+                )}
+
+                {(orgSearch || orgPlanFilter !== "all" || orgSortBy !== "time" || orgSortOrder !== "desc") && (
+                  <button
+                    onClick={() => {
+                      setOrgSearch("");
+                      setOrgPlanFilter("all");
+                      setOrgSortBy("time");
+                      setOrgSortOrder("desc");
+                    }}
+                    className="text-indigo-600 hover:text-indigo-800 hover:underline font-semibold text-xs ml-1"
+                  >
+                    Reset Filters
+                  </button>
+                )}
+              </div>
+
+              <div className="font-medium text-slate-600">
+                Total Businesses: <strong className="text-slate-900 font-bold">{dashData.organizations.length}</strong>
+              </div>
+            </div>
           </div>
 
           {dashData.organizations.length === 0 ? (
@@ -1560,7 +1691,9 @@ export default function PlatformAdminPage() {
             (() => {
               const q = orgSearch.trim().toLowerCase();
               const cleanQ = q.replace(/^#/, "");
-              const filtered = q
+
+              // 1. Filter by Search Query
+              let filtered = q
                 ? dashData.organizations.filter(o =>
                     o.name?.toLowerCase().includes(q) ||
                     o.owner?.email?.toLowerCase().includes(q) ||
@@ -1575,17 +1708,56 @@ export default function PlatformAdminPage() {
                       `${u.first_name || ""} ${u.last_name || ""}`.toLowerCase().includes(q)
                     ))
                   )
-                : dashData.organizations;
+                : [...dashData.organizations];
 
-              if (filtered.length === 0) {
+              // 2. Filter by Subscription Plan
+              if (orgPlanFilter !== "all") {
+                filtered = filtered.filter(o => {
+                  const rawPlans = (o as any).subscription_plan_names || [o.subscription?.plan_name || (o as any).subscription_plan || "free"];
+                  const normalized = rawPlans.map((p: string) => {
+                    const l = p.toLowerCase();
+                    if (l === 'plan_2') return 'accounting';
+                    if (l === 'plan_3') return 'suite';
+                    if (l === 'plan_4') return 'hr';
+                    if (l === 'plan_5') return 'crm';
+                    if (l === 'plan_6') return 'promotion';
+                    return l;
+                  });
+                  return normalized.includes(orgPlanFilter.toLowerCase());
+                });
+              }
+
+              // 3. Sort by Time, Name, or Plan in Ascending / Descending order
+              const sorted = [...filtered].sort((a, b) => {
+                if (orgSortBy === "time") {
+                  const tA = new Date(a.created_at || 0).getTime();
+                  const tB = new Date(b.created_at || 0).getTime();
+                  return orgSortOrder === "asc" ? tA - tB : tB - tA;
+                }
+                if (orgSortBy === "name") {
+                  const nA = a.name || "";
+                  const nB = b.name || "";
+                  const res = nA.localeCompare(nB, undefined, { sensitivity: "base" });
+                  return orgSortOrder === "asc" ? res : -res;
+                }
+                if (orgSortBy === "plan") {
+                  const pA = getOrgPlanDisplayName(a);
+                  const pB = getOrgPlanDisplayName(b);
+                  const res = pA.localeCompare(pB, undefined, { sensitivity: "base" });
+                  return orgSortOrder === "asc" ? res : -res;
+                }
+                return 0;
+              });
+
+              if (sorted.length === 0) {
                 return (
                   <Card className="bg-white border-slate-200 text-slate-800 p-8 text-center">
-                    <p className="text-slate-500">No businesses found for "<strong>{orgSearch}</strong>".</p>
+                    <p className="text-slate-500">No businesses match the selected filters or search query.</p>
                   </Card>
                 );
               }
 
-              return filtered.map(org => {
+              return sorted.map(org => {
 
               const sub = org.subscription || { plan_name: "free", plan_display_name: "Free", enabled_features: ADMIN_FEATURE_GROUPS.map(g => g.key) };
               const currentFeatures = Array.isArray(sub.enabled_features) ? sub.enabled_features : ADMIN_FEATURE_GROUPS.map(g => g.key);
@@ -1602,7 +1774,7 @@ export default function PlatformAdminPage() {
                         </div>
                         <div className="min-w-0">
                           <CardTitle className="text-xl text-slate-800">{org.name}</CardTitle>
-                          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-slate-500">
+                          <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mt-2 text-xs text-slate-500">
                             {org.owner && (
                               <span className="flex items-center gap-1.5">
                                 <UserCircle className="w-3 h-3" /> {org.owner.name?.trim() || org.owner.email}
@@ -1628,9 +1800,14 @@ export default function PlatformAdminPage() {
                                 <Phone className="w-3 h-3" /> {org.phone}
                               </span>
                             )}
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3 h-3" /> {new Date(org.created_at).toLocaleDateString("en-IN")}
-                            </span>
+                            
+                            {/* Prominent Account Creation Date & Time */}
+                            <div className="flex items-center gap-1.5 font-semibold text-xs text-indigo-950 bg-indigo-50 border border-indigo-200/80 px-2.5 py-0.5 rounded-md shadow-2xs">
+                              <Clock className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                              <span>Account Created: <strong className="font-bold text-slate-900">{new Date(org.created_at).toLocaleDateString("en-IN", { day: '2-digit', month: 'short', year: 'numeric' })}</strong> at {new Date(org.created_at).toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                              <span className="text-[10px] text-indigo-600 font-normal">({formatDistanceToNow(new Date(org.created_at), { addSuffix: true })})</span>
+                            </div>
+
                             <span className="flex items-center gap-1">
                               <Globe className="w-3 h-3" /> {org.currency_code}
                             </span>

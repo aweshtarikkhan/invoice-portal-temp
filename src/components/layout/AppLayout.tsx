@@ -15,6 +15,7 @@ import { NotificationBell } from "@/components/shared/NotificationBell";
 
 import { TrialBanner } from "@/components/shared/TrialBanner";
 import { PlanSelectorModal } from "@/components/shared/PlanSelectorModal";
+import { AIChatWidget } from "@/components/public/AIChatWidget";
 import { SubscriptionBadge } from "@/components/shared/SubscriptionBadge";
 import { useSubscription } from "@/hooks/use-subscription";
 import { normalizePlanKey } from "@/lib/subscription";
@@ -865,6 +866,8 @@ export function AppLayout() {
         onClose={() => setShowPlanModal(false)}
         currentPlanName={subscriptionPlan || undefined}
       />
+          {/* Floating AI Assistant Chatbot (Available across all authenticated pages) */}
+      <AIChatWidget />
     </SidebarProvider>
   );
 }

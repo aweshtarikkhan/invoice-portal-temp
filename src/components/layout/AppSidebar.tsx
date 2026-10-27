@@ -130,11 +130,9 @@ const crmItems = [
   { title: "CRM Report", url: "/crm-report", icon: BarChart3, addUrl: null },
   { title: "Leads", url: "/leads", icon: Users, addUrl: "/leads?add=1" },
   { title: "Sales Team", url: "/crm-team", icon: Briefcase, addUrl: "/crm-team?add=1" },
-  { title: "Pipeline", url: "/pipeline", icon: BarChart3, addUrl: null },
   { title: "Calendar", url: "/calendar", icon: Calendar, addUrl: null },
   { title: "Automations", url: "/crm/automations", icon: Zap, addUrl: null },
   { title: "Support Tickets", url: "/tickets", icon: Ticket, addUrl: "/tickets?add=1" },
-  { title: "Activities", url: "/activities", icon: ClipboardList, addUrl: null },
   { title: "Integrations & API", url: "/crm/integrations", icon: Link2, addUrl: null },
 ];
 

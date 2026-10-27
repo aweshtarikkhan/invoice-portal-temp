@@ -194,11 +194,14 @@ IMPORTANT CONTACT RULES:
 - Daily Clock Logs & GPS Location Tracking (/attendance?tab=daily): Under the "Daily Clock Logs" tab in Attendance, HR and managers can view real-time check-in and check-out logs for all staff on any selected date.
   * Seamless Multi-Table Sync: Punch records synchronize automatically across both attendances and attendance tables with Supabase Postgres Realtime subscriptions and fast background polling, ensuring punches from the Employee Attendance Portal instantly appear in the Main Portal.
   * Real-Time GPS & IP Location Resolution: Employee check-ins capture GPS coordinates paired with client-friendly reverse geocoding to render full human-readable addresses alongside clickable "View Map" Google Maps links. If browser GPS is restricted or unavailable on desktop PCs, the system automatically falls back to IP-based geolocation, preventing empty location dashes.
-  * Smart Shift Status Evaluation: The Daily Clock Logs table evaluates employee shift rules against clock-in timestamps so clocked-in staff are appropriately marked Present, Late, or Half Day and never incorrectly shown as Absent.
-- Automated Next-Day Shift Clock Out (Auto Logout at 08:59 AM): If an employee clocks in and forgets to clock out at the end of their day, the system automatically clocks them out at 08:59 AM (1 minute before the next shift start time, default 9:00 AM) the following morning. Starting at 09:00 AM (shift start time), the Employee Attendance Portal automatically resets the punch card and displays the active "Clock In" button for the new day. Both the Employee Attendance Portal (Dashboard, Monthly History, and Mobile card view) and the HR Portal (Daily Clock Logs table, Clock Out modal, and Employee Details history) display clear "Auto Logout" badges, indicating that the punch was closed automatically by the system.
+  * Smart Shift Status Evaluation: Both Employee Attendance Portal and HR Portal (Daily Clock Logs, Monthly Overview Grid, Employee Details, and HR Reports) evaluate employee shift rules against punch clock-in timestamps and approved leave/regularization records: staff who clock in after grace time are accurately marked "Late Coming", those after late cutoff or on approved half-day leave are marked "Half Day", and on-time arrivals are marked "Present", ensuring complete status synchronization between Employee and HR portals.
+- Automated Next-Day Shift Clock Out & Overtime Exclusion (Auto Logout at 08:59 AM): If an employee clocks in and forgets to clock out at the end of their day, the system automatically clocks them out at 08:59 AM (1 minute before the next shift start time, default 9:00 AM) the following morning. Starting at 09:00 AM (shift start time), the Employee Attendance Portal automatically resets the punch card and displays the active "Clock In" button for the new day. Both the Employee Attendance Portal and HR Portal display clear "Auto Logout" badges.
+  * Overtime Calculation Rule on Auto Logout Days: On any day where the system performs an Auto Logout, OVERTIME IS STRICTLY NOT CALCULATED (Overtime = 0 hrs). Only the normal working hours from the employee's login time up to the shift end time are considered. Overnight hours are never counted as overtime work.
+  * Overtime Calculation on Manual Logout: If an employee manually clocks out after their assigned shift end time, overtime IS accurately calculated (Worked Hours - Standard Shift Hours = Overtime Hours) and added to their monthly payroll payout.
 
+- Pinpoint Geolocation Attendance Tracking: When employees clock in or clock out via the Employee Attendance Portal, the system requests browser location permissions and captures high-precision coordinates using GPS hardware (on mobile devices) and WiFi triangulation (on laptops/desktops). Third-party IP geolocation fallbacks (which could erroneously report foreign locations like Russia or US due to ISP/VPN routing) are completely eliminated. For devices with location sensors unavailable or blocked, it safely logs "Office Network / Web Check-In" rather than guessing. Exact street addresses, coordinates, and accuracy tags are securely recorded and visible in the HR Daily Clock Logs table and Map views.
 - HR Chat & Support: Business owners/managers can chat with employees directly from People & HR -> Attendance (HR Chat tab) using their account identity without creating duplicate employee records. In the Employee Attendance Portal, the organization owner/manager appears under "HR & Management" with the "HR & Admin" badge so staff can communicate with management seamlessly.
-- Leaves Management: Go to People & HR -> Leaves to view, approve, or reject employee leave requests. For pending leave requests, HR administrators have clear, dedicated "Approve" (emerald button with check icon) and "Reject" (red outline button with cross icon) action buttons with loading indicators, replacing simple icon ticks. Leave balance counts (Annual, Used, Remaining) are correctly shown per employee per leave type. Approving a leave deducts the exact number of days from the balance (no double-deduction if approved from multiple screens). Date calculations are timezone-safe (no off-by-one in IST).
+- Leaves Management: Go to People & HR -> Leaves to view, approve, or reject employee leave requests. For pending leave requests, HR administrators have clear, dedicated "Approve" (emerald button with check icon) and "Reject" (red outline button with cross icon) action buttons with loading indicators, replacing simple icon ticks. Leave balance counts (Annual, Used, Remaining) are correctly shown per employee per leave type. Approving a leave deducts the exact number of days from the balance (no double-deduction if approved from multiple screens). Date calculations are timezone-safe (no off-by-one in IST). Under the "Leave Policies" tab, HR managers can configure organization-wide annual leave limits and monthly accrual rates for Casual, Sick, EL/PL, and Comp-Off, which save reliably into the leave policies repository.
 - Leave Types: Casual Leave (CL), Sick Leave (SL), Earned/Privilege Leave (EL/PL), Comp Off, Work From Home (WFH), Half Day, LWP/Unpaid, Maternity, Paternity.
 - Attendance Regularization: Employees submit regularization requests via the Employee Attendance Portal (https://attendance.aassaybiz.com/). These requests appear in the HR Admin portal under People & HR -> Attendance -> Regularizations tab where the HR admin can approve or reject them. Foreign keys and resilient fallbacks ensure requests always link reliably to employee details and update attendance history upon approval.
 - Real-time HR Action Notification Dots & Badges: To ensure HR and managers never miss pending employee requests or messages:
@@ -214,33 +217,28 @@ IMPORTANT CONTACT RULES:
 - Employee Documents & Document Management: Employees can upload, view, preview, and download their official documents (Aadhaar, PAN, Offer Letter, Appointment Letter, Salary Slip, Bank Proof, Resume, and Other) from the Employee Attendance Portal (/documents). For security, compliance, and audit integrity, the "Delete" option is completely disabled and removed in the Employee Attendance Portal. Employees cannot delete any uploaded documents. Document deletion is strictly restricted to Business HR and HR Administrators from the Business HR / People & HR portal.
 - Employee Dashboard Attendance Overview: In the Employee Attendance Portal Home Dashboard (/dashboard), the Attendance Overview section allows staff to filter their statistics using period options: "This Month", "Last Month", "Last 7 Days", and "Custom Dates" (the obsolete "Last 30 Days" filter has been removed).
 - HR Reports (/hr-reports): Real-time analytics and HR KPI dashboards. Displays a 6-metric Today's Attendance overview: Total Employees, Present, Absent, Late (arrived after grace period), Half Day (arrived after late cutoff or half-day leave), and On Leave (approved leaves). Automatically resolves attendance statuses against assigned shift rules and Indian Standard Time (IST). The "Recent Attendance & Punch Logs" table provides detailed Clock In time, Clock Out time (with "Auto Logout" indicator for automatically closed punches), and total Working Hours for every employee record, complete with one-click CSV and PDF export.
+- Payroll & Overtime Management (/payroll): Comprehensive Indian statutory salary calculation, statutory deductions (PF, ESIC, PT, TDS), and automatic overtime tracking engine.
+  * Overtime Hours & Hourly Rate: Extra hours beyond standard shift durations (e.g. > 9 hours/day) are automatically aggregated. In the Monthly Payroll table, clicking "Adjust" on any employee opens the "Adjust Salary & Overtime" modal where HR can customize Overtime Hours, Overtime Hourly Rate (₹ / hr), Performance Bonuses, TDS, and Deductions.
+  * Quick Overtime Rate Presets & Live Calculation: The Adjust modal provides 1-click quick preset rates (₹100/h, ₹150/h, ₹200/h, ₹250/h) and an "Auto-Calc" button from Base CTC. As rates or hours are entered, "Calculated Overtime Pay" recalculates live.
+  * Permanent Overtime Rate Persistence: Overtime hourly rates can be saved permanently into the employee's profile/salary structure in Supabase via the toggle "Save Overtime Rate permanently in employee's profile", ensuring rates persist reliably across future payroll cycles, page refreshes, and individual payslips even for employees with zero Base CTC.
+  * Overtime Rate Configuration (/payroll): Overtime calculations and hourly rate configurations are managed directly in the Payroll section (/payroll -> Salary Structure Config / Adjust Overtime) so employee registration in /employees is streamlined without requiring overtime fields.
+  * Employer & Employee Digital Signatures (/payroll -> Salary Structure Config):
+    - Employer / Company Seal Digital Signature: In the "Salary Structure Config" tab, HR/Admin can upload a company seal/stamp image or draw the authorized employer signature on an interactive digital canvas pad. Once saved, this authorized signature automatically appears on all monthly employee payslips organization-wide across all payroll periods.
+    - Employee Digital Signature: Individual employee signatures can be uploaded as an image (transparent PNG/JPG) or drawn with touch/mouse on the canvas pad. It can be added via the quick "Signature" column in the Salary Structure Config table, or inside the "Employee Signature" tab of the Employee Salary & Benefits Structure dialog. Once saved, it permanently binds to the employee's profile and automatically applies to every monthly payslip (past, current, and future).
+    - Payslip Display & PDF / Print Integration: Both the Employer Signature / Seal and the Employee Signature render cleanly at the bottom of the printable payslip and are captured with full fidelity in the downloadable A4 PDF and browser print views.
 
 5. BUSINESS CRM
-- Sidebar Navigation Items: The "Business CRM" accordion in the left sidebar includes 9 dedicated sections: CRM Report (/crm-report), Leads (/leads with quick-add button), Sales Team (/crm-team with quick-add button), Pipeline (/pipeline), Calendar (/calendar), Automations (/crm/automations), Support Tickets (/tickets with quick-add button), Activities (/activities), and Integrations & API (/crm/integrations).
+- Sidebar Navigation Items: The "Business CRM" accordion in the left sidebar includes 7 dedicated sections: CRM Report (/crm-report), Leads (/leads with quick-add button), Sales Team (/crm-team with quick-add button), Calendar (/calendar), Automations (/crm/automations), Support Tickets (/tickets with quick-add button), and Integrations & API (/crm/integrations). (Note: Pipeline Kanban and Activities pages have been hidden from navigation, and their routes safely redirect to CRM Report).
 - CRM Report (/crm-report): Unified executive management & analytics report matching the Shadcn design system. It seamlessly consolidates all CRM reporting and operational metrics into one powerful, real-time screen:
-  * 8 Core Management Overview Indicators:
-    1. Total Leads: All registered prospects in the CRM database (1-click jump to /leads).
-    2. New Leads: Fresh inquiries awaiting initial qualification.
-    3. Follow-ups Due: Activities and scheduled follow-ups due today or overdue requiring immediate action.
-    4. Converted Leads: Successfully converted leads along with the overall Lead Conversion Rate %.
-    5. Open Tickets: Active client and lead support tickets awaiting resolution (1-click jump to /tickets).
-    6. Closed Tickets: Successfully resolved and closed customer support cases.
-    7. Pending Tasks: Active CRM tasks and sales activities currently pending or in progress.
-    8. Completed Tasks: Total finished sales actions and logged activities.
-  * Financial & Deal Velocity Metrics:
-    - Active Pipeline Value: Total monetary value of open deals in funnel.
-    - Weighted Forecast Revenue: Probability-adjusted expected revenue.
-    - Won Deals Revenue: Total closed won earnings and won deal count.
-    - Win Rate: Percentage of successfully closed won deals against total closed deals.
-    - Lead Conversion Rate: Percentage of registered leads converted into paying clients.
-  * Interactive Pipeline Visualizations (Consolidated from CRM Reports):
-    - Pipeline Stages Interactive Bar Chart: Recharts distribution bar chart with hover tooltips showing deal volume and stage monetary value.
-    - Stage Value Breakdown: Detailed cards for every pipeline stage displaying deal count, total amount, and win probability %.
-    - Sales Forecasting: Probability-weighted projected revenue for "Expected This Month" and "Expected Next Month".
-  * Top Open Opportunities Table with One-Click Exports:
-    - Detailed table of high-value active opportunities showing Opportunity Name, Client/Lead contact, Pipeline Stage badge, Deal Value, Win Probability (with graphical progress bar), and Expected Close Date.
-    - Export to CSV: Instant download of active deals in CSV format.
-    - Export to PDF: Instant download of active deals in formatted tabular PDF.
+  * 8 Core Management Overview Indicators (Clicking any card opens its filtered view):
+    1. Total Leads: All registered prospects in the CRM database (1-click jump to /leads?status=all).
+    2. New Leads: Fresh inquiries awaiting initial qualification (1-click jump to /leads?status=new).
+    3. Follow-ups Due: Activities and scheduled follow-ups due today or overdue (1-click jump to /leads?view=followups).
+    4. Converted Leads: Successfully converted leads along with the overall Lead Conversion Rate % (1-click jump to /leads?status=converted).
+    5. Open Tickets: Active client and lead support tickets awaiting resolution (1-click jump to /tickets?status=open).
+    6. Closed Tickets: Successfully resolved and closed customer support cases (1-click jump to /tickets?status=closed).
+    7. Pending Tasks: Active CRM tasks and sales activities currently pending or in progress (1-click jump to /calendar?status=pending).
+    8. Completed Tasks: Total finished sales actions and logged activities (1-click jump to /calendar?status=completed).
   * Full Page Report Export (PDF):
     - Header button "Export Report (PDF)" generates and downloads a branded PDF of the complete executive CRM dashboard.
   * Operational Activity Feeds:
@@ -250,51 +248,34 @@ IMPORTANT CONTACT RULES:
   * Sales Team Leaderboard & Lead Sources:
     - Sales Team Productivity: Leaderboard tracking leads assigned, tasks executed, deals won, and revenue generated per sales executive.
     - Lead Generation Sources: Channel distribution cards and percentages.
-- Leads: Go to Business CRM -> Leads (/leads). Click "New Lead" button to add a new customer inquiry or lead. Supports assigning leads directly to sales executives or CRM team members in both Add/Edit dialogs (with inline Quick Add for new executives), direct inline 1-click reassignment from the "Assigned To" dropdown in the main leads table, and filtering leads by specific assignee or unassigned status. (Requires CRM plan).
-- Standalone CRM Employee Portal Role-Based Access & Assignment Restrictions: In the dedicated CRM Employee Portal, only employee-operational pages are displayed in the sidebar: Leads (/leads), Pipeline Kanban (/pipeline), Calendar (/calendar), Activities & Tasks (/activities), and Support Tickets (/tickets). Management pages (CRM Report, Sales Team, Automations, and Integrations & API) are completely hidden and restricted to the Main Portal's Business CRM section:
-  * Leads (/leads & /leads/:id): Sales Executives only see leads where 'owner_id' matches their executive ID. The "Assigned To" field in the Leads table, New/Edit Lead modal, and Lead Details page is locked as read-only so they cannot transfer or assign leads to other team members.
-  * Calendar & Daily Task Tracking (/calendar): Sales Executives only see their own executive card ("My Today's Tasks" / "My Progress") and their own scheduled tasks, deals, and leads in Day, Week, and Month views. Other employees' cards and unassigned task queues are completely hidden, and task reassignment dropdowns are locked as read-only.
-  * Activities & Tasks (/activities): Sales Executives strictly see ONLY activities and tasks directly assigned to them ('owner_id === currentExecutiveId'), never tasks assigned to other employees or unassigned tasks (even if linked to the same lead). The "All Assignees" filter is hidden, and the "Assign To (Sales Team)" field in the Log/Edit Activity dialog is locked to themselves.
-  * Support Tickets (/tickets): Sales Executives strictly see ONLY support tickets directly assigned to them ('assigned_to === currentExecutiveId'), never tickets assigned to other employees or unassigned tickets. The "Assignee" dropdown in both the Create Support Ticket dialog and the Ticket Details modal is locked as read-only so employees cannot assign or reassign tickets to other team members (all ticket assignments are managed from the Main Portal's Business CRM section).
-  * Unified AssayBiz 4-Color Visual Design: The CRM Employee Portal features the official AssayBiz 4-color palette exclusively: Theme colors are Deep Navy Blue (#0d2346), Brand Orange (#e77817), and Pure White (#ffffff). Text colors are Black (for white surfaces), Brand Orange (for highlights & accents), and White (for all blue backgrounds, including the Deep Blue left sidebar panel, blue headers, and dark cards). The left navigation panel is styled in solid AssayBiz Deep Blue with crisp white navigation labels and vibrant orange active state indicators.
-  * Complete Mobile Optimization: The CRM portal is fully optimized for mobile devices and smartphones. On small screens, it provides: (1) A sticky thumb-friendly Bottom Navigation Bar with quick access to Leads, Pipeline, Tasks, Tickets, and Menu; (2) A native slide-over drawer navigation menu with dark backdrop overlay; (3) Touch-friendly mobile card views for Leads and Tasks featuring direct 1-tap Call (tel:), WhatsApp (wa.me), and Email (mailto:) quick action buttons instead of cramped desktop data tables; (4) Responsive modal dialogs formatted in single-to-double column grids that comfortably fit smartphone screens without cutoffs; (5) Smooth touch-scrolling Kanban pipeline with snap-to-column physics.
-- Activities & Tasks (/activities): Go to Business CRM -> Activities. Schedule, log, and track sales activities and team tasks.
-  * "Log Activity" / "New Task" Form: Overhauled with 10 structured fields:
-    1. Task Title (Text box)
-    2. Description (Text area for details/notes)
-    3. Priority (Dropdown: Low, Medium, High, Urgent with color-coded badges)
-    4. Task Type (Dropdown: Call, Meeting, Email, Follow-up, Demo, Site Visit / Field Visit, Support Ticket)
-    5. Related Lead/Deal (Searchable dropdown with real-time text filter over active Leads and Deals)
-    6. Assign To (Dropdown populated from Sales Team executives in 'crm_team')
-    7. Due Date & Time (Date & time picker strictly enforcing today or future dates/times; past date selection is disabled and blocked)
-    8. Reminder (Dropdown in English: None, 10 minutes before, 1 hour before, 1 day before, and Custom Date & Time. When Custom is chosen, a date-time picker appears with its maximum limit automatically locked to the task's Due Date & Time, preventing reminders after the due date. Setting a reminder triggers automated WhatsApp and Email notifications to the assigned sales team executive)
-    9. Repeat (Dropdown: None, Daily, Weekly)
-    10. Status (Dropdown: Pending [default], In Progress, Completed)
-  * Activities Table: Displays Priority badges, Task Type icons, Due Date & Time, Assigned Sales Executive, and a 3-dots action menu (Edit, Complete/Pending toggle, Delete).
-- Sales Team (/crm-team): Go to Business CRM -> Sales Team. Manage sales executives and representatives dedicated to the CRM pipeline. Create, edit, activate/deactivate, and delete sales executives with custom roles (Sales Executive, Team Lead, Sales Manager, Account Executive, Business Development). Leads and activities can be directly assigned to these members for streamlined lead tracking and follow-up.
-- CRM Calendar & Daily Task Tracking (/calendar): Go to Business CRM -> Calendar. Comprehensive schedule planner and live sales team task tracker:
-  * View Modes: Month, Week, and "Today's Tasks (Sales Team)" Daily Task Tracker.
-  * Daily Task Tracking (Today's Tasks for Sales Team):
-    - Real-time KPI Ribbon: Shows Total Tasks for today, Completed count, Pending count, Active Sales Executives count, and Team Completion % Progress bar.
-    - Grouped by Sales Team Executive: Each sales executive in 'crm_team' has a dedicated card displaying their Avatar, Role, Phone (with instant WhatsApp link), Email, and completed vs total progress bar.
-    - Detailed Task Cards: Lists each task assigned to that executive for today with 1-click completion toggle, task title, notes, due time (HH:mm with Overdue badge if delayed), Task Type badge (Call, Meeting, Site Visit, Demo, Email, Support Ticket, Follow-up), Priority badge (Urgent, High, Medium, Low), and linked Lead/Deal.
-    - Inline Reassignment: Managers can reassign any task to another sales executive in 1 click using the inline dropdown right on the task card.
-    - Unassigned Tasks Alert Section: Highlights tasks due today that lack an assignee with immediate 1-click assignment to any sales team member.
-    - Date Navigation: Jump to Today, or browse previous/future days ('<' and '>') to inspect scheduled daily workloads.
-    - Filters: Filter by Sales Executive, Task Status (Pending / Completed), Task Type, and search by keyword.
-    - Quick Add Task Dialog: Add new tasks directly from the calendar for the selected date with assignee, time, type, priority, and linked lead.
-  * Month & Week Views: Full calendar grid showing activities, deals, and leads with assignee badges and day click-through to open daily tracking.
-- Sales Pipeline & Deals: Go to Business CRM -> Pipeline. Drag and drop deals across stages. Moving or marking a deal as "Won" automatically fires configured CRM automations.
-- Automations & Workflows: Go to Business CRM -> Automations (/crm/automations). Enables 8 real-time communication automations divided into Customer Communications and Sales Executive Task Reminders:
-  1. "Deal Won Client Onboarding & Thank You Email": Automatically sends a professional branded email to the customer confirming deal closure, celebrating the partnership, and providing onboarding next steps.
-  2. "Deal Won WhatsApp Celebration & Confirmation": Dispatches an instant WhatsApp message to the customer with deal confirmation, value, and support contacts.
-  3. "Welcome Email for New Leads": Automatically sends an introduction email when a new lead is registered.
-  4. "Welcome WhatsApp for New Leads": Sends a warm greeting WhatsApp message when a new lead is captured.
-  5. "Sales Executive Task Due Reminder (WhatsApp)": Automatically sends an instant WhatsApp alert to the assigned sales executive when their CRM task reaches or approaches its due deadline, capturing all task, lead, and priority fields.
-  6. "Sales Executive Task Due Reminder (Email)": Dispatches a branded deadline alert email to the assigned sales executive with full task details, lead company, and action instructions.
-  7. "Sales Executive Custom Reminder Alert (WhatsApp)": Dispatches an auto-updating WhatsApp reminder to the assigned sales executive at their exact scheduled custom reminder date & time, dynamically capturing every field (task title, type, priority, due date, custom reminder timestamp, notes, and related lead/deal).
-  8. "Sales Executive Custom Reminder Alert (Email)": Triggers a high-impact branded notification email to the assigned sales executive at their custom scheduled reminder time with complete task, lead, and priority details.
-  Users can toggle each workflow on/off, filter by category ("All", "Task & Due Reminders", "Deals & Leads"), and click "Preview Message" on each card to view live interactive email and WhatsApp message previews.
+- Leads (/leads): Go to Business CRM -> Leads (/leads). Click "New Lead" button to add a new customer inquiry or lead.
+  * Date-Wise Filter: Quick date presets (All Dates, Today, Yesterday, Last 7 Days, This Month, Last Month, and Custom Date Range) allowing managers to filter leads captured in any time period.
+  * Table Columns: Formatted in clear order: Name | Contact | Source | Status | Assigned To | Priority | Actions | Others.
+  * "Actions" Button: Direct button on every lead row opening the Activity popup modal (LeadActivityModal).
+  * Activity Modal: Streamlined form removing redundant "Assign To" and "Related Lead" selectors (as it logs directly to the lead). Features dynamic Task Types with a "+ Create New" option that automatically saves and persists custom activity types for future use. Logging an activity automatically triggers the "On Action Logged" lead status change automation.
+  * "Others" Menu: 3-dots dropdown containing View Details, Edit Lead, Convert to Client, and Delete Lead.
+  * Convert to Client: 1-click conversion creating a complete Client record in the sales directory with exact matching name (display_name), company, email, and mobile phone number.
+  * Lead Details Page (/leads/:id): Features an "Add Action" button at the top header opening the Activity modal, a prominent "Convert to Client" button at the top, and clean tabbed activity history.
+  * Status Selectors: Lead status dropdowns dynamically load the organization's custom statuses created in Automations.
+- Sales Team (/crm-team): Go to Business CRM -> Sales Team. Manage sales executives and representatives dedicated to the CRM pipeline. Create, edit, activate/deactivate, and delete sales executives with custom roles. The organization's Administrator account is automatically synchronized and registered in crm_team as Sales Manager so they always appear in all "Assigned To" dropdowns, lead assignments, and leaderboard metrics.
+  * CRM Portal Access Provisioning: Matching the Attendance Portal's access workflow, the Sales Team page features dedicated CRM Portal Access management. Administrators can grant CRM login credentials to sales representatives with strict organization scoping so they can log in to the standalone CRM Portal (https://crm.aassaybiz.com / localhost:5173) and work exclusively within the current business.
+  * Quick Filter Tabs: Filter sales executives by "All", "Portal Access" (members who already have login credentials), and "No Access" (members awaiting CRM portal access).
+  * Grant Access & Reset Password: Members without access feature a prominent "Grant Access" button in the table. Members with active access feature a "Reset Pass" button. Admins can also grant access immediately when creating a new executive via the "Grant CRM Portal Login Access" toggle.
+  * Instant Credentials Sharing & WhatsApp: Upon granting or resetting credentials, a modal displays the CRM Portal URL, login email, password, 1-click copy buttons, and a direct "Share on WhatsApp" button.
+  * Strict Organization Scoping: All accounts created or linked are strictly bound to the business's org_id in auth profiles and organization members, guaranteeing multi-tenant security.
+  * Revoke Access: Admins can revoke CRM portal access at any time via the 3-dots menu while preserving all sales records, leads, and activity history.
+- CRM Automations & Workflows (/crm/automations): Organized into two comprehensive tabs:
+  1. "Email & WhatsApp Alerts" Tab: 8 preset real-time communication automations divided into Customer Communications and Sales Executive Task Reminders:
+    - Deal Won Client Onboarding & Thank You Email & WhatsApp.
+    - Welcome Email & WhatsApp for New Leads.
+    - Sales Executive Task Due Reminder (WhatsApp & Email).
+    - Sales Executive Custom Reminder Alert (WhatsApp & Email).
+    - Users can toggle each workflow on/off, filter by category ("All", "Task & Due Reminders", "Deals & Leads"), and click "Preview Message" to view live interactive email and WhatsApp message previews.
+  2. "Lead Automations & Statuses" Tab:
+    - Custom Lead Statuses Manager: Create custom pipeline stages (e.g., "Demo Scheduled", "Under Review", "Quotation Sent") with custom color badge themes, delete unwanted stages, or reset to CRM defaults.
+    - Auto-Update Status on Activity / Action: Automatically updates a lead's status (e.g. from "New" to "Follow-up" or "Contacted") whenever any sales action or activity is logged on that lead.
+    - Auto-Set Priority by Lead Source: Automatically tags newly captured leads as Hot, Warm, or Cold based on acquisition source (e.g., Justdial -> Hot, Website -> Warm).
+    - Auto-Assign Rep by Lead Source: Automatically routes incoming leads from specific channels to designated sales representatives or managers (e.g., Justdial -> Sumit).
 - Support Tickets: Go to Business CRM -> Support Tickets (/tickets). Create and track support tickets for both Customers (Clients) and CRM Leads using an interactive segmented contact selector (Customers vs Leads).
   * Custom Ticket Number: Tickets are automatically assigned a custom ticket number generated using the client/lead's name initials and a random 4-digit number (e.g., 'DB1234' for 'Dilip Bachani').
   * Tickets List Layout: The main tickets list features explicit column headers (Ticket Details, Assign To, Status & Actions) for clarity.
@@ -431,6 +412,7 @@ IMPORTANT CONTACT RULES:
 
 18. PLATFORM ADMIN PORTAL & COLLATERAL MANAGEMENT
 - Official Branding & Clean Logo: Platform Admin features the official AssayBiz logo branding cleanly without redundant text strings next to the logo.
+- Businesses Directory Sorting & Filtering: In Platform Admin under "Businesses" (orgs tab), administrators can filter and sort all registered organizations on the platform. Admins can sort businesses by Account Creation Date/Time (Time Wise), Business Name (Alphabetically), or Subscription Plan (Plan Wise) in either Ascending (oldest first / A-Z) or Descending (newest first / Z-A) order. Each business card clearly displays the exact account creation date, time, and relative duration. Admins can also filter organizations by specific subscription plan (All Plans, Business Starter / Free, Business Accounting, Business HR, Business CRM, Business Promotion, Business Suite) alongside full-text search across business name, owner email, and Account ID.
 - Platform Admin Notifications (Bell Icon): Top header includes an interactive notification popover displaying pending Help & Support requests with counts, timestamps, and 1-click navigation.
 - Platform Help & Support Management: Under "Support Tickets" (/platform-admin or internal CRM), platform administrators and agents manage Help & Support queries submitted by businesses and users across the platform. Admins can view the full query details (requester info, contact email/phone, problem description), start WhatsApp chats or send emails with 1-click. When creating or reassigning tickets, agents can assign them to a specific team member from the "Assignee" dropdown, set a "Due Date", and auto-generate unique ticket numbers. When changing ticket statuses (Open, In Progress, Resolved, Closed), agents are prompted to enter a "Resolution Note" or "Closing Comment", which is automatically included in branded email notifications sent to the user.
 - Plans & Subscription Pricing Management: In Platform Admin under "Plans & Pricing", administrators can inspect and configure monthly and yearly pricing for all subscription tiers (Business Starter, Business Accounting, Business Suite, Business HR, Business CRM, Business Promotion). Plan price updates sync directly to the database and RPC triggers with fallback safeguards and zero crashes.
@@ -517,7 +499,8 @@ IMPORTANT CONTACT RULES:
 23. DEDICATED CRM SALES & EMPLOYEE PORTAL (crm-portal)
 - Standalone Portal Directory: Separated into its own directory '/crm-portal' (similar to '/attendance-portal') to prevent sales updates from mixing with core accounting commits.
 - Git Repository: Connected to 'https://github.com/aweshtarikkhan/CRM-Employee-Portal.git' on branch main.
-- Unified Database: Seamlessly connects to the same enterprise Supabase instance ('https://api.aassaybiz.com') with multi-tenant 'org_id' isolation.
+- Unified Database & Tenant Security: Seamlessly connects to the same enterprise Supabase instance ('https://api.aassaybiz.com') with multi-tenant 'org_id' isolation. Sales team members granted access from the main portal log into the CRM Portal and are automatically locked to their assigned organization's data (leads, deals, tickets, automations, and calendars).
+- CRM Portal Access Flow: Mirroring the attendance portal's access system, administrators manage sales team login access under Business CRM -> Sales Team (/crm-team). Admins can grant access, reset passwords, share credentials on WhatsApp, or revoke access at any time.
 - AssayBiz Strict 4-Color Brand Palette:
   * Theme Colors: Official Logo Dark Blue (#28166f), Official Logo Orange (#e77817), Pure White (#ffffff).
   * Text Colors: Dark Slate / Black (#0f172a), Brand Orange (#e77817), Crisp White (#ffffff on dark blue backgrounds).
@@ -528,14 +511,13 @@ IMPORTANT CONTACT RULES:
   * Executive CRM Report & Analytics (/crm-report)
   * Leads Management & Qualification (/leads)
   * Lead Details, Activity Timeline & Deal Progression (/leads/:id)
-  * Interactive Deals Pipeline Kanban (/pipeline)
-  * Opportunity Details & Forecasting (/pipeline/:id)
   * Scheduled Sales Calendar (/calendar)
-  * Activities, Calls & Tasks (/activities)
   * Customer Support Tickets & Escalation (/tickets)
   * Sales Team & Performance Leaderboard (/crm-team)
   * Automated Sales Workflow Rules (/automations)
-  * Webhooks & Third-party Integrations (/integrations)
+  * Note: Pipeline Kanban (/pipeline) and Activities (/activities) have been hidden from user navigation.
+
+- Global Floating AI Chatbot Assistant: Available across all pages after login in the bottom-right corner as a sleek, compact, semi-transparent glassmorphic floating action widget with live online indicator and AI sparkles. Users and staff can click the floating bot icon anywhere on the platform (Dashboard, Invoices, HR & Attendance, Payroll, CRM, Reports, Settings) to open the interactive AI assistant, ask feature questions, resolve calculation doubts, view contact details, or learn platform workflows in real time without navigating away from their work.
 
 --- END OF KNOWLEDGE BASE ---
 `;

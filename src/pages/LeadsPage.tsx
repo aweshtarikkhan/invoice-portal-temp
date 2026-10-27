@@ -4,7 +4,7 @@ import { useAppStore } from "@/store/app-store";
 import { logAudit } from "@/lib/audit";
 import { useAuth } from "@/lib/auth";
 import { useSubscription } from "@/hooks/use-subscription";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,13 +30,21 @@ import { hasModuleAccess, hasUnlimitedLeads, getLeadLimit, normalizePlanKey, FRE
 import { LockedFeature } from "@/components/subscription/LockedFeature";
 import { LimitReachedAlert } from "@/components/shared/LimitReachedAlert";
 import { UpgradeModal } from "@/components/subscription/UpgradeModal";
-import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, IndianRupee, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle, AlertTriangle, UserCheck, UserPlus, MoreVertical } from "lucide-react";
+import { Plus, Pencil, Trash2, ArrowRightCircle, Search, Users, TrendingUp, Target, IndianRupee, Flame, Snowflake, Sun, Phone, Mail, Eye, Upload, Sparkles, AlertCircle, AlertTriangle, UserCheck, UserPlus, MoreVertical, Calendar as CalendarIcon } from "lucide-react";
 import { formatCurrency } from "@/lib/currency";
 import { format, parseISO } from "date-fns";
 import { ImportDialog, ImportField } from "@/components/shared/ImportDialog";
 import { AutoFitNumber } from "@/components/shared/AutoFitNumber";
 import { buildBrandedEmailHtml } from "@/lib/brand-email-template";
-import { triggerLeadCreatedAutomations } from "@/lib/crm-automations";
+import {
+  triggerLeadCreatedAutomations,
+  fetchOrgLeadStatuses,
+  ensureAdminInCrmTeam,
+  DEFAULT_LEAD_STATUSES,
+  LeadStatusItem,
+  fetchLeadSourceRules,
+} from "@/lib/crm-automations";
+import { LeadActivityModal } from "@/components/crm/LeadActivityModal";
 
 const leadImportFields: ImportField[] = [
   { key: "name", label: "Lead Name", required: true },
@@ -124,12 +132,35 @@ export default function LeadsPage() {
   const [rows, setRows] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [searchParams] = useSearchParams();
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    if (searchParams.get("view") === "followups") return "followup";
+    return searchParams.get("status") || "all";
+  });
+  const [followUpLeadIds, setFollowUpLeadIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const statusParam = searchParams.get("status");
+    const viewParam = searchParams.get("view");
+    if (viewParam === "followups") {
+      setStatusFilter("followup");
+    } else if (statusParam) {
+      setStatusFilter(statusParam);
+    }
+  }, [searchParams]);
   const [priorityFilter, setPriorityFilter] = useState<string>("all");
   const [ownerFilter, setOwnerFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("all");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [open, setOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
+
+  // Dynamic Lead Statuses & Action Modal
+  const [leadStatuses, setLeadStatuses] = useState<LeadStatusItem[]>(DEFAULT_LEAD_STATUSES);
+  const [actionModalOpen, setActionModalOpen] = useState(false);
+  const [selectedLeadForAction, setSelectedLeadForAction] = useState<any>(null);
 
   const { subscriptionPlan } = useSubscription();
   const plan = subscriptionPlan || org?.subscription_plan || "free";
@@ -192,21 +223,60 @@ export default function LeadsPage() {
     }
   };
 
+  const updateLeadStatus = async (leadId: string, newStatus: string) => {
+    try {
+      const { error } = await (supabase as any)
+        .from("leads")
+        .update({ status: newStatus })
+        .eq("id", leadId);
+      if (error) throw error;
+      setRows(prev => prev.map(r => r.id === leadId ? { ...r, status: newStatus } : r));
+      const statusObj = leadStatuses.find(s => s.v === newStatus);
+      toast({ title: `Status updated to ${statusObj?.l || newStatus}` });
+    } catch (err: any) {
+      toast({ title: "Failed to update status", description: err.message, variant: "destructive" });
+    }
+  };
+
   const load = async () => {
     if (!org?.id) return;
     setLoading(true);
     try {
-      const [{ data: leadsData, error: leadsErr }, { data: subsData }, { data: teamData }] = await Promise.all([
+      if (user) {
+        await ensureAdminInCrmTeam(org.id, user);
+      }
+      const [{ data: leadsData, error: leadsErr }, { data: subsData }, { data: teamData }, statuses, { data: actsData }] = await Promise.all([
         (supabase as any).from("leads").select("*").eq("org_id", org.id).order("created_at", { ascending: false }),
         supabase.from("subscriptions").select("plan_id, status").eq("org_id", org.id).eq("status", "active"),
-        supabase.from("crm_team").select("*").eq("org_id", org.id).eq("is_active", true).order("name")
+        supabase.from("crm_team").select("*").eq("org_id", org.id).eq("is_active", true).order("name"),
+        fetchOrgLeadStatuses(org.id),
+        (supabase as any).from("activities").select("lead_id, status, completed_at, due_date, due_at, activity_type").eq("org_id", org.id),
       ]);
       if (leadsErr) toast({ title: "Load failed", description: leadsErr.message, variant: "destructive" });
       setRows(leadsData || []);
+      if (actsData) {
+        const fuIds = new Set<string>();
+        const now = new Date();
+        actsData.forEach((a: any) => {
+          const isDone = a.completed_at || (a.status && a.status.toLowerCase() === "completed");
+          if (!isDone && a.lead_id) {
+            const dueDateStr = a.due_at || a.due_date;
+            const isFollowUpType = (a.activity_type || "").toLowerCase().includes("follow");
+            const isDue = dueDateStr ? new Date(dueDateStr) <= now : false;
+            if (isFollowUpType || isDue) {
+              fuIds.add(a.lead_id);
+            }
+          }
+        });
+        setFollowUpLeadIds(fuIds);
+      }
       if (subsData && Array.isArray(subsData)) {
         setActiveOrgPlans(subsData.map((s: any) => s.plan_id));
       }
       setCrmTeam(teamData || []);
+      if (statuses && statuses.length > 0) {
+        setLeadStatuses(statuses);
+      }
     } catch (e: any) {
       console.error("Failed to load leads or subscriptions:", e);
     } finally {
@@ -303,6 +373,26 @@ export default function LeadsPage() {
       priority: form.priority || "warm",
       owner_id: form.owner_id || null,
     };
+    if (!editId && payload.source) {
+      try {
+        const rules = await fetchLeadSourceRules(org.id);
+        if (rules.priorityActive && rules.priorityRules?.length > 0) {
+          const matchPri = rules.priorityRules.find((r) => r.source.toLowerCase() === payload.source.toLowerCase());
+          if (matchPri) {
+            payload.priority = matchPri.priority;
+          }
+        }
+        if (rules.assignmentActive && rules.assignmentRules?.length > 0 && !payload.owner_id) {
+          const matchAss = rules.assignmentRules.find((r) => r.source.toLowerCase() === payload.source.toLowerCase());
+          if (matchAss) {
+            payload.owner_id = matchAss.member_id;
+          }
+        }
+      } catch (e) {
+        console.error("Error applying source automations:", e);
+      }
+    }
+
     const q = editId
       ? (supabase as any).from("leads").update(payload).eq("id", editId)
       : (supabase as any).from("leads").insert(payload);
@@ -332,11 +422,13 @@ export default function LeadsPage() {
     if (!confirm(`Convert "${l.name}" into a Client?`)) return;
     const { data: client, error } = await (supabase as any).from("clients").insert({
       org_id: org.id,
-      display_name: l.company || l.name,
+      display_name: l.name,
+      first_name: l.name,
       company_name: l.company || null,
       email: l.email || null,
       phone: l.phone || null,
-      notes: `Converted from lead. Contact: ${l.name}`,
+      mobile: l.phone || null,
+      notes: `Converted from lead. ${l.notes || ""}`,
     }).select("*").single();
     if (error) { toast({ title: "Convert failed", description: error.message, variant: "destructive" }); return; }
     await (supabase as any).from("leads").update({ status: "converted", converted_client_id: client.id }).eq("id", l.id);
@@ -345,12 +437,44 @@ export default function LeadsPage() {
   };
 
   const filtered = rows.filter((r) => {
-    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (statusFilter === "followup") {
+      if (!followUpLeadIds.has(r.id)) return false;
+    } else if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (priorityFilter !== "all" && (r.priority || "warm") !== priorityFilter) return false;
     if (ownerFilter !== "all") {
       if (ownerFilter === "unassigned" && r.owner_id) return false;
       if (ownerFilter !== "unassigned" && r.owner_id !== ownerFilter) return false;
     }
+
+    // Date-wise filtering
+    if (dateFilter !== "all" && r.created_at) {
+      const leadDate = new Date(r.created_at);
+      const now = new Date();
+      if (dateFilter === "today") {
+        if (leadDate.toDateString() !== now.toDateString()) return false;
+      } else if (dateFilter === "yesterday") {
+        const yest = new Date();
+        yest.setDate(yest.getDate() - 1);
+        if (leadDate.toDateString() !== yest.toDateString()) return false;
+      } else if (dateFilter === "last_7_days") {
+        const d7 = new Date();
+        d7.setDate(d7.getDate() - 7);
+        if (leadDate < d7) return false;
+      } else if (dateFilter === "this_month") {
+        if (leadDate.getMonth() !== now.getMonth() || leadDate.getFullYear() !== now.getFullYear()) return false;
+      } else if (dateFilter === "last_month") {
+        const lastM = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        if (leadDate.getMonth() !== lastM.getMonth() || leadDate.getFullYear() !== lastM.getFullYear()) return false;
+      } else if (dateFilter === "custom") {
+        if (customStartDate && new Date(r.created_at) < new Date(customStartDate)) return false;
+        if (customEndDate) {
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (new Date(r.created_at) > end) return false;
+        }
+      }
+    }
+
     if (!search) return true;
     const s = search.toLowerCase();
     return (r.name?.toLowerCase().includes(s) || r.company?.toLowerCase().includes(s) || r.email?.toLowerCase().includes(s) || r.phone?.toLowerCase().includes(s));
@@ -389,8 +513,8 @@ export default function LeadsPage() {
   }
 
   const statusBadge = (s: string) => {
-    const o = STATUSES.find((x) => x.v === s) || STATUSES[0];
-    return <Badge variant="outline" className={o.cls}>{o.l}</Badge>;
+    const o = leadStatuses.find((x) => x.v === s) || STATUSES.find((x) => x.v === s) || { l: s, cls: "bg-slate-100 text-slate-800 border-slate-300" };
+    return <Badge variant="outline" className={`${o.cls} text-xs font-semibold px-2 py-0.5`}>{o.l}</Badge>;
   };
 
   const priorityBadge = (p: string) => {
@@ -495,7 +619,8 @@ export default function LeadsPage() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
-            {STATUSES.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}
+            <SelectItem value="followup" className="text-amber-700 dark:text-amber-400 font-medium">Follow-ups Due ({followUpLeadIds.size})</SelectItem>
+            {leadStatuses.map((s) => <SelectItem key={s.v} value={s.v}>{s.l}</SelectItem>)}
           </SelectContent>
         </Select>
         <Select value={priorityFilter} onValueChange={setPriorityFilter}>
@@ -515,6 +640,45 @@ export default function LeadsPage() {
             ))}
           </SelectContent>
         </Select>
+
+        {/* Date-wise Filter */}
+        <Select value={dateFilter} onValueChange={setDateFilter}>
+          <SelectTrigger className="w-40">
+            <div className="flex items-center gap-1.5 truncate">
+              <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <SelectValue placeholder="All Dates" />
+            </div>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Dates</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="yesterday">Yesterday</SelectItem>
+            <SelectItem value="last_7_days">Last 7 Days</SelectItem>
+            <SelectItem value="this_month">This Month</SelectItem>
+            <SelectItem value="last_month">Last Month</SelectItem>
+            <SelectItem value="custom">Custom Range</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {dateFilter === "custom" && (
+          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1 rounded-lg border border-slate-200 dark:border-slate-700">
+            <Input
+              type="date"
+              value={customStartDate}
+              onChange={(e) => setCustomStartDate(e.target.value)}
+              className="h-8 w-32 text-xs"
+              placeholder="From"
+            />
+            <span className="text-xs text-muted-foreground font-medium">to</span>
+            <Input
+              type="date"
+              value={customEndDate}
+              onChange={(e) => setCustomEndDate(e.target.value)}
+              className="h-8 w-32 text-xs"
+              placeholder="To"
+            />
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -525,10 +689,14 @@ export default function LeadsPage() {
           : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Name</TableHead><TableHead>Contact</TableHead>
-                <TableHead>Source</TableHead><TableHead>Priority</TableHead><TableHead>Status</TableHead><TableHead>Assigned To</TableHead>
-                <TableHead className="text-right">Est. Value</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Source</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Assigned To</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
+                <TableHead className="text-right">Others</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {filtered.map((l) => (
@@ -544,8 +712,23 @@ export default function LeadsPage() {
                       <div className="text-xs text-muted-foreground flex items-center gap-1">{l.phone && <><Phone className="h-3 w-3" />{l.phone}</>}</div>
                     </TableCell>
                     <TableCell><span className="text-sm">{l.source || "—"}</span></TableCell>
-                    <TableCell>{priorityBadge(l.priority)}</TableCell>
-                    <TableCell>{statusBadge(l.status)}</TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Select
+                        value={l.status || "new"}
+                        onValueChange={(val) => updateLeadStatus(l.id, val)}
+                      >
+                        <SelectTrigger className="h-7 text-xs w-[125px] border-slate-200 dark:border-slate-700 bg-background">
+                          {statusBadge(l.status)}
+                        </SelectTrigger>
+                        <SelectContent onClick={(e) => e.stopPropagation()}>
+                          {leadStatuses.map((st) => (
+                            <SelectItem key={st.v} value={st.v} className="text-xs">
+                              {st.l}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Select
                         value={l.owner_id || "unassigned"}
@@ -571,7 +754,20 @@ export default function LeadsPage() {
                         </SelectContent>
                       </Select>
                     </TableCell>
-                    <TableCell className="text-right">{formatCurrency(Number(l.estimated_value || 0), currency)}</TableCell>
+                    <TableCell>{priorityBadge(l.priority)}</TableCell>
+                    <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2.5 text-xs gap-1.5 bg-blue-50/70 hover:bg-blue-100 text-[#0d2346] border-blue-200 dark:bg-blue-950/40 dark:text-blue-300 dark:border-blue-900 font-medium shadow-2xs"
+                        onClick={() => {
+                          setSelectedLeadForAction(l);
+                          setActionModalOpen(true);
+                        }}
+                      >
+                        <Plus className="h-3 w-3 text-[#e77817]" /> Action
+                      </Button>
+                    </TableCell>
                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -602,11 +798,6 @@ export default function LeadsPage() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-
-
-
-
-
                     </TableCell>
                   </TableRow>
                 ))}
@@ -899,6 +1090,14 @@ export default function LeadsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Lead Activity Task Modal */}
+      <LeadActivityModal
+        open={actionModalOpen}
+        onOpenChange={setActionModalOpen}
+        lead={selectedLeadForAction}
+        onSaved={load}
+      />
     </div>
   );
 }
